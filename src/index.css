@@ -1,0 +1,305 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@400;500;600;700;800;900&display=swap');
+
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --color-bg: var(--color-bg-val);
+  --color-surface: var(--color-surface-val);
+  --color-surface-2: var(--color-surface-2-val);
+  --color-surface-3: var(--color-surface-3-val);
+  --color-outline: var(--color-outline-val);
+  --color-primary: var(--color-primary-val);
+  --color-primary-dim: var(--color-primary-dim-val);
+  --color-primary-subtle: var(--color-primary-subtle-val);
+  --color-on-surface: var(--color-on-surface-val);
+  --color-on-surface-muted: var(--color-on-surface-muted-val);
+  --color-on-surface-variant: var(--color-on-surface-variant-val);
+  --color-on-primary: var(--color-on-primary-val);
+
+  --font-heading: 'Outfit', sans-serif;
+  --font-body: 'Inter', sans-serif;
+
+  --shadow-orange: 0 4px 14px 0 rgba(255, 107, 0, 0.35);
+  --shadow-apple-glass: 0 20px 45px -12px rgba(15, 23, 42, 0.12), 0 1px 2px 0 rgba(0, 0, 0, 0.04);
+  --shadow-apple-glass-dark: 0 24px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1);
+}
+
+:root {
+  --color-bg-val: #f0f4f9;
+  --color-surface-val: rgba(255, 255, 255, 0.6);
+  --color-surface-2-val: rgba(255, 255, 255, 0.45);
+  --color-surface-3-val: rgba(255, 255, 255, 0.7);
+  --color-outline-val: rgba(255, 255, 255, 0.8);
+  --color-primary-val: #ff6b00;
+  --color-primary-dim-val: #d95a00;
+  --color-primary-subtle-val: rgba(255, 107, 0, 0.12);
+  --color-on-surface-val: #0f172a;
+  --color-on-surface-muted-val: #64748b;
+  --color-on-surface-variant-val: #334155;
+  --color-on-primary-val: #ffffff;
+}
+
+.dark {
+  --color-bg-val: #050608;
+  --color-surface-val: rgba(12, 13, 18, 0.8);
+  --color-surface-2-val: rgba(18, 19, 26, 0.75);
+  --color-surface-3-val: rgba(24, 26, 36, 0.8);
+  --color-outline-val: rgba(255, 255, 255, 0.07);
+  --color-primary-val: #ff6b00;
+  --color-primary-dim-val: #e05e00;
+  --color-primary-subtle-val: rgba(255, 107, 0, 0.15);
+  --color-on-surface-val: #f8fafc;
+  --color-on-surface-muted-val: #94a3b8;
+  --color-on-surface-variant-val: #cbd5e1;
+  --color-on-primary-val: #ffffff;
+}
+
+/* =========================================================
+   APPLE LIQUID GLASS DESIGN SYSTEM (macOS & VisionOS Spec)
+   ========================================================= */
+
+/* Apple Main Glass Panel */
+.glass-panel {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.65) 0%,
+    rgba(255, 255, 255, 0.35) 100%
+  );
+  backdrop-filter: blur(36px) saturate(220%) brightness(108%);
+  -webkit-backdrop-filter: blur(36px) saturate(220%) brightness(108%);
+  border: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 
+    0 20px 40px -12px rgba(15, 23, 42, 0.09),
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.4);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.dark .glass-panel {
+  background: rgba(10, 11, 15, 0.82);
+  backdrop-filter: blur(36px) saturate(180%);
+  -webkit-backdrop-filter: blur(36px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 
+    0 24px 50px -12px rgba(0, 0, 0, 0.9),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* Apple Liquid Interactive Card */
+.glass-card {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.68) 0%,
+    rgba(255, 255, 255, 0.38) 100%
+  );
+  backdrop-filter: blur(32px) saturate(210%) brightness(106%);
+  -webkit-backdrop-filter: blur(32px) saturate(210%) brightness(106%);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 
+    0 12px 32px -6px rgba(15, 23, 42, 0.08),
+    inset 0 1.5px 1px 0 rgba(255, 255, 255, 0.95),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+  transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+  position: relative;
+}
+
+.glass-card:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.82) 0%,
+    rgba(255, 255, 255, 0.52) 100%
+  );
+  border-color: rgba(255, 107, 0, 0.5);
+  box-shadow: 
+    0 28px 56px -12px rgba(255, 107, 0, 0.2),
+    inset 0 2px 2px 0 rgba(255, 255, 255, 1),
+    inset 0 0 0 1px rgba(255, 107, 0, 0.3);
+  transform: translateY(-5px);
+}
+
+.dark .glass-card {
+  background: rgba(12, 13, 18, 0.78);
+  backdrop-filter: blur(32px) saturate(180%);
+  -webkit-backdrop-filter: blur(32px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 
+    0 16px 40px -8px rgba(0, 0, 0, 0.8),
+    inset 0 1px 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+.dark .glass-card:hover {
+  background: rgba(18, 20, 27, 0.9);
+  border-color: rgba(255, 107, 0, 0.4);
+  box-shadow: 
+    0 24px 50px -10px rgba(0, 0, 0, 0.9),
+    0 0 25px rgba(255, 107, 0, 0.12);
+  transform: translateY(-5px);
+}
+
+/* Apple Pill / Capsule Controls */
+.glass-pill {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.42) 100%
+  );
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  box-shadow: 
+    0 6px 18px rgba(15, 23, 42, 0.06),
+    inset 0 1px 1px rgba(255, 255, 255, 0.95);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-pill:hover {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.9) 0%,
+    rgba(255, 255, 255, 0.6) 100%
+  );
+  border-color: rgba(255, 107, 0, 0.5);
+  box-shadow: 
+    0 10px 24px rgba(255, 107, 0, 0.18),
+    inset 0 1.5px 1px rgba(255, 255, 255, 1);
+}
+
+.dark .glass-pill {
+  background: rgba(255, 255, 255, 0.04);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, 0.6);
+}
+
+.dark .glass-pill:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 107, 0, 0.45);
+  box-shadow: 0 6px 22px rgba(255, 107, 0, 0.18);
+}
+
+/* Apple Floating Dynamic Navbar */
+.glass-nav {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.48) 100%
+  );
+  backdrop-filter: blur(36px) saturate(220%) brightness(108%);
+  -webkit-backdrop-filter: blur(36px) saturate(220%) brightness(108%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.75);
+  box-shadow: 
+    0 8px 30px -4px rgba(15, 23, 42, 0.08),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.95);
+}
+
+.dark .glass-nav {
+  background: rgba(6, 7, 10, 0.85);
+  backdrop-filter: blur(36px) saturate(180%);
+  -webkit-backdrop-filter: blur(36px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.8);
+}
+
+/* Fluid Floating Blob Animation for Apple Wallpaper Effect */
+@keyframes apple-float-slow {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(30px, -40px) scale(1.08);
+  }
+  66% {
+    transform: translate(-25px, 20px) scale(0.95);
+  }
+}
+
+@keyframes apple-float-reverse {
+  0%, 100% {
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    transform: translate(-35px, 35px) scale(1.06);
+  }
+  66% {
+    transform: translate(25px, -25px) scale(0.96);
+  }
+}
+
+.animate-blob-1 {
+  animation: apple-float-slow 16s ease-in-out infinite;
+}
+
+.animate-blob-2 {
+  animation: apple-float-reverse 20s ease-in-out infinite;
+}
+
+.animate-blob-3 {
+  animation: apple-float-slow 24s ease-in-out infinite reverse;
+}
+
+/* Custom scrollbars & mobile touch momentum */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+html {
+  scroll-behavior: smooth;
+  -webkit-tap-highlight-color: transparent;
+  overflow-x: hidden;
+  max-width: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: #f0f4f9;
+  color: var(--color-on-surface);
+  font-family: 'Inter', sans-serif;
+  transition: background-color 0.3s ease, color 0.2s ease;
+  min-height: 100vh;
+  overflow-x: hidden;
+  max-width: 100%;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.dark body {
+  background-color: #06070a;
+  background-image: 
+    radial-gradient(ellipse 85% 55% at 50% -15%, rgba(255, 107, 0, 0.09), transparent 75%),
+    radial-gradient(circle at 90% 75%, rgba(255, 107, 0, 0.04), transparent 50%),
+    radial-gradient(circle at 10% 45%, rgba(245, 158, 11, 0.03), transparent 45%);
+  background-attachment: fixed;
+}
+
+/* Safe area support for notch and home indicator on mobile */
+.pb-safe {
+  padding-bottom: max(1rem, env(safe-area-inset-bottom));
+}
+
+.pt-safe {
+  padding-top: max(1rem, env(safe-area-inset-top));
+}
+
+/* Responsive Touch Target Helper */
+.touch-target {
+  min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
+}
+
+/* Text Wrapping Guard */
+.break-safe {
+  overflow-wrap: break-word;
+  word-break: break-word;
+  hyphens: auto;
+}
+

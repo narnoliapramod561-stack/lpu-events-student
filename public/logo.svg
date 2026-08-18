@@ -1,0 +1,19 @@
+<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Outer Orange Border -->
+  <circle cx="256" cy="256" r="240" stroke="#E65100" stroke-width="24"/>
+  <!-- Dark Navy Background -->
+  <circle cx="256" cy="256" r="228" fill="#0D1B2A"/>
+  <!-- Dashed Inner Line -->
+  <circle cx="256" cy="256" r="210" stroke="#E65100" stroke-width="2" stroke-dasharray="8 8"/>
+  
+  <!-- LPU Text -->
+  <text x="50%" y="45%" text-anchor="middle" fill="white" style="font-family: system-ui, -apple-system, sans-serif; font-weight: 900; font-size: 110px; letter-spacing: 8px;" dy=".3em">LPU</text>
+  
+  <!-- Divider -->
+  <circle cx="160" cy="290" r="6" fill="#E65100"/>
+  <line x1="180" y1="290" x2="332" y2="290" stroke="#4A4A4A" stroke-width="2"/>
+  <circle cx="352" cy="290" r="6" fill="#E65100"/>
+  
+  <!-- EVENTS Text -->
+  <text x="50%" y="70%" text-anchor="middle" fill="#E65100" style="font-family: system-ui, -apple-system, sans-serif; font-weight: 800; font-size: 52px; letter-spacing: 16px;" dy=".3em">EVENTS</text>
+</svg>

@@ -1,0 +1,7 @@
+# robots.txt for LPU Events Student Discovery Website
+User-agent: *
+Allow: /
+Allow: /?event=*
+
+# Sitemap location
+Sitemap: https://lpuevents.live/sitemap.xml
