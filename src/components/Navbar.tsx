@@ -4,39 +4,84 @@ import { motion, AnimatePresence } from "framer-motion";
 import { lpuClient } from "../supabase";
 import { LpuLogo } from "./LpuLogo";
 
-export const SearchAutocomplete = ({ suggestions, onSelect, show }: {
+export const SearchAutocomplete = ({ 
+  suggestions, 
+  onSelect,
+  onSelectEvent, 
+  show 
+}: {
   suggestions: any[];
   onSelect: (title: string) => void;
+  onSelectEvent?: (id: string) => void;
   show: boolean;
 }) => {
   if (!show || !suggestions || suggestions.length === 0) return null;
 
   return (
-    <div className="absolute top-12 left-0 right-0 w-full rounded-2xl glass-panel shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-1 duration-200 border border-white/80 dark:border-white/10 max-h-72 overflow-y-auto hide-scrollbar">
-      <div className="text-[10px] font-black text-on-surface-muted uppercase px-3 py-1.5 tracking-wider border-b border-gray-200/60 dark:border-white/10 mb-1 font-heading">
-        Suggested Matches
+    <div className="absolute top-12 left-0 right-0 w-full rounded-2xl glass-panel shadow-2xl p-2 z-50 animate-in fade-in slide-in-from-top-1 duration-200 border border-white/80 dark:border-white/10 max-h-72 overflow-y-auto hide-scrollbar bg-white/95 dark:bg-[#120c09]/95 backdrop-blur-xl">
+      <div className="text-[10px] font-black text-on-surface-muted uppercase px-3 py-1.5 tracking-wider border-b border-gray-200/60 dark:border-white/10 mb-1 font-heading flex justify-between items-center">
+        <span>Suggested Matches</span>
+        <span className="text-[9px] font-normal lowercase tracking-normal text-gray-400">by relevance</span>
       </div>
       {suggestions.map((item) => (
-        <button
+        <div
           key={item.id}
-          onClick={() => onSelect(item.name)}
-          className="flex items-center justify-between w-full text-left px-3 py-2.5 text-sm text-gray-900 dark:text-white hover:bg-orange-500/10 dark:hover:bg-orange-500/15 rounded-xl transition-colors cursor-pointer min-h-[44px]"
+          onClick={() => {
+            if (onSelectEvent) {
+              onSelectEvent(item.id);
+            } else {
+              onSelect(item.name);
+            }
+          }}
+          className="flex items-center justify-between w-full text-left px-3 py-2 text-sm text-gray-900 dark:text-white hover:bg-orange-500/10 dark:hover:bg-orange-500/15 rounded-xl transition-colors cursor-pointer min-h-[44px] group"
         >
-          <div className="truncate font-semibold max-w-[75%]">{item.name}</div>
-          <div className="text-xs text-primary font-bold bg-primary/10 px-2.5 py-1 rounded-full whitespace-nowrap border border-primary/20 shrink-0 ml-2">
-            View
+          <div className="flex flex-col min-w-0 max-w-[75%]">
+            <span className="truncate font-semibold text-gray-900 dark:text-white group-hover:text-primary transition-colors">{item.name}</span>
+            <span className="text-[11px] text-gray-500 dark:text-gray-400 truncate">
+              {item.categories?.name || "Event"}
+              {item.organizations?.name ? ` • ${item.organizations.name}` : ""}
+            </span>
           </div>
-        </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onSelectEvent) {
+                onSelectEvent(item.id);
+              } else {
+                onSelect(item.name);
+              }
+            }}
+            className="text-xs text-primary font-bold bg-primary/10 group-hover:bg-primary group-hover:text-white px-2.5 py-1 rounded-full whitespace-nowrap border border-primary/20 shrink-0 ml-2 transition-colors cursor-pointer"
+          >
+            View
+          </button>
+        </div>
       ))}
     </div>
   );
 };
 
-export const Navbar = ({ searchQuery, onSearch, theme, onToggleTheme }: {
+export const Navbar = ({ 
+  searchQuery, 
+  onSearch, 
+  theme, 
+  onToggleTheme,
+  isTrendingActive = false,
+  onSelectTrending,
+  onSelectEvent,
+  onGoHome,
+  onSelectCategories
+}: {
   searchQuery: string;
   onSearch: (q: string) => void;
   theme: string;
   onToggleTheme: () => void;
+  isTrendingActive?: boolean;
+  onSelectTrending?: () => void;
+  onSelectEvent?: (id: string) => void;
+  onGoHome?: () => void;
+  onSelectCategories?: () => void;
 }) => {
   const [localSearch, setLocalSearch] = useState(searchQuery || "");
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -44,36 +89,13 @@ export const Navbar = ({ searchQuery, onSearch, theme, onToggleTheme }: {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [mobileSearchOpen, setMobileSearchOpen] = useState(false);
   const debounceTimer = useRef<any>(null);
+  const suggestionReqIdRef = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setLocalSearch(searchQuery || "");
   }, [searchQuery]);
-
-  useEffect(() => {
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-
-    if (!localSearch.trim()) {
-      setSuggestions([]);
-      return;
-    }
-
-    debounceTimer.current = setTimeout(async () => {
-      try {
-        const { data, error } = await lpuClient.searchEvents(localSearch, 5, 0);
-        if (!error && data) {
-          setSuggestions(data);
-        }
-      } catch (err) {
-        console.error("Suggestions search failed:", err);
-      }
-    }, 300);
-
-    return () => {
-      if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    };
-  }, [localSearch]);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -88,24 +110,87 @@ export const Navbar = ({ searchQuery, onSearch, theme, onToggleTheme }: {
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setLocalSearch(value);
+
+    if (debounceTimer.current) {
+      clearTimeout(debounceTimer.current);
+    }
+
+    const trimmed = value.trim();
+    if (trimmed.length < 2) {
+      suggestionReqIdRef.current++;
+      setSuggestions([]);
+      setShowSuggestions(false);
+      if (searchQuery !== "") {
+        onSearch("");
+      }
+      return;
+    }
+
     setShowSuggestions(true);
-    if (debounceTimer.current) clearTimeout(debounceTimer.current);
-    debounceTimer.current = setTimeout(() => {
-      onSearch(value);
+    debounceTimer.current = setTimeout(async () => {
+      onSearch(trimmed);
+      const reqId = ++suggestionReqIdRef.current;
+      try {
+        const { data, error } = await lpuClient.searchEvents(trimmed, { limit: 5 });
+        if (!error && data && reqId === suggestionReqIdRef.current) {
+          setSuggestions(data);
+        }
+      } catch (err) {
+        console.error("Suggestions search failed:", err);
+      }
     }, 300);
   };
 
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      const trimmed = localSearch.trim();
+      if (debounceTimer.current) clearTimeout(debounceTimer.current);
+      if (trimmed.length >= 2) {
+        onSearch(trimmed);
+        setShowSuggestions(false);
+        setMobileSearchOpen(false);
+        const el = document.getElementById("events");
+        if (el) {
+          el.scrollIntoView({ behavior: "smooth" });
+        }
+      }
+    } else if (e.key === "Escape") {
+      setShowSuggestions(false);
+    }
+  };
+
   const handleSelectSuggestion = (title: string) => {
+    suggestionReqIdRef.current++;
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
     setLocalSearch(title);
     onSearch(title);
     setShowSuggestions(false);
     setMobileSearchOpen(false);
+    const el = document.getElementById("events");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
   const handleClearSearch = () => {
+    suggestionReqIdRef.current++;
+    if (debounceTimer.current) clearTimeout(debounceTimer.current);
     setLocalSearch("");
-    onSearch("");
+    setSuggestions([]);
     setShowSuggestions(false);
+    onSearch("");
+  };
+
+  const handleBrandClick = () => {
+    handleClearSearch();
+    setMobileMenuOpen(false);
+    setMobileSearchOpen(false);
+    if (onGoHome) {
+      onGoHome();
+    } else {
+      handleNavigate();
+    }
   };
 
   const handleNavigate = (hash?: string) => {
@@ -126,16 +211,14 @@ export const Navbar = ({ searchQuery, onSearch, theme, onToggleTheme }: {
         
         {/* Brand Logo & Title */}
         <div 
-          className="flex items-center gap-2 sm:gap-3 cursor-pointer shrink-0" 
-          onClick={() => {
-            handleClearSearch();
-            handleNavigate();
-          }}
+          className="flex items-center gap-2 sm:gap-3 cursor-pointer shrink-0 group select-none" 
+          onClick={handleBrandClick}
+          title="Go to Student Dashboard"
         >
-          <LpuLogo className="h-9 w-9 sm:h-12 sm:w-12 md:h-14 md:w-14 shrink-0 drop-shadow-sm" />
+          <LpuLogo className="h-9 w-9 sm:h-12 sm:w-12 md:h-14 md:w-14 shrink-0 drop-shadow-sm group-hover:scale-105 transition-transform" />
           <div className="flex flex-col">
             <div className="flex items-center text-lg sm:text-xl md:text-2xl font-black tracking-tight font-heading leading-tight">
-              <span className="text-gray-900 dark:text-white">LPU</span>
+              <span className="text-gray-900 dark:text-white group-hover:text-primary transition-colors">LPU</span>
               <span className="ml-1 text-primary">Events</span>
             </div>
             <span className="hidden xs:inline-block text-[8px] sm:text-[9px] font-extrabold tracking-[0.16em] sm:tracking-[0.2em] text-gray-500 dark:text-gray-400 uppercase font-heading">
@@ -154,6 +237,7 @@ export const Navbar = ({ searchQuery, onSearch, theme, onToggleTheme }: {
               type="text"
               value={localSearch}
               onChange={handleInputChange}
+              onKeyDown={handleKeyDown}
               onFocus={() => setShowSuggestions(true)}
               placeholder="Search events, clubs, venues..."
               className="h-11 w-full rounded-2xl glass-pill pl-10 pr-9 text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-400 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all duration-200"
@@ -172,6 +256,7 @@ export const Navbar = ({ searchQuery, onSearch, theme, onToggleTheme }: {
           <SearchAutocomplete
             suggestions={suggestions}
             onSelect={handleSelectSuggestion}
+            onSelectEvent={onSelectEvent}
             show={showSuggestions}
           />
         </div>
@@ -182,20 +267,45 @@ export const Navbar = ({ searchQuery, onSearch, theme, onToggleTheme }: {
           {/* Desktop Navigation Links */}
           <div className="hidden lg:flex items-center gap-6 text-sm font-bold font-heading">
             <button 
-              onClick={() => {
-                handleClearSearch();
-                handleNavigate();
-              }} 
-              className="text-gray-700 dark:text-gray-200 hover:text-primary transition-colors cursor-pointer bg-transparent border-0"
+              type="button"
+              onClick={handleBrandClick} 
+              className={`transition-all cursor-pointer bg-transparent border-0 font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-lg px-2 py-1 select-none ${
+                !isTrendingActive && !searchQuery
+                  ? "text-primary font-black scale-105"
+                  : "text-gray-700 dark:text-gray-200 hover:text-primary"
+              }`}
+              title="Go to Student Dashboard"
             >
               Home
             </button>
-            <a href="#categories" className="text-gray-700 dark:text-gray-200 hover:text-primary transition-colors">
+            <button 
+              type="button"
+              onClick={() => {
+                if (onSelectCategories) {
+                  onSelectCategories();
+                } else {
+                  handleNavigate("#categories");
+                }
+              }} 
+              className="text-gray-700 dark:text-gray-200 hover:text-primary transition-colors cursor-pointer bg-transparent border-0 font-bold focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-lg px-2 py-1 select-none"
+            >
               Categories
-            </a>
-            <a href="#events" className="text-gray-700 dark:text-gray-200 hover:text-primary transition-colors">
-              Trending
-            </a>
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                if (onSelectTrending) onSelectTrending();
+                handleNavigate("#events");
+              }}
+              className={`transition-all cursor-pointer bg-transparent border-0 font-bold flex items-center gap-1 focus:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 rounded-lg px-2 py-1 select-none ${
+                isTrendingActive
+                  ? "text-primary font-black scale-105"
+                  : "text-gray-700 dark:text-gray-200 hover:text-primary"
+              }`}
+            >
+              <span>🔥</span>
+              <span>Trending</span>
+            </button>
           </div>
 
           {/* Action Buttons Group */}
@@ -257,6 +367,7 @@ export const Navbar = ({ searchQuery, onSearch, theme, onToggleTheme }: {
                 type="text"
                 value={localSearch}
                 onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
                 onFocus={() => setShowSuggestions(true)}
                 placeholder="Search events, clubs, venues..."
                 className="h-10 w-full rounded-xl glass-pill pl-10 pr-9 text-xs sm:text-sm text-gray-900 dark:text-white placeholder:text-gray-400 dark:placeholder:text-gray-400 focus:border-primary focus:ring-2 focus:ring-primary/20 focus:outline-none transition-all duration-200"
@@ -276,6 +387,7 @@ export const Navbar = ({ searchQuery, onSearch, theme, onToggleTheme }: {
             <SearchAutocomplete
               suggestions={suggestions}
               onSelect={handleSelectSuggestion}
+              onSelectEvent={onSelectEvent}
               show={showSuggestions}
             />
           </motion.div>
@@ -305,30 +417,46 @@ export const Navbar = ({ searchQuery, onSearch, theme, onToggleTheme }: {
             >
               <div className="flex flex-col gap-1 text-sm font-heading font-black">
                 <button
-                  onClick={() => {
-                    handleClearSearch();
-                    handleNavigate();
-                  }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 hover:text-primary transition-colors text-left min-h-[44px] cursor-pointer"
+                  type="button"
+                  onClick={handleBrandClick}
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 hover:text-primary transition-colors text-left min-h-[44px] cursor-pointer font-bold focus:outline-none"
+                  title="Go to Student Dashboard"
                 >
                   <Home className="h-4.5 w-4.5 text-primary" />
                   <span>Home</span>
                 </button>
 
                 <button
-                  onClick={() => handleNavigate("#categories")}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 hover:text-primary transition-colors text-left min-h-[44px] cursor-pointer"
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (onSelectCategories) {
+                      onSelectCategories();
+                    } else {
+                      handleNavigate("#categories");
+                    }
+                  }}
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 hover:text-primary transition-colors text-left min-h-[44px] cursor-pointer font-bold focus:outline-none"
                 >
                   <LayoutGrid className="h-4.5 w-4.5 text-primary" />
                   <span>Event Categories</span>
                 </button>
 
                 <button
-                  onClick={() => handleNavigate("#events")}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 hover:text-primary transition-colors text-left min-h-[44px] cursor-pointer"
+                  type="button"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (onSelectTrending) onSelectTrending();
+                    handleNavigate("#events");
+                  }}
+                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors text-left min-h-[44px] cursor-pointer font-bold focus:outline-none ${
+                    isTrendingActive
+                      ? "bg-orange-500/20 text-primary font-black"
+                      : "text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 hover:text-primary"
+                  }`}
                 >
                   <Flame className="h-4.5 w-4.5 text-orange-500" />
-                  <span>Trending & Hub</span>
+                  <span>Trending Events</span>
                 </button>
 
                 <button

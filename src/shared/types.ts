@@ -279,6 +279,27 @@ export interface EventFeedItem {
   organizations: {
     name: string;
   } | null;
+  category_id?: string | null;
+  subcategory_id?: string | null;
+  categories?: {
+    name: string;
+    key?: string;
+  } | null;
+  subcategories?: {
+    name: string;
+    key?: string;
+  } | null;
+  is_trending?: boolean;
+  trending_sort_order?: number;
+}
+
+export interface TrendingEvent {
+  event_id: string;
+  sort_order: number;
+  created_by: string;
+  created_at: string;
+  updated_at: string;
+  events?: Event;
 }
 
 export interface CarouselItemFeedItem {

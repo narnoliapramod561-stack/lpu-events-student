@@ -50,7 +50,7 @@ export class LpuEventsClient {
     if (filters?.show_past) {
       let query = this.supabase
         .from('events')
-        .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,organizations(name),status')
+        .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,organizations(name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
         .in('status', ['PUBLISHED', 'COMPLETED'])
         .or(`status.eq.COMPLETED,end_at.lt.${nowIso}`)
         .order('end_at', { ascending: false });
@@ -75,7 +75,7 @@ export class LpuEventsClient {
     } else {
       let query = this.supabase
         .from('events')
-        .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,organizations(name),status')
+        .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,organizations(name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
         .eq('status', 'PUBLISHED')
         .gte('end_at', nowIso)
         .order('start_at', { ascending: true });
@@ -94,14 +94,47 @@ export class LpuEventsClient {
     }
   }
 
-  async searchEvents(queryText: string, limitCount = 10, offsetCount = 0): Promise<{ data: any[] | null; error: any }> {
+  async searchEvents(
+    queryText: string,
+    optionsOrLimit: number | {
+      limit?: number;
+      offset?: number;
+      category_id?: string;
+      subcategory_id?: string;
+      pricing_type?: string;
+      timeline?: string;
+      target_date?: string;
+      show_past?: boolean;
+      event_name_only?: boolean;
+      eventNameOnly?: boolean;
+    } = 20,
+    offsetCount = 0
+  ): Promise<{ data: EventFeedItem[] | null; error: any }> {
+    const isOptionsObj = typeof optionsOrLimit === 'object' && optionsOrLimit !== null;
+    const limit = isOptionsObj ? optionsOrLimit.limit ?? 20 : optionsOrLimit;
+    const offset = isOptionsObj ? optionsOrLimit.offset ?? 0 : offsetCount;
+    const categoryId = isOptionsObj ? optionsOrLimit.category_id || null : null;
+    const subcategoryId = isOptionsObj ? optionsOrLimit.subcategory_id || null : null;
+    const pricingType = isOptionsObj ? optionsOrLimit.pricing_type || null : null;
+    const timeline = isOptionsObj ? optionsOrLimit.timeline || null : null;
+    const targetDate = isOptionsObj ? optionsOrLimit.target_date || null : null;
+    const showPast = isOptionsObj ? optionsOrLimit.show_past ?? false : false;
+    const eventNameOnly = isOptionsObj ? Boolean(optionsOrLimit.event_name_only ?? optionsOrLimit.eventNameOnly ?? false) : false;
+
     const { data, error } = await this.supabase
       .rpc('search_events', {
         query_text: queryText,
-        limit_count: limitCount,
-        offset_count: offsetCount
+        limit_count: limit,
+        offset_count: offset,
+        p_category_id: categoryId,
+        p_subcategory_id: subcategoryId,
+        p_pricing_type: pricingType,
+        p_timeline: timeline,
+        p_target_date: targetDate,
+        p_show_past: showPast,
+        p_event_name_only: eventNameOnly
       });
-    return { data, error };
+    return { data: data as EventFeedItem[] | null, error };
   }
 
   async fetchEventDetails(id: string): Promise<{ data: Event | null; error: any }> {
@@ -178,6 +211,34 @@ export class LpuEventsClient {
         )
       : null;
     return { data: sanitized, error };
+  }
+
+  async fetchTrendingEvents(): Promise<{ data: EventFeedItem[] | null; error: any }> {
+    const { data, error } = await this.supabase
+      .from('trending_events')
+      .select('event_id,sort_order,events(*,organizations(name),categories(name,key),subcategories(name,key))')
+      .order('sort_order', { ascending: true });
+
+    if (error || !data) {
+      return { data: null, error };
+    }
+
+    const now = new Date();
+    const sanitized: EventFeedItem[] = (data as any[])
+      .filter(
+        (te) =>
+          te.events &&
+          te.events.status === 'PUBLISHED' &&
+          !te.events.deleted_at &&
+          new Date(te.events.end_at) >= now
+      )
+      .map((te) => ({
+        ...te.events,
+        is_trending: true,
+        trending_sort_order: te.sort_order
+      }));
+
+    return { data: sanitized, error: null };
   }
 
   async fetchActiveAdvertisements(): Promise<{ data: AdvertisementFeedItem[] | null; error: any }> {

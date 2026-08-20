@@ -12,6 +12,7 @@
  */
 
 import { ImageContext, IMAGE_CONTEXT_CONFIGS } from './config';
+import { resolveDefaultEventImage } from './defaults';
 
 export interface OptimizedImageOptions {
   variant?: 'desktop' | 'tablet' | 'mobile';
@@ -362,9 +363,19 @@ export function getOptimizedImage(
     return EVENT_MOCK_FALLBACK_IMAGES[source.logo_media_id];
   }
 
-  // 6. Topic-based keyword match fallback
+  // 6. Subcategory & Category taxonomy-based official default asset fallback
+  if (source.subcategory_id || source.category_id || source.subcategories || source.categories || source.category || source.subcategory) {
+    const defaultImg = resolveDefaultEventImage(source);
+    if (defaultImg) return defaultImg;
+  }
+
+  // 7. Topic-based keyword match fallback
   const text = `${source.name || ''} ${source.title || ''} ${source.description || ''} ${options.fallbackTopic || ''}`;
-  return getKeywordFallbackImage(text);
+  if (text.trim()) {
+    return getKeywordFallbackImage(text);
+  }
+
+  return resolveDefaultEventImage(null);
 }
 
 /**

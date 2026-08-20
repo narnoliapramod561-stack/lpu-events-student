@@ -30,6 +30,14 @@ export const EventCard = ({ event, onSelect, idx }: {
           }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+        {event.is_trending && (
+          <div className="absolute top-3 left-3 sm:top-4 sm:left-4">
+            <span className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-orange-600 via-amber-500 to-orange-500 text-white rounded-full font-heading text-[10px] font-black uppercase tracking-wider shadow-lg border border-white/20">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              🔥 Trending
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Event Content Details */}
@@ -173,7 +181,8 @@ export const EventGrid = ({
   onResetFilters,
   onSelectEvent,
   adInterval = 6,
-  title = "Event's Hub"
+  title = "Event's Hub",
+  searchQuery = ""
 }: {
   events: EventFeedItem[];
   ads: AdvertisementFeedItem[];
@@ -182,6 +191,7 @@ export const EventGrid = ({
   onSelectEvent: (id: string) => void;
   adInterval?: number;
   title?: string;
+  searchQuery?: string;
 }) => {
   if (loading) {
     return (
@@ -201,16 +211,20 @@ export const EventGrid = ({
         <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full bg-primary/10 flex items-center justify-center text-primary mb-4">
           <SearchX className="h-7 w-7 sm:h-8 sm:w-8" />
         </div>
-        <h3 className="text-lg sm:text-xl font-bold font-heading text-on-surface mb-2">No Matching Events Found</h3>
+        <h3 className="text-lg sm:text-xl font-bold font-heading text-on-surface mb-2">
+          {searchQuery ? `No Events Found for "${searchQuery}"` : "No Matching Events Found"}
+        </h3>
         <p className="text-on-surface-variant text-xs sm:text-sm max-w-md mb-5 sm:mb-6 leading-relaxed">
-          We couldn't find any events that match your search terms or filter selection. Try adjusting your query or resetting filters.
+          {searchQuery
+            ? `We couldn't find any events matching "${searchQuery}". Check the spelling, try broader keywords, or clear your search to explore all campus events.`
+            : "We couldn't find any events that match your search terms or filter selection. Try adjusting your query or resetting filters."}
         </p>
         <button
           onClick={onResetFilters}
           className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-primary text-on-primary font-bold text-xs hover:bg-primary-dim transition-colors shadow-sm cursor-pointer touch-target font-heading"
         >
           <RefreshCw className="h-3.5 w-3.5" />
-          <span>Reset All Filters</span>
+          <span>{searchQuery ? "Clear Search & View All Events" : "Reset All Filters"}</span>
         </button>
       </section>
     );
@@ -230,6 +244,28 @@ export const EventGrid = ({
 
   return (
     <section className="w-full">
+      {/* Search Query Active Status Banner */}
+      {searchQuery && (
+        <div className="mb-6 p-4 rounded-2xl bg-orange-500/10 border border-orange-500/25 flex items-center justify-between gap-3 shadow-xs">
+          <div className="flex items-center gap-2 text-sm font-bold text-gray-900 dark:text-white flex-wrap">
+            <span className="text-primary font-heading">🔍 Results for:</span>
+            <span className="px-2.5 py-0.5 rounded-full bg-primary/15 text-primary font-extrabold font-heading text-xs">
+              "{searchQuery}"
+            </span>
+            <span className="text-xs text-gray-500 dark:text-gray-400">
+              ({events.length} {events.length === 1 ? 'event' : 'events'} found)
+            </span>
+          </div>
+          <button
+            onClick={onResetFilters}
+            className="text-xs font-bold text-gray-600 dark:text-gray-300 hover:text-primary transition-colors cursor-pointer flex items-center gap-1 shrink-0 px-3 py-1.5 rounded-xl bg-white/40 dark:bg-white/5 border border-gray-200/50 dark:border-white/10"
+          >
+            <span>Clear Search</span>
+            <span>✕</span>
+          </button>
+        </div>
+      )}
+
       {/* Responsive Section Header */}
       <div className="flex items-center justify-center gap-3 sm:gap-6 mb-6 sm:mb-8 w-full max-w-full overflow-hidden px-2">
         <div className="flex items-center gap-1.5 sm:gap-2 shrink">

@@ -11,3 +11,4 @@ export * from './url';
 export * from './uploader';
 export * from './cleanup';
 export * from './storage';
+export * from './defaults';

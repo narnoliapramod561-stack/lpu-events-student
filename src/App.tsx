@@ -25,6 +25,7 @@ export default function App() {
   const [categories, setCategories] = useState<CategoryFeedItem[]>(OFFICIAL_PLATFORM_CATEGORIES);
   const [ads, setAds] = useState<AdvertisementFeedItem[]>([]);
   const [featuredEvents, setFeaturedEvents] = useState<EventFeedItem[]>([]);
+  const [trendingEvents, setTrendingEvents] = useState<EventFeedItem[]>([]);
   const [carouselSlides, setCarouselSlides] = useState<CarouselItemFeedItem[]>([]);
   const [happeningTodayEvents, setHappeningTodayEvents] = useState<EventFeedItem[]>([]);
   const [happeningTodayConfig, setHappeningTodayConfig] = useState<HappeningTodayConfig | null>(null);
@@ -49,15 +50,7 @@ export default function App() {
   const [selectedSubcategory, setSelectedSubcategory] = useState("");
   const [selectedDate, setSelectedDate] = useState("");
   const [activeScheduleFilter, setActiveScheduleFilter] = useState("all");
-  const [activeEventType, setActiveEventType] = useState("all");
-
-  // Ref to remember previous filters before entering Trending mode
-  const prevFiltersBeforeTrending = useRef<{
-    category: string;
-    subcategory: string;
-    schedule: string;
-    date: string;
-  } | null>(null);
+  const [isTrendingActive, setIsTrendingActive] = useState(false);
 
   // Pagination lists & loading
   const [events, setEvents] = useState<EventFeedItem[]>([]);
@@ -66,6 +59,7 @@ export default function App() {
   const [pastEventsLoading, setPastEventsLoading] = useState(true);
   const [visibleEventsCount, setVisibleEventsCount] = useState(10);
   const [visiblePastCount, setVisiblePastCount] = useState(5);
+  const searchReqIdRef = useRef(0);
 
   // Active details view with URL query parameter deep linking
   const [selectedEventId, setSelectedEventId] = useState<string | null>(() => {
@@ -189,6 +183,16 @@ export default function App() {
         console.error("Failed to load featured events:", err);
       }
 
+      // 3B. Fetch trending events
+      try {
+        const { data } = await lpuClient.fetchTrendingEvents();
+        if (data) {
+          setTrendingEvents(data);
+        }
+      } catch (err) {
+        console.error("Failed to load trending events:", err);
+      }
+
       // 4. Fetch Hero Carousel items from backend
       try {
         const { data } = await lpuClient.fetchHomepageCarousel();
@@ -221,65 +225,92 @@ export default function App() {
     loadGlobalData();
   }, []);
 
-  // Fetch upcoming and past events dynamically when query/category states update
+  // Fetch upcoming and past events dynamically when query/category/schedule states update
   useEffect(() => {
+    const currentReqId = ++searchReqIdRef.current;
+    const isSearching = searchQuery.trim().length >= 2;
+
     const fetchUpcomingEvents = async () => {
       setEventsLoading(true);
       try {
-        let filters: any = {};
-        if (selectedCategory && selectedCategory !== "all") {
-          filters.category_id = selectedCategory;
-        }
-        if (selectedSubcategory) {
-          filters.subcategory_id = selectedSubcategory;
-        }
+        if (isSearching) {
+          const { data, error } = await lpuClient.searchEvents(searchQuery.trim(), {
+            show_past: false,
+            limit: 50
+          });
+          if (!error && data && currentReqId === searchReqIdRef.current) {
+            setEvents(data);
+          }
+        } else {
+          let filters: any = {};
+          if (selectedCategory && selectedCategory !== "all") {
+            filters.category_id = selectedCategory;
+          }
+          if (selectedSubcategory) {
+            filters.subcategory_id = selectedSubcategory;
+          }
 
-        const { data, error } = await lpuClient.fetchEventFeed(filters);
-        if (!error && data) {
-          const validEvents = data.filter(
-            (evt) => evt.status === 'PUBLISHED' && !evt.deleted_at
-          );
-          setEvents(validEvents);
+          const { data, error } = await lpuClient.fetchEventFeed(filters);
+          if (!error && data && currentReqId === searchReqIdRef.current) {
+            const validEvents = data.filter(
+              (evt) => evt.status === 'PUBLISHED' && !evt.deleted_at
+            );
+            setEvents(validEvents);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch event feed:", err);
       } finally {
-        setEventsLoading(false);
+        if (currentReqId === searchReqIdRef.current) {
+          setEventsLoading(false);
+        }
       }
     };
 
     const fetchPastEvents = async () => {
       setPastEventsLoading(true);
       try {
-        let filters: any = { show_past: true };
-        if (selectedCategory && selectedCategory !== "all") {
-          filters.category_id = selectedCategory;
-        }
-        if (selectedSubcategory) {
-          filters.subcategory_id = selectedSubcategory;
-        }
+        if (isSearching) {
+          const { data, error } = await lpuClient.searchEvents(searchQuery.trim(), {
+            show_past: true,
+            limit: 50
+          });
+          if (!error && data && currentReqId === searchReqIdRef.current) {
+            setPastEvents(data);
+          }
+        } else {
+          let filters: any = { show_past: true };
+          if (selectedCategory && selectedCategory !== "all") {
+            filters.category_id = selectedCategory;
+          }
+          if (selectedSubcategory) {
+            filters.subcategory_id = selectedSubcategory;
+          }
 
-        const { data, error } = await lpuClient.fetchEventFeed(filters);
-        if (!error && data) {
-          const validPast = data.filter(
-            (evt) =>
-              evt.status !== 'CANCELLED' &&
-              evt.status !== 'DELETED' &&
-              !evt.deleted_at &&
-              (evt.status === 'COMPLETED' || new Date(evt.end_at) < new Date())
-          );
-          setPastEvents(validPast);
+          const { data, error } = await lpuClient.fetchEventFeed(filters);
+          if (!error && data && currentReqId === searchReqIdRef.current) {
+            const validPast = data.filter(
+              (evt) =>
+                evt.status !== 'CANCELLED' &&
+                evt.status !== 'DELETED' &&
+                !evt.deleted_at &&
+                (evt.status === 'COMPLETED' || new Date(evt.end_at) < new Date())
+            );
+            setPastEvents(validPast);
+          }
         }
       } catch (err) {
         console.error("Failed to fetch past events:", err);
       } finally {
-        setPastEventsLoading(false);
+        if (currentReqId === searchReqIdRef.current) {
+          setPastEventsLoading(false);
+        }
       }
     };
 
     fetchUpcomingEvents();
     fetchPastEvents();
-  }, [selectedCategory, selectedSubcategory]);
+  }, [selectedCategory, selectedSubcategory, searchQuery, activeScheduleFilter, selectedDate]);
 
   const toggleTheme = () => {
     const newTheme = theme === "dark" ? "light" : "dark";
@@ -292,6 +323,14 @@ export default function App() {
     }
   };
 
+  const handleSearch = (q: string) => {
+    setSearchQuery(q);
+    if (q.trim().length >= 2) {
+      setSelectedEventId(null);
+      setIsTrendingActive(false);
+    }
+  };
+
   const handleResetFilters = () => {
     trackEvent('filters_reset');
     setSearchQuery("");
@@ -299,44 +338,61 @@ export default function App() {
     setSelectedSubcategory("");
     setSelectedDate("");
     setActiveScheduleFilter("all");
-    setActiveEventType("all");
-    prevFiltersBeforeTrending.current = null;
+    setIsTrendingActive(false);
   };
 
-  // Handle Event Type Selection (including Trending state management)
-  const handleSelectEventType = (type: string) => {
-    trackEvent('event_type_filter_selected', { event_type: type });
-    if (type === "trending") {
-      if (activeEventType !== "trending") {
-        // Save current filters before switching to Trending
-        prevFiltersBeforeTrending.current = {
-          category: selectedCategory,
-          subcategory: selectedSubcategory,
-          schedule: activeScheduleFilter,
-          date: selectedDate
-        };
-        // Reset filters to All
-        setSelectedCategory("all");
-        setSelectedSubcategory("");
-        setActiveScheduleFilter("all");
-        setSelectedDate("");
+  const handleGoToDashboard = () => {
+    trackEvent('nav_home_dashboard');
+    setSelectedEventId(null);
+    setSearchQuery("");
+    setSelectedCategory("all");
+    setSelectedSubcategory("");
+    setSelectedDate("");
+    setActiveScheduleFilter("all");
+    setIsTrendingActive(false);
+
+    if (typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      url.searchParams.delete('event');
+      url.hash = '';
+      window.history.pushState({}, '', url.pathname);
+
+      window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      document.documentElement.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      document.body.scrollTo({ top: 0, left: 0, behavior: "smooth" });
+      const topEl = document.getElementById("top");
+      if (topEl) {
+        topEl.scrollIntoView({ behavior: "smooth", block: "start" });
       }
-      setActiveEventType("trending");
-    } else {
-      if (activeEventType === "trending" && prevFiltersBeforeTrending.current) {
-        // Restore previous filters when leaving Trending
-        setSelectedCategory(prevFiltersBeforeTrending.current.category);
-        setSelectedSubcategory(prevFiltersBeforeTrending.current.subcategory);
-        setActiveScheduleFilter(prevFiltersBeforeTrending.current.schedule);
-        setSelectedDate(prevFiltersBeforeTrending.current.date);
-        prevFiltersBeforeTrending.current = null;
-      }
-      setActiveEventType(type);
     }
   };
 
+  const handleGoToCategories = () => {
+    trackEvent('nav_categories');
+    setSelectedEventId(null);
+    setSearchQuery("");
+    setIsTrendingActive(false);
+    setTimeout(() => {
+      const el = document.getElementById("categories");
+      if (el) {
+        el.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }, 50);
+  };
 
-  // Perform in-memory date, schedule, event type, and search filtering
+  const handleSelectTrending = () => {
+    trackEvent('trending_filter_selected');
+    setIsTrendingActive(true);
+    setSelectedCategory("all");
+    setSelectedSubcategory("");
+    setActiveScheduleFilter("all");
+    const el = document.getElementById("events");
+    if (el) {
+      el.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
+  // Perform in-memory date and schedule filtering when in feed mode
   const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
   const tomorrowStr = useMemo(() => {
     const tom = new Date();
@@ -349,76 +405,79 @@ export default function App() {
     return d.toISOString().split("T")[0];
   }, []);
 
+  const trendingEventIds = useMemo(() => {
+    return new Set(trendingEvents.map((t) => t.id));
+  }, [trendingEvents]);
+
   const filteredEvents = useMemo(() => {
-    let result = events.filter((event) => {
-      // 1. Text filter (Event Name search)
-      if (searchQuery.trim().length >= 2) {
-        const q = searchQuery.toLowerCase().trim();
-        const matchesName = event.name.toLowerCase().includes(q);
-        const matchesDesc = event.description.toLowerCase().includes(q);
-        const matchesVenue = event.venue_name.toLowerCase().includes(q);
-        const matchesOrg = (event.organizations?.name || "").toLowerCase().includes(q);
-        if (!matchesName && !matchesDesc && !matchesVenue && !matchesOrg) return false;
-      }
-
-      // 2. Custom selected date
-      if (selectedDate) {
-        const start = new Date(event.start_at).toISOString().split("T")[0];
-        const end = new Date(event.end_at).toISOString().split("T")[0];
-        const matchesDate = selectedDate >= start && selectedDate <= end;
-        if (!matchesDate) return false;
-      }
-
-      // 3. Schedule filter
-      if (activeScheduleFilter !== "all") {
-        const start = new Date(event.start_at).toISOString().split("T")[0];
-        const end = new Date(event.end_at).toISOString().split("T")[0];
-
-        if (activeScheduleFilter === "today") {
-          const matchesToday = todayStr >= start && todayStr <= end;
-          if (!matchesToday) return false;
-        } else if (activeScheduleFilter === "tomorrow") {
-          const matchesTomorrow = tomorrowStr >= start && tomorrowStr <= end;
-          if (!matchesTomorrow) return false;
-        } else if (activeScheduleFilter === "this_week") {
-          const matchesThisWeek = start >= todayStr && start <= nextWeekStr;
-          if (!matchesThisWeek) return false;
-        } else if (activeScheduleFilter === "upcoming") {
-          const matchesUpcoming = start > todayStr;
-          if (!matchesUpcoming) return false;
+    // If user has activated the curated Trending filter
+    if (isTrendingActive) {
+      return trendingEvents.filter((event) => {
+        if (searchQuery.trim().length >= 2) {
+          const q = searchQuery.toLowerCase();
+          const matches =
+            event.name.toLowerCase().includes(q) ||
+            (event.venue_name && event.venue_name.toLowerCase().includes(q)) ||
+            (event.organizations?.name && event.organizations.name.toLowerCase().includes(q));
+          if (!matches) return false;
         }
-      }
 
-      // 4. Event Type filter (All, Free, Paid, Trending)
-      if (activeEventType === "free") {
-        if (event.pricing_type !== "FREE") return false;
-      } else if (activeEventType === "paid") {
-        if (event.pricing_type !== "PAID") return false;
-      } else if (activeEventType === "trending") {
-        // Trending items prioritize featured events
-        const isFeatured = featuredEvents.some((fe) => fe.id === event.id);
-        if (!isFeatured && ((event as any).view_count || 0) < 5) {
-          return true;
+        if (selectedDate) {
+          const start = new Date(event.start_at).toISOString().split("T")[0];
+          const end = new Date(event.end_at).toISOString().split("T")[0];
+          const matchesDate = selectedDate >= start && selectedDate <= end;
+          if (!matchesDate) return false;
         }
-      }
 
-      return true;
-    });
-
-    // Rank prefix matches first when searching
-    if (searchQuery.trim().length >= 2) {
-      const q = searchQuery.toLowerCase().trim();
-      result.sort((a, b) => {
-        const aPrefix = a.name.toLowerCase().startsWith(q);
-        const bPrefix = b.name.toLowerCase().startsWith(q);
-        if (aPrefix && !bPrefix) return -1;
-        if (!aPrefix && bPrefix) return 1;
-        return 0;
+        return true;
       });
     }
 
-    return result;
-  }, [events, searchQuery, selectedDate, activeScheduleFilter, activeEventType, todayStr, tomorrowStr, nextWeekStr, featuredEvents]);
+    if (searchQuery.trim().length >= 2) {
+      // Results from searchEvents RPC are already server-filtered and ranked by relevance
+      return events.map((evt) => ({
+        ...evt,
+        is_trending: trendingEventIds.has(evt.id)
+      }));
+    }
+
+    return events
+      .filter((event) => {
+        // Custom selected date
+        if (selectedDate) {
+          const start = new Date(event.start_at).toISOString().split("T")[0];
+          const end = new Date(event.end_at).toISOString().split("T")[0];
+          const matchesDate = selectedDate >= start && selectedDate <= end;
+          if (!matchesDate) return false;
+        }
+
+        // Schedule quick filters
+        if (activeScheduleFilter !== "all") {
+          const start = new Date(event.start_at).toISOString().split("T")[0];
+          const end = new Date(event.end_at).toISOString().split("T")[0];
+
+          if (activeScheduleFilter === "today") {
+            const matchesToday = todayStr >= start && todayStr <= end;
+            if (!matchesToday) return false;
+          } else if (activeScheduleFilter === "tomorrow") {
+            const matchesTomorrow = tomorrowStr >= start && tomorrowStr <= end;
+            if (!matchesTomorrow) return false;
+          } else if (activeScheduleFilter === "this_week") {
+            const matchesThisWeek = start >= todayStr && start <= nextWeekStr;
+            if (!matchesThisWeek) return false;
+          } else if (activeScheduleFilter === "upcoming") {
+            const matchesUpcoming = start > todayStr;
+            if (!matchesUpcoming) return false;
+          }
+        }
+
+        return true;
+      })
+      .map((evt) => ({
+        ...evt,
+        is_trending: trendingEventIds.has(evt.id)
+      }));
+  }, [events, trendingEvents, isTrendingActive, trendingEventIds, searchQuery, selectedDate, activeScheduleFilter, todayStr, tomorrowStr, nextWeekStr]);
 
   const displayedEvents = useMemo(() => {
     return filteredEvents.slice(0, visibleEventsCount);
@@ -448,12 +507,20 @@ export default function App() {
         <div className="animate-blob-2 absolute -bottom-28 left-1/3 -translate-x-1/2 w-[500px] sm:w-[650px] h-[350px] sm:h-[420px] rounded-full bg-gradient-to-t from-[#ff6b00]/18 via-[#f59e0b]/08 to-transparent dark:from-[#ea580c]/09 dark:via-transparent dark:to-transparent blur-[120px] sm:blur-[140px]" />
       </div>
 
+      {/* Scroll Top Reference Anchor */}
+      <div id="top" className="absolute top-0 left-0 h-0 w-0 pointer-events-none" />
+
       <div className="relative z-10">
         <Navbar
           searchQuery={searchQuery}
-          onSearch={setSearchQuery}
+          onSearch={handleSearch}
           theme={theme}
           onToggleTheme={toggleTheme}
+          isTrendingActive={isTrendingActive}
+          onSelectTrending={handleSelectTrending}
+          onSelectEvent={handleSelectEvent}
+          onGoHome={handleGoToDashboard}
+          onSelectCategories={handleGoToCategories}
         />
 
         <main className="w-full max-w-[98%] mx-auto px-3 sm:px-4 md:px-6 flex flex-col gap-8 sm:gap-12 mt-4 sm:mt-6 overflow-hidden">
@@ -467,59 +534,68 @@ export default function App() {
             />
           ) : (
             <>
-              {/* Top Hero Carousel */}
-              <HeroCarousel
-                carouselItems={carouselSlides}
-                featuredEvents={featuredEvents}
-                ads={ads}
-                onSelectEvent={handleSelectEvent}
-              />
+              {/* If user is actively searching, provide focused search view */}
+              {searchQuery.trim().length < 2 && (
+                <>
+                  {/* Top Hero Carousel */}
+                  <HeroCarousel
+                    carouselItems={carouselSlides}
+                    featuredEvents={featuredEvents}
+                    ads={ads}
+                    onSelectEvent={handleSelectEvent}
+                  />
 
-              {/* Ad Slot 1: Below Hero Carousel */}
-              {adSlots.hero_below && ads.length > 0 && (
-                <SponsorBanner ad={ads[0]} tag="Featured Partner Spotlight" />
+                  {/* Ad Slot 1: Below Hero Carousel */}
+                  {adSlots.hero_below && ads.length > 0 && (
+                    <SponsorBanner ad={ads[0]} tag="Featured Partner Spotlight" />
+                  )}
+
+                  {/* Happening Today Slider */}
+                  <HappeningTodaySlider
+                    events={happeningTodayEvents}
+                    ads={ads}
+                    config={happeningTodayConfig}
+                    onSelectEvent={handleSelectEvent}
+                  />
+
+                  {/* Ad Slot 2: Below Happening Today */}
+                  {adSlots.happening_today_below && ads.length > 0 && happeningTodayEvents.length > 0 && (
+                    <SponsorBanner ad={ads.length > 1 ? ads[1] : ads[0]} tag="Happening Today Sponsor" />
+                  )}
+
+                  {/* Categories & Filter Bar */}
+                  <div id="categories">
+                    <CategoryFilter
+                      categories={categories}
+                      selectedCategory={selectedCategory}
+                      selectedSubcategory={selectedSubcategory}
+                      onSelectCategory={(catId) => {
+                        setIsTrendingActive(false);
+                        trackEvent('category_filter_selected', { category_id: catId });
+                        setSelectedCategory(catId);
+                      }}
+                      onSelectSubcategory={(subId) => {
+                        setIsTrendingActive(false);
+                        trackEvent('subcategory_filter_selected', { subcategory_id: subId });
+                        setSelectedSubcategory(subId);
+                      }}
+                      selectedDate={selectedDate}
+                      onSelectDate={(date) => {
+                        setSelectedDate(date);
+                      }}
+                      activeScheduleFilter={activeScheduleFilter}
+                      onSelectScheduleFilter={(sched) => {
+                        setIsTrendingActive(false);
+                        trackEvent('schedule_filter_selected', { schedule: sched });
+                        setActiveScheduleFilter(sched);
+                      }}
+                      isTrendingActive={isTrendingActive}
+                    />
+                  </div>
+                </>
               )}
 
-              {/* Happening Today Slider */}
-              <HappeningTodaySlider
-                events={happeningTodayEvents}
-                ads={ads}
-                config={happeningTodayConfig}
-                onSelectEvent={handleSelectEvent}
-              />
-
-              {/* Ad Slot 2: Below Happening Today */}
-              {adSlots.happening_today_below && ads.length > 0 && happeningTodayEvents.length > 0 && (
-                <SponsorBanner ad={ads.length > 1 ? ads[1] : ads[0]} tag="Happening Today Sponsor" />
-              )}
-
-              {/* Categories & Filter Bar */}
-              <div id="categories">
-                <CategoryFilter
-                  categories={categories}
-                  selectedCategory={selectedCategory}
-                  selectedSubcategory={selectedSubcategory}
-                  onSelectCategory={(catId) => {
-                    trackEvent('category_filter_selected', { category_id: catId });
-                    setSelectedCategory(catId);
-                  }}
-                  onSelectSubcategory={(subId) => {
-                    trackEvent('subcategory_filter_selected', { subcategory_id: subId });
-                    setSelectedSubcategory(subId);
-                  }}
-                  selectedDate={selectedDate}
-                  onSelectDate={setSelectedDate}
-                  activeScheduleFilter={activeScheduleFilter}
-                  onSelectScheduleFilter={(sched) => {
-                    trackEvent('schedule_filter_selected', { schedule: sched });
-                    setActiveScheduleFilter(sched);
-                  }}
-                  activeEventType={activeEventType}
-                  onSelectEventType={handleSelectEventType}
-                />
-              </div>
-
-              {/* Event hub upcoming grid */}
+              {/* Event hub upcoming grid / Search Results Grid */}
               <div id="events">
                 <EventGrid
                   events={displayedEvents}
@@ -528,7 +604,14 @@ export default function App() {
                   onResetFilters={handleResetFilters}
                   onSelectEvent={handleSelectEvent}
                   adInterval={adInterval}
-                  title="Event's Hub"
+                  title={
+                    searchQuery.trim().length >= 2
+                      ? "Search Results"
+                      : isTrendingActive
+                      ? "🔥 Trending Events"
+                      : "Event's Hub"
+                  }
+                  searchQuery={searchQuery.trim()}
                 />
               </div>
 

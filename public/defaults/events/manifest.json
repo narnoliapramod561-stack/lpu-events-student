@@ -1,0 +1,553 @@
+{
+  "academics": {
+    "name": "Academics",
+    "subcategories": {
+      "seminar": {
+        "name": "Seminar",
+        "webp": "/defaults/events/academics_seminar.webp",
+        "jpg": "/defaults/events/academics_seminar.jpg",
+        "accent": "#2563EB"
+      },
+      "guest-lecture": {
+        "name": "Guest Lecture",
+        "webp": "/defaults/events/academics_guest-lecture.webp",
+        "jpg": "/defaults/events/academics_guest-lecture.jpg",
+        "accent": "#3B82F6"
+      },
+      "workshop": {
+        "name": "Workshop",
+        "webp": "/defaults/events/academics_workshop.webp",
+        "jpg": "/defaults/events/academics_workshop.jpg",
+        "accent": "#60A5FA"
+      },
+      "internship": {
+        "name": "Internship",
+        "webp": "/defaults/events/academics_internship.webp",
+        "jpg": "/defaults/events/academics_internship.jpg",
+        "accent": "#0284C7"
+      },
+      "capstone": {
+        "name": "Capstone",
+        "webp": "/defaults/events/academics_capstone.webp",
+        "jpg": "/defaults/events/academics_capstone.jpg",
+        "accent": "#6366F1"
+      },
+      "others": {
+        "name": "Others",
+        "webp": "/defaults/events/academics_others.webp",
+        "jpg": "/defaults/events/academics_others.jpg",
+        "accent": "#4F46E5"
+      }
+    }
+  },
+  "cultural": {
+    "name": "Cultural",
+    "subcategories": {
+      "music": {
+        "name": "Music",
+        "webp": "/defaults/events/cultural_music.webp",
+        "jpg": "/defaults/events/cultural_music.jpg",
+        "accent": "#9333EA"
+      },
+      "dance": {
+        "name": "Dance",
+        "webp": "/defaults/events/cultural_dance.webp",
+        "jpg": "/defaults/events/cultural_dance.jpg",
+        "accent": "#C026D3"
+      },
+      "theatre": {
+        "name": "Theatre",
+        "webp": "/defaults/events/cultural_theatre.webp",
+        "jpg": "/defaults/events/cultural_theatre.jpg",
+        "accent": "#E11D48"
+      },
+      "social-media": {
+        "name": "Social Media",
+        "webp": "/defaults/events/cultural_social-media.webp",
+        "jpg": "/defaults/events/cultural_social-media.jpg",
+        "accent": "#F43F5E"
+      },
+      "others": {
+        "name": "Others",
+        "webp": "/defaults/events/cultural_others.webp",
+        "jpg": "/defaults/events/cultural_others.jpg",
+        "accent": "#A855F7"
+      }
+    }
+  },
+  "innovation": {
+    "name": "Innovation",
+    "subcategories": {
+      "hackathon": {
+        "name": "Hackathon",
+        "webp": "/defaults/events/innovation_hackathon.webp",
+        "jpg": "/defaults/events/innovation_hackathon.jpg",
+        "accent": "#06B6D4"
+      },
+      "technical-events": {
+        "name": "Technical Events",
+        "webp": "/defaults/events/innovation_technical-events.webp",
+        "jpg": "/defaults/events/innovation_technical-events.jpg",
+        "accent": "#0EA5E9"
+      },
+      "project-expo": {
+        "name": "Project Expo",
+        "webp": "/defaults/events/innovation_project-expo.webp",
+        "jpg": "/defaults/events/innovation_project-expo.jpg",
+        "accent": "#10B981"
+      },
+      "workshop": {
+        "name": "Workshop",
+        "webp": "/defaults/events/innovation_workshop.webp",
+        "jpg": "/defaults/events/innovation_workshop.jpg",
+        "accent": "#14B8A6"
+      },
+      "seminar": {
+        "name": "Seminar",
+        "webp": "/defaults/events/innovation_seminar.webp",
+        "jpg": "/defaults/events/innovation_seminar.jpg",
+        "accent": "#0891B2"
+      },
+      "others": {
+        "name": "Others",
+        "webp": "/defaults/events/innovation_others.webp",
+        "jpg": "/defaults/events/innovation_others.jpg",
+        "accent": "#22D3EE"
+      }
+    }
+  },
+  "entrepreneurship": {
+    "name": "Entrepreneurship",
+    "subcategories": {
+      "b-plan": {
+        "name": "B-Plan Competition",
+        "webp": "/defaults/events/entrepreneurship_b-plan.webp",
+        "jpg": "/defaults/events/entrepreneurship_b-plan.jpg",
+        "accent": "#059669"
+      },
+      "pitch-fest": {
+        "name": "Pitch Fest",
+        "webp": "/defaults/events/entrepreneurship_pitch-fest.webp",
+        "jpg": "/defaults/events/entrepreneurship_pitch-fest.jpg",
+        "accent": "#10B981"
+      },
+      "conclave": {
+        "name": "Conclave",
+        "webp": "/defaults/events/entrepreneurship_conclave.webp",
+        "jpg": "/defaults/events/entrepreneurship_conclave.jpg",
+        "accent": "#D97706"
+      },
+      "bootcamp": {
+        "name": "Bootcamp",
+        "webp": "/defaults/events/entrepreneurship_bootcamp.webp",
+        "jpg": "/defaults/events/entrepreneurship_bootcamp.jpg",
+        "accent": "#EA580C"
+      },
+      "panel-discussion": {
+        "name": "Panel Discussion",
+        "webp": "/defaults/events/entrepreneurship_panel-discussion.webp",
+        "jpg": "/defaults/events/entrepreneurship_panel-discussion.jpg",
+        "accent": "#B45309"
+      },
+      "expo": {
+        "name": "Expo",
+        "webp": "/defaults/events/entrepreneurship_expo.webp",
+        "jpg": "/defaults/events/entrepreneurship_expo.jpg",
+        "accent": "#F59E0B"
+      },
+      "seminar": {
+        "name": "Seminar",
+        "webp": "/defaults/events/entrepreneurship_seminar.webp",
+        "jpg": "/defaults/events/entrepreneurship_seminar.jpg",
+        "accent": "#047857"
+      },
+      "others": {
+        "name": "Others",
+        "webp": "/defaults/events/entrepreneurship_others.webp",
+        "jpg": "/defaults/events/entrepreneurship_others.jpg",
+        "accent": "#15803D"
+      }
+    }
+  },
+  "schools": {
+    "name": "Schools",
+    "subcategories": {
+      "school-ai-emerging": {
+        "name": "School of AI and Emerging Technologies",
+        "webp": "/defaults/events/schools_school-ai-emerging.webp",
+        "jpg": "/defaults/events/schools_school-ai-emerging.jpg",
+        "accent": "#6366F1"
+      },
+      "school-bio": {
+        "name": "School of Bio Engineering and Biosciences",
+        "webp": "/defaults/events/schools_school-bio.webp",
+        "jpg": "/defaults/events/schools_school-bio.jpg",
+        "accent": "#10B981"
+      },
+      "school-chemical": {
+        "name": "School of Chemical Engineering and Physical Sciences",
+        "webp": "/defaults/events/schools_school-chemical.webp",
+        "jpg": "/defaults/events/schools_school-chemical.jpg",
+        "accent": "#F59E0B"
+      },
+      "school-ca": {
+        "name": "School of Computer Applications",
+        "webp": "/defaults/events/schools_school-ca.webp",
+        "jpg": "/defaults/events/schools_school-ca.jpg",
+        "accent": "#0284C7"
+      },
+      "school-cse": {
+        "name": "School of Computer Science and Engineering",
+        "webp": "/defaults/events/schools_school-cse.webp",
+        "jpg": "/defaults/events/schools_school-cse.jpg",
+        "accent": "#2563EB"
+      },
+      "school-cai": {
+        "name": "School of Computing and Artificial Intelligence",
+        "webp": "/defaults/events/schools_school-cai.webp",
+        "jpg": "/defaults/events/schools_school-cai.jpg",
+        "accent": "#8B5CF6"
+      },
+      "school-eee": {
+        "name": "School of Electronics and Electrical Engineering",
+        "webp": "/defaults/events/schools_school-eee.webp",
+        "jpg": "/defaults/events/schools_school-eee.jpg",
+        "accent": "#EC4899"
+      },
+      "school-me": {
+        "name": "School of Mechanical Engineering",
+        "webp": "/defaults/events/schools_school-me.webp",
+        "jpg": "/defaults/events/schools_school-me.jpg",
+        "accent": "#F97316"
+      },
+      "school-arch": {
+        "name": "Lovely School of Architecture and Design",
+        "webp": "/defaults/events/schools_school-arch.webp",
+        "jpg": "/defaults/events/schools_school-arch.jpg",
+        "accent": "#38BDF8"
+      },
+      "school-design-fashion": {
+        "name": "School of Design (Fashion Design & Technology)",
+        "webp": "/defaults/events/schools_school-design-fashion.webp",
+        "jpg": "/defaults/events/schools_school-design-fashion.jpg",
+        "accent": "#F43F5E"
+      },
+      "school-design-interior": {
+        "name": "School of Design (Interior & Product Design)",
+        "webp": "/defaults/events/schools_school-design-interior.webp",
+        "jpg": "/defaults/events/schools_school-design-interior.jpg",
+        "accent": "#FB923C"
+      },
+      "school-design-multimedia": {
+        "name": "School of Design (Multimedia)",
+        "webp": "/defaults/events/schools_school-design-multimedia.webp",
+        "jpg": "/defaults/events/schools_school-design-multimedia.jpg",
+        "accent": "#A855F7"
+      },
+      "school-arts-films": {
+        "name": "School of Liberal and Creative Arts (Films, Theatre and Music)",
+        "webp": "/defaults/events/schools_school-arts-films.webp",
+        "jpg": "/defaults/events/schools_school-arts-films.jpg",
+        "accent": "#E11D48"
+      },
+      "school-arts-fine": {
+        "name": "School of Liberal and Creative Arts (Fine Arts)",
+        "webp": "/defaults/events/schools_school-arts-fine.webp",
+        "jpg": "/defaults/events/schools_school-arts-fine.jpg",
+        "accent": "#D97706"
+      },
+      "school-arts-journalism": {
+        "name": "School of Liberal and Creative Arts (Journalism and Mass Communication)",
+        "webp": "/defaults/events/schools_school-arts-journalism.webp",
+        "jpg": "/defaults/events/schools_school-arts-journalism.jpg",
+        "accent": "#0D9488"
+      },
+      "school-arts-social": {
+        "name": "School of Liberal and Creative Arts (Social Sciences and Languages)",
+        "webp": "/defaults/events/schools_school-arts-social.webp",
+        "jpg": "/defaults/events/schools_school-arts-social.jpg",
+        "accent": "#475569"
+      },
+      "school-business": {
+        "name": "Mittal School of Business",
+        "webp": "/defaults/events/schools_school-business.webp",
+        "jpg": "/defaults/events/schools_school-business.jpg",
+        "accent": "#1E293B"
+      },
+      "school-agriculture": {
+        "name": "School of Agriculture",
+        "webp": "/defaults/events/schools_school-agriculture.webp",
+        "jpg": "/defaults/events/schools_school-agriculture.jpg",
+        "accent": "#65A30D"
+      },
+      "school-hotel-tourism": {
+        "name": "School of Hotel Management and Tourism",
+        "webp": "/defaults/events/schools_school-hotel-tourism.webp",
+        "jpg": "/defaults/events/schools_school-hotel-tourism.jpg",
+        "accent": "#CA8A04"
+      },
+      "school-law": {
+        "name": "School of Law",
+        "webp": "/defaults/events/schools_school-law.webp",
+        "jpg": "/defaults/events/schools_school-law.jpg",
+        "accent": "#991B1B"
+      },
+      "school-medical": {
+        "name": "School of Allied Medical Sciences",
+        "webp": "/defaults/events/schools_school-medical.webp",
+        "jpg": "/defaults/events/schools_school-medical.jpg",
+        "accent": "#0D9488"
+      },
+      "school-education": {
+        "name": "School of Education",
+        "webp": "/defaults/events/schools_school-education.webp",
+        "jpg": "/defaults/events/schools_school-education.jpg",
+        "accent": "#2563EB"
+      },
+      "school-phys-ed": {
+        "name": "School of Education (Physical Education)",
+        "webp": "/defaults/events/schools_school-phys-ed.webp",
+        "jpg": "/defaults/events/schools_school-phys-ed.jpg",
+        "accent": "#EA580C"
+      },
+      "school-pharma": {
+        "name": "School of Pharmaceutical Sciences",
+        "webp": "/defaults/events/schools_school-pharma.webp",
+        "jpg": "/defaults/events/schools_school-pharma.jpg",
+        "accent": "#06B6D4"
+      },
+      "school-polytechnic": {
+        "name": "School of Polytechnic",
+        "webp": "/defaults/events/schools_school-polytechnic.webp",
+        "jpg": "/defaults/events/schools_school-polytechnic.jpg",
+        "accent": "#475569"
+      }
+    }
+  },
+  "community-services": {
+    "name": "Community Services",
+    "subcategories": {
+      "donation-drives": {
+        "name": "Donation Drives",
+        "webp": "/defaults/events/community-services_donation-drives.webp",
+        "jpg": "/defaults/events/community-services_donation-drives.jpg",
+        "accent": "#DC2626"
+      },
+      "environment": {
+        "name": "Environment",
+        "webp": "/defaults/events/community-services_environment.webp",
+        "jpg": "/defaults/events/community-services_environment.jpg",
+        "accent": "#16A34A"
+      },
+      "healthcare": {
+        "name": "Healthcare",
+        "webp": "/defaults/events/community-services_healthcare.webp",
+        "jpg": "/defaults/events/community-services_healthcare.jpg",
+        "accent": "#0284C7"
+      },
+      "others": {
+        "name": "Others",
+        "webp": "/defaults/events/community-services_others.webp",
+        "jpg": "/defaults/events/community-services_others.jpg",
+        "accent": "#E11D48"
+      }
+    }
+  },
+  "day-celebrations": {
+    "name": "Day Celebrations",
+    "subcategories": {
+      "national-days": {
+        "name": "National Days",
+        "webp": "/defaults/events/day-celebrations_national-days.webp",
+        "jpg": "/defaults/events/day-celebrations_national-days.jpg",
+        "accent": "#EA580C"
+      },
+      "cultural-days": {
+        "name": "Cultural Days",
+        "webp": "/defaults/events/day-celebrations_cultural-days.webp",
+        "jpg": "/defaults/events/day-celebrations_cultural-days.jpg",
+        "accent": "#D97706"
+      },
+      "fest-days": {
+        "name": "Fest Days",
+        "webp": "/defaults/events/day-celebrations_fest-days.webp",
+        "jpg": "/defaults/events/day-celebrations_fest-days.jpg",
+        "accent": "#E11D48"
+      },
+      "awareness-days": {
+        "name": "Awareness Days",
+        "webp": "/defaults/events/day-celebrations_awareness-days.webp",
+        "jpg": "/defaults/events/day-celebrations_awareness-days.jpg",
+        "accent": "#0D9488"
+      },
+      "others": {
+        "name": "Others",
+        "webp": "/defaults/events/day-celebrations_others.webp",
+        "jpg": "/defaults/events/day-celebrations_others.jpg",
+        "accent": "#8B5CF6"
+      }
+    }
+  },
+  "co-curricular": {
+    "name": "Co-Curricular",
+    "subcategories": {
+      "competitions": {
+        "name": "Competitions",
+        "webp": "/defaults/events/co-curricular_competitions.webp",
+        "jpg": "/defaults/events/co-curricular_competitions.jpg",
+        "accent": "#EAB308"
+      },
+      "skill-dev": {
+        "name": "Skill Development",
+        "webp": "/defaults/events/co-curricular_skill-dev.webp",
+        "jpg": "/defaults/events/co-curricular_skill-dev.jpg",
+        "accent": "#6366F1"
+      },
+      "certifications": {
+        "name": "Certifications",
+        "webp": "/defaults/events/co-curricular_certifications.webp",
+        "jpg": "/defaults/events/co-curricular_certifications.jpg",
+        "accent": "#059669"
+      },
+      "training": {
+        "name": "Training Programs",
+        "webp": "/defaults/events/co-curricular_training.webp",
+        "jpg": "/defaults/events/co-curricular_training.jpg",
+        "accent": "#2563EB"
+      },
+      "others": {
+        "name": "Others",
+        "webp": "/defaults/events/co-curricular_others.webp",
+        "jpg": "/defaults/events/co-curricular_others.jpg",
+        "accent": "#9333EA"
+      }
+    }
+  },
+  "student-clubs": {
+    "name": "Student Clubs & Org",
+    "subcategories": {
+      "tech-clubs": {
+        "name": "Technical Clubs",
+        "webp": "/defaults/events/student-clubs_tech-clubs.webp",
+        "jpg": "/defaults/events/student-clubs_tech-clubs.jpg",
+        "accent": "#06B6D4"
+      },
+      "cultural-clubs": {
+        "name": "Cultural Clubs",
+        "webp": "/defaults/events/student-clubs_cultural-clubs.webp",
+        "jpg": "/defaults/events/student-clubs_cultural-clubs.jpg",
+        "accent": "#D946EF"
+      },
+      "startup-clubs": {
+        "name": "Startup Clubs",
+        "webp": "/defaults/events/student-clubs_startup-clubs.webp",
+        "jpg": "/defaults/events/student-clubs_startup-clubs.jpg",
+        "accent": "#F97316"
+      },
+      "literary-clubs": {
+        "name": "Literary Clubs",
+        "webp": "/defaults/events/student-clubs_literary-clubs.webp",
+        "jpg": "/defaults/events/student-clubs_literary-clubs.jpg",
+        "accent": "#10B981"
+      },
+      "others": {
+        "name": "Others",
+        "webp": "/defaults/events/student-clubs_others.webp",
+        "jpg": "/defaults/events/student-clubs_others.jpg",
+        "accent": "#8B5CF6"
+      }
+    }
+  },
+  "ncc": {
+    "name": "NCC",
+    "subcategories": {
+      "camps": {
+        "name": "Camps",
+        "webp": "/defaults/events/ncc_camps.webp",
+        "jpg": "/defaults/events/ncc_camps.jpg",
+        "accent": "#15803D"
+      },
+      "training": {
+        "name": "Training",
+        "webp": "/defaults/events/ncc_training.webp",
+        "jpg": "/defaults/events/ncc_training.jpg",
+        "accent": "#B45309"
+      },
+      "parades": {
+        "name": "Parades",
+        "webp": "/defaults/events/ncc_parades.webp",
+        "jpg": "/defaults/events/ncc_parades.jpg",
+        "accent": "#1E3A8A"
+      },
+      "others": {
+        "name": "Others",
+        "webp": "/defaults/events/ncc_others.webp",
+        "jpg": "/defaults/events/ncc_others.jpg",
+        "accent": "#334155"
+      }
+    }
+  },
+  "nss": {
+    "name": "NSS",
+    "subcategories": {
+      "social-work": {
+        "name": "Social Work",
+        "webp": "/defaults/events/nss_social-work.webp",
+        "jpg": "/defaults/events/nss_social-work.jpg",
+        "accent": "#DC2626"
+      },
+      "campaigns": {
+        "name": "Campaigns",
+        "webp": "/defaults/events/nss_campaigns.webp",
+        "jpg": "/defaults/events/nss_campaigns.jpg",
+        "accent": "#2563EB"
+      },
+      "awareness-drives": {
+        "name": "Awareness Drives",
+        "webp": "/defaults/events/nss_awareness-drives.webp",
+        "jpg": "/defaults/events/nss_awareness-drives.jpg",
+        "accent": "#059669"
+      },
+      "others": {
+        "name": "Others",
+        "webp": "/defaults/events/nss_others.webp",
+        "jpg": "/defaults/events/nss_others.jpg",
+        "accent": "#EA580C"
+      }
+    }
+  },
+  "fashion": {
+    "name": "Fashion",
+    "subcategories": {
+      "shows": {
+        "name": "Shows",
+        "webp": "/defaults/events/fashion_shows.webp",
+        "jpg": "/defaults/events/fashion_shows.jpg",
+        "accent": "#F43F5E"
+      },
+      "exhibitions": {
+        "name": "Exhibitions",
+        "webp": "/defaults/events/fashion_exhibitions.webp",
+        "jpg": "/defaults/events/fashion_exhibitions.jpg",
+        "accent": "#FB7185"
+      },
+      "others": {
+        "name": "Others",
+        "webp": "/defaults/events/fashion_others.webp",
+        "jpg": "/defaults/events/fashion_others.jpg",
+        "accent": "#0F172A"
+      }
+    }
+  },
+  "others": {
+    "name": "Others",
+    "subcategories": {
+      "miscellaneous": {
+        "name": "Miscellaneous Events",
+        "webp": "/defaults/events/others_miscellaneous.webp",
+        "jpg": "/defaults/events/others_miscellaneous.jpg",
+        "accent": "#FF6B00"
+      }
+    }
+  }
+}
