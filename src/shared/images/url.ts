@@ -131,56 +131,6 @@ export const EVENT_MOCK_FALLBACK_IMAGES: Record<string, string> = {
   'e0000000-0000-0000-0000-000000000040': 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=1200&auto=format&fit=crop',
   'de000000-0000-0000-0000-000000000040': 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=1200&auto=format&fit=crop',
 
-  // Past Day -1 (1 Day Ago)
-  'ea000000-0000-0000-0000-000000000001': 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000041': 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000002': 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000042': 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000003': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000043': 'https://images.unsplash.com/photo-1508098682722-e99c43a406b2?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000004': 'https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000044': 'https://images.unsplash.com/photo-1581291518633-83b4ebd1d83e?q=80&w=1200&auto=format&fit=crop',
-
-  // Past Day -2 (2 Days Ago)
-  'ea000000-0000-0000-0000-000000000005': 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000045': 'https://images.unsplash.com/photo-1518770660439-4636190af475?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000006': 'https://images.unsplash.com/photo-1547153760-18fc86324498?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000046': 'https://images.unsplash.com/photo-1547153760-18fc86324498?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000007': 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000047': 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000008': 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000048': 'https://images.unsplash.com/photo-1556761175-5973dc0f32e7?q=80&w=1200&auto=format&fit=crop',
-
-  // Past Day -3 (3 Days Ago)
-  'ea000000-0000-0000-0000-000000000009': 'https://images.unsplash.com/photo-1563986768609-322da13575f3?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000049': 'https://images.unsplash.com/photo-1563986768609-322da13575f3?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000010': 'https://images.unsplash.com/photo-1464375117522-1311d6a5b81f?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000050': 'https://images.unsplash.com/photo-1464375117522-1311d6a5b81f?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000011': 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000051': 'https://images.unsplash.com/photo-1574629810360-7efbbe195018?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000012': 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000052': 'https://images.unsplash.com/photo-1512941937669-90a1b58e7e9c?q=80&w=1200&auto=format&fit=crop',
-
-  // Past Day -4 (4 Days Ago)
-  'ea000000-0000-0000-0000-000000000013': 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000053': 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000014': 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000054': 'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000015': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000055': 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000016': 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000056': 'https://images.unsplash.com/photo-1576091160399-112ba8d25d1d?q=80&w=1200&auto=format&fit=crop',
-
-  // Past Day -5 (5 Days Ago)
-  'ea000000-0000-0000-0000-000000000017': 'https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000057': 'https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000018': 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000058': 'https://images.unsplash.com/photo-1452587925148-ce544e77e70d?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000019': 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000059': 'https://images.unsplash.com/photo-1461896836934-ffe607ba8211?q=80&w=1200&auto=format&fit=crop',
-  'ea000000-0000-0000-0000-000000000020': 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?q=80&w=1200&auto=format&fit=crop',
-  'de000000-0000-0000-0000-000000000060': 'https://images.unsplash.com/photo-1527977966376-1c8408f9f108?q=80&w=1200&auto=format&fit=crop',
-
   // Ads & Sponsors & General Media
   'd1111111-1111-1111-1111-111111111111': 'https://images.unsplash.com/photo-1504384308090-c894fdcc538d?q=80&w=1200&auto=format&fit=crop',
   'd2222222-2222-2222-2222-222222222222': 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=1200&auto=format&fit=crop',
@@ -249,23 +199,17 @@ export function getKeywordFallbackImage(nameOrText: string): string {
 }
 
 /**
- * Resolves the base CDN / Storage URL
+ * Resolves the base CDN / Storage URL for Cloudflare R2 Delivery
  */
-function getStorageBaseUrl(): string {
+export function getStorageBaseUrl(): string {
   const globalEnv = typeof globalThis !== 'undefined' ? (globalThis as any).process?.env : (typeof process !== 'undefined' ? process.env : undefined);
   const r2Url = globalEnv?.VITE_R2_PUBLIC_URL || globalEnv?.EXPO_PUBLIC_R2_PUBLIC_URL;
   if (r2Url && typeof r2Url === 'string' && r2Url.trim()) {
     return r2Url.trim().replace(/\/+$/, '');
   }
 
-  const supabaseUrl = globalEnv?.VITE_SUPABASE_URL || globalEnv?.EXPO_PUBLIC_SUPABASE_URL;
-  if (supabaseUrl && typeof supabaseUrl === 'string' && supabaseUrl.trim()) {
-    const base = supabaseUrl.trim().replace(/\/+$/, '');
-    return `${base}/storage/v1/object/public/media`;
-  }
-
-  const host = (typeof window !== 'undefined' && window.location?.hostname) ? window.location.hostname : 'localhost';
-  return `http://${host}:54321/storage/v1/object/public/media`;
+  // Canonical Cloudflare R2 Custom Image Domain
+  return 'https://images.lpuevents.live';
 }
 
 /**
@@ -296,10 +240,10 @@ export function getOptimizedImage(
       return EVENT_MOCK_FALLBACK_IMAGES[str];
     }
     if (str.includes('/')) {
-      return `${getStorageBaseUrl()}/${str}`;
+      return `${getStorageBaseUrl()}/${str.replace(/^\/+/, '')}`;
     }
     if (str.length > 0) {
-      return `${getStorageBaseUrl()}/${str}`;
+      return `${getStorageBaseUrl()}/${str.replace(/^\/+/, '')}`;
     }
   }
 
@@ -316,7 +260,7 @@ export function getOptimizedImage(
     if (source.media_assets.id && EVENT_MOCK_FALLBACK_IMAGES[source.media_assets.id]) {
       return EVENT_MOCK_FALLBACK_IMAGES[source.media_assets.id];
     }
-    return `${getStorageBaseUrl()}/${key}`;
+    return `${getStorageBaseUrl()}/${key.replace(/^\/+/, '')}`;
   }
 
   // 4. Nested relation sources (Carousel Slide / Item)
@@ -372,8 +316,20 @@ export function getOptimizedImageSrcSet(
   const config = IMAGE_CONTEXT_CONFIGS[context] || IMAGE_CONTEXT_CONFIGS['event-card'];
   const baseSrc = getOptimizedImage(source, context);
 
+  let srcSet: string | undefined = undefined;
+  let sizes: string | undefined = undefined;
+
+  if (baseSrc.includes('_desktop.webp')) {
+    const mobileSrc = baseSrc.replace('_desktop.webp', '_mobile.webp');
+    const tabletSrc = baseSrc.replace('_desktop.webp', '_tablet.webp');
+    srcSet = `${mobileSrc} 640w, ${tabletSrc} 1024w, ${baseSrc} ${config.maxWidth}w`;
+    sizes = `(max-width: 640px) 100vw, (max-width: 1024px) 80vw, ${config.maxWidth}px`;
+  }
+
   return {
     src: baseSrc,
+    srcSet,
+    sizes,
     width: config.maxWidth,
     height: config.maxHeight
   };

@@ -41,6 +41,7 @@ export interface MediaStorage {
 export class CloudflareR2StorageProvider implements MediaStorage {
   public bucketName: string;
   public publicBaseUrl: string;
+  public accountId?: string;
 
   constructor(config?: {
     accountId?: string;
@@ -51,10 +52,11 @@ export class CloudflareR2StorageProvider implements MediaStorage {
   }) {
     const globalEnv = typeof globalThis !== 'undefined' ? (globalThis as any).process?.env : (typeof process !== 'undefined' ? process.env : undefined);
 
-    this.bucketName = config?.bucketName || globalEnv?.R2_BUCKET_NAME || globalEnv?.VITE_R2_BUCKET_NAME || 'media';
+    this.bucketName = config?.bucketName || globalEnv?.R2_BUCKET_NAME || globalEnv?.VITE_R2_BUCKET_NAME || 'lpu-events-images';
+    this.accountId = config?.accountId || globalEnv?.R2_ACCOUNT_ID;
     
     const configuredPublicUrl = config?.publicBaseUrl || globalEnv?.VITE_R2_PUBLIC_URL || globalEnv?.EXPO_PUBLIC_R2_PUBLIC_URL;
-    this.publicBaseUrl = configuredPublicUrl ? configuredPublicUrl.replace(/\/+$/, '') : 'https://media.lpu-events.in';
+    this.publicBaseUrl = configuredPublicUrl ? configuredPublicUrl.replace(/\/+$/, '') : 'https://images.lpuevents.live';
   }
 
   getPublicUrl(key: string): string {
@@ -234,10 +236,13 @@ export class SupabaseStorageAdapter implements MediaStorage {
 /**
  * Storage Provider Factory
  */
-export function getMediaStorage(supabaseClient?: any, bucketName: string = 'media'): MediaStorage {
-  // If Supabase client is supplied and running in dev/emulation mode
+export function getMediaStorage(supabaseClient?: any, bucketName: string = 'lpu-events-images'): MediaStorage {
+  // If Supabase client is supplied and running in dev/emulation mode without R2 configured
   if (supabaseClient && typeof supabaseClient.storage?.from === 'function') {
-    return new SupabaseStorageAdapter(supabaseClient, bucketName);
+    const globalEnv = typeof globalThis !== 'undefined' ? (globalThis as any).process?.env : (typeof process !== 'undefined' ? process.env : undefined);
+    if (!globalEnv?.R2_ACCOUNT_ID && !globalEnv?.VITE_R2_PUBLIC_URL) {
+      return new SupabaseStorageAdapter(supabaseClient, 'media');
+    }
   }
   return new CloudflareR2StorageProvider({ bucketName });
 }
