@@ -23,6 +23,7 @@ import {
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { AdSenseSlot } from "./AdSenseSlot";
+import { SponsorBanner } from "./SponsorBanner";
 
 interface EventDetailsViewProps {
   eventId: string;
@@ -182,17 +183,6 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
       setTimeout(() => setCopied(false), 2000);
     } catch {
       // Fallback
-    }
-  };
-
-  const handleAdClick = (adItem?: AdvertisementFeedItem) => {
-    if (adItem?.redirect_url) {
-      trackEvent('advertisement_clicked', {
-        ad_id: adItem.id,
-        ad_name: adItem.name,
-        destination: adItem.redirect_url
-      });
-      window.open(adItem.redirect_url, "_blank", "noopener,noreferrer");
     }
   };
 
@@ -496,7 +486,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         if (detailsConfig && isGlobalEnabled && detailsConfig.enabled) {
           if (detailsConfig.provider === 'adsense') {
             return (
-              <div className="mb-6 sm:mb-8">
+              <div className="mb-4 sm:mb-6">
                 <AdSenseSlot
                   format="banner"
                   slotId={detailsConfig.ad_unit_id || "1000000004"}
@@ -506,23 +496,9 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
             );
           }
           if (detailsConfig.provider === 'direct' && spotlight1) {
-            const adImg = getEventImage(spotlight1, 'hero', 1200);
             return (
-              <div 
-                onClick={() => handleAdClick(spotlight1)}
-                className="relative group w-full h-[95px] xs:h-[115px] sm:h-[145px] md:h-[160px] rounded-[16px] sm:rounded-[24px] mb-6 sm:mb-8 overflow-hidden cursor-pointer border border-white/80 dark:border-white/10 shadow-md hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
-              >
-                <img
-                  src={adImg}
-                  alt={spotlight1.name}
-                  loading="lazy"
-                  decoding="async"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src =
-                      "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop";
-                  }}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                />
+              <div className="mb-4 sm:mb-6">
+                <SponsorBanner ad={spotlight1} />
               </div>
             );
           }
@@ -531,23 +507,9 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
         // Fallback default: show direct spotlight1 if present and no explicit disable config
         if (!detailsConfig && spotlight1) {
-          const adImg = getEventImage(spotlight1, 'hero', 1200);
           return (
-            <div 
-              onClick={() => handleAdClick(spotlight1)}
-              className="relative group w-full h-[95px] xs:h-[115px] sm:h-[145px] md:h-[160px] rounded-[16px] sm:rounded-[24px] mb-6 sm:mb-8 overflow-hidden cursor-pointer border border-white/80 dark:border-white/10 shadow-md hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
-            >
-              <img
-                src={adImg}
-                alt={spotlight1.name}
-                loading="lazy"
-                decoding="async"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src =
-                    "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop";
-                }}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-              />
+            <div className="mb-4 sm:mb-6">
+              <SponsorBanner ad={spotlight1} />
             </div>
           );
         }
@@ -646,23 +608,9 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
         if (detailsConfig && isGlobalEnabled && detailsConfig.enabled) {
           if (detailsConfig.provider === 'direct' && spotlight2) {
-            const adImg = getEventImage(spotlight2, 'hero', 1200);
             return (
-              <div 
-                onClick={() => handleAdClick(spotlight2)}
-                className="relative group w-full h-[95px] xs:h-[115px] sm:h-[145px] md:h-[160px] rounded-[16px] sm:rounded-[24px] mb-6 sm:mb-8 overflow-hidden cursor-pointer border border-white/80 dark:border-white/10 shadow-md hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
-              >
-                <img
-                  src={adImg}
-                  alt={spotlight2.name}
-                  loading="lazy"
-                  decoding="async"
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src =
-                      "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop";
-                  }}
-                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                />
+              <div className="mb-4 sm:mb-6">
+                <SponsorBanner ad={spotlight2} />
               </div>
             );
           }
@@ -670,23 +618,9 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         }
 
         if (!detailsConfig && spotlight2) {
-          const adImg = getEventImage(spotlight2, 'hero', 1200);
           return (
-            <div 
-              onClick={() => handleAdClick(spotlight2)}
-              className="relative group w-full h-[95px] xs:h-[115px] sm:h-[145px] md:h-[160px] rounded-[16px] sm:rounded-[24px] mb-6 sm:mb-8 overflow-hidden cursor-pointer border border-white/80 dark:border-white/10 shadow-md hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
-            >
-              <img
-                src={adImg}
-                alt={spotlight2.name}
-                loading="lazy"
-                decoding="async"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src =
-                    "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop";
-                }}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-              />
+            <div className="mb-4 sm:mb-6">
+              <SponsorBanner ad={spotlight2} />
             </div>
           );
         }

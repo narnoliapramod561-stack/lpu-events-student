@@ -43,10 +43,10 @@ export const EventCardComponent = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(idx * 0.04, 0.25) }}
       onClick={() => onSelect(event.id)}
-      className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-[22px] sm:rounded-[28px] shadow-md hover:shadow-2xl transition-all duration-300 border border-white/80 dark:border-white/10 hover:border-primary/50 relative hover:scale-[1.01] active:scale-[0.99]"
+      className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-[20px] sm:rounded-[28px] shadow-md hover:shadow-2xl transition-all duration-300 border border-white/80 dark:border-white/10 hover:border-primary/50 relative hover:scale-[1.01] active:scale-[0.99]"
     >
       {/* Event Cover Image */}
-      <div className="h-[180px] xs:h-[200px] sm:h-[230px] w-full relative overflow-hidden bg-slate-900/40 shrink-0">
+      <div className="h-[155px] xs:h-[175px] sm:h-[230px] w-full relative overflow-hidden bg-slate-900/40 shrink-0">
         <img
           src={imageUrl}
           alt={event.name}
@@ -61,8 +61,8 @@ export const EventCardComponent = ({
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
         {event.is_trending && (
-          <div className="absolute top-3 left-3 sm:top-4 sm:left-4">
-            <span className="flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-orange-600 via-amber-500 to-orange-500 text-white rounded-full font-heading text-[10px] font-black uppercase tracking-wider shadow-lg border border-white/20">
+          <div className="absolute top-2.5 left-2.5 sm:top-4 sm:left-4">
+            <span className="flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-gradient-to-r from-orange-600 via-amber-500 to-orange-500 text-white rounded-full font-heading text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-lg border border-white/20">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               🔥 Trending
             </span>
@@ -71,26 +71,26 @@ export const EventCardComponent = ({
       </div>
 
       {/* Event Body */}
-      <div className="p-4 sm:p-5 flex flex-col flex-1">
+      <div className="p-3.5 sm:p-5 flex flex-col flex-1">
         {/* Category Tag */}
-        <span className="text-[10px] sm:text-xs font-black uppercase text-orange-500 dark:text-orange-400 tracking-wider font-heading mb-1.5">
+        <span className="text-[10px] sm:text-xs font-black uppercase text-orange-500 dark:text-orange-400 tracking-wider font-heading mb-1 sm:mb-1.5">
           {categoryName}
         </span>
 
         {/* Event Title */}
-        <h3 className="text-base sm:text-lg font-black font-heading text-gray-900 dark:text-white mb-3 sm:mb-4 tracking-tight line-clamp-2 group-hover:text-primary transition-colors leading-snug break-safe">
+        <h3 className="text-sm sm:text-lg font-black font-heading text-gray-900 dark:text-white mb-2.5 sm:mb-4 tracking-tight line-clamp-2 group-hover:text-primary transition-colors leading-snug break-safe">
           {event.name}
         </h3>
 
         {/* Metadata Stack (Date, Schedule, Venue) */}
-        <div className="space-y-3 mb-5 mt-auto">
+        <div className="space-y-2 sm:space-y-3 mb-0 sm:mb-5 mt-auto">
           {/* Date */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-400">
-              <Calendar className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-primary" />
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-400">
+              <Calendar className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-primary" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 font-heading">
+              <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 font-heading leading-tight">
                 DATE
               </span>
               <span className="text-gray-900 dark:text-white font-black text-xs sm:text-sm truncate">
@@ -100,12 +100,12 @@ export const EventCardComponent = ({
           </div>
 
           {/* Schedule */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-400">
-              <Clock className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-amber-500" />
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-400">
+              <Clock className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-amber-500" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 font-heading">
+              <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 font-heading leading-tight">
                 SCHEDULE
               </span>
               <span className="text-gray-900 dark:text-white font-black text-xs sm:text-sm truncate">
@@ -114,25 +114,35 @@ export const EventCardComponent = ({
             </div>
           </div>
 
-          {/* Venue */}
-          <div className="flex items-center gap-3">
-            <div className="w-9 h-9 sm:w-10 sm:h-10 shrink-0 rounded-full bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-400">
-              <MapPin className="h-4 w-4 sm:h-4.5 sm:w-4.5 text-rose-500" />
+          {/* Venue & Mobile View Details Action */}
+          <div className="flex items-center justify-between gap-2 pt-0.5 sm:pt-0">
+            <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-400">
+                <MapPin className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-rose-500" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 font-heading leading-tight">
+                  VENUE
+                </span>
+                <span className="text-gray-900 dark:text-white font-black text-xs sm:text-sm truncate">
+                  {event.venue_name || "LPU Campus"}
+                </span>
+              </div>
             </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 font-heading">
-                VENUE
-              </span>
-              <span className="text-gray-900 dark:text-white font-black text-xs sm:text-sm truncate">
-                {event.venue_name || "LPU Campus"}
-              </span>
-            </div>
+
+            {/* Mobile View Details Button (fitted in venue row, eliminating bottom line & separate footer on mobile) */}
+            <button
+              type="button"
+              className="sm:hidden px-3.5 py-1.5 bg-gradient-to-r from-[#fc721e] to-[#ff8c42] text-white rounded-full font-heading font-black text-xs shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer shrink-0"
+            >
+              View Details
+            </button>
           </div>
         </div>
 
-        {/* Footer: View Details CTA (Club name hidden on mobile, visible on desktop) */}
-        <div className="flex justify-between items-center pt-3.5 border-t border-gray-200/60 dark:border-white/10 mt-auto gap-2">
-          <div className="hidden sm:flex flex-col min-w-0 max-w-[55%]">
+        {/* Desktop-only Footer: View Details CTA & Club Name (Hidden on Mobile) */}
+        <div className="hidden sm:flex justify-between items-center pt-3.5 border-t border-gray-200/60 dark:border-white/10 mt-auto gap-2">
+          <div className="flex flex-col min-w-0 max-w-[55%]">
             <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 font-heading truncate">
               {event.organizations?.name || "LPU Club"}
             </span>
@@ -157,8 +167,8 @@ export const AdBannerCardComponent = ({ ad }: { ad: AdvertisementFeedItem }) => 
   const imageUrl = getEventImage(ad, 'advertisement', 480);
 
   return (
-    <article className="glass-panel group flex flex-col h-full overflow-hidden border border-indigo-500/40 dark:border-indigo-500/30 rounded-[22px] sm:rounded-[28px] shadow-lg hover:shadow-2xl transition-all duration-300 relative bg-gradient-to-b from-indigo-950/20 via-purple-950/10 to-transparent">
-      <div className="h-[180px] xs:h-[200px] sm:h-[230px] w-full relative overflow-hidden shrink-0 bg-slate-900/50">
+    <article className="glass-panel group flex flex-col h-full overflow-hidden border border-indigo-500/40 dark:border-indigo-500/30 rounded-[20px] sm:rounded-[28px] shadow-lg hover:shadow-2xl transition-all duration-300 relative bg-gradient-to-b from-indigo-950/20 via-purple-950/10 to-transparent">
+      <div className="h-[155px] xs:h-[175px] sm:h-[230px] w-full relative overflow-hidden shrink-0 bg-slate-900/50">
         <img
           src={imageUrl}
           alt={ad.name}
@@ -173,29 +183,41 @@ export const AdBannerCardComponent = ({ ad }: { ad: AdvertisementFeedItem }) => 
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
         
         {/* Distinctive Ad Disclosure Badge */}
-        <div className="absolute top-3 left-3 sm:top-4 sm:left-4">
-          <span className="flex items-center gap-1.5 px-3 py-1 bg-indigo-950/90 backdrop-blur-md text-indigo-300 border border-indigo-500/50 rounded-full font-heading text-[10px] font-black uppercase tracking-wider shadow-lg">
+        <div className="absolute top-2.5 left-2.5 sm:top-4 sm:left-4">
+          <span className="flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-indigo-950/90 backdrop-blur-md text-indigo-300 border border-indigo-500/50 rounded-full font-heading text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-lg">
             <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
             Sponsored Promotion
           </span>
         </div>
       </div>
 
-      <div className="p-4 sm:p-5 flex flex-col flex-1">
-        <span className="text-[10px] sm:text-xs font-black uppercase text-indigo-400 tracking-wider font-heading mb-1.5">
-          PARTNER SPOTLIGHT
-        </span>
+      <div className="p-3.5 sm:p-5 flex flex-col flex-1">
+        <div className="flex items-center justify-between gap-2 mb-1 sm:mb-1.5">
+          <span className="text-[10px] sm:text-xs font-black uppercase text-indigo-400 tracking-wider font-heading">
+            PARTNER SPOTLIGHT
+          </span>
+          {/* Mobile Learn More CTA (fitted directly in content, removing bottom line) */}
+          <button 
+            type="button"
+            onClick={() => ad.redirect_url && window.open(ad.redirect_url, "_blank")}
+            className="sm:hidden flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-full font-heading font-black text-[11px] cursor-pointer shrink-0 shadow-md shadow-indigo-600/30 active:scale-95 transition-all"
+          >
+            <span>Learn More</span>
+            <ArrowUpRight className="h-3 w-3" />
+          </button>
+        </div>
 
-        <h3 className="text-base sm:text-lg font-black font-heading text-gray-900 dark:text-white mb-2 sm:mb-3 tracking-tight line-clamp-2 group-hover:text-indigo-400 transition-colors leading-snug break-safe">
+        <h3 className="text-sm sm:text-lg font-black font-heading text-gray-900 dark:text-white mb-1.5 sm:mb-3 tracking-tight line-clamp-2 group-hover:text-indigo-400 transition-colors leading-snug break-safe">
           {ad.name}
         </h3>
 
-        <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm mb-4 leading-relaxed line-clamp-3 flex-1 break-safe">
+        <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm mb-0 sm:mb-4 leading-relaxed line-clamp-2 sm:line-clamp-3 flex-1 break-safe">
           Featured university partner session and promotion. Click below to participate and explore opportunities.
         </p>
 
-        <div className="flex justify-between items-center pt-3.5 border-t border-indigo-500/20 mt-auto gap-2">
-          <span className="hidden sm:inline-block text-[10px] sm:text-[11px] font-black text-indigo-400 uppercase tracking-wider font-heading">
+        {/* Desktop-only Footer: Learn More CTA & Partner Tag (Hidden on Mobile) */}
+        <div className="hidden sm:flex justify-between items-center pt-3.5 border-t border-indigo-500/20 mt-auto gap-2">
+          <span className="text-[10px] sm:text-[11px] font-black text-indigo-400 uppercase tracking-wider font-heading">
             Official Partner
           </span>
           <button 
@@ -216,17 +238,17 @@ export const AdBannerCard = React.memo(AdBannerCardComponent);
 
 export const SkeletonCard = React.memo(() => {
   return (
-    <div className="flex flex-col h-full rounded-[22px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md p-4 space-y-4">
-      <div className="h-[200px] w-full bg-gray-200/70 dark:bg-white/5 rounded-[20px] skeleton-base" />
-      <div className="space-y-3 flex-1">
-        <div className="h-4 w-20 rounded-md skeleton-base" />
-        <div className="h-6 w-3/4 rounded-md skeleton-base" />
-        <div className="space-y-2 mt-4">
-          <div className="h-4 w-full rounded-md skeleton-base" />
-          <div className="h-4 w-2/3 rounded-md skeleton-base" />
+    <div className="flex flex-col h-full rounded-[20px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md p-3.5 sm:p-4 space-y-3 sm:space-y-4">
+      <div className="h-[155px] xs:h-[175px] sm:h-[200px] w-full bg-gray-200/70 dark:bg-white/5 rounded-[16px] sm:rounded-[20px] skeleton-base" />
+      <div className="space-y-2 sm:space-y-3 flex-1">
+        <div className="h-3.5 sm:h-4 w-20 rounded-md skeleton-base" />
+        <div className="h-5 sm:h-6 w-3/4 rounded-md skeleton-base" />
+        <div className="space-y-2 mt-3 sm:mt-4">
+          <div className="h-3.5 sm:h-4 w-full rounded-md skeleton-base" />
+          <div className="h-3.5 sm:h-4 w-2/3 rounded-md skeleton-base" />
         </div>
       </div>
-      <div className="flex justify-between items-center pt-3 border-t border-white/10">
+      <div className="hidden sm:flex justify-between items-center pt-3 border-t border-white/10">
         <div className="h-4 w-24 rounded-md skeleton-base" />
         <div className="h-8 w-24 rounded-full skeleton-base" />
       </div>
