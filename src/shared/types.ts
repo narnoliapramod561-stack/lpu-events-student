@@ -421,3 +421,75 @@ export interface HappeningTodayConfig {
   ad_injection: HappeningTodayAdInjection;
 }
 
+// ─────────────────────────────────────────────
+// Multi-Provider Advertisement System Types
+// ─────────────────────────────────────────────
+export type AdProviderMode = 'disabled' | 'adsense' | 'direct';
+
+export interface AdPlacementConfig {
+  enabled: boolean;
+  provider: AdProviderMode;
+  frequency: number; // e.g. 1 = after every 1 event, 2 = after every 2 events
+  max_ads: number;   // Maximum ads permitted for this specific placement
+  ad_unit_id?: string; // Optional AdSense slot identifier
+}
+
+export interface AdSenseGlobalConfig {
+  publisher_id: string; // e.g. 'ca-pub-XXXXXXXXXXXXXXXX'
+  auto_ads_enabled?: boolean;
+  test_mode?: boolean;
+}
+
+export interface AdSystemConfig {
+  global_enabled: boolean;
+  max_ads_per_page: number; // Global ad limit ceiling across any single view
+  adsense: AdSenseGlobalConfig;
+  placements: {
+    hero_carousel: AdPlacementConfig;
+    happening_today: AdPlacementConfig;
+    event_hub: AdPlacementConfig;
+    event_details: AdPlacementConfig;
+  };
+}
+
+export const DEFAULT_AD_SYSTEM_CONFIG: AdSystemConfig = {
+  global_enabled: true,
+  max_ads_per_page: 10,
+  adsense: {
+    publisher_id: 'ca-pub-0000000000000000',
+    auto_ads_enabled: false,
+    test_mode: true,
+  },
+  placements: {
+    hero_carousel: {
+      enabled: true,
+      provider: 'direct',
+      frequency: 2, // PRD: after every 2 normal slides
+      max_ads: 3,
+      ad_unit_id: '1000000001',
+    },
+    happening_today: {
+      enabled: true,
+      provider: 'direct',
+      frequency: 1, // PRD: after every 1 normal event
+      max_ads: 3,
+      ad_unit_id: '1000000002',
+    },
+    event_hub: {
+      enabled: true,
+      provider: 'direct',
+      frequency: 1, // PRD: after every 1 event
+      max_ads: 5,
+      ad_unit_id: '1000000003',
+    },
+    event_details: {
+      enabled: false,
+      provider: 'direct',
+      frequency: 1,
+      max_ads: 2,
+      ad_unit_id: '1000000004',
+    },
+  },
+};
+
+

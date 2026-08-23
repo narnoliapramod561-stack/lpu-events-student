@@ -17,13 +17,14 @@ import { lpuClient } from "../supabase";
 import { 
   EventFeedItem, 
   AdvertisementFeedItem, 
+  AdSystemConfig,
   trackEvent, 
   trackRegistrationClick,
   getStudentEventUrl,
   generateQrDataUrl
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
-
+import { AdSenseSlot } from "./AdSenseSlot";
 
 interface EventDetailsViewProps {
   eventId: string;
@@ -31,13 +32,15 @@ interface EventDetailsViewProps {
   onSelectEvent: (id: string) => void;
   ads: AdvertisementFeedItem[];
   allEvents?: EventFeedItem[];
+  adSystemConfig?: AdSystemConfig | null;
 }
 
 export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
   eventId,
   onBack,
   ads,
-  allEvents = []
+  allEvents = [],
+  adSystemConfig,
 }) => {
   // Pre-seed with existing event from memory for instant render
   const initialEvent = useMemo(() => {
@@ -486,32 +489,87 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         </p>
       </div>
 
-      {/* Sponsored Spotlight 1 */}
-      {spotlight1 && (
-        <div className="relative glass-panel-ad rounded-[16px] sm:rounded-[28px] px-4 py-4 sm:p-6 mb-6 sm:mb-8 border border-indigo-500/40 dark:border-indigo-500/30 hover:border-indigo-500/70 text-gray-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl hover:shadow-[0_20px_50px_rgba(99,102,241,0.22)] overflow-hidden transition-all">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/15 dark:bg-violet-600/15 rounded-full blur-2xl pointer-events-none" />
-          <div className="relative z-10">
-            <span className="inline-flex items-center gap-1.5 font-heading text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full glass-badge-ad mb-1.5 tracking-wider uppercase shadow-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
-              <Sparkles className="h-3 w-3" />
-              Sponsored Spotlight
-            </span>
-            <h3 className="font-heading text-base sm:text-xl font-bold text-gray-900 dark:text-white break-safe mt-1">
-              {spotlight1.name}
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mt-1 break-safe">
-              {(spotlight1 as any).description || "Access exclusive opportunities, resources, and mentorship for students."}
-            </p>
-          </div>
-          <button
-            onClick={() => handleAdClick(spotlight1)}
-            className="relative z-10 flex items-center justify-center gap-1.5 glass-btn-ad px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap self-start md:self-center cursor-pointer shadow-sm touch-target font-heading"
-          >
-            <span>Explore</span>
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
+      {/* Sponsored Spotlight 1 / AdSense */}
+      {(() => {
+        const detailsConfig = adSystemConfig?.placements?.event_details;
+        const isGlobalEnabled = adSystemConfig?.global_enabled !== false;
+        
+        // If explicitly configured and enabled
+        if (detailsConfig && isGlobalEnabled && detailsConfig.enabled) {
+          if (detailsConfig.provider === 'adsense') {
+            return (
+              <div className="mb-6 sm:mb-8">
+                <AdSenseSlot
+                  format="banner"
+                  slotId={detailsConfig.ad_unit_id || "1000000004"}
+                  adSenseConfig={adSystemConfig?.adsense}
+                />
+              </div>
+            );
+          }
+          if (detailsConfig.provider === 'direct' && spotlight1) {
+            return (
+              <div className="relative glass-panel-ad rounded-[16px] sm:rounded-[28px] px-4 py-4 sm:p-6 mb-6 sm:mb-8 border border-indigo-500/40 dark:border-indigo-500/30 hover:border-indigo-500/70 text-gray-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl hover:shadow-[0_20px_50px_rgba(99,102,241,0.22)] overflow-hidden transition-all">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/15 dark:bg-violet-600/15 rounded-full blur-2xl pointer-events-none" />
+                <div className="relative z-10">
+                  <span className="inline-flex items-center gap-1.5 font-heading text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full glass-badge-ad mb-1.5 tracking-wider uppercase shadow-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
+                    <Sparkles className="h-3 w-3" />
+                    Sponsored Spotlight
+                  </span>
+                  <h3 className="font-heading text-base sm:text-xl font-bold text-gray-900 dark:text-white break-safe mt-1">
+                    {spotlight1.name}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mt-1 break-safe">
+                    {(spotlight1 as any).description || "Access exclusive opportunities, resources, and mentorship for students."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAdClick(spotlight1)}
+                  className="relative z-10 flex items-center justify-center gap-1.5 glass-btn-ad px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap self-start md:self-center cursor-pointer shadow-sm touch-target font-heading"
+                >
+                  <span>Explore</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            );
+          }
+          return null;
+        }
+
+        // Fallback default: show direct spotlight1 if present and no explicit disable config
+        if (!detailsConfig && spotlight1) {
+          return (
+            <div className="relative glass-panel-ad rounded-[16px] sm:rounded-[28px] px-4 py-4 sm:p-6 mb-6 sm:mb-8 border border-indigo-500/40 dark:border-indigo-500/30 hover:border-indigo-500/70 text-gray-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl hover:shadow-[0_20px_50px_rgba(99,102,241,0.22)] overflow-hidden transition-all">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/15 dark:bg-violet-600/15 rounded-full blur-2xl pointer-events-none" />
+              <div className="relative z-10">
+                <span className="inline-flex items-center gap-1.5 font-heading text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full glass-badge-ad mb-1.5 tracking-wider uppercase shadow-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
+                  <Sparkles className="h-3 w-3" />
+                  Sponsored Spotlight
+                </span>
+                <h3 className="font-heading text-base sm:text-xl font-bold text-gray-900 dark:text-white break-safe mt-1">
+                  {spotlight1.name}
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mt-1 break-safe">
+                  {(spotlight1 as any).description || "Access exclusive opportunities, resources, and mentorship for students."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleAdClick(spotlight1)}
+                className="relative z-10 flex items-center justify-center gap-1.5 glass-btn-ad px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap self-start md:self-center cursor-pointer shadow-sm touch-target font-heading"
+              >
+                <span>Explore</span>
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          );
+        }
+
+        return null;
+      })()}
 
       {/* Event Schedule Details & QR Info Box */}
       <div className="flex flex-col gap-4 mb-6 sm:mb-10">
@@ -597,32 +655,75 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         </div>
       </div>
 
-      {/* Sponsored Spotlight 2 */}
-      {spotlight2 && (
-        <div className="relative glass-panel-ad rounded-[16px] sm:rounded-[28px] px-4 py-4 sm:p-6 mb-6 sm:mb-8 border border-indigo-500/40 dark:border-indigo-500/30 hover:border-indigo-500/70 text-gray-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl hover:shadow-[0_20px_50px_rgba(99,102,241,0.22)] overflow-hidden transition-all">
-          <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/15 dark:bg-violet-600/15 rounded-full blur-2xl pointer-events-none" />
-          <div className="relative z-10">
-            <span className="inline-flex items-center gap-1.5 font-heading text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full glass-badge-ad mb-1.5 tracking-wider uppercase shadow-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
-              <Sparkles className="h-3 w-3" />
-              Sponsored Spotlight
-            </span>
-            <h3 className="font-heading text-base sm:text-xl font-bold text-gray-900 dark:text-white break-safe mt-1">
-              {spotlight2.name}
-            </h3>
-            <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mt-1 break-safe">
-              {(spotlight2 as any).description || "Access exclusive grants, mentorship programs, and seed funding opportunities."}
-            </p>
-          </div>
-          <button
-            onClick={() => handleAdClick(spotlight2)}
-            className="relative z-10 flex items-center justify-center gap-1.5 glass-btn-ad px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap self-start md:self-center cursor-pointer shadow-sm touch-target font-heading"
-          >
-            <span>Learn More</span>
-            <ArrowUpRight className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      )}
+      {/* Sponsored Spotlight 2 / AdSense Bottom */}
+      {(() => {
+        const detailsConfig = adSystemConfig?.placements?.event_details;
+        const isGlobalEnabled = adSystemConfig?.global_enabled !== false;
+
+        if (detailsConfig && isGlobalEnabled && detailsConfig.enabled) {
+          if (detailsConfig.provider === 'direct' && spotlight2) {
+            return (
+              <div className="relative glass-panel-ad rounded-[16px] sm:rounded-[28px] px-4 py-4 sm:p-6 mb-6 sm:mb-8 border border-indigo-500/40 dark:border-indigo-500/30 hover:border-indigo-500/70 text-gray-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl hover:shadow-[0_20px_50px_rgba(99,102,241,0.22)] overflow-hidden transition-all">
+                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/15 dark:bg-violet-600/15 rounded-full blur-2xl pointer-events-none" />
+                <div className="relative z-10">
+                  <span className="inline-flex items-center gap-1.5 font-heading text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full glass-badge-ad mb-1.5 tracking-wider uppercase shadow-xs">
+                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
+                    <Sparkles className="h-3 w-3" />
+                    Sponsored Spotlight
+                  </span>
+                  <h3 className="font-heading text-base sm:text-xl font-bold text-gray-900 dark:text-white break-safe mt-1">
+                    {spotlight2.name}
+                  </h3>
+                  <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mt-1 break-safe">
+                    {(spotlight2 as any).description || "Access exclusive grants, mentorship programs, and seed funding opportunities."}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handleAdClick(spotlight2)}
+                  className="relative z-10 flex items-center justify-center gap-1.5 glass-btn-ad px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap self-start md:self-center cursor-pointer shadow-sm touch-target font-heading"
+                >
+                  <span>Learn More</span>
+                  <ArrowUpRight className="h-3.5 w-3.5" />
+                </button>
+              </div>
+            );
+          }
+          return null;
+        }
+
+        if (!detailsConfig && spotlight2) {
+          return (
+            <div className="relative glass-panel-ad rounded-[16px] sm:rounded-[28px] px-4 py-4 sm:p-6 mb-6 sm:mb-8 border border-indigo-500/40 dark:border-indigo-500/30 hover:border-indigo-500/70 text-gray-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl hover:shadow-[0_20px_50px_rgba(99,102,241,0.22)] overflow-hidden transition-all">
+              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/15 dark:bg-violet-600/15 rounded-full blur-2xl pointer-events-none" />
+              <div className="relative z-10">
+                <span className="inline-flex items-center gap-1.5 font-heading text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full glass-badge-ad mb-1.5 tracking-wider uppercase shadow-xs">
+                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
+                  <Sparkles className="h-3 w-3" />
+                  Sponsored Spotlight
+                </span>
+                <h3 className="font-heading text-base sm:text-xl font-bold text-gray-900 dark:text-white break-safe mt-1">
+                  {spotlight2.name}
+                </h3>
+                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mt-1 break-safe">
+                  {(spotlight2 as any).description || "Access exclusive grants, mentorship programs, and seed funding opportunities."}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => handleAdClick(spotlight2)}
+                className="relative z-10 flex items-center justify-center gap-1.5 glass-btn-ad px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap self-start md:self-center cursor-pointer shadow-sm touch-target font-heading"
+              >
+                <span>Learn More</span>
+                <ArrowUpRight className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          );
+        }
+
+        return null;
+      })()}
+
 
       {/* Section Navigation Tabs (Unified Parent Glass Container) */}
       {tabs.length > 0 && (

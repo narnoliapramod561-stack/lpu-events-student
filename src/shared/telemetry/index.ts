@@ -1,5 +1,5 @@
 // packages/shared/src/telemetry/index.ts
-// Unified telemetry exports for LPU Events
+// Unified web telemetry exports for LPU Events
 
 export * from './types';
 export * from './posthog';

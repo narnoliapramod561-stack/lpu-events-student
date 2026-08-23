@@ -111,7 +111,7 @@ export function initSentry(config: SentryConfig): boolean {
       tracesSampleRate: config.tracesSampleRate ?? 0.2, // 20% performance trace sampling
       
       // Privacy-first data scrubber on all captured events
-      beforeSend(event, _hint) {
+      beforeSend(event: any, _hint?: any) {
         // Tag application surface
         event.tags = {
           ...event.tags,
@@ -139,7 +139,7 @@ export function initSentry(config: SentryConfig): boolean {
 
         // Scrub exception messages
         if (event.exception?.values) {
-          event.exception.values = event.exception.values.map(val => ({
+          event.exception.values = event.exception.values.map((val: any) => ({
             ...val,
             value: val.value ? scrubSensitiveData(val.value) : val.value
           }));
@@ -154,7 +154,7 @@ export function initSentry(config: SentryConfig): boolean {
           event.extra = scrubSensitiveData(event.extra);
         }
         if (event.breadcrumbs) {
-          event.breadcrumbs = event.breadcrumbs.map(bc => ({
+          event.breadcrumbs = event.breadcrumbs.map((bc: any) => ({
             ...bc,
             data: bc.data ? scrubSensitiveData(bc.data) : bc.data,
             message: bc.message ? scrubSensitiveData(bc.message) : bc.message
@@ -181,7 +181,7 @@ export function captureSafeException(error: any, context: Record<string, any> = 
 
   if (sentryInitialized) {
     try {
-      Sentry.withScope((scope) => {
+      Sentry.withScope((scope: any) => {
         Object.entries(safeContext).forEach(([k, v]) => {
           scope.setExtra(k, v);
         });
@@ -194,12 +194,12 @@ export function captureSafeException(error: any, context: Record<string, any> = 
 /**
  * Safely capture a message to Sentry.
  */
-export function captureSafeMessage(message: string, level: Sentry.SeverityLevel = 'info', context: Record<string, any> = {}): void {
+export function captureSafeMessage(message: string, level: any = 'info', context: Record<string, any> = {}): void {
   const safeContext = scrubSensitiveData(context);
 
   if (sentryInitialized) {
     try {
-      Sentry.withScope((scope) => {
+      Sentry.withScope((scope: any) => {
         Object.entries(safeContext).forEach(([k, v]) => {
           scope.setExtra(k, v);
         });

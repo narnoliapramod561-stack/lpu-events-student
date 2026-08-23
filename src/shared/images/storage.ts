@@ -49,12 +49,11 @@ export class CloudflareR2StorageProvider implements MediaStorage {
     bucketName?: string;
     publicBaseUrl?: string;
   }) {
-    const globalEnv = typeof globalThis !== 'undefined' ? (globalThis as any).process?.env : undefined;
-    const metaEnv = typeof window !== 'undefined' ? (import.meta as any)?.env : undefined;
+    const globalEnv = typeof globalThis !== 'undefined' ? (globalThis as any).process?.env : (typeof process !== 'undefined' ? process.env : undefined);
 
-    this.bucketName = config?.bucketName || globalEnv?.R2_BUCKET_NAME || metaEnv?.VITE_R2_BUCKET_NAME || 'media';
+    this.bucketName = config?.bucketName || globalEnv?.R2_BUCKET_NAME || globalEnv?.VITE_R2_BUCKET_NAME || 'media';
     
-    const configuredPublicUrl = config?.publicBaseUrl || globalEnv?.VITE_R2_PUBLIC_URL || metaEnv?.VITE_R2_PUBLIC_URL;
+    const configuredPublicUrl = config?.publicBaseUrl || globalEnv?.VITE_R2_PUBLIC_URL || globalEnv?.EXPO_PUBLIC_R2_PUBLIC_URL;
     this.publicBaseUrl = configuredPublicUrl ? configuredPublicUrl.replace(/\/+$/, '') : 'https://media.lpu-events.in';
   }
 

@@ -17,3 +17,4 @@ export * from './client';
 export * from './images';
 export * from './telemetry';
 export * from './qr';
+export * from './ad_frequency';

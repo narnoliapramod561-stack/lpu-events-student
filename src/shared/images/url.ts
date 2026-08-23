@@ -252,36 +252,20 @@ export function getKeywordFallbackImage(nameOrText: string): string {
  * Resolves the base CDN / Storage URL
  */
 function getStorageBaseUrl(): string {
-  const globalEnv = typeof globalThis !== 'undefined' ? (globalThis as any).process?.env : undefined;
-  const r2Url = globalEnv?.VITE_R2_PUBLIC_URL;
+  const globalEnv = typeof globalThis !== 'undefined' ? (globalThis as any).process?.env : (typeof process !== 'undefined' ? process.env : undefined);
+  const r2Url = globalEnv?.VITE_R2_PUBLIC_URL || globalEnv?.EXPO_PUBLIC_R2_PUBLIC_URL;
   if (r2Url && typeof r2Url === 'string' && r2Url.trim()) {
     return r2Url.trim().replace(/\/+$/, '');
   }
 
-  if (typeof window !== 'undefined') {
-    const metaR2 = (import.meta as any)?.env?.VITE_R2_PUBLIC_URL;
-    if (metaR2 && typeof metaR2 === 'string' && metaR2.trim()) {
-      return metaR2.trim().replace(/\/+$/, '');
-    }
-
-    const metaSupabase = (import.meta as any)?.env?.VITE_SUPABASE_URL;
-    if (metaSupabase && typeof metaSupabase === 'string') {
-      let base = metaSupabase.trim().replace(/\/+$/, '');
-      try {
-        const parsed = new URL(base);
-        if ((parsed.hostname === 'localhost' || parsed.hostname === '127.0.0.1') && window.location?.hostname) {
-          parsed.hostname = window.location.hostname;
-          base = parsed.origin;
-        }
-      } catch {}
-      return `${base}/storage/v1/object/public/media`;
-    }
-
-    const host = (typeof window !== 'undefined' && window.location?.hostname) ? window.location.hostname : 'localhost';
-    return `http://${host}:54321/storage/v1/object/public/media`;
+  const supabaseUrl = globalEnv?.VITE_SUPABASE_URL || globalEnv?.EXPO_PUBLIC_SUPABASE_URL;
+  if (supabaseUrl && typeof supabaseUrl === 'string' && supabaseUrl.trim()) {
+    const base = supabaseUrl.trim().replace(/\/+$/, '');
+    return `${base}/storage/v1/object/public/media`;
   }
 
-  return 'http://localhost:54321/storage/v1/object/public/media';
+  const host = (typeof window !== 'undefined' && window.location?.hostname) ? window.location.hostname : 'localhost';
+  return `http://${host}:54321/storage/v1/object/public/media`;
 }
 
 /**

@@ -18,6 +18,8 @@ import {
   AdvertisementFeedItem, 
   CarouselItemFeedItem,
   HappeningTodayConfig,
+  AdSystemConfig,
+  DEFAULT_AD_SYSTEM_CONFIG,
   trackPageView,
   trackEvent
 } from "@lpu-events/shared";
@@ -67,6 +69,7 @@ export default function App() {
   const [carouselSlides, setCarouselSlides] = useState<CarouselItemFeedItem[]>([]);
   const [happeningTodayEvents, setHappeningTodayEvents] = useState<EventFeedItem[]>([]);
   const [happeningTodayConfig, setHappeningTodayConfig] = useState<HappeningTodayConfig | null>(null);
+  const [adSystemConfig, setAdSystemConfig] = useState<AdSystemConfig>(DEFAULT_AD_SYSTEM_CONFIG);
 
   // Configurable limits (with PRD defaults)
   const [, setLimit] = useState(10);
@@ -254,6 +257,20 @@ export default function App() {
                 ? JSON.parse(htSetting.value)
                 : htSetting.value;
               setHappeningTodayConfig(parsed);
+            } catch {}
+          }
+          const adSysSetting = data.find(s => s.key === "ad_system_config");
+          if (adSysSetting) {
+            try {
+              const parsed = typeof adSysSetting.value === 'string'
+                ? JSON.parse(adSysSetting.value)
+                : adSysSetting.value;
+              setAdSystemConfig(prev => ({
+                ...prev,
+                ...parsed,
+                adsense: { ...prev.adsense, ...(parsed.adsense || {}) },
+                placements: { ...prev.placements, ...(parsed.placements || {}) },
+              }));
             } catch {}
           }
         }
@@ -572,6 +589,7 @@ export default function App() {
               onSelectEvent={handleSelectEvent}
               ads={ads}
               allEvents={events}
+              adSystemConfig={adSystemConfig}
             />
           ) : (
             <>
@@ -583,6 +601,7 @@ export default function App() {
                     carouselItems={carouselSlides}
                     featuredEvents={featuredEvents}
                     ads={ads}
+                    adSystemConfig={adSystemConfig}
                     onSelectEvent={handleSelectEvent}
                   />
 
@@ -596,6 +615,7 @@ export default function App() {
                     events={happeningTodayEvents}
                     ads={ads}
                     config={happeningTodayConfig}
+                    adSystemConfig={adSystemConfig}
                     onSelectEvent={handleSelectEvent}
                   />
 
@@ -641,6 +661,7 @@ export default function App() {
                 <EventGrid
                   events={displayedEvents}
                   ads={ads}
+                  adSystemConfig={adSystemConfig}
                   loading={eventsLoading}
                   onResetFilters={handleResetFilters}
                   onSelectEvent={handleSelectEvent}

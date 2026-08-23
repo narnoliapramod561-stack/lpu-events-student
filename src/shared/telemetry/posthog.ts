@@ -50,7 +50,7 @@ export function initPostHog(config: PostHogConfig): typeof posthog | null {
       disable_session_recording: true, // We use Microsoft Clarity for recordings
       respect_dnt: true,
       persistence: 'localStorage+cookie',
-      loaded: (ph) => {
+      loaded: (ph: any) => {
         // Enforce required 'app' super property on ALL events
         ph.register({
           app: config.app,

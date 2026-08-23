@@ -1,22 +1,32 @@
 import React from "react";
-import { Calendar, Clock, MapPin, SearchX, RefreshCw, ArrowUpRight } from "lucide-react";
-import { EventFeedItem, AdvertisementFeedItem } from "@lpu-events/shared";
+import { Calendar, MapPin, Flame, ArrowUpRight, SearchX, RefreshCw } from "lucide-react";
+import { 
+  EventFeedItem, 
+  AdvertisementFeedItem, 
+  AdSystemConfig,
+  injectAdsIntoSequence 
+} from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
+import { AdSenseSlot } from "./AdSenseSlot";
 
-export const EventCardComponent = ({ event, onSelect }: {
+export const EventCardComponent = ({
+  event,
+  onSelect,
+}: {
   event: EventFeedItem;
   onSelect: (id: string) => void;
-  idx?: number;
 }) => {
+  const isPaid = event.pricing_type === "PAID";
+  const isFree = !isPaid;
+  const isLive = new Date(event.start_at) <= new Date() && new Date(event.end_at) >= new Date();
   const imageUrl = getEventImage(event, 'event-card', 480);
 
   return (
     <article
-      className="glass-card mobile-card-contained group flex flex-col h-full overflow-hidden cursor-pointer rounded-[14px] sm:rounded-[32px] p-2 sm:p-3.5 transition-all duration-200"
-      onClick={() => onSelect && onSelect(event.id)}
+      onClick={() => onSelect(event.id)}
+      className="col-span-1 glass-panel mobile-card-contained group cursor-pointer flex flex-col h-full overflow-hidden border border-white/90 dark:border-white/10 hover:border-primary/50 dark:hover:border-primary/50 rounded-[14px] sm:rounded-[32px] p-2 sm:p-3.5 transition-all duration-200 shadow-md hover:shadow-[0_20px_50px_rgba(255,107,0,0.14)] relative hover:scale-[1.01] active:scale-[0.99] touch-target"
     >
-      {/* Event Image Container with Canonical Compact Ratio */}
-      <div className="aspect-[4/3] sm:h-[230px] sm:aspect-auto w-full relative overflow-hidden rounded-[10px] sm:rounded-[24px] bg-black/10 shrink-0 border border-white/50 dark:border-white/10">
+      <div className="aspect-[4/3] sm:h-[240px] sm:aspect-auto w-full relative overflow-hidden rounded-[10px] sm:rounded-[24px] shrink-0 border border-white/80 dark:border-white/10 bg-surface-container">
         <img
           src={imageUrl}
           alt={event.name}
@@ -28,105 +38,76 @@ export const EventCardComponent = ({ event, onSelect }: {
               "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=600&auto=format&fit=crop";
           }}
         />
+
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
-        {event.is_trending && (
-          <div className="absolute top-1.5 left-1.5 sm:top-3.5 sm:left-3.5">
-            <span className="flex items-center gap-1 sm:gap-1.5 px-2 py-0.5 sm:px-3 sm:py-1.5 glass-pill-active rounded-full font-heading text-[8px] sm:text-[10px] font-black uppercase tracking-wider">
-              <span className="w-1 h-1 sm:w-1.5 sm:h-1.5 rounded-full bg-white animate-pulse" />
-              🔥 Trending
+
+        <div className="absolute top-2 left-2 sm:top-3.5 sm:left-3.5 flex flex-wrap gap-1 sm:gap-1.5 z-10">
+          {event.is_trending && (
+            <span className="flex items-center gap-1 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 text-white font-heading text-[8px] sm:text-[10px] font-black uppercase tracking-wider shadow-md">
+              <Flame className="w-2.5 h-2.5 sm:w-3 sm:h-3 fill-current animate-pulse" />
+              Trending
             </span>
+          )}
+
+          {isLive ? (
+            <span className="flex items-center gap-1 px-2 py-0.5 sm:px-3 sm:py-1 rounded-full bg-red-600/90 text-white font-heading text-[8px] sm:text-[10px] font-black uppercase tracking-wider shadow-md backdrop-blur-md">
+              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              Live Now
+            </span>
+          ) : isFree ? (
+            <span className="px-2 py-0.5 sm:px-3 sm:py-1 glass-badge-free rounded-full font-heading text-[8px] sm:text-[10px] font-black uppercase tracking-wider shadow-sm">
+              Free Entry
+            </span>
+          ) : (
+            <span className="px-2 py-0.5 sm:px-3 sm:py-1 glass-badge-paid rounded-full font-heading text-[8px] sm:text-[10px] font-black uppercase tracking-wider shadow-sm">
+              {event.price_amount !== undefined && event.price_amount !== null
+                ? `₹${event.price_amount}`
+                : "Paid"}
+            </span>
+          )}
+        </div>
+
+        <div className="absolute bottom-2 left-2 sm:bottom-3.5 sm:left-3.5 right-2 sm:right-3.5 flex items-center justify-between text-white/95 text-[10px] sm:text-xs font-semibold z-10">
+          <div className="flex items-center gap-1 sm:gap-1.5 drop-shadow-md truncate">
+            <MapPin className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-primary shrink-0" />
+            <span className="truncate">{event.venue_name}</span>
           </div>
-        )}
+        </div>
       </div>
 
-      {/* Event Content Details */}
-      <div className="px-1 pt-2 pb-1 sm:px-3 sm:py-3.5 sm:p-4 flex flex-col flex-1">
-        {/* Category Pill / Tag */}
-        <span className="text-[9px] sm:text-[10px] font-black text-orange-600 dark:text-orange-400 uppercase tracking-wider font-heading truncate mb-0.5 sm:mb-1 block">
-          {event.categories?.name || event.organizations?.name || "Campus Event"}
-        </span>
+      <div className="p-1 pt-2 sm:p-4 flex flex-col flex-1">
+        <div className="flex items-center gap-1.5 mb-1 sm:mb-2 text-primary font-heading font-black text-[10px] sm:text-xs tracking-wider uppercase">
+          <Calendar className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+          <span>
+            {new Date(event.start_at).toLocaleDateString(undefined, {
+              month: "short",
+              day: "numeric",
+            })}
+            {" • "}
+            {new Date(event.start_at).toLocaleTimeString("en-US", {
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            })}
+          </span>
+        </div>
 
-        {/* Title with Strict 2-line Clamp */}
-        <h3 className="text-[13px] leading-[1.25] sm:text-xl font-black font-heading text-gray-900 dark:text-white mb-2 sm:mb-4 tracking-tight line-clamp-2 min-h-[2.5em] sm:min-h-0 group-hover:text-primary transition-colors break-safe">
+        <h3 className="text-xs min-[390px]:text-sm sm:text-lg font-black font-heading text-gray-900 dark:text-white mb-1 sm:mb-2 tracking-tight line-clamp-2 group-hover:text-primary transition-colors leading-snug break-safe">
           {event.name}
         </h3>
 
-        {/* --- MOBILE COMPACT METADATA (< sm) --- */}
-        <div className="block sm:hidden space-y-1 mb-2.5 mt-auto">
-          {/* Date & Time Compact Row */}
-          <div className="flex items-center gap-1.5 text-gray-800 dark:text-gray-200">
-            <Calendar className="h-3 w-3 text-primary shrink-0" />
-            <span className="text-[10px] font-bold tracking-tight truncate">
-              {new Date(event.start_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}
-              {" • "}
-              {new Date(event.start_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
-            </span>
-          </div>
+        <p className="text-gray-600 dark:text-gray-300 text-[11px] sm:text-xs mb-2 sm:mb-4 leading-relaxed line-clamp-2 flex-1 break-safe">
+          {event.description}
+        </p>
 
-          {/* Venue Compact Row */}
-          <div className="flex items-center gap-1.5 text-gray-600 dark:text-gray-400">
-            <MapPin className="h-3 w-3 text-primary/80 shrink-0" />
-            <span className="text-[10px] font-medium truncate">{event.venue_name}</span>
-          </div>
-        </div>
-
-        {/* --- DESKTOP SPACIOUS METADATA (sm+) --- */}
-        <div className="hidden sm:block space-y-2.5 sm:space-y-3 mb-5 mt-auto">
-          {/* Date */}
-          <div className="flex items-center gap-3">
-            <div className="glass-icon-circle text-orange-600 dark:text-orange-400">
-              <Calendar className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-[9px] sm:text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider font-heading">Date</span>
-              <span className="text-gray-900 dark:text-white font-black text-sm sm:text-base truncate">
-                {new Date(event.start_at).toLocaleDateString()}
-              </span>
-            </div>
-          </div>
-
-          {/* Schedule */}
-          <div className="flex items-center gap-3">
-            <div className="glass-icon-circle text-orange-600 dark:text-orange-400">
-              <Clock className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-[9px] sm:text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider font-heading">Schedule</span>
-              <span className="text-gray-900 dark:text-white font-black text-sm sm:text-base truncate">
-                {new Date(event.start_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true })}
-              </span>
-            </div>
-          </div>
-
-          {/* Venue */}
-          <div className="flex items-center gap-3">
-            <div className="glass-icon-circle text-orange-600 dark:text-orange-400">
-              <MapPin className="h-4 w-4 sm:h-4.5 sm:w-4.5" />
-            </div>
-            <div className="flex flex-col min-w-0">
-              <span className="text-[9px] sm:text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider font-heading">Venue</span>
-              <span className="text-gray-900 dark:text-white font-black text-sm sm:text-base truncate">{event.venue_name}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* --- MOBILE COMPACT CTA (< sm) --- */}
-        <div className="block sm:hidden pt-2 border-t border-white/60 dark:border-white/10 mt-auto">
-          <button className="w-full py-1.5 px-2 glass-btn-primary rounded-lg font-heading font-black text-[11px] cursor-pointer shadow-xs text-center touch-target flex items-center justify-center">
-            View Details
-          </button>
-        </div>
-
-        {/* --- DESKTOP FULL FOOTER (sm+) --- */}
-        <div className="hidden sm:flex justify-between items-center pt-3.5 border-t border-white/60 dark:border-white/10 mt-auto gap-2">
-          <div className="flex flex-col min-w-0 max-w-[55%]">
-            <span className="text-[9px] sm:text-[10px] font-black text-gray-600 dark:text-gray-400 uppercase tracking-wide font-heading truncate">
-              {event.organizations?.name || "LPU Club"}
-            </span>
-          </div>
-          <button className="px-4 sm:px-5 py-2.5 glass-btn-primary rounded-full font-heading font-black text-xs cursor-pointer shadow-sm shrink-0 touch-target">
-            View Details
-          </button>
+        <div className="flex justify-between items-center pt-2 sm:pt-3 border-t border-white/60 dark:border-white/10 mt-auto">
+          <span className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-bold truncate max-w-[60%] font-heading">
+            {event.organizations?.name || "LPU Club"}
+          </span>
+          <span className="text-[10px] sm:text-xs font-heading font-black text-primary flex items-center gap-0.5 sm:gap-1 group-hover:translate-x-0.5 transition-transform">
+            <span>Explore</span>
+            <ArrowUpRight className="w-3 h-3 sm:w-3.5 sm:h-3.5" />
+          </span>
         </div>
       </div>
     </article>
@@ -174,7 +155,7 @@ export const AdBannerCardComponent = ({ ad }: { ad: AdvertisementFeedItem }) => 
 
         <div className="flex justify-between items-center pt-2 sm:pt-3.5 border-t border-white/60 dark:border-white/10 mt-auto gap-2">
           <span className="text-[9px] sm:text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider font-heading">
-            Spotlight
+            ADVERTISEMENT
           </span>
           <button 
             type="button"
@@ -213,15 +194,17 @@ export const SkeletonCard = React.memo(() => {
 export const EventGridComponent = ({
   events,
   ads,
+  adSystemConfig,
   loading,
   onResetFilters,
   onSelectEvent,
-  adInterval = 6,
+  adInterval = 1,
   title = "Event's Hub",
   searchQuery = ""
 }: {
   events: EventFeedItem[];
   ads: AdvertisementFeedItem[];
+  adSystemConfig?: AdSystemConfig | null;
   loading: boolean;
   onResetFilters: () => void;
   onSelectEvent: (id: string) => void;
@@ -267,16 +250,18 @@ export const EventGridComponent = ({
     );
   }
 
-  const gridItems: any[] = [];
-  let adIndex = 0;
+  // Derive grid presentation sequence using pure ad frequency algorithm
+  const placementConfig = adSystemConfig?.placements?.event_hub || {
+    enabled: true,
+    provider: 'direct',
+    frequency: adInterval || 1, // PRD default: after every 1 event
+    max_ads: 5,
+    ad_unit_id: '1000000003',
+  };
 
-  events.forEach((event, idx) => {
-    gridItems.push({ type: "event", data: event });
-    if ((idx + 1) % adInterval === 0 && ads && ads.length > 0) {
-      const ad = ads[adIndex % ads.length];
-      gridItems.push({ type: "ad", data: ad });
-      adIndex++;
-    }
+  const sequence = injectAdsIntoSequence(events, ads, placementConfig, {
+    global_enabled: adSystemConfig?.global_enabled,
+    remaining_global_quota: adSystemConfig?.max_ads_per_page,
   });
 
   return (
@@ -320,17 +305,38 @@ export const EventGridComponent = ({
       </div>
 
       <div className="grid grid-cols-1 min-[340px]:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-6 mb-6 sm:mb-12">
-        {gridItems.map((item, idx) => {
+        {sequence.map((item, idx) => {
           if (item.type === "ad") {
-            return <AdBannerCard key={`ad-${item.data.id}-${idx}`} ad={item.data} />;
+            if (item.adProvider === "adsense") {
+              return (
+                <AdSenseSlot
+                  key={`adsense-grid-${idx}`}
+                  format="in_feed_card"
+                  slotId={item.adUnitId || placementConfig.ad_unit_id || "1000000003"}
+                  adSenseConfig={adSystemConfig?.adsense}
+                />
+              );
+            }
+
+            if (item.adData) {
+              return (
+                <AdBannerCard
+                  key={`direct-ad-${item.adData.id}-${idx}`}
+                  ad={item.adData}
+                />
+              );
+            }
+
+            return null;
           }
+
+          if (!item.data) return null;
 
           return (
             <EventCard
               key={item.data.id}
               event={item.data}
               onSelect={onSelectEvent}
-              idx={idx}
             />
           );
         })}
@@ -340,4 +346,3 @@ export const EventGridComponent = ({
 };
 
 export const EventGrid = React.memo(EventGridComponent);
-
