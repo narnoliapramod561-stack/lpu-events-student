@@ -154,7 +154,7 @@ export const CategoryFilterComponent = ({
       {/* ======================================================== */}
       <div className="flex flex-col gap-2.5 sm:hidden">
 
-        {/* ─── SECTION 1: WHEN ─── Calendar Schedule Strip ─── */}
+        {/* ─── SECTION 1: SCHEDULE ─── Calendar Schedule Strip ─── */}
         <div className="relative overflow-hidden rounded-2xl">
           {/* Frosted glass background with cool slate/teal tone */}
           <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-cyan-950/60 to-slate-900/80 backdrop-blur-xl" />
@@ -167,14 +167,9 @@ export const CategoryFilterComponent = ({
                 <div className="w-6 h-6 rounded-lg bg-cyan-500/15 border border-cyan-400/25 flex items-center justify-center">
                   <Clock className="h-3.5 w-3.5 text-cyan-400" />
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-cyan-400/70 font-heading leading-none">
-                    When
-                  </span>
-                  <span className="text-[13px] font-black text-white font-heading leading-tight">
-                    Schedule
-                  </span>
-                </div>
+                <span className="text-[13px] font-black text-white font-heading">
+                  Schedule
+                </span>
               </div>
 
               {(activeScheduleFilter !== "all" || selectedDate) && (
@@ -192,7 +187,7 @@ export const CategoryFilterComponent = ({
               )}
             </div>
 
-            {/* Timeline pills — horizontal scroll */}
+            {/* Timeline pills — horizontal scroll in one line */}
             <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 -mx-0.5 px-0.5 select-none items-center touch-pan-x">
               {[
                 { id: "all", label: "All", icon: null },
@@ -258,7 +253,7 @@ export const CategoryFilterComponent = ({
           </div>
         </div>
 
-        {/* ─── SECTION 2: WHAT ─── Event Categories Explorer ─── */}
+        {/* ─── SECTION 2: CATEGORIES ─── Event Categories Explorer ─── */}
         <div className="relative overflow-hidden rounded-2xl">
           {/* Warm amber/rose glass background */}
           <div className="absolute inset-0 bg-gradient-to-br from-amber-950/70 via-orange-950/50 to-rose-950/60 backdrop-blur-xl" />
@@ -271,14 +266,9 @@ export const CategoryFilterComponent = ({
                 <div className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-400/25 flex items-center justify-center">
                   <Sparkles className="h-3.5 w-3.5 text-amber-400" />
                 </div>
-                <div className="flex flex-col">
-                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-400/70 font-heading leading-none">
-                    What
-                  </span>
-                  <span className="text-[13px] font-black text-white font-heading leading-tight">
-                    Categories
-                  </span>
-                </div>
+                <span className="text-[13px] font-black text-white font-heading">
+                  Categories
+                </span>
               </div>
 
               {/* Inline search */}
@@ -337,9 +327,9 @@ export const CategoryFilterComponent = ({
               </div>
             )}
 
-            {/* Category chips — wrap layout for better mobile density */}
+            {/* Category chips — in one single line (horizontal scroll like schedule) */}
             {filteredCategories.length > 0 ? (
-              <div className="flex flex-wrap gap-1.5 select-none">
+              <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 -mx-0.5 px-0.5 select-none items-center touch-pan-x">
                 {!cleanQuery && (
                   <button
                     type="button"
@@ -347,7 +337,7 @@ export const CategoryFilterComponent = ({
                       onSelectCategory("all");
                       onSelectSubcategory("");
                     }}
-                    className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold whitespace-nowrap active:scale-[0.96] transition-all duration-200 ${
+                    className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                       selectedCategory === "all"
                         ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 ring-1 ring-amber-300/30"
                         : "bg-white/[0.05] text-amber-200/70 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
@@ -373,13 +363,13 @@ export const CategoryFilterComponent = ({
                         onSelectCategory(isSelected ? "all" : cat.id);
                         onSelectSubcategory("");
                       }}
-                      className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold whitespace-nowrap active:scale-[0.96] transition-all duration-200 ${
+                      className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                         isSelected
                           ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 ring-1 ring-amber-300/30"
                           : "bg-white/[0.05] text-amber-200/70 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
                       }`}
                     >
-                      <CatIcon className={`h-3 w-3 ${isSelected ? "text-white" : "text-amber-400/80"}`} />
+                      <CatIcon className={`h-3.5 w-3.5 ${isSelected ? "text-white" : "text-amber-400/80"}`} />
                       <span>{cat.name}</span>
                       {subCount > 0 && (
                         <span className={`text-[9px] min-w-[16px] text-center px-1 py-px rounded-full font-black leading-none ${
@@ -398,7 +388,7 @@ export const CategoryFilterComponent = ({
               </div>
             )}
 
-            {/* Subcategories expansion */}
+            {/* Subcategories expansion (horizontal scroll in one line) */}
             {selectedCategory !== "all" && activeCategoryData && subcategories.length > 0 && (
               <div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-white/[0.04] border border-amber-500/15 mt-0.5">
                 <div className="flex items-center justify-between px-0.5">
@@ -415,11 +405,11 @@ export const CategoryFilterComponent = ({
                     </button>
                   )}
                 </div>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
                   <button
                     type="button"
                     onClick={() => onSelectSubcategory("")}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap active:scale-95 transition-all ${
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap shrink-0 active:scale-95 transition-all ${
                       !selectedSubcategory
                         ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm"
                         : "bg-white/[0.06] text-white/50 border border-white/[0.06]"
@@ -435,7 +425,7 @@ export const CategoryFilterComponent = ({
                         key={`m-sub-${sub.id}`}
                         type="button"
                         onClick={() => onSelectSubcategory(isSelected ? "" : sub.id)}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap active:scale-95 transition-all ${
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap shrink-0 active:scale-95 transition-all ${
                           isSelected
                             ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm"
                             : "bg-white/[0.06] text-white/50 border border-white/[0.06]"
