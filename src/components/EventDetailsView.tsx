@@ -9,8 +9,6 @@ import {
   Share2, 
   Check, 
   ExternalLink, 
-  Sparkles, 
-  ArrowUpRight,
   QrCode
 } from "lucide-react";
 import { lpuClient } from "../supabase";
@@ -508,30 +506,23 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
             );
           }
           if (detailsConfig.provider === 'direct' && spotlight1) {
+            const adImg = getEventImage(spotlight1, 'hero', 1200);
             return (
-              <div className="relative glass-panel-ad rounded-[16px] sm:rounded-[28px] px-4 py-4 sm:p-6 mb-6 sm:mb-8 border border-indigo-500/40 dark:border-indigo-500/30 hover:border-indigo-500/70 text-gray-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl hover:shadow-[0_20px_50px_rgba(99,102,241,0.22)] overflow-hidden transition-all">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/15 dark:bg-violet-600/15 rounded-full blur-2xl pointer-events-none" />
-                <div className="relative z-10">
-                  <span className="inline-flex items-center gap-1.5 font-heading text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full glass-badge-ad mb-1.5 tracking-wider uppercase shadow-xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
-                    <Sparkles className="h-3 w-3" />
-                    Sponsored Spotlight
-                  </span>
-                  <h3 className="font-heading text-base sm:text-xl font-bold text-gray-900 dark:text-white break-safe mt-1">
-                    {spotlight1.name}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mt-1 break-safe">
-                    {(spotlight1 as any).description || "Access exclusive opportunities, resources, and mentorship for students."}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleAdClick(spotlight1)}
-                  className="relative z-10 flex items-center justify-center gap-1.5 glass-btn-ad px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap self-start md:self-center cursor-pointer shadow-sm touch-target font-heading"
-                >
-                  <span>Explore</span>
-                  <ArrowUpRight className="h-3.5 w-3.5" />
-                </button>
+              <div 
+                onClick={() => handleAdClick(spotlight1)}
+                className="relative group w-full h-[95px] xs:h-[115px] sm:h-[145px] md:h-[160px] rounded-[16px] sm:rounded-[24px] mb-6 sm:mb-8 overflow-hidden cursor-pointer border border-white/80 dark:border-white/10 shadow-md hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <img
+                  src={adImg}
+                  alt={spotlight1.name}
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src =
+                      "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop";
+                  }}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                />
               </div>
             );
           }
@@ -540,30 +531,23 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
         // Fallback default: show direct spotlight1 if present and no explicit disable config
         if (!detailsConfig && spotlight1) {
+          const adImg = getEventImage(spotlight1, 'hero', 1200);
           return (
-            <div className="relative glass-panel-ad rounded-[16px] sm:rounded-[28px] px-4 py-4 sm:p-6 mb-6 sm:mb-8 border border-indigo-500/40 dark:border-indigo-500/30 hover:border-indigo-500/70 text-gray-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl hover:shadow-[0_20px_50px_rgba(99,102,241,0.22)] overflow-hidden transition-all">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/15 dark:bg-violet-600/15 rounded-full blur-2xl pointer-events-none" />
-              <div className="relative z-10">
-                <span className="inline-flex items-center gap-1.5 font-heading text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full glass-badge-ad mb-1.5 tracking-wider uppercase shadow-xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
-                  <Sparkles className="h-3 w-3" />
-                  Sponsored Spotlight
-                </span>
-                <h3 className="font-heading text-base sm:text-xl font-bold text-gray-900 dark:text-white break-safe mt-1">
-                  {spotlight1.name}
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mt-1 break-safe">
-                  {(spotlight1 as any).description || "Access exclusive opportunities, resources, and mentorship for students."}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleAdClick(spotlight1)}
-                className="relative z-10 flex items-center justify-center gap-1.5 glass-btn-ad px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap self-start md:self-center cursor-pointer shadow-sm touch-target font-heading"
-              >
-                <span>Explore</span>
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </button>
+            <div 
+              onClick={() => handleAdClick(spotlight1)}
+              className="relative group w-full h-[95px] xs:h-[115px] sm:h-[145px] md:h-[160px] rounded-[16px] sm:rounded-[24px] mb-6 sm:mb-8 overflow-hidden cursor-pointer border border-white/80 dark:border-white/10 shadow-md hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
+            >
+              <img
+                src={adImg}
+                alt={spotlight1.name}
+                loading="lazy"
+                decoding="async"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src =
+                    "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop";
+                }}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+              />
             </div>
           );
         }
@@ -662,30 +646,23 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
         if (detailsConfig && isGlobalEnabled && detailsConfig.enabled) {
           if (detailsConfig.provider === 'direct' && spotlight2) {
+            const adImg = getEventImage(spotlight2, 'hero', 1200);
             return (
-              <div className="relative glass-panel-ad rounded-[16px] sm:rounded-[28px] px-4 py-4 sm:p-6 mb-6 sm:mb-8 border border-indigo-500/40 dark:border-indigo-500/30 hover:border-indigo-500/70 text-gray-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl hover:shadow-[0_20px_50px_rgba(99,102,241,0.22)] overflow-hidden transition-all">
-                <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/15 dark:bg-violet-600/15 rounded-full blur-2xl pointer-events-none" />
-                <div className="relative z-10">
-                  <span className="inline-flex items-center gap-1.5 font-heading text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full glass-badge-ad mb-1.5 tracking-wider uppercase shadow-xs">
-                    <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
-                    <Sparkles className="h-3 w-3" />
-                    Sponsored Spotlight
-                  </span>
-                  <h3 className="font-heading text-base sm:text-xl font-bold text-gray-900 dark:text-white break-safe mt-1">
-                    {spotlight2.name}
-                  </h3>
-                  <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mt-1 break-safe">
-                    {(spotlight2 as any).description || "Access exclusive grants, mentorship programs, and seed funding opportunities."}
-                  </p>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => handleAdClick(spotlight2)}
-                  className="relative z-10 flex items-center justify-center gap-1.5 glass-btn-ad px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap self-start md:self-center cursor-pointer shadow-sm touch-target font-heading"
-                >
-                  <span>Learn More</span>
-                  <ArrowUpRight className="h-3.5 w-3.5" />
-                </button>
+              <div 
+                onClick={() => handleAdClick(spotlight2)}
+                className="relative group w-full h-[95px] xs:h-[115px] sm:h-[145px] md:h-[160px] rounded-[16px] sm:rounded-[24px] mb-6 sm:mb-8 overflow-hidden cursor-pointer border border-white/80 dark:border-white/10 shadow-md hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
+              >
+                <img
+                  src={adImg}
+                  alt={spotlight2.name}
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src =
+                      "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop";
+                  }}
+                  className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                />
               </div>
             );
           }
@@ -693,30 +670,23 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         }
 
         if (!detailsConfig && spotlight2) {
+          const adImg = getEventImage(spotlight2, 'hero', 1200);
           return (
-            <div className="relative glass-panel-ad rounded-[16px] sm:rounded-[28px] px-4 py-4 sm:p-6 mb-6 sm:mb-8 border border-indigo-500/40 dark:border-indigo-500/30 hover:border-indigo-500/70 text-gray-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl hover:shadow-[0_20px_50px_rgba(99,102,241,0.22)] overflow-hidden transition-all">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/15 dark:bg-violet-600/15 rounded-full blur-2xl pointer-events-none" />
-              <div className="relative z-10">
-                <span className="inline-flex items-center gap-1.5 font-heading text-[10px] sm:text-xs font-black px-3 py-0.5 rounded-full glass-badge-ad mb-1.5 tracking-wider uppercase shadow-xs">
-                  <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
-                  <Sparkles className="h-3 w-3" />
-                  Sponsored Spotlight
-                </span>
-                <h3 className="font-heading text-base sm:text-xl font-bold text-gray-900 dark:text-white break-safe mt-1">
-                  {spotlight2.name}
-                </h3>
-                <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 mt-1 break-safe">
-                  {(spotlight2 as any).description || "Access exclusive grants, mentorship programs, and seed funding opportunities."}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => handleAdClick(spotlight2)}
-                className="relative z-10 flex items-center justify-center gap-1.5 glass-btn-ad px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap self-start md:self-center cursor-pointer shadow-sm touch-target font-heading"
-              >
-                <span>Learn More</span>
-                <ArrowUpRight className="h-3.5 w-3.5" />
-              </button>
+            <div 
+              onClick={() => handleAdClick(spotlight2)}
+              className="relative group w-full h-[95px] xs:h-[115px] sm:h-[145px] md:h-[160px] rounded-[16px] sm:rounded-[24px] mb-6 sm:mb-8 overflow-hidden cursor-pointer border border-white/80 dark:border-white/10 shadow-md hover:shadow-2xl transition-all duration-300 hover:scale-[1.01] active:scale-[0.99]"
+            >
+              <img
+                src={adImg}
+                alt={spotlight2.name}
+                loading="lazy"
+                decoding="async"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src =
+                    "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop";
+                }}
+                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+              />
             </div>
           );
         }
