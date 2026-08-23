@@ -16,3 +16,4 @@ export * from './types';
 export * from './client';
 export * from './images';
 export * from './telemetry';
+export * from './qr';

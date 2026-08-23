@@ -6,19 +6,21 @@ import {
   MapPin, 
   CheckCircle2, 
   ShieldAlert, 
-  Share2,
-  Check,
-  ExternalLink,
-  CalendarPlus,
-  Sparkles,
-  ArrowUpRight
+  Share2, 
+  Check, 
+  ExternalLink, 
+  Sparkles, 
+  ArrowUpRight,
+  QrCode
 } from "lucide-react";
 import { lpuClient } from "../supabase";
 import { 
   EventFeedItem, 
   AdvertisementFeedItem, 
   trackEvent, 
-  trackRegistrationClick 
+  trackRegistrationClick,
+  getStudentEventUrl,
+  generateQrDataUrl
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 
@@ -31,7 +33,7 @@ interface EventDetailsViewProps {
   allEvents?: EventFeedItem[];
 }
 
-export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
+export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
   eventId,
   onBack,
   ads,
@@ -47,9 +49,27 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("about");
   const [copied, setCopied] = useState(false);
+  const [qrDataUrl, setQrDataUrl] = useState<string>("");
 
   useEffect(() => {
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    if (!event?.id) return;
+    let isMounted = true;
+    const canonicalUrl = getStudentEventUrl(event.id);
+    generateQrDataUrl(canonicalUrl, { width: 360, margin: 2 })
+      .then((url) => {
+        if (isMounted) setQrDataUrl(url);
+      })
+      .catch((err) => {
+        console.error("Failed to generate event QR code:", err);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [event?.id]);
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
   }, [eventId]);
 
   useEffect(() => {
@@ -94,6 +114,10 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
     }
 
     loadDetails();
+
+    // Trigger deduplicated atomic view increment in background (zero database stress)
+    lpuClient.incrementEventView(eventId).catch(() => {});
+
     return () => {
       isMounted = false;
     };
@@ -134,35 +158,18 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
     try {
       const start = new Date(event.start_at);
       if (isNaN(start.getTime())) return "Time to be announced";
-      const startStr = start.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+      const startStr = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
 
       if (event.end_at) {
         const end = new Date(event.end_at);
         if (!isNaN(end.getTime())) {
-          const endStr = end.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+          const endStr = end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
           return `${startStr} – ${endStr}`;
         }
       }
       return startStr;
     } catch {
       return "Time to be announced";
-    }
-  }, [event]);
-
-  // Google Calendar URL
-  const googleCalendarUrl = useMemo(() => {
-    if (!event || !event.start_at) return "#";
-    try {
-      const startIso = new Date(event.start_at).toISOString().replace(/-|:|\.\d\d\d/g, "");
-      const endIso = event.end_at
-        ? new Date(event.end_at).toISOString().replace(/-|:|\.\d\d\d/g, "")
-        : new Date(new Date(event.start_at).getTime() + 2 * 60 * 60 * 1000).toISOString().replace(/-|:|\.\d\d\d/g, "");
-      const title = encodeURIComponent(event.name || "LPU Event");
-      const details = encodeURIComponent(`${event.description || ""}\n\nVenue: ${event.venue_name || "LPU Campus"}`);
-      const location = encodeURIComponent(`${event.venue_name || "LPU Campus"}`);
-      return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${startIso}/${endIso}&details=${details}&location=${location}`;
-    } catch {
-      return "#";
     }
   }, [event]);
 
@@ -250,7 +257,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
   const renderSectionContent = (content: any) => {
     if (!content) {
       return (
-        <p className="text-on-surface-muted text-sm sm:text-base italic">
+        <p className="text-gray-500 dark:text-gray-400 text-base sm:text-lg italic font-normal">
           No detailed content has been provided for this section yet.
         </p>
       );
@@ -259,18 +266,18 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
     if (typeof content === "string") {
       const lines = content.split("\n");
       return (
-        <div className="space-y-2.5 sm:space-y-3 text-sm sm:text-base md:text-lg text-gray-800 dark:text-gray-200 leading-relaxed font-normal break-safe">
+        <div className="space-y-4 sm:space-y-5 text-[15px] sm:text-lg md:text-xl lg:text-[22px] text-gray-800 dark:text-zinc-100 leading-[1.75] sm:leading-[1.85] font-normal tracking-[-0.01em] break-safe">
           {lines.map((line, i) => {
             const trimmed = line.trim();
-            if (!trimmed) return <div key={i} className="h-1.5" />;
+            if (!trimmed) return <div key={i} className="h-2" />;
 
             // Bullet points
             if (trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("*")) {
               const clean = trimmed.replace(/^[-•*]\s*/, "");
               return (
-                <div key={i} className="flex items-start gap-2.5 pl-1">
-                  <span className="w-1.5 h-1.5 rounded-full bg-primary mt-2 shrink-0" />
-                  <span>{clean}</span>
+                <div key={i} className="flex items-start gap-3.5 sm:gap-4 pl-1">
+                  <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-[#FF5E00] to-[#FFA000] mt-2.5 sm:mt-3 shrink-0 shadow-[0_0_12px_rgba(255,94,0,0.7)]" />
+                  <span className="text-gray-800 dark:text-zinc-100 leading-[1.75]">{clean}</span>
                 </div>
               );
             }
@@ -279,9 +286,11 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
             if (/^\d+[\.\)]\s/.test(trimmed)) {
               const match = trimmed.match(/^(\d+[\.\)])\s*(.*)$/);
               return (
-                <div key={i} className="flex items-start gap-2.5 pl-1">
-                  <span className="font-bold text-primary shrink-0">{match ? match[1] : ""}</span>
-                  <span>{match ? match[2] : trimmed}</span>
+                <div key={i} className="flex items-start gap-3.5 sm:gap-4 pl-1">
+                  <span className="inline-flex items-center justify-center min-w-[26px] h-[26px] px-1.5 rounded-lg bg-orange-500/15 border border-orange-500/30 text-orange-500 font-heading font-black text-xs sm:text-sm shrink-0 mt-1 shadow-xs">
+                    {match ? match[1].replace(/[\.\)]/, '') : i + 1}
+                  </span>
+                  <span className="text-gray-800 dark:text-zinc-100 leading-[1.75]">{match ? match[2] : trimmed}</span>
                 </div>
               );
             }
@@ -294,11 +303,11 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
 
     if (content.rules_list && Array.isArray(content.rules_list)) {
       return (
-        <ul className="space-y-2.5 sm:space-y-3 text-sm sm:text-base text-gray-800 dark:text-gray-200">
+        <ul className="space-y-3 sm:space-y-4 text-base sm:text-lg md:text-xl text-gray-800 dark:text-zinc-100">
           {content.rules_list.map((rule: string, i: number) => (
-            <li key={i} className="flex items-start gap-2.5">
-              <CheckCircle2 className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-emerald-500 shrink-0 mt-0.5" />
-              <span className="break-safe">{rule}</span>
+            <li key={i} className="flex items-start gap-3.5 sm:gap-4 p-4 sm:p-5 rounded-[20px] bg-white/40 dark:bg-white/[0.03] border border-white/60 dark:border-white/5 shadow-xs">
+              <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-500 shrink-0 mt-0.5" />
+              <span className="break-safe leading-relaxed font-medium">{rule}</span>
             </li>
           ))}
         </ul>
@@ -307,13 +316,13 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
 
     if (content.schedule && Array.isArray(content.schedule)) {
       return (
-        <div className="flex flex-col gap-2.5 sm:gap-3">
+        <div className="flex flex-col gap-3 sm:gap-4">
           {content.schedule.map((item: any, i: number) => (
-            <div key={i} className="flex flex-col xs:flex-row gap-2 xs:gap-4 p-3.5 sm:p-4 rounded-xl bg-slate-50 dark:bg-[#0C0D16] border border-gray-200 dark:border-gray-800/40">
-              <span className="font-bold text-primary text-xs sm:text-sm shrink-0">{item.time}</span>
+            <div key={i} className="flex flex-col xs:flex-row gap-3 xs:gap-5 p-4 sm:p-5 rounded-[22px] bg-white/50 dark:bg-white/[0.04] border border-white/80 dark:border-white/8 shadow-xs hover:border-primary/40 transition-colors">
+              <span className="font-heading font-black text-primary text-xs sm:text-sm shrink-0 tracking-wider uppercase px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 self-start">{item.time}</span>
               <div className="flex flex-col">
-                <span className="font-semibold text-xs sm:text-sm text-gray-900 dark:text-white break-safe">{item.title || item.details}</span>
-                {item.description && <span className="text-[11px] sm:text-xs text-gray-600 dark:text-gray-400 mt-0.5 break-safe">{item.description}</span>}
+                <span className="font-heading font-bold text-base sm:text-lg text-gray-900 dark:text-white break-safe">{item.title || item.details}</span>
+                {item.description && <span className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-300 mt-1 break-safe leading-relaxed">{item.description}</span>}
               </div>
             </div>
           ))}
@@ -322,7 +331,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
     }
 
     return (
-      <div className="text-sm sm:text-base md:text-lg text-gray-800 dark:text-gray-200 leading-relaxed whitespace-pre-line break-safe">
+      <div className="text-base sm:text-lg md:text-xl text-gray-800 dark:text-zinc-100 leading-relaxed whitespace-pre-line break-safe">
         {JSON.stringify(content, null, 2)}
       </div>
     );
@@ -330,9 +339,61 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
 
   if (loading && !event) {
     return (
-      <div className="min-h-[50vh] w-full flex flex-col items-center justify-center gap-4 py-20 text-center">
-        <div className="w-10 h-10 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-        <p className="text-on-surface-muted text-xs sm:text-sm font-semibold uppercase tracking-wider">Loading event details...</p>
+      <div className="w-full max-w-5xl mx-auto pb-28 animate-in fade-in duration-300">
+        {/* Top Navigation Row Skeleton */}
+        <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
+          <button
+            onClick={onBack}
+            className="inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 glass-pill px-3.5 py-1.5 rounded-xl border border-white/95 dark:border-white/10 shadow-xs"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span>Back to events</span>
+          </button>
+          <div className="h-8 w-24 rounded-full skeleton-base" />
+        </div>
+
+        {/* Hero Banner Skeleton */}
+        <div className="w-full aspect-[16/10] sm:aspect-[16/9] md:h-[460px] lg:h-[500px] rounded-[24px] sm:rounded-[30px] mb-5 sm:mb-8 skeleton-base relative overflow-hidden shadow-xl" />
+
+        {/* Event Title & Organizer Skeleton */}
+        <div className="mb-6 sm:mb-8 space-y-3">
+          <div className="h-8 sm:h-12 w-3/4 max-w-lg rounded-2xl skeleton-base" />
+          <div className="h-5 w-44 rounded-xl skeleton-base" />
+        </div>
+
+        {/* Highlight Registration Box Skeleton */}
+        <div className="rounded-[24px] sm:rounded-[28px] p-4 sm:p-6 mb-6 sm:mb-8 border border-white/80 dark:border-white/10 glass-panel shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+          <div className="space-y-2">
+            <div className="h-4 w-28 rounded-lg skeleton-base" />
+            <div className="h-7 w-48 rounded-xl skeleton-base" />
+          </div>
+          <div className="h-11 w-44 rounded-full skeleton-base self-start md:self-center" />
+        </div>
+
+        {/* Date / Time / Venue Details Grid Skeleton */}
+        <div className="glass-panel rounded-[24px] sm:rounded-[30px] p-5 sm:p-8 mb-6 sm:mb-8 border border-white/80 dark:border-white/10 shadow-xl space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="p-4 rounded-2xl skeleton-base h-20" />
+            <div className="p-4 rounded-2xl skeleton-base h-20" />
+          </div>
+          <div className="p-4 rounded-2xl skeleton-base h-20" />
+        </div>
+
+        {/* Tabs & Content Skeleton */}
+        <div className="space-y-4">
+          <div className="flex gap-2">
+            <div className="h-10 w-36 rounded-xl skeleton-base" />
+            <div className="h-10 w-28 rounded-xl skeleton-base" />
+            <div className="h-10 w-28 rounded-xl skeleton-base" />
+          </div>
+          <div className="glass-panel rounded-[24px] p-6 space-y-3.5">
+            <div className="h-4 w-full rounded-lg skeleton-base" />
+            <div className="h-4 w-11/12 rounded-lg skeleton-base" />
+            <div className="h-4 w-4/5 rounded-lg skeleton-base" />
+            <div className="h-4 w-3/4 rounded-lg skeleton-base" />
+            <div className="h-4 w-5/6 rounded-lg skeleton-base" />
+          </div>
+        </div>
       </div>
     );
   }
@@ -371,7 +432,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
       <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
         <button
           onClick={onBack}
-          className="group inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-on-surface-variant hover:text-primary transition-colors cursor-pointer touch-target font-heading"
+          className="group inline-flex items-center gap-2 text-xs sm:text-sm font-bold text-gray-800 dark:text-gray-200 hover:text-primary transition-colors cursor-pointer touch-target font-heading glass-pill px-3.5 py-1.5 rounded-xl border border-white/95 dark:border-white/10 shadow-xs"
         >
           <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
           <span>Back to events</span>
@@ -380,7 +441,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
         <div className="flex items-center gap-2 sm:gap-3">
           <button
             onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-surface dark:bg-[#10121B] border border-outline dark:border-outline-variant/30 text-xs font-semibold text-on-surface-variant hover:text-on-surface cursor-pointer transition-colors shadow-sm touch-target"
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full glass-pill border border-white/95 dark:border-white/10 text-xs font-bold text-gray-800 dark:text-gray-200 hover:text-primary cursor-pointer transition-all shadow-xs touch-target"
             aria-label="Share event"
           >
             {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Share2 className="h-3.5 w-3.5" />}
@@ -390,31 +451,33 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
       </div>
 
       {/* Hero Banner */}
-      <div className="w-full aspect-[16/10] sm:aspect-[16/9] md:h-[460px] lg:h-[500px] overflow-hidden rounded-[20px] sm:rounded-[26px] mb-5 sm:mb-8 bg-white dark:bg-[#0E101C] border border-gray-200/80 dark:border-white/10 shadow-md dark:shadow-xl relative">
+      <div className="w-full aspect-[4/3] sm:aspect-[16/9] md:h-[460px] lg:h-[500px] overflow-hidden rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 relative glass-panel shadow-xl">
         <img
           className="w-full h-full object-cover object-center"
-          src={getEventImage(event, "event-banner")}
+          src={getEventImage(event, "event-banner", 800)}
           alt={event.name}
+          decoding="async"
+          fetchPriority="high"
           onError={(e) => {
             (e.currentTarget as HTMLImageElement).src =
-              "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1200&auto=format&fit=crop";
+              "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800&auto=format&fit=crop";
           }}
         />
       </div>
 
       {/* Event Title & Organizer */}
       <div className="mb-6 sm:mb-8">
-        <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight text-gray-900 dark:text-white mb-2 break-safe">
+        <h1 className="font-heading font-black text-xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight text-gray-900 dark:text-white mb-2 break-safe">
           {event.name}
         </h1>
-        <p className="text-primary dark:text-[#ffb693] font-semibold text-xs sm:text-base font-heading">
+        <p className="text-primary dark:text-[#ffb693] font-bold text-xs sm:text-base font-heading">
           Organized by {event.organizations?.name || "LPU Organization"}
         </p>
       </div>
 
       {/* Sponsored Spotlight 1 */}
       {spotlight1 && (
-        <div className="relative glass-panel rounded-[20px] sm:rounded-[26px] p-4 sm:p-6 mb-6 sm:mb-8 border border-white/80 dark:border-white/10 hover:border-primary/50 text-gray-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg hover:shadow-2xl overflow-hidden transition-all">
+        <div className="relative glass-panel rounded-[16px] sm:rounded-[28px] px-4 py-4 sm:p-6 mb-6 sm:mb-8 border border-orange-500/40 dark:border-white/10 hover:border-primary/50 text-gray-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl hover:shadow-2xl overflow-hidden transition-all">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/[0.04] rounded-full blur-2xl pointer-events-none" />
           <div className="relative z-10">
             <span className="inline-flex items-center gap-1.5 font-heading text-[10px] sm:text-xs font-black text-primary dark:text-orange-400 mb-1.5 tracking-wider uppercase">
@@ -430,7 +493,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
           </div>
           <button
             onClick={() => handleAdClick(spotlight1)}
-            className="relative z-10 flex items-center justify-center gap-1.5 bg-primary hover:bg-orange-600 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-semibold hover:opacity-95 transition-all whitespace-nowrap self-start md:self-center cursor-pointer shadow-sm touch-target font-heading"
+            className="relative z-10 flex items-center justify-center gap-1.5 glass-btn-primary px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap self-start md:self-center cursor-pointer shadow-sm touch-target font-heading"
           >
             <span>Explore</span>
             <ArrowUpRight className="h-3.5 w-3.5" />
@@ -438,63 +501,84 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
         </div>
       )}
 
-      {/* Event Schedule Details (Date, Time, Venue Stacked Card) */}
+      {/* Event Schedule Details & QR Info Box */}
       <div className="flex flex-col gap-4 mb-6 sm:mb-10">
-        <div className="relative glass-panel rounded-[22px] sm:rounded-[28px] border border-white/80 dark:border-white/10 hover:border-primary/40 transition-all duration-300 shadow-xl overflow-hidden">
+        <div className="relative glass-panel rounded-[16px] sm:rounded-[30px] hover:border-primary/40 transition-all duration-300 shadow-xl overflow-hidden">
           
           {/* Ambient Glow */}
           <div className="absolute top-0 right-0 w-80 h-80 bg-primary/[0.04] rounded-full blur-3xl pointer-events-none" />
 
-          {/* Date */}
-          <div className="relative z-10 flex flex-col xs:flex-row xs:items-center justify-between gap-3 p-4 sm:p-6 hover:bg-primary/[0.02] transition-colors">
-            <div className="flex items-center space-x-3 sm:space-x-4">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-orange-500/10 dark:bg-gradient-to-br dark:from-orange-500/20 dark:to-orange-500/5 border border-orange-200 dark:border-orange-500/30 flex items-center justify-center text-primary dark:text-orange-400 shrink-0">
-                <Calendar className="h-5 w-5 sm:h-6 sm:w-6" />
+          <div className="relative z-10 flex flex-col md:flex-row md:items-stretch">
+            {/* Left Side: Schedule Details */}
+            <div className="flex-1 flex flex-col justify-center">
+              {/* Date */}
+              <div className="flex items-center space-x-3 sm:space-x-4 p-4 sm:p-6 hover:bg-primary/[0.02] transition-colors">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-orange-500/15 dark:bg-gradient-to-br dark:from-orange-500/20 dark:to-orange-500/5 border border-orange-200/80 dark:border-orange-500/30 flex items-center justify-center text-primary dark:text-orange-400 shrink-0 shadow-xs">
+                  <Calendar className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-[11px] font-heading font-black tracking-[0.14em] uppercase text-primary dark:text-orange-400 mb-0.5">DATE</p>
+                  <p className="font-heading text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white break-safe">{dateDisplay}</p>
+                </div>
               </div>
-              <div className="min-w-0">
-                <p className="text-[10px] sm:text-[11px] font-heading font-black tracking-[0.14em] uppercase text-primary dark:text-orange-400 mb-0.5">DATE</p>
-                <p className="font-heading text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white break-safe">{dateDisplay}</p>
+
+              {/* Clean Dashed Separator */}
+              <div className="border-t border-dashed border-gray-200/80 dark:border-white/10 mx-4 sm:mx-6"></div>
+
+              {/* Time */}
+              <div className="flex items-center space-x-3 sm:space-x-4 p-4 sm:p-6 hover:bg-primary/[0.02] transition-colors">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-500/15 dark:bg-gradient-to-br dark:from-amber-500/20 dark:to-amber-500/5 border border-amber-200/80 dark:border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-xs">
+                  <Clock className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-[11px] font-heading font-black tracking-[0.14em] uppercase text-amber-600 dark:text-amber-400 mb-0.5">TIME</p>
+                  <p className="font-heading text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white break-safe">{timeDisplay}</p>
+                </div>
+              </div>
+
+              {/* Clean Dashed Separator */}
+              <div className="border-t border-dashed border-gray-200/80 dark:border-white/10 mx-4 sm:mx-6"></div>
+
+              {/* Venue */}
+              <div className="flex items-center space-x-3 sm:space-x-4 p-4 sm:p-6 hover:bg-primary/[0.02] transition-colors">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-rose-500/15 dark:bg-gradient-to-br dark:from-rose-500/20 dark:to-orange-500/5 border border-rose-200/80 dark:border-rose-500/30 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0 shadow-xs">
+                  <MapPin className="h-5 w-5 sm:h-6 sm:w-6" />
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[10px] sm:text-[11px] font-heading font-black tracking-[0.14em] uppercase text-rose-600 dark:text-rose-400 mb-0.5">VENUE</p>
+                  <p className="font-heading text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white break-safe">{event.venue_name || "LPU Campus"}</p>
+                </div>
               </div>
             </div>
 
-            {googleCalendarUrl !== "#" && (
-              <a
-                href={googleCalendarUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="self-start xs:self-center inline-flex items-center gap-1.5 px-3.5 sm:px-4 py-1.5 sm:py-2 rounded-full glass-pill text-orange-700 dark:text-orange-400 hover:border-primary/50 text-xs font-semibold transition-all duration-200 cursor-pointer shadow-sm touch-target shrink-0"
-              >
-                <CalendarPlus className="h-3.5 w-3.5" />
-                <span>Add to Calendar</span>
-              </a>
-            )}
-          </div>
+            <div className="hidden md:block w-px bg-gradient-to-b from-transparent via-gray-200/80 dark:via-white/10 to-transparent my-4"></div>
+            <div className="block md:hidden border-t border-dashed border-gray-200/80 dark:border-white/10 mx-4"></div>
 
-          {/* Clean Dashed Separator */}
-          <div className="border-t border-dashed border-gray-200/80 dark:border-white/10 mx-4 sm:mx-6"></div>
+            {/* Right Side: Canonical QR Code */}
+            <div className="w-auto shrink-0 md:w-56 lg:w-64 px-4 py-4 sm:p-6 flex flex-row md:flex-col items-center justify-center md:text-center gap-4 md:gap-0 bg-orange-500/[0.02] dark:bg-white/[0.01]">
+              <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-2 shadow-md border border-orange-500/20 flex items-center justify-center shrink-0">
+                {qrDataUrl ? (
+                  <img
+                    src={qrDataUrl}
+                    alt={`QR code for ${event.name}`}
+                    className="w-full h-full object-contain rounded-lg"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-mono">
+                    Generating QR...
+                  </div>
+                )}
+              </div>
 
-          {/* Time */}
-          <div className="relative z-10 flex items-center space-x-3 sm:space-x-4 p-4 sm:p-6 hover:bg-primary/[0.02] transition-colors">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-500/10 dark:bg-gradient-to-br dark:from-amber-500/20 dark:to-amber-500/5 border border-amber-200 dark:border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0">
-              <Clock className="h-5 w-5 sm:h-6 sm:w-6" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-[11px] font-heading font-black tracking-[0.14em] uppercase text-amber-600 dark:text-amber-400 mb-0.5">TIME</p>
-              <p className="font-heading text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white break-safe">{timeDisplay}</p>
-            </div>
-          </div>
-
-          {/* Clean Dashed Separator */}
-          <div className="border-t border-dashed border-gray-200/80 dark:border-white/10 mx-4 sm:mx-6"></div>
-
-          {/* Venue */}
-          <div className="relative z-10 flex items-center space-x-3 sm:space-x-4 p-4 sm:p-6 hover:bg-primary/[0.02] transition-colors">
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-rose-500/10 dark:bg-gradient-to-br dark:from-rose-500/20 dark:to-orange-500/5 border border-rose-200 dark:border-rose-500/30 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0">
-              <MapPin className="h-5 w-5 sm:h-6 sm:w-6" />
-            </div>
-            <div className="min-w-0">
-              <p className="text-[10px] sm:text-[11px] font-heading font-black tracking-[0.14em] uppercase text-rose-600 dark:text-rose-400 mb-0.5">VENUE</p>
-              <p className="font-heading text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white break-safe">{event.venue_name || "LPU Campus"}</p>
+              <div className="md:mt-3 flex flex-col items-start md:items-center gap-0.5">
+                <span className="font-heading font-black text-[11px] sm:text-xs uppercase tracking-wider text-primary dark:text-orange-400 flex items-center gap-1">
+                  <QrCode className="h-3.5 w-3.5" />
+                  Scan to View Event
+                </span>
+                <span className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                  Direct mobile access
+                </span>
+              </div>
             </div>
           </div>
 
@@ -503,7 +587,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
 
       {/* Sponsored Spotlight 2 */}
       {spotlight2 && (
-        <div className="relative glass-panel rounded-[20px] sm:rounded-[26px] p-4 sm:p-6 mb-6 sm:mb-8 border border-white/80 dark:border-white/10 hover:border-primary/50 text-gray-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-lg hover:shadow-2xl overflow-hidden transition-all">
+        <div className="relative glass-panel rounded-[16px] sm:rounded-[28px] px-4 py-4 sm:p-6 mb-6 sm:mb-8 border border-orange-500/40 dark:border-white/10 hover:border-primary/50 text-gray-900 dark:text-white flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-xl hover:shadow-2xl overflow-hidden transition-all">
           <div className="absolute top-0 right-0 w-64 h-64 bg-primary/[0.04] rounded-full blur-2xl pointer-events-none" />
           <div className="relative z-10">
             <span className="inline-flex items-center gap-1.5 font-heading text-[10px] sm:text-xs font-black text-primary dark:text-orange-400 mb-1.5 tracking-wider uppercase">
@@ -519,7 +603,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
           </div>
           <button
             onClick={() => handleAdClick(spotlight2)}
-            className="relative z-10 flex items-center justify-center gap-1.5 bg-primary hover:bg-orange-600 text-white px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-semibold hover:opacity-95 transition-all whitespace-nowrap self-start md:self-center cursor-pointer shadow-sm touch-target font-heading"
+            className="relative z-10 flex items-center justify-center gap-1.5 glass-btn-primary px-6 sm:px-8 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm font-bold transition-all whitespace-nowrap self-start md:self-center cursor-pointer shadow-sm touch-target font-heading"
           >
             <span>Learn More</span>
             <ArrowUpRight className="h-3.5 w-3.5" />
@@ -527,31 +611,36 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
         </div>
       )}
 
-      {/* Section Navigation Tabs */}
+      {/* Section Navigation Tabs (Unified Parent Glass Container) */}
       {tabs.length > 0 && (
-        <div className="flex overflow-x-auto hide-scrollbar space-x-2 sm:space-x-3 mb-4 sm:mb-6 pb-2 select-none">
-          {tabs.map((tab) => {
-            const isActive = activeTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-4 sm:px-6 py-2.5 sm:py-3 rounded-full text-xs sm:text-sm md:text-base font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer touch-target font-heading ${
-                  isActive
-                    ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-md scale-102"
-                    : "glass-pill text-gray-700 dark:text-gray-300 hover:text-primary hover:border-primary/50 shadow-sm"
-                }`}
-              >
-                {tab.label}
-              </button>
-            );
-          })}
+        <div className="w-full overflow-x-auto hide-scrollbar mb-4 sm:mb-6 select-none touch-pan-x">
+          <div className="inline-flex glass-tabs-container p-1 sm:p-1.5 rounded-xl sm:rounded-full gap-1 sm:gap-2 min-w-full sm:min-w-0 border border-white/80 dark:border-white/10">
+            {tabs.map((tab) => {
+              const isActive = activeTab === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setActiveTab(tab.id)}
+                  className={`px-4 py-2 sm:px-6 sm:py-2.5 rounded-lg sm:rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 cursor-pointer touch-target font-heading outline-none shrink-0 ${
+                    isActive
+                      ? "!bg-gradient-to-r !from-[#FF5E00] !to-[#FFA000] !text-white shadow-[0_4px_16px_rgba(255,94,0,0.4)] !border-transparent scale-[1.02]"
+                      : "text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-black/5 dark:hover:bg-white/5 !bg-transparent border-transparent"
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
 
       {/* Content Area */}
-      <div className="relative glass-panel rounded-[22px] sm:rounded-[28px] p-5 sm:p-8 md:p-12 mb-8 sm:mb-12 border border-white/80 dark:border-white/10 shadow-xl overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-primary/[0.04] rounded-full blur-3xl pointer-events-none" />
+      <div className="relative glass-panel rounded-[16px] sm:rounded-[34px] md:rounded-[40px] px-4 py-5 sm:p-9 md:p-12 lg:p-14 mb-8 sm:mb-12 border border-white/90 dark:border-white/10 shadow-[0_12px_35px_rgba(0,0,0,0.06)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.35)] overflow-hidden">
+        {/* Atmospheric Ambient Glow */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-orange-500/15 via-amber-500/8 to-transparent rounded-full blur-3xl pointer-events-none hidden sm:block" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-rose-500/10 via-transparent to-transparent rounded-full blur-3xl pointer-events-none hidden sm:block" />
 
         <div className="relative z-10">
           {(() => {
@@ -560,9 +649,6 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
 
             return (
               <div>
-                <h2 className="font-heading font-black text-xl sm:text-2xl md:text-3xl text-gray-900 dark:text-white mb-4 sm:mb-6 break-safe">
-                  {currentTab.label}
-                </h2>
                 {renderSectionContent(currentTab.content)}
               </div>
             );
@@ -572,7 +658,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
 
       {/* Sticky Bottom Registration Bar (ONLY when external_registration_url exists) */}
       {hasExternalRegistration && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 glass-nav py-3 sm:py-4 px-3 sm:px-8 shadow-2xl pb-safe">
+        <div className="fixed bottom-0 left-0 right-0 z-40 glass-nav py-3 sm:py-4 px-4 sm:px-8 shadow-[0_-10px_35px_rgba(15,23,42,0.1)] pb-safe border-t border-white/95 dark:border-white/10">
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
             
             {/* Left Side: Price / Registration Status */}
@@ -594,11 +680,12 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
             {/* Right Side: External Book Ticket Button */}
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
               <button
+                type="button"
                 onClick={handleRegister}
-                className="px-5 sm:px-8 py-2.5 sm:py-3.5 rounded-full bg-gradient-to-r from-[#FF7A00] via-[#FFAA00] to-[#FFD000] text-[#0A0807] font-black text-xs sm:text-sm md:text-base transition-all duration-200 shadow-[0_4px_20px_rgba(255,107,0,0.4)] hover:shadow-[0_6px_28px_rgba(255,200,0,0.55)] hover:scale-103 active:scale-98 flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap border border-amber-300/40 touch-target font-heading"
+                className="px-6 sm:px-9 py-2.5 sm:py-3.5 rounded-full glass-btn-primary font-black text-xs sm:text-sm md:text-base transition-all duration-200 flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap touch-target font-heading shadow-md"
               >
                 <span>Book Ticket</span>
-                <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-[#0A0807]" />
+                <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               </button>
             </div>
 
@@ -609,3 +696,7 @@ export const EventDetailsView: React.FC<EventDetailsViewProps> = ({
     </div>
   );
 };
+
+export const EventDetailsView = React.memo(EventDetailsViewComponent);
+
+

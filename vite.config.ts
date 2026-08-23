@@ -93,6 +93,7 @@ export default defineConfig({
     port: 3000,
     strictPort: true,
     host: true,
+    allowedHosts: true,
     fs: {
       strict: true,
       deny: ['.env', '.env.*', '*.{crt,pem}', 'package.json', 'package-lock.json', 'tsconfig.json', 'vite.config.*', '_headers', '_redirects']

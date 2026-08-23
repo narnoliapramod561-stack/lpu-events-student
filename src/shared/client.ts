@@ -151,6 +151,39 @@ export class LpuEventsClient {
     return { data, error } as any;
   }
 
+  // --- View Tracking with Client-Side Deduplication (Minimal DB Stress) ---
+  private _viewedEventsSession: Set<string> = new Set();
+
+  async incrementEventView(id: string): Promise<void> {
+    if (!id) return;
+
+    // Fast in-memory deduplication
+    if (this._viewedEventsSession.has(id)) return;
+
+    // Session-based deduplication (persists per browser tab session)
+    try {
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        const key = `lpu_viewed_${id}`;
+        if (window.sessionStorage.getItem(key)) {
+          this._viewedEventsSession.add(id);
+          return;
+        }
+        window.sessionStorage.setItem(key, '1');
+      }
+    } catch {
+      // Storage restricted, continue with in-memory check
+    }
+
+    this._viewedEventsSession.add(id);
+
+    // Asynchronous atomic RPC dispatch with fire-and-forget (zero blocking overhead)
+    try {
+      await this.supabase.rpc('increment_event_view', { target_event_id: id });
+    } catch {
+      // Non-blocking telemetry error suppression
+    }
+  }
+
   async fetchHomepageCarousel(): Promise<{ data: CarouselItemFeedItem[] | null; error: any }> {
     const { data, error } = await this.supabase
       .from('carousel_items')
