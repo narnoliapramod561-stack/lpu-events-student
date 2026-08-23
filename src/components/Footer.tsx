@@ -32,9 +32,9 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onGoToCategories }) 
       aria-label="Site Footer"
       className="mt-12 sm:mt-20 glass-panel deferred-feed-section border-t border-white/95 dark:border-white/10 text-gray-700 dark:text-on-surface-variant transition-colors duration-300 shadow-[0_-15px_40px_rgba(15,23,42,0.06)]"
     >
-      <div className="max-w-[98%] mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-12 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-8 md:gap-12">
+      <div className="max-w-[98%] mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-12 flex flex-col md:grid md:grid-cols-12 gap-8 md:gap-12">
         {/* Column 1: Branding & Mission (Desktop: 6 Columns) */}
-        <div className="sm:col-span-2 md:col-span-6 flex flex-col justify-between">
+        <div className="md:col-span-6 flex flex-col justify-between">
           <div>
             <a
               href="/"
@@ -46,60 +46,70 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onGoToCategories }) 
                 LPU Events
               </span>
             </a>
-            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mb-6 leading-relaxed max-w-md break-safe">
+            <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mb-4 sm:mb-6 leading-relaxed max-w-md break-safe">
               Your central hub for discovering and participating in the vibrant campus life at Lovely Professional University.
             </p>
           </div>
 
-          <p className="text-xs text-gray-500 dark:text-gray-400 font-heading font-medium">
+          <p className="hidden md:block text-xs text-gray-500 dark:text-gray-400 font-heading font-medium">
             © 2026 LPU Events. All rights reserved.
           </p>
         </div>
 
-        {/* Column 2: Explore (Desktop: 3 Columns) */}
-        <div className="sm:col-span-1 md:col-span-3 flex flex-col">
-          <h4 className="font-heading font-black text-gray-900 dark:text-white text-xs sm:text-sm uppercase tracking-wider mb-2 sm:mb-3">
-            Explore
-          </h4>
-          <nav aria-label="Explore Links" className="flex flex-col">
-            <a
-              href="/about"
-              onClick={(e) => handleLinkClick(e, 'about')}
-              className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-2 min-h-[44px] flex items-center font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
-            >
-              About Us
-            </a>
-            <a
-              href="#categories"
-              onClick={handleCategoriesClick}
-              className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-2 min-h-[44px] flex items-center font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
-            >
-              Categories
-            </a>
-          </nav>
+        {/* Columns 2 & 3: Explore and Legal (Side-by-side in 2 columns on mobile, 3 cols each on desktop) */}
+        <div className="grid grid-cols-2 gap-6 sm:gap-8 md:contents">
+          {/* Column 2: Explore (Desktop: 3 Columns) */}
+          <div className="md:col-span-3 flex flex-col">
+            <h4 className="font-heading font-black text-gray-900 dark:text-white text-xs sm:text-sm uppercase tracking-wider mb-2 sm:mb-3">
+              Explore
+            </h4>
+            <nav aria-label="Explore Links" className="flex flex-col space-y-1 sm:space-y-0">
+              <a
+                href="/about"
+                onClick={(e) => handleLinkClick(e, 'about')}
+                className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-1.5 sm:py-2 min-h-[36px] sm:min-h-[44px] flex items-center font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
+              >
+                About Us
+              </a>
+              <a
+                href="#categories"
+                onClick={handleCategoriesClick}
+                className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-1.5 sm:py-2 min-h-[36px] sm:min-h-[44px] flex items-center font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
+              >
+                Categories
+              </a>
+            </nav>
+          </div>
+
+          {/* Column 3: Legal (Desktop: 3 Columns) */}
+          <div className="md:col-span-3 flex flex-col">
+            <h4 className="font-heading font-black text-gray-900 dark:text-white text-xs sm:text-sm uppercase tracking-wider mb-2 sm:mb-3">
+              Legal
+            </h4>
+            <nav aria-label="Legal Links" className="flex flex-col space-y-1 sm:space-y-0">
+              <a
+                href="/privacy"
+                onClick={(e) => handleLinkClick(e, 'privacy')}
+                className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-1.5 sm:py-2 min-h-[36px] sm:min-h-[44px] flex items-center font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
+              >
+                Privacy Policy
+              </a>
+              <a
+                href="/terms"
+                onClick={(e) => handleLinkClick(e, 'terms')}
+                className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-1.5 sm:py-2 min-h-[36px] sm:min-h-[44px] flex items-center font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
+              >
+                Terms of Service
+              </a>
+            </nav>
+          </div>
         </div>
 
-        {/* Column 3: Legal (Desktop: 3 Columns) */}
-        <div className="sm:col-span-1 md:col-span-3 flex flex-col">
-          <h4 className="font-heading font-black text-gray-900 dark:text-white text-xs sm:text-sm uppercase tracking-wider mb-2 sm:mb-3">
-            Legal
-          </h4>
-          <nav aria-label="Legal Links" className="flex flex-col">
-            <a
-              href="/privacy"
-              onClick={(e) => handleLinkClick(e, 'privacy')}
-              className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-2 min-h-[44px] flex items-center font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
-            >
-              Privacy Policy
-            </a>
-            <a
-              href="/terms"
-              onClick={(e) => handleLinkClick(e, 'terms')}
-              className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-2 min-h-[44px] flex items-center font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
-            >
-              Terms of Service
-            </a>
-          </nav>
+        {/* Mobile Copyright: Placed cleanly at the bottom */}
+        <div className="block md:hidden pt-2 border-t border-gray-200/40 dark:border-white/5">
+          <p className="text-xs text-gray-500 dark:text-gray-400 font-heading font-medium">
+            © 2026 LPU Events. All rights reserved.
+          </p>
         </div>
       </div>
     </footer>
