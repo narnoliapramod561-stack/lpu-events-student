@@ -3,6 +3,7 @@ import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import path from 'node:path';
 import os from 'node:os';
+import fs from 'node:fs';
 
 function getLocalLanIp(): string {
   const interfaces = os.networkInterfaces();
@@ -86,7 +87,7 @@ export default defineConfig({
   ],
   resolve: {
     alias: {
-      '@lpu-events/shared': path.resolve(__dirname, './src/shared')
+      '@lpu-events/shared': path.resolve(__dirname, fs.existsSync(path.resolve(__dirname, './src/shared')) ? './src/shared' : '../../packages/shared/src')
     }
   },
   server: {

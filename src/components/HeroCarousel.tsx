@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
-import { Calendar, ArrowRight, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { Calendar, MapPin, Users, ArrowRight, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { 
   EventFeedItem, 
   AdvertisementFeedItem, 
@@ -58,26 +58,6 @@ const slideVariants: Variants = {
   }),
 };
 
-const contentStagger: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.06,
-      delayChildren: 0.1,
-    },
-  },
-};
-
-const contentItem: Variants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring" as const, stiffness: 320, damping: 26 },
-  },
-};
-
 const swipeConfidenceThreshold = 10000;
 const swipePower = (offset: number, velocity: number) => {
   return Math.abs(offset) * velocity;
@@ -116,12 +96,12 @@ export const HeroCarouselComponent = ({
             type: "event",
             title: item.custom_title?.trim() || evt.name,
             description: item.custom_subtitle?.trim() || evt.description,
-            image: getEventImage(evt, "hero"),
+            image: getEventImage(evt, "hero", 1200),
             category: item.badge_text?.trim() || evt.categories?.name || "Featured Event",
             date: new Date(evt.start_at).toLocaleDateString(undefined, {
               weekday: "short",
-              month: "short",
               day: "numeric",
+              month: "short",
             }),
             time: new Date(evt.start_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
             venue: evt.venue_name,
@@ -139,8 +119,12 @@ export const HeroCarouselComponent = ({
             type: "memory",
             title: item.custom_title?.trim() || mem.title,
             description: item.custom_subtitle?.trim() || mem.description || "",
-            image: getEventImage(mem, "hero"),
+            image: getEventImage(mem, "hero", 1200),
             category: item.badge_text?.trim() || "Campus Memory",
+            date: "Recent",
+            time: "Highlights",
+            venue: "LPU Campus",
+            organizer: "Student Life",
             ctaText: item.custom_cta_text?.trim() || "View Details",
             ctaUrl: item.custom_cta_url,
             duration: item.display_duration_ms || 5000,
@@ -152,8 +136,12 @@ export const HeroCarouselComponent = ({
             type: "media",
             title: item.custom_title?.trim() || "Campus Spotlight",
             description: item.custom_subtitle?.trim() || "Featured university stories and announcements.",
-            image: getEventImage(media, "hero"),
+            image: getEventImage(media, "hero", 1200),
             category: item.badge_text?.trim() || "Spotlight",
+            date: "Special",
+            time: "Announcements",
+            venue: "University Wide",
+            organizer: "LPU Administration",
             ctaText: item.custom_cta_text?.trim() || "Learn More",
             ctaUrl: item.custom_cta_url,
             duration: item.display_duration_ms || 5000,
@@ -170,9 +158,13 @@ export const HeroCarouselComponent = ({
         eventId: fe.id,
         title: fe.name,
         description: fe.description,
-        image: getEventImage(fe, "hero"),
-        category: "Featured",
-        date: new Date(fe.start_at).toLocaleDateString(),
+        image: getEventImage(fe, "hero", 1200),
+        category: fe.categories?.name || "Featured Event",
+        date: new Date(fe.start_at).toLocaleDateString(undefined, {
+          weekday: "short",
+          day: "numeric",
+          month: "short",
+        }),
         time: new Date(fe.start_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
         venue: fe.venue_name,
         organizer: fe.organizations?.name || "LPU Club",
@@ -185,7 +177,7 @@ export const HeroCarouselComponent = ({
     const heroAdConfig = adSystemConfig?.placements?.hero_carousel || {
       enabled: true,
       provider: 'direct',
-      frequency: 2, // PRD default: after every 2 slides
+      frequency: 2,
       max_ads: 3,
       ad_unit_id: '1000000001',
     };
@@ -200,7 +192,6 @@ export const HeroCarouselComponent = ({
         return item.data;
       }
 
-      // If ad type
       if (item.adProvider === "adsense") {
         return {
           id: `hero-adsense-${idx}`,
@@ -216,7 +207,6 @@ export const HeroCarouselComponent = ({
         };
       }
 
-      // Direct Sponsor Ad
       const ad = item.adData || (ads.length > 0 ? ads[0] : null);
       if (ad) {
         return {
@@ -225,8 +215,12 @@ export const HeroCarouselComponent = ({
           isSponsored: true,
           title: ad.name,
           description: "Featured university partner session and opportunities.",
-          image: getEventImage(ad, "hero"),
-          category: "Sponsored",
+          image: getEventImage(ad, "hero", 1200),
+          category: "Partner Spotlight",
+          date: "Partner",
+          time: "Session",
+          venue: "Virtual & On-Campus",
+          organizer: "Corporate Partner",
           ctaText: "Explore More",
           ctaUrl: ad.redirect_url,
           duration: 5000,
@@ -239,8 +233,12 @@ export const HeroCarouselComponent = ({
         isSponsored: true,
         title: "Campus Partner Spotlight",
         description: "Official university partner session and promotion.",
-        image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=800&auto=format&fit=crop",
+        image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop",
         category: "Partner",
+        date: "Partner",
+        time: "Spotlight",
+        venue: "LPU Campus",
+        organizer: "University Partner",
         ctaText: "Learn More",
         duration: 5000,
       };
@@ -308,40 +306,11 @@ export const HeroCarouselComponent = ({
       ref={containerRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="w-full relative rounded-[16px] sm:rounded-[34px] md:rounded-[40px] select-none group/carousel"
+      className="w-full relative rounded-[20px] sm:rounded-[36px] md:rounded-[42px] select-none group/carousel"
     >
-      {/* 1. Atmospheric Ambient Edge Glow */}
-      {currentSlide.type !== "adsense" && (
-        <div className="hidden sm:block absolute -inset-1 sm:-inset-2 z-0 overflow-hidden pointer-events-none rounded-[18px] sm:rounded-[36px] md:rounded-[42px] opacity-0 dark:opacity-80 transition-opacity duration-700">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={`ambient-glow-${currentIndex}`}
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.6 }}
-              className="w-full h-full relative"
-            >
-              <img
-                src={currentSlide.image}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="w-full h-full object-cover blur-[80px] brightness-125 dark:brightness-100 saturate-150"
-              />
-              <div className="absolute inset-0 bg-gradient-to-tr from-orange-600/30 via-amber-500/15 to-transparent mix-blend-screen" />
-            </motion.div>
-          </AnimatePresence>
-        </div>
-      )}
-
-      {/* 2. Main Carousel Viewport Frame */}
-      <div className="relative z-10 w-full h-[360px] min-[390px]:h-[390px] min-[430px]:h-[410px] sm:h-auto sm:min-h-[520px] lg:h-[560px] xl:h-[580px] overflow-hidden rounded-[20px] sm:rounded-[34px] md:rounded-[40px] glass-panel shadow-[0_24px_60px_rgba(15,23,42,0.12)] flex flex-col">
+      {/* Main Carousel Frame (Two-Zone Split on Desktop, exact match to screenshot) */}
+      <div className="relative z-10 w-full overflow-hidden rounded-[20px] sm:rounded-[36px] md:rounded-[42px] glass-panel border border-white/80 dark:border-white/10 shadow-[0_20px_60px_rgba(0,0,0,0.15)] dark:shadow-[0_24px_70px_rgba(0,0,0,0.45)]">
         
-        {/* Decorative Ambient Flares */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-orange-500/25 via-amber-500/15 to-transparent rounded-full blur-3xl pointer-events-none z-20 hidden sm:block" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-rose-500/20 via-orange-500/15 to-transparent rounded-full blur-3xl pointer-events-none z-20 hidden sm:block" />
-
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
             key={currentIndex}
@@ -363,11 +332,11 @@ export const HeroCarouselComponent = ({
                 paginate(-1);
               }
             }}
-            className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col flex-1"
+            className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col md:flex-row"
           >
             {/* If Google AdSense slide, render isolated AdSense unit */}
             {currentSlide.type === "adsense" ? (
-              <div className="w-full h-full p-3 sm:p-6 flex flex-col flex-1">
+              <div className="w-full p-4 sm:p-8 flex flex-col flex-1 min-h-[420px] md:min-h-[500px]">
                 <AdSenseSlot
                   format="carousel_slide"
                   slotId={currentSlide.adUnitId}
@@ -375,182 +344,109 @@ export const HeroCarouselComponent = ({
                 />
               </div>
             ) : (
-              <>
-                {/* Mobile Slide Layout (< sm) */}
-                <div
-                  onClick={handleAction}
-                  className="sm:hidden relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex flex-col justify-between p-3.5 pb-7 min-[400px]:p-4.5 min-[400px]:pb-8"
-                >
-                  <img
-                    src={currentSlide.image}
-                    alt={currentSlide.title}
-                    loading={currentIndex === 0 ? "eager" : "lazy"}
-                    decoding="async"
-                    fetchPriority={currentIndex === 0 ? "high" : "auto"}
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src =
-                        "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800&auto=format&fit=crop";
-                    }}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out"
-                  />
-
-                  {/* Gradient Scrims */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 via-40% to-transparent pointer-events-none" />
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-transparent to-transparent h-24 pointer-events-none" />
-
-                  {/* Top Floating Badge */}
-                  <div className="relative z-20 flex items-center justify-between w-full">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full backdrop-blur-md border font-heading text-[10px] font-black uppercase tracking-wider shadow-md ${
-                      currentSlide.type === "ad"
-                        ? "bg-indigo-950/80 text-indigo-300 border-indigo-400/30"
-                        : "bg-black/75 dark:bg-black/85 text-white border-white/20"
-                    }`}>
-                      {currentSlide.type === "event" ? (
-                        <>
-                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse shadow-[0_0_6px_rgba(255,107,0,1)]" />
-                          <span className="text-amber-300 font-extrabold">Featured</span>
-                        </>
-                      ) : currentSlide.type === "memory" ? (
-                        <>
-                          <Sparkles className="w-3 h-3 text-amber-300" />
-                          <span className="text-amber-300 font-extrabold">Memory</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_6px_rgba(99,102,241,1)]" />
-                          <span className="text-indigo-300 font-extrabold">Sponsored</span>
-                        </>
-                      )}
-                    </span>
-
-                    {currentSlide.category && (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-black/75 dark:bg-black/85 border border-white/20 text-[10px] text-white/95 font-bold uppercase tracking-wider font-heading truncate max-w-[150px] shadow-md">
-                        {currentSlide.category}
+              <div className="w-full flex flex-col-reverse md:flex-row p-4 sm:p-6 md:p-8 lg:p-10 gap-6 md:gap-8 items-center justify-between">
+                
+                {/* LEFT SIDE: Information Deck */}
+                <div className="w-full md:w-1/2 flex flex-col justify-between z-10">
+                  <div>
+                    {/* Top Badges */}
+                    <div className="flex items-center gap-2 mb-3 sm:mb-4 flex-wrap">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 dark:bg-white/10 backdrop-blur-md border border-white/15 text-[10px] sm:text-xs font-heading font-black tracking-wider text-amber-400 dark:text-orange-400 uppercase shadow-xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 dark:bg-orange-400 animate-pulse" />
+                        <Star className="w-3 h-3 fill-current" />
+                        {currentSlide.type === "event" ? "FEATURED EVENT" : currentSlide.type === "memory" ? "CAMPUS MEMORY" : "SPONSORED"}
                       </span>
-                    )}
-                  </div>
+                      {currentSlide.category && (
+                        <span className="text-[11px] sm:text-xs font-heading font-extrabold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+                          • {currentSlide.category}
+                        </span>
+                      )}
+                    </div>
 
-                  {/* Bottom Editorial Content */}
-                  <motion.div
-                    variants={contentStagger}
-                    initial="hidden"
-                    animate="visible"
-                    className="relative z-20 flex flex-col justify-end w-full"
-                  >
-                    {currentSlide.type === "event" && (currentSlide.date || currentSlide.time) && (
-                      <motion.div variants={contentItem} className="flex items-center gap-2 mb-1">
-                        <span className="text-orange-400 font-black text-[11px] min-[400px]:text-xs uppercase tracking-wider font-heading flex items-center gap-1.5">
-                          <Calendar className="w-3 h-3 shrink-0" />
+                    {/* Title */}
+                    <h1 className="text-xl min-[390px]:text-2xl sm:text-3xl md:text-4xl lg:text-[40px] font-black font-heading text-gray-900 dark:text-white tracking-tight leading-tight mb-2 sm:mb-3 line-clamp-2 break-safe">
+                      {currentSlide.title}
+                    </h1>
+
+                    {/* Description */}
+                    {currentSlide.description && (
+                      <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm md:text-base leading-relaxed line-clamp-2 mb-4 sm:mb-6 break-safe">
+                        {currentSlide.description}
+                      </p>
+                    )}
+
+                    {/* Information Stack Card */}
+                    <div className="rounded-[18px] sm:rounded-2xl p-3.5 sm:p-5 bg-black/[0.03] dark:bg-black/40 border border-black/5 dark:border-white/10 space-y-2.5 sm:space-y-3 mb-5 sm:mb-8">
+                      {/* Date & Time */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-orange-500/15 text-primary border border-orange-500/25 flex items-center justify-center shrink-0">
+                          <Calendar className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs sm:text-sm font-bold text-gray-900 dark:text-white truncate">
                           {currentSlide.date} • {currentSlide.time}
                         </span>
-                      </motion.div>
-                    )}
+                      </div>
 
-                    <motion.h3
-                      variants={contentItem}
-                      className="text-lg min-[390px]:text-xl min-[430px]:text-2xl font-black font-heading text-white tracking-tight leading-snug line-clamp-2 drop-shadow-md mb-1.5 break-safe"
-                    >
-                      {currentSlide.title}
-                    </motion.h3>
-
-                    {currentSlide.description && (
-                      <motion.p
-                        variants={contentItem}
-                        className="text-gray-200/90 text-xs min-[390px]:text-[13px] font-medium leading-relaxed line-clamp-2 mb-3 break-safe"
-                      >
-                        {currentSlide.description}
-                      </motion.p>
-                    )}
-
-                    <motion.div variants={contentItem} className="flex items-center justify-between gap-3 pt-0.5">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAction();
-                        }}
-                        className={`flex-1 flex items-center justify-center gap-2 py-3 px-5 rounded-full ${
-                          currentSlide.type === "ad" ? "glass-btn-ad" : "glass-btn-primary"
-                        } font-heading font-black text-xs min-[390px]:text-sm shadow-lg transition-transform active:scale-97 cursor-pointer touch-target`}
-                      >
-                        <span>{currentSlide.ctaText || "View Details"}</span>
-                        <ArrowRight className="h-3.5 w-3.5 min-[390px]:h-4 min-[390px]:w-4 group-hover:translate-x-0.5 transition-transform" />
-                      </button>
-                    </motion.div>
-                  </motion.div>
-                </div>
-
-                {/* Desktop Slide Layout (sm+) */}
-                <div
-                  onClick={handleAction}
-                  className="hidden sm:flex flex-col md:flex-row overflow-hidden group flex-1 h-full w-full cursor-pointer"
-                >
-                  <div className="w-full md:w-1/2 p-4 md:p-6 flex items-center justify-center shrink-0">
-                    <div className="relative w-full sm:h-[280px] md:h-full rounded-[26px] md:rounded-[34px] overflow-hidden shadow-2xl border border-white/80 dark:border-white/10 bg-slate-900/40">
-                      <img
-                        src={currentSlide.image}
-                        alt={currentSlide.title}
-                        loading={currentIndex === 0 ? "eager" : "lazy"}
-                        decoding="async"
-                        className="w-full h-full object-cover select-none group-hover:scale-106 transition-transform duration-700 ease-out"
-                      />
-                      <div className="absolute top-4 left-4 z-20 flex items-center gap-2">
-                        <span className={`flex items-center gap-2 px-3.5 py-1.5 backdrop-blur-md rounded-full font-heading text-xs font-black uppercase tracking-widest border shadow-lg ${
-                          currentSlide.type === "ad"
-                            ? "bg-gradient-to-r from-indigo-600/90 to-purple-600/90 text-white border-indigo-300/40 shadow-[0_0_15px_rgba(99,102,241,0.5)]"
-                            : "bg-gradient-to-r from-red-600/90 to-orange-600/90 text-white border-white/25 shadow-[0_0_15px_rgba(255,50,0,0.5)]"
-                        }`}>
-                          <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-                          </span>
-                          {currentSlide.type === "event" ? "Featured" : currentSlide.type === "memory" ? "Memory" : "Sponsored"}
+                      {/* Venue */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-orange-500/15 text-primary border border-orange-500/25 flex items-center justify-center shrink-0">
+                          <MapPin className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 truncate">
+                          {currentSlide.venue || "LPU Campus"}
                         </span>
-                        {currentSlide.category && (
-                          <span className="inline-flex px-3 py-1 glass-badge text-gray-800 dark:text-white/90 rounded-full font-heading text-[10px] font-bold uppercase tracking-wider border border-white/90 dark:border-white/15">
-                            {currentSlide.category}
-                          </span>
-                        )}
+                      </div>
+
+                      {/* Organizer */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-lg bg-orange-500/15 text-primary border border-orange-500/25 flex items-center justify-center shrink-0">
+                          <Users className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs sm:text-sm font-bold text-gray-700 dark:text-gray-300 truncate">
+                          By <strong className="text-gray-900 dark:text-white font-extrabold">{currentSlide.organizer || "LPU Club"}</strong>
+                        </span>
                       </div>
                     </div>
                   </div>
 
-                  <div className="w-full md:w-1/2 p-7 md:p-10 lg:p-12 flex flex-col justify-between flex-1 relative z-10">
-                    <div className="space-y-4">
-                      {currentSlide.type === "event" && (
-                        <div className="flex items-center gap-2 text-primary font-heading font-black text-xs uppercase tracking-wider">
-                          <Calendar className="w-4 h-4" />
-                          <span>{currentSlide.date} • {currentSlide.time}</span>
-                        </div>
-                      )}
-
-                      <h3 className="text-2xl md:text-3xl lg:text-4xl font-black font-heading text-gray-900 dark:text-white tracking-tight line-clamp-2 leading-tight group-hover:text-primary transition-colors">
-                        {currentSlide.title}
-                      </h3>
-
-                      <p className="text-gray-600 dark:text-gray-300 text-sm md:text-base leading-relaxed line-clamp-3">
-                        {currentSlide.description}
-                      </p>
-                    </div>
-
-                    <div className="pt-6 flex items-center justify-between">
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAction();
-                        }}
-                        className={`inline-flex items-center gap-2.5 px-8 py-3.5 rounded-full ${
-                          currentSlide.type === "ad" ? "glass-btn-ad" : "glass-btn-primary"
-                        } font-heading font-black text-sm shadow-xl transition-all hover:scale-103 active:scale-97 cursor-pointer`}
-                      >
-                        <span>{currentSlide.ctaText || "View Details"}</span>
-                        <ArrowRight className="w-4 h-4" />
-                      </button>
-                    </div>
+                  {/* Action CTA Button */}
+                  <div>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleAction();
+                      }}
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-gradient-to-r from-[#fc721e] to-[#ff8c42] hover:brightness-110 text-white font-heading font-black text-xs sm:text-sm shadow-[0_4px_25px_rgba(252,114,30,0.45)] transition-all hover:scale-103 active:scale-97 cursor-pointer touch-target"
+                    >
+                      <span>{currentSlide.ctaText || "View Details"}</span>
+                      <ArrowRight className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
-              </>
+
+                {/* RIGHT SIDE: Large Cinematic Image Stage */}
+                <div className="w-full md:w-1/2 flex items-center justify-center">
+                  <div
+                    onClick={handleAction}
+                    className="relative w-full h-[220px] min-[390px]:h-[250px] sm:h-[340px] md:h-[460px] rounded-[20px] sm:rounded-[30px] md:rounded-[34px] overflow-hidden shadow-2xl bg-slate-900 border border-white/80 dark:border-white/10 group/img cursor-pointer"
+                  >
+                    <img
+                      src={currentSlide.image}
+                      alt={currentSlide.title}
+                      loading={currentIndex === 0 ? "eager" : "lazy"}
+                      decoding="async"
+                      className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-700 ease-out"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src =
+                          "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1200&auto=format&fit=crop";
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent pointer-events-none" />
+                  </div>
+                </div>
+
+              </div>
             )}
           </motion.div>
         </AnimatePresence>
@@ -564,7 +460,7 @@ export const HeroCarouselComponent = ({
                 e.stopPropagation();
                 paginate(-1);
               }}
-              className="hidden sm:flex absolute left-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full glass-pill items-center justify-center cursor-pointer shadow-xl border border-white/95 dark:border-white/20 bg-white/90 dark:bg-black/85 backdrop-blur-2xl"
+              className="hidden sm:flex absolute left-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-11 md:h-11 rounded-full glass-pill items-center justify-center cursor-pointer shadow-xl border border-white/95 dark:border-white/20 bg-white/90 dark:bg-black/85 backdrop-blur-2xl transition-transform hover:scale-110 active:scale-95"
               aria-label="Previous slide"
             >
               <ChevronLeft className="h-5 w-5 text-gray-900 dark:text-white" />
@@ -576,7 +472,7 @@ export const HeroCarouselComponent = ({
                 e.stopPropagation();
                 paginate(1);
               }}
-              className="hidden sm:flex absolute right-4 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full glass-pill items-center justify-center cursor-pointer shadow-xl border border-white/95 dark:border-white/20 bg-white/90 dark:bg-black/85 backdrop-blur-2xl"
+              className="hidden sm:flex absolute right-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-11 md:h-11 rounded-full glass-pill items-center justify-center cursor-pointer shadow-xl border border-white/95 dark:border-white/20 bg-white/90 dark:bg-black/85 backdrop-blur-2xl transition-transform hover:scale-110 active:scale-95"
               aria-label="Next slide"
             >
               <ChevronRight className="h-5 w-5 text-gray-900 dark:text-white" />
@@ -584,9 +480,9 @@ export const HeroCarouselComponent = ({
           </>
         )}
 
-        {/* Pagination Dots */}
+        {/* Centered Pagination Dots Capsule */}
         {slides.length > 1 && (
-          <div className="absolute bottom-3 sm:bottom-5 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 p-1.5 rounded-full bg-black/40 dark:bg-black/60 backdrop-blur-md border border-white/10">
+          <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/40 dark:bg-black/60 backdrop-blur-md border border-white/15">
             {slides.map((_, idx) => (
               <button
                 key={idx}
