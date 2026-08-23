@@ -477,13 +477,13 @@ export const HappeningTodaySliderComponent = ({
                     <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-white/35 dark:from-[#0b0d16]/80 via-white/10 dark:via-[#0b0d16]/30 to-transparent pointer-events-none" />
 
                     {/* Badge Overlay */}
-                    <div className="absolute top-5 left-5 z-20 flex items-center gap-2">
-                      <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600/90 text-white rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-lg backdrop-blur-md border border-white/20">
+                    <div className="absolute top-5 left-5 right-5 z-20 flex items-center justify-between pointer-events-none">
+                      <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600/90 text-white rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-lg backdrop-blur-md border border-white/20 pointer-events-auto">
                         <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
                         {currentSlide.badge}
                       </span>
                       {currentSlide.category && (
-                        <span className="inline-flex px-3 py-1 bg-black/60 backdrop-blur-md text-white/90 rounded-full font-heading text-xs font-bold uppercase tracking-wider border border-white/20">
+                        <span className="inline-flex px-3 py-1 bg-black/60 backdrop-blur-md text-white/90 rounded-full font-heading text-xs font-bold uppercase tracking-wider border border-white/20 pointer-events-auto">
                           {currentSlide.category}
                         </span>
                       )}
