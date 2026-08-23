@@ -44,18 +44,18 @@ const contentStagger: Variants = {
   visible: {
     opacity: 1,
     transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.06,
+      staggerChildren: 0.04,
+      delayChildren: 0.05,
     },
   },
 };
 
 const contentItem: Variants = {
-  hidden: { opacity: 0, y: 8 },
+  hidden: { opacity: 0, y: 6 },
   visible: {
     opacity: 1,
     y: 0,
-    transition: { type: "spring" as const, stiffness: 300, damping: 24 },
+    transition: { type: "spring" as const, stiffness: 320, damping: 26 },
   },
 };
 
@@ -268,19 +268,19 @@ export const HappeningTodaySliderComponent = ({
       <div className="flex items-center justify-between mb-3 sm:mb-6 px-1">
         <div className="flex items-center gap-2 sm:gap-3">
           <div className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-orange-500/15 text-primary border border-orange-500/25 shadow-xs">
-            <CalendarDays className="h-5 w-5 sm:h-6 sm:w-6" />
+            <CalendarDays className="h-4.5 w-4.5 sm:h-6 sm:w-6" />
           </div>
           <div>
             <div className="flex items-center gap-2">
               <h2 className="font-heading font-black text-base sm:text-2xl md:text-3xl text-gray-900 dark:text-white tracking-tight">
                 Happening Today
               </h2>
-              <span className="relative flex h-2.5 w-2.5">
+              <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-orange-500" />
+                <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-orange-500" />
               </span>
             </div>
-            <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium">
+            <p className="text-[10px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium">
               Live schedule & campus events
             </p>
           </div>
@@ -295,7 +295,7 @@ export const HappeningTodaySliderComponent = ({
             <button
               type="button"
               onClick={() => paginate(-1)}
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full glass-pill flex items-center justify-center cursor-pointer hover:text-primary transition-colors border border-white/95 dark:border-white/10 shadow-sm"
+              className="w-7.5 h-7.5 sm:w-10 sm:h-10 rounded-full glass-pill flex items-center justify-center cursor-pointer hover:text-primary transition-colors border border-white/95 dark:border-white/10 shadow-sm"
               aria-label="Previous event"
             >
               <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -303,7 +303,7 @@ export const HappeningTodaySliderComponent = ({
             <button
               type="button"
               onClick={() => paginate(1)}
-              className="w-8 h-8 sm:w-10 sm:h-10 rounded-full glass-pill flex items-center justify-center cursor-pointer hover:text-primary transition-colors border border-white/95 dark:border-white/10 shadow-sm"
+              className="w-7.5 h-7.5 sm:w-10 sm:h-10 rounded-full glass-pill flex items-center justify-center cursor-pointer hover:text-primary transition-colors border border-white/95 dark:border-white/10 shadow-sm"
               aria-label="Next event"
             >
               <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -312,8 +312,8 @@ export const HappeningTodaySliderComponent = ({
         )}
       </div>
 
-      {/* Main Viewport Container: Optimized 240px-270px on mobile, 420px-460px on desktop */}
-      <div className="relative z-10 w-full h-[240px] min-[390px]:h-[255px] min-[430px]:h-[270px] md:min-h-[420px] lg:h-[440px] xl:h-[460px] overflow-hidden rounded-[22px] sm:rounded-[30px] md:rounded-[40px] glass-panel shadow-[0_16px_50px_rgba(0,0,0,0.18)] border border-white/80 dark:border-white/10 bg-white/40 dark:bg-[#07090e]/85 backdrop-blur-2xl flex flex-col">
+      {/* Main Viewport Container: Clean 200px-220px on mobile, 420px-460px on desktop */}
+      <div className="relative z-10 w-full h-[200px] min-[390px]:h-[215px] sm:h-[230px] md:min-h-[420px] lg:h-[440px] xl:h-[460px] overflow-hidden rounded-[20px] sm:rounded-[30px] md:rounded-[40px] glass-panel shadow-[0_12px_40px_rgba(0,0,0,0.16)] border border-white/80 dark:border-white/10 bg-white/40 dark:bg-[#07090e]/85 backdrop-blur-2xl flex flex-col">
         
         {/* Atmospheric Ambient Glow */}
         <div className="hidden dark:block absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-orange-500/15 via-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none z-0" />
@@ -352,11 +352,11 @@ export const HappeningTodaySliderComponent = ({
             ) : (
               <>
                 {/* =========================================================
-                    1. MOBILE SHOWCASE CARD (< md) - Perfectly Proportioned 240px
+                    1. MOBILE SHOWCASE CARD (< md) - Airy, Uncluttered, Minimal
                    ========================================================= */}
                 <div
                   onClick={handleAction}
-                  className="md:hidden relative w-full h-full flex flex-col justify-between p-4 pb-4.5 overflow-hidden cursor-pointer group"
+                  className="md:hidden relative w-full h-full flex flex-col justify-between p-3.5 pb-4 overflow-hidden cursor-pointer group"
                 >
                   {/* Cinematic Background Image */}
                   <img
@@ -371,85 +371,85 @@ export const HappeningTodaySliderComponent = ({
                     className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                   />
 
-                  {/* High-Readability Multi-layered Gradient Scrims */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 via-50% to-black/25 pointer-events-none" />
-                  <div className="absolute inset-0 bg-gradient-to-tr from-orange-950/20 via-transparent to-transparent pointer-events-none" />
+                  {/* Clean Gradient Scrim */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/92 via-black/50 via-50% to-black/20 pointer-events-none" />
 
-                  {/* Top Row: Live Beacon Badge & Category */}
+                  {/* Top Row: Discreet Status Beacon Badge */}
                   <div className="relative z-20 flex items-center justify-between w-full">
-                    <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full font-heading text-[10px] font-black uppercase tracking-wider shadow-md backdrop-blur-md border ${
+                    <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-heading text-[9.5px] font-black uppercase tracking-wider shadow-sm backdrop-blur-md border ${
                       currentSlide.type === "ad"
                         ? "bg-indigo-950/85 text-indigo-300 border-indigo-400/40"
                         : "bg-red-600/90 text-white border-white/20"
                     }`}>
                       <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                      {currentSlide.badge}
+                      {currentSlide.type === "ad" ? "Partner" : "Today"}
                     </span>
 
                     {currentSlide.category && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-black/65 backdrop-blur-md text-white/90 font-heading text-[10px] font-bold uppercase tracking-wider border border-white/20 truncate max-w-[150px]">
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white/90 font-heading text-[9.5px] font-bold uppercase tracking-wider border border-white/15 truncate max-w-[130px]">
                         {currentSlide.category}
                       </span>
                     )}
                   </div>
 
-                  {/* Bottom Content Area */}
+                  {/* Bottom Content Area: Minimal, Airy & Legible */}
                   <motion.div
                     variants={contentStagger}
                     initial="hidden"
                     animate="visible"
                     className="relative z-20 flex flex-col justify-end w-full"
                   >
-                    {/* Eyebrow Schedule / Time Tag */}
-                    {currentSlide.type === "event" && (currentSlide.date || currentSlide.time) && (
-                      <motion.div variants={contentItem} className="flex items-center gap-2 mb-1.5">
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-500/20 backdrop-blur-md border border-orange-400/30 text-orange-300 font-heading text-[11px] font-black tracking-wide shadow-xs">
-                          <Clock className="w-3 h-3 text-orange-400 shrink-0" />
-                          <span>{currentSlide.date} • {currentSlide.time}</span>
-                        </span>
-                      </motion.div>
-                    )}
-
-                    {/* Prominent High-Contrast Event Title */}
+                    {/* Clean Title */}
                     <motion.h3
                       variants={contentItem}
-                      className="text-base min-[390px]:text-lg min-[430px]:text-xl font-black font-heading text-white tracking-tight leading-snug line-clamp-2 drop-shadow-md mb-1.5 break-safe"
+                      className="text-base min-[390px]:text-lg font-black font-heading text-white tracking-tight leading-snug line-clamp-2 drop-shadow-md mb-1 break-safe"
                     >
                       {currentSlide.title}
                     </motion.h3>
 
-                    {/* Venue Location Line */}
-                    {currentSlide.venue && (
-                      <motion.div variants={contentItem} className="flex items-center gap-1.5 text-xs text-gray-200/90 font-medium truncate mb-3">
-                        <MapPin className="w-3.5 h-3.5 text-[#fc721e] shrink-0" />
-                        <span className="truncate">{currentSlide.venue}</span>
-                      </motion.div>
-                    )}
+                    {/* Concise Time & Venue Meta Line */}
+                    <motion.div variants={contentItem} className="flex items-center gap-2 text-xs text-gray-200/90 font-medium truncate mb-2.5">
+                      {currentSlide.time && (
+                        <span className="inline-flex items-center gap-1 text-orange-300 font-bold shrink-0">
+                          <Clock className="w-3 h-3 text-orange-400" />
+                          <span>{currentSlide.time}</span>
+                        </span>
+                      )}
+                      {currentSlide.time && currentSlide.venue && (
+                        <span className="text-white/40">•</span>
+                      )}
+                      {currentSlide.venue && (
+                        <span className="inline-flex items-center gap-1 truncate">
+                          <MapPin className="w-3 h-3 text-amber-300 shrink-0" />
+                          <span className="truncate">{currentSlide.venue}</span>
+                        </span>
+                      )}
+                    </motion.div>
 
-                    {/* Bottom Action Row: Comfortable Touch-Target CTA + Counter */}
-                    <motion.div variants={contentItem} className="flex items-center justify-between gap-3 pt-0.5">
+                    {/* Streamlined Action Pill & Counter */}
+                    <motion.div variants={contentItem} className="flex items-center justify-between gap-3">
                       <button
                         type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleAction();
                         }}
-                        className={`flex-1 max-w-[200px] flex items-center justify-center gap-2 py-2.5 px-5 rounded-full ${
+                        className={`inline-flex items-center gap-1.5 py-1.5 px-4 rounded-full ${
                           currentSlide.type === "ad"
-                            ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-[0_4px_16px_rgba(99,102,241,0.4)]"
-                            : "bg-gradient-to-r from-[#fc721e] to-[#ff8c42] text-white shadow-[0_4px_16px_rgba(252,114,30,0.4)]"
-                        } font-heading font-black text-xs min-[390px]:text-sm transition-transform active:scale-97 cursor-pointer touch-target`}
+                            ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white"
+                            : "bg-gradient-to-r from-[#fc721e] to-[#ff8c42] text-white"
+                        } font-heading font-black text-xs shadow-md active:scale-95 transition-transform cursor-pointer touch-target`}
                       >
-                        <span>{currentSlide.ctaText || "View Details"}</span>
-                        <ArrowRight className="h-3.5 w-3.5" />
+                        <span>{currentSlide.type === "ad" ? "Learn More" : "View Details"}</span>
+                        <ArrowRight className="h-3 w-3" />
                       </button>
 
                       {slides.length > 1 && (
-                        <div className="shrink-0 flex items-center gap-1 px-3 py-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white font-heading font-bold text-xs select-none">
+                        <span className="text-[11px] font-heading font-bold text-white/80 bg-black/50 backdrop-blur-md px-2.5 py-1 rounded-full border border-white/15">
                           <span className="text-orange-400 font-black">{String(activeIndex + 1).padStart(2, "0")}</span>
-                          <span className="text-white/40">/</span>
-                          <span className="text-white/80">{String(slides.length).padStart(2, "0")}</span>
-                        </div>
+                          <span className="text-white/40"> / </span>
+                          <span>{String(slides.length).padStart(2, "0")}</span>
+                        </span>
                       )}
                     </motion.div>
                   </motion.div>
