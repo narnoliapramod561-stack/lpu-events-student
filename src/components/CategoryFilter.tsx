@@ -150,281 +150,306 @@ export const CategoryFilterComponent = ({
     <div id="categories" className="w-full flex flex-col gap-3.5 sm:gap-8">
       
       {/* ======================================================== */}
-      {/* 📱 TOP-TIER UNIVERSITY MOBILE DISCOVERY SUITE (< sm)      */}
+      {/* 📱 MOBILE DISCOVERY SUITE (< sm) — DO NOT TOUCH DESKTOP   */}
       {/* ======================================================== */}
-      <div className="flex flex-col gap-3 sm:hidden">
-        
-        {/* 1. Schedule Ribbon (Indigo / Sapphire Time Dimension) */}
-        <div className="flex flex-col gap-1.5 p-2 rounded-2xl bg-indigo-950/20 dark:bg-indigo-950/30 border border-indigo-500/20 backdrop-blur-md">
-          <div className="flex items-center justify-between px-1">
-            <div className="flex items-center gap-1.5">
-              <span className="w-5 h-5 rounded-lg bg-indigo-500/20 border border-indigo-400/30 flex items-center justify-center text-indigo-400">
-                <Calendar className="h-3 w-3" />
-              </span>
-              <span className="text-[11px] font-black uppercase tracking-wider text-indigo-300 font-heading">
-                Timeline & Schedule
-              </span>
-            </div>
+      <div className="flex flex-col gap-2.5 sm:hidden">
 
-            {(activeScheduleFilter !== "all" || selectedDate) && (
-              <button
-                type="button"
-                onClick={() => {
-                  onSelectScheduleFilter("all");
-                  onSelectDate("");
-                }}
-                className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-0.5 px-2 py-0.5 rounded-full bg-indigo-500/10 border border-indigo-500/20"
-              >
-                <span>Reset</span>
-                <X className="h-2.5 w-2.5" />
-              </button>
-            )}
-          </div>
+        {/* ─── SECTION 1: WHEN ─── Calendar Schedule Strip ─── */}
+        <div className="relative overflow-hidden rounded-2xl">
+          {/* Frosted glass background with cool slate/teal tone */}
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-cyan-950/60 to-slate-900/80 backdrop-blur-xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(6,182,212,0.08),transparent_60%)]" />
+          
+          <div className="relative flex flex-col gap-2 p-3">
+            {/* Header row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-cyan-500/15 border border-cyan-400/25 flex items-center justify-center">
+                  <Clock className="h-3.5 w-3.5 text-cyan-400" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-cyan-400/70 font-heading leading-none">
+                    When
+                  </span>
+                  <span className="text-[13px] font-black text-white font-heading leading-tight">
+                    Schedule
+                  </span>
+                </div>
+              </div>
 
-          {/* Indigo Timeline Pills */}
-          <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 select-none items-center touch-pan-x">
-            {[
-              { id: "all", name: "All Dates" },
-              { id: "today", name: "Today", isLive: true },
-              { id: "tomorrow", name: "Tomorrow" },
-              { id: "this_week", name: "This Week" },
-              { id: "upcoming", name: "Upcoming" }
-            ].map((sched) => {
-              const isSelected = !isTrendingActive && activeScheduleFilter === sched.id && !selectedDate;
-              return (
+              {(activeScheduleFilter !== "all" || selectedDate) && (
                 <button
-                  key={`m-sched-${sched.id}`}
                   type="button"
                   onClick={() => {
+                    onSelectScheduleFilter("all");
                     onSelectDate("");
-                    onSelectScheduleFilter(sched.id);
                   }}
-                  className={`flex items-center gap-1 px-3 py-1.5 rounded-xl font-heading font-black text-xs whitespace-nowrap shrink-0 active:scale-95 transition-all ${
-                    isSelected
-                      ? "bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-md shadow-indigo-500/30 border border-indigo-300/40"
-                      : "bg-indigo-950/40 dark:bg-white/[0.04] text-indigo-200/80 border border-indigo-500/20 hover:text-white hover:border-indigo-400/40"
+                  className="text-[10px] font-bold text-cyan-300 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 active:scale-95 transition-transform"
+                >
+                  <X className="h-3 w-3" />
+                  <span>Clear</span>
+                </button>
+              )}
+            </div>
+
+            {/* Timeline pills — horizontal scroll */}
+            <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 -mx-0.5 px-0.5 select-none items-center touch-pan-x">
+              {[
+                { id: "all", label: "All", icon: null },
+                { id: "today", label: "Today", icon: "live" },
+                { id: "tomorrow", label: "Tomorrow", icon: null },
+                { id: "this_week", label: "This Week", icon: null },
+                { id: "upcoming", label: "Upcoming", icon: null }
+              ].map((item) => {
+                const isActive = !isTrendingActive && activeScheduleFilter === item.id && !selectedDate;
+                return (
+                  <button
+                    key={`ms-${item.id}`}
+                    type="button"
+                    onClick={() => {
+                      onSelectDate("");
+                      onSelectScheduleFilter(item.id);
+                    }}
+                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
+                      isActive
+                        ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-300/30"
+                        : "bg-white/[0.05] text-slate-300 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
+                    }`}
+                  >
+                    {item.icon === "live" && (
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                      </span>
+                    )}
+                    {item.label}
+                  </button>
+                );
+              })}
+
+              {/* Date Picker Pill */}
+              <div className="relative shrink-0">
+                <button
+                  type="button"
+                  onClick={() => mobileDateInputRef.current?.showPicker()}
+                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap active:scale-[0.96] transition-all duration-200 ${
+                    selectedDate
+                      ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-300/30"
+                      : "bg-white/[0.05] text-slate-300 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
                   }`}
                 >
-                  {sched.isLive && <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />}
-                  <span>{sched.name}</span>
+                  <CalendarDays className={`h-3.5 w-3.5 ${selectedDate ? "text-white" : "text-cyan-400"}`} />
+                  {formatDisplayDate(selectedDate)}
+                  {selectedDate && (
+                    <span onClick={handleClearDate} className="ml-0.5">
+                      <X className="h-3 w-3 text-white/70 hover:text-white" />
+                    </span>
+                  )}
                 </button>
-              );
-            })}
-
-            {/* Indigo Date Picker Button */}
-            <div className="relative shrink-0">
-              <button
-                type="button"
-                onClick={() => mobileDateInputRef.current && mobileDateInputRef.current.showPicker()}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-xl font-heading font-black text-xs whitespace-nowrap active:scale-95 transition-all ${
-                  selectedDate
-                    ? "bg-gradient-to-r from-indigo-500 to-blue-600 text-white shadow-md shadow-indigo-500/30 border border-indigo-300/40"
-                    : "bg-indigo-950/40 dark:bg-white/[0.04] text-indigo-200/80 border border-indigo-500/20 hover:text-white hover:border-indigo-400/40"
-                }`}
-              >
-                <CalendarDays className="h-3 w-3 text-indigo-400" />
-                <span>{formatDisplayDate(selectedDate)}</span>
-                {selectedDate && (
-                  <span
-                    onClick={handleClearDate}
-                    className="ml-0.5 hover:text-white"
-                  >
-                    <X className="h-3 w-3" />
-                  </span>
-                )}
-              </button>
-              <input
-                type="date"
-                ref={mobileDateInputRef}
-                onChange={handleDateChange}
-                value={selectedDate}
-                className="absolute inset-0 opacity-0 pointer-events-none w-0 h-0"
-              />
+                <input
+                  type="date"
+                  ref={mobileDateInputRef}
+                  onChange={handleDateChange}
+                  value={selectedDate}
+                  className="absolute inset-0 opacity-0 pointer-events-none w-0 h-0"
+                />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* 2. Categories Explorer (Signature Orange / Campus Life Dimension) */}
-        <div className="flex flex-col gap-1.5 p-2 rounded-2xl bg-orange-950/15 dark:bg-orange-950/25 border border-orange-500/20 backdrop-blur-md">
-          <div className="flex items-center justify-between gap-2 px-1">
-            <div className="flex items-center gap-1.5 shrink-0">
-              <span className="w-5 h-5 rounded-lg bg-orange-500/20 border border-orange-400/30 flex items-center justify-center text-orange-400">
-                <Sparkles className="h-3 w-3" />
-              </span>
-              <span className="text-[11px] font-black uppercase tracking-wider text-orange-300 font-heading">
-                Categories
-              </span>
-            </div>
+        {/* ─── SECTION 2: WHAT ─── Event Categories Explorer ─── */}
+        <div className="relative overflow-hidden rounded-2xl">
+          {/* Warm amber/rose glass background */}
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-950/70 via-orange-950/50 to-rose-950/60 backdrop-blur-xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(251,146,60,0.07),transparent_60%)]" />
 
-            {/* Compact Search Capsule */}
-            <div className="relative flex-1 max-w-[190px]">
-              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-gray-400 pointer-events-none" />
-              <input
-                type="text"
-                value={categorySearch}
-                onChange={(e) => setCategorySearch(e.target.value)}
-                placeholder="Search tags..."
-                className="w-full pl-7 pr-6 py-1 rounded-lg bg-white/[0.06] dark:bg-white/[0.04] border border-orange-500/20 text-xs font-medium text-gray-900 dark:text-white placeholder:text-gray-500 focus:outline-none focus:border-orange-500/60 transition-colors"
-              />
-              {categorySearch && (
-                <button
-                  type="button"
-                  onClick={() => setCategorySearch("")}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 p-0.5 rounded-full text-gray-400 hover:text-white"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              )}
-            </div>
-          </div>
-
-          {/* Direct Matching Subcategory Jump */}
-          {cleanQuery && directMatchingSubcategories.length > 0 && (
-            <div className="flex flex-col gap-1 p-2 rounded-xl bg-orange-500/10 border border-orange-500/25">
-              <span className="text-[10px] font-black uppercase text-orange-400 tracking-wider flex items-center gap-1">
-                <Sparkles className="h-3 w-3" /> Matching Subcategories ({directMatchingSubcategories.length})
-              </span>
-              <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
-                {directMatchingSubcategories.map(({ category, subcategory }) => {
-                  const isSubSelected = selectedCategory === category.id && selectedSubcategory === subcategory.id;
-                  const SubIcon = getCategoryIcon(subcategory.key || subcategory.name);
-                  return (
-                    <button
-                      key={`m-${category.id}-${subcategory.id}`}
-                      type="button"
-                      onClick={() => {
-                        onSelectCategory(category.id);
-                        onSelectSubcategory(subcategory.id);
-                      }}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 ${
-                        isSubSelected
-                          ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white shadow-xs"
-                          : "bg-white/10 text-gray-200 border border-white/10"
-                      }`}
-                    >
-                      <SubIcon className="h-3 w-3" />
-                      <span className="opacity-70">{category.name} ›</span>
-                      <span>{subcategory.name}</span>
-                    </button>
-                  );
-                })}
+          <div className="relative flex flex-col gap-2 p-3">
+            {/* Header row */}
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2 shrink-0">
+                <div className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-400/25 flex items-center justify-center">
+                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.15em] text-amber-400/70 font-heading leading-none">
+                    What
+                  </span>
+                  <span className="text-[13px] font-black text-white font-heading leading-tight">
+                    Categories
+                  </span>
+                </div>
               </div>
-            </div>
-          )}
 
-          {/* Orange Category Capsules */}
-          {filteredCategories.length > 0 ? (
-            <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 select-none items-center touch-pan-x">
-              {!cleanQuery && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onSelectCategory("all");
-                    onSelectSubcategory("");
-                  }}
-                  className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-heading font-black text-xs whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 ${
-                    selectedCategory === "all"
-                      ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white shadow-md shadow-orange-500/30 border border-orange-400/50"
-                      : "bg-orange-950/30 dark:bg-white/[0.04] border border-orange-500/20 text-orange-200/80 hover:text-white"
-                  }`}
-                >
-                  <div className={`w-5 h-5 rounded-md flex items-center justify-center ${selectedCategory === "all" ? "bg-white/25 text-white" : "bg-orange-500/20 text-orange-400"}`}>
-                    <LayoutGrid className="h-3 w-3" />
-                  </div>
-                  <span>ALL</span>
-                </button>
-              )}
-
-              {filteredCategories.map((cat) => {
-                const isSelected = selectedCategory === cat.id;
-                const CatIcon = getCategoryIcon(cat.key || cat.name);
-                const subCount = cat.subcategories?.length || 0;
-
-                return (
-                  <button
-                    key={`m-${cat.id}`}
-                    type="button"
-                    onClick={() => {
-                      onSelectCategory(isSelected ? "all" : cat.id);
-                      onSelectSubcategory("");
-                    }}
-                    className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-xl font-heading font-black text-xs whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 ${
-                      isSelected
-                        ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white shadow-md shadow-orange-500/30 border border-orange-400/50"
-                        : "bg-orange-950/30 dark:bg-white/[0.04] border border-orange-500/20 text-orange-200/80 hover:text-white"
-                    }`}
-                  >
-                    <div className={`w-5 h-5 rounded-md flex items-center justify-center ${isSelected ? "bg-white/25 text-white" : "bg-orange-500/20 text-orange-400"}`}>
-                      <CatIcon className="h-3 w-3" />
-                    </div>
-                    <span>{cat.name.toUpperCase()}</span>
-                    {subCount > 0 && (
-                      <span className={`text-[10px] px-1.5 py-0.2 rounded-full font-extrabold ${
-                        isSelected ? "bg-black/25 text-white" : "bg-orange-500/20 text-orange-400"
-                      }`}>
-                        {subCount}
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="py-2.5 px-3 rounded-xl bg-white/5 border border-white/10 text-center text-xs text-gray-400">
-              No categories matching &ldquo;{categorySearch}&rdquo;
-            </div>
-          )}
-
-          {/* Subcategories (When active) */}
-          {selectedCategory !== "all" && activeCategoryData && subcategories.length > 0 && (
-            <div className="flex flex-col gap-1.5 p-2 rounded-xl bg-orange-950/40 border border-orange-500/30 mt-1">
-              <div className="flex items-center justify-between text-[10px] font-black font-heading text-orange-300 px-1">
-                <span className="uppercase tracking-wider">{activeCategoryData.name} Topics:</span>
-                {selectedSubcategory && (
+              {/* Inline search */}
+              <div className="relative flex-1 max-w-[180px]">
+                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-amber-400/50 pointer-events-none" />
+                <input
+                  type="text"
+                  value={categorySearch}
+                  onChange={(e) => setCategorySearch(e.target.value)}
+                  placeholder="Search..."
+                  className="w-full pl-7 pr-7 py-1.5 rounded-lg bg-white/[0.06] border border-amber-500/15 text-[11px] font-medium text-white placeholder:text-white/30 focus:outline-none focus:border-amber-500/40 focus:bg-white/[0.08] transition-all"
+                />
+                {categorySearch && (
                   <button
                     type="button"
-                    onClick={() => onSelectSubcategory("")}
-                    className="text-orange-400 text-[10px] flex items-center gap-0.5"
+                    onClick={() => setCategorySearch("")}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
                   >
-                    <span>Clear</span>
-                    <X className="h-2.5 w-2.5" />
+                    <X className="h-3 w-3" />
                   </button>
                 )}
               </div>
-              <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
-                <button
-                  type="button"
-                  onClick={() => onSelectSubcategory("")}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 ${
-                    !selectedSubcategory
-                      ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white"
-                      : "bg-white/10 text-gray-300"
-                  }`}
-                >
-                  All
-                </button>
-                {filteredActiveSubcategories.map((sub) => {
-                  const isSelected = selectedSubcategory === sub.id || selectedSubcategory === sub.name;
-                  const SubIcon = getCategoryIcon(sub.key || sub.name);
+            </div>
+
+            {/* Search direct-match subcategory jump */}
+            {cleanQuery && directMatchingSubcategories.length > 0 && (
+              <div className="flex flex-col gap-1.5 p-2 rounded-xl bg-amber-500/8 border border-amber-500/20">
+                <span className="text-[10px] font-black uppercase text-amber-400/80 tracking-wider flex items-center gap-1 px-0.5">
+                  <Sparkles className="h-2.5 w-2.5" /> Matches ({directMatchingSubcategories.length})
+                </span>
+                <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
+                  {directMatchingSubcategories.map(({ category, subcategory }) => {
+                    const isSubSelected = selectedCategory === category.id && selectedSubcategory === subcategory.id;
+                    const SubIcon = getCategoryIcon(subcategory.key || subcategory.name);
+                    return (
+                      <button
+                        key={`m-${category.id}-${subcategory.id}`}
+                        type="button"
+                        onClick={() => {
+                          onSelectCategory(category.id);
+                          onSelectSubcategory(subcategory.id);
+                        }}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap shrink-0 active:scale-95 transition-all ${
+                          isSubSelected
+                            ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm"
+                            : "bg-white/[0.06] text-white/70 border border-white/[0.08]"
+                        }`}
+                      >
+                        <SubIcon className="h-3 w-3" />
+                        <span className="opacity-60">{category.name} ›</span>
+                        <span>{subcategory.name}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Category chips — wrap layout for better mobile density */}
+            {filteredCategories.length > 0 ? (
+              <div className="flex flex-wrap gap-1.5 select-none">
+                {!cleanQuery && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelectCategory("all");
+                      onSelectSubcategory("");
+                    }}
+                    className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold whitespace-nowrap active:scale-[0.96] transition-all duration-200 ${
+                      selectedCategory === "all"
+                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 ring-1 ring-amber-300/30"
+                        : "bg-white/[0.05] text-amber-200/70 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
+                    }`}
+                  >
+                    <div className={`w-4.5 h-4.5 rounded-md flex items-center justify-center ${selectedCategory === "all" ? "text-white" : "text-amber-400"}`}>
+                      <LayoutGrid className="h-3 w-3" />
+                    </div>
+                    All
+                  </button>
+                )}
+
+                {filteredCategories.map((cat) => {
+                  const isSelected = selectedCategory === cat.id;
+                  const CatIcon = getCategoryIcon(cat.key || cat.name);
+                  const subCount = cat.subcategories?.length || 0;
+
                   return (
                     <button
-                      key={`m-sub-${sub.id}`}
+                      key={`m-${cat.id}`}
                       type="button"
-                      onClick={() => onSelectSubcategory(isSelected ? "" : sub.id)}
-                      className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold whitespace-nowrap shrink-0 ${
+                      onClick={() => {
+                        onSelectCategory(isSelected ? "all" : cat.id);
+                        onSelectSubcategory("");
+                      }}
+                      className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-extrabold whitespace-nowrap active:scale-[0.96] transition-all duration-200 ${
                         isSelected
-                          ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white"
-                          : "bg-white/10 text-gray-300"
+                          ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 ring-1 ring-amber-300/30"
+                          : "bg-white/[0.05] text-amber-200/70 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
                       }`}
                     >
-                      <SubIcon className="h-3 w-3" />
-                      <span>{sub.name}</span>
+                      <CatIcon className={`h-3 w-3 ${isSelected ? "text-white" : "text-amber-400/80"}`} />
+                      <span>{cat.name}</span>
+                      {subCount > 0 && (
+                        <span className={`text-[9px] min-w-[16px] text-center px-1 py-px rounded-full font-black leading-none ${
+                          isSelected ? "bg-white/20 text-white" : "bg-amber-500/15 text-amber-400/80"
+                        }`}>
+                          {subCount}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="py-3 px-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-center text-[11px] text-white/40">
+                No categories matching &ldquo;{categorySearch}&rdquo;
+              </div>
+            )}
+
+            {/* Subcategories expansion */}
+            {selectedCategory !== "all" && activeCategoryData && subcategories.length > 0 && (
+              <div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-white/[0.04] border border-amber-500/15 mt-0.5">
+                <div className="flex items-center justify-between px-0.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-300/80 font-heading">
+                    {activeCategoryData.name} › Topics
+                  </span>
+                  {selectedSubcategory && (
+                    <button
+                      type="button"
+                      onClick={() => onSelectSubcategory("")}
+                      className="text-amber-400 text-[10px] font-bold flex items-center gap-0.5 active:scale-95"
+                    >
+                      Clear <X className="h-2.5 w-2.5" />
+                    </button>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-1.5">
+                  <button
+                    type="button"
+                    onClick={() => onSelectSubcategory("")}
+                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap active:scale-95 transition-all ${
+                      !selectedSubcategory
+                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm"
+                        : "bg-white/[0.06] text-white/50 border border-white/[0.06]"
+                    }`}
+                  >
+                    All
+                  </button>
+                  {filteredActiveSubcategories.map((sub) => {
+                    const isSelected = selectedSubcategory === sub.id || selectedSubcategory === sub.name;
+                    const SubIcon = getCategoryIcon(sub.key || sub.name);
+                    return (
+                      <button
+                        key={`m-sub-${sub.id}`}
+                        type="button"
+                        onClick={() => onSelectSubcategory(isSelected ? "" : sub.id)}
+                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap active:scale-95 transition-all ${
+                          isSelected
+                            ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm"
+                            : "bg-white/[0.06] text-white/50 border border-white/[0.06]"
+                        }`}
+                      >
+                        <SubIcon className="h-3 w-3" />
+                        {sub.name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
