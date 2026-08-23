@@ -5,7 +5,10 @@ import { HappeningTodaySlider } from "./components/HappeningTodaySlider";
 import { CategoryFilter } from "./components/CategoryFilter";
 import { EventGrid } from "./components/EventGrid";
 import { EventDetailsView } from "./components/EventDetailsView";
-import { LpuLogo } from "./components/LpuLogo";
+import { AboutUsView } from "./components/AboutUsView";
+import { PrivacyPolicyView } from "./components/PrivacyPolicyView";
+import { TermsOfServiceView } from "./components/TermsOfServiceView";
+import { Footer } from "./components/Footer";
 import { SponsorBanner } from "./components/SponsorBanner";
 import { OFFICIAL_PLATFORM_CATEGORIES } from "./utils/categories";
 import { lpuClient } from "./supabase";
@@ -19,6 +22,41 @@ import {
   trackEvent
 } from "@lpu-events/shared";
 
+export type StudentRoute = 'home' | 'about' | 'privacy' | 'terms' | 'event-details';
+
+interface RouteState {
+  route: StudentRoute;
+  eventId: string | null;
+}
+
+const parseCurrentRoute = (): RouteState => {
+  if (typeof window === 'undefined') return { route: 'home', eventId: null };
+
+  const pathname = window.location.pathname.toLowerCase();
+  const searchParams = new URLSearchParams(window.location.search);
+  const pageParam = searchParams.get('page')?.toLowerCase();
+  const eventParam = searchParams.get('event');
+
+  if (pathname === '/about' || pageParam === 'about') {
+    return { route: 'about', eventId: null };
+  }
+  if (pathname === '/privacy' || pageParam === 'privacy') {
+    return { route: 'privacy', eventId: null };
+  }
+  if (pathname === '/terms' || pageParam === 'terms') {
+    return { route: 'terms', eventId: null };
+  }
+
+  const match = window.location.pathname.match(/^\/events\/([^\/?#]+)/);
+  if (match && match[1]) {
+    return { route: 'event-details', eventId: decodeURIComponent(match[1]) };
+  }
+  if (eventParam) {
+    return { route: 'event-details', eventId: eventParam };
+  }
+
+  return { route: 'home', eventId: null };
+};
 
 export default function App() {
   const [theme, setTheme] = useState("light");
@@ -58,45 +96,61 @@ export default function App() {
   const [visibleEventsCount, setVisibleEventsCount] = useState(10);
   const searchReqIdRef = useRef(0);
 
-  // Helper to extract canonical event id from pathname (/events/:id) or query (?event=:id)
-  const getEventIdFromUrl = (): string | null => {
-    if (typeof window === 'undefined') return null;
-    const match = window.location.pathname.match(/^\/events\/([^\/?#]+)/);
-    if (match && match[1]) {
-      return decodeURIComponent(match[1]);
-    }
-    const params = new URLSearchParams(window.location.search);
-    return params.get('event');
-  };
+  // Route state
+  const initialRouteState = useMemo(() => parseCurrentRoute(), []);
+  const [currentView, setCurrentView] = useState<StudentRoute>(initialRouteState.route);
+  const [selectedEventId, setSelectedEventId] = useState<string | null>(initialRouteState.eventId);
 
-  // Active details view with URL deep linking (/events/:id and ?event=:id)
-  const [selectedEventId, setSelectedEventId] = useState<string | null>(() => {
-    return getEventIdFromUrl();
-  });
-
-  // Track scroll position before entering event details to restore on back
+  // Track scroll position before navigating away from home to restore on back
   const previousScrollPosRef = useRef<number>(0);
 
+  // Universal Navigation Handler for static pages
+  const handleNavigate = useCallback((route: 'home' | 'about' | 'privacy' | 'terms') => {
+    setSelectedEventId(null);
+    setCurrentView(route);
+
+    if (typeof window !== 'undefined') {
+      window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+      const targetUrl = route === 'home' ? '/' : `/${route}`;
+      if (window.location.pathname !== targetUrl) {
+        window.history.pushState({}, '', targetUrl);
+      }
+      const titles: Record<string, string> = {
+        home: 'LPU Events — Student Website',
+        about: 'About Us — LPU Events',
+        privacy: 'Privacy Policy — LPU Events',
+        terms: 'Terms of Service — LPU Events',
+      };
+      document.title = titles[route] || 'LPU Events — Student Website';
+      trackPageView(`${route.toUpperCase()} Page`);
+    }
+  }, []);
+
+  // Event Selection Handler
   const handleSelectEvent = useCallback((id: string | null) => {
     if (id) {
       if (typeof window !== 'undefined') {
         previousScrollPosRef.current = window.scrollY || document.documentElement.scrollTop || 0;
       }
       setSelectedEventId(id);
+      setCurrentView('event-details');
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         const url = new URL(window.location.href);
         url.pathname = `/events/${id}`;
         url.searchParams.delete('event');
+        url.searchParams.delete('page');
         trackPageView(`Event Details: ${id}`);
         window.history.pushState({}, '', url.toString());
       }
     } else {
       setSelectedEventId(null);
+      setCurrentView('home');
       if (typeof window !== 'undefined') {
         const url = new URL(window.location.href);
         url.pathname = '/';
         url.searchParams.delete('event');
+        url.searchParams.delete('page');
         trackPageView('Home Discovery');
         document.title = 'LPU Events — Student Website';
         window.history.pushState({}, '', url.toString());
@@ -115,10 +169,20 @@ export default function App() {
   // Browser back/forward navigation sync
   useEffect(() => {
     const handlePopState = () => {
-      const eventFromUrl = getEventIdFromUrl();
-      setSelectedEventId(eventFromUrl);
-      if (!eventFromUrl) {
-        document.title = 'LPU Events — Student Website';
+      const { route, eventId } = parseCurrentRoute();
+      setCurrentView(route);
+      setSelectedEventId(eventId);
+
+      const titles: Record<string, string> = {
+        home: 'LPU Events — Student Website',
+        about: 'About Us — LPU Events',
+        privacy: 'Privacy Policy — LPU Events',
+        terms: 'Terms of Service — LPU Events',
+        'event-details': 'Event Details — LPU Events',
+      };
+      document.title = titles[route] || 'LPU Events — Student Website';
+
+      if (route === 'home') {
         const targetY = previousScrollPosRef.current;
         requestAnimationFrame(() => {
           window.scrollTo({ top: targetY, left: 0, behavior: 'instant' });
@@ -126,6 +190,8 @@ export default function App() {
             window.scrollTo({ top: targetY, left: 0, behavior: 'instant' });
           }, 30);
         });
+      } else {
+        window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
       }
     };
     window.addEventListener('popstate', handlePopState);
@@ -134,7 +200,16 @@ export default function App() {
 
   // Initialize Theme, dynamic settings, and initial pageview on mount
   useEffect(() => {
-    trackPageView('Home Discovery');
+    const { route } = parseCurrentRoute();
+    const titles: Record<string, string> = {
+      home: 'LPU Events — Student Website',
+      about: 'About Us — LPU Events',
+      privacy: 'Privacy Policy — LPU Events',
+      terms: 'Terms of Service — LPU Events',
+      'event-details': 'Event Details — LPU Events',
+    };
+    document.title = titles[route] || 'LPU Events — Student Website';
+    trackPageView(route === 'home' ? 'Home Discovery' : `${route.toUpperCase()} Page`);
 
     const storedTheme = localStorage.getItem("theme") || "light";
     setTheme(storedTheme);
@@ -327,6 +402,7 @@ export default function App() {
     setSearchQuery(q);
     if (q.trim().length >= 2) {
       setSelectedEventId(null);
+      setCurrentView('home');
       setIsTrendingActive(false);
     }
   }, []);
@@ -343,7 +419,7 @@ export default function App() {
 
   const handleGoToDashboard = useCallback(() => {
     trackEvent('nav_home_dashboard');
-    setSelectedEventId(null);
+    handleNavigate('home');
     setSearchQuery("");
     setSelectedCategory("all");
     setSelectedSubcategory("");
@@ -352,11 +428,6 @@ export default function App() {
     setIsTrendingActive(false);
 
     if (typeof window !== 'undefined') {
-      const url = new URL(window.location.href);
-      url.searchParams.delete('event');
-      url.hash = '';
-      window.history.pushState({}, '', url.pathname);
-
       window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       document.documentElement.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       document.body.scrollTo({ top: 0, left: 0, behavior: "smooth" });
@@ -365,138 +436,95 @@ export default function App() {
         topEl.scrollIntoView({ behavior: "smooth", block: "start" });
       }
     }
-  }, []);
+  }, [handleNavigate]);
 
   const handleGoToCategories = useCallback(() => {
     trackEvent('nav_categories');
     setSelectedEventId(null);
+    setCurrentView('home');
     setSearchQuery("");
     setIsTrendingActive(false);
+
+    if (typeof window !== 'undefined' && window.location.pathname !== '/') {
+      window.history.pushState({}, '', '/');
+      document.title = 'LPU Events — Student Website';
+    }
+
     setTimeout(() => {
       const el = document.getElementById("categories");
       if (el) {
         el.scrollIntoView({ behavior: "smooth", block: "start" });
       }
-    }, 50);
+    }, 60);
   }, []);
 
   const handleSelectTrending = useCallback(() => {
     trackEvent('trending_filter_selected');
+    setSelectedEventId(null);
+    setCurrentView('home');
     setIsTrendingActive(true);
     setSelectedCategory("all");
     setSelectedSubcategory("");
     setActiveScheduleFilter("all");
     const el = document.getElementById("events");
     if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
   }, []);
 
-  // Perform in-memory date and schedule filtering when in feed mode
-  const todayStr = useMemo(() => new Date().toISOString().split("T")[0], []);
-  const tomorrowStr = useMemo(() => {
-    const tom = new Date();
-    tom.setDate(tom.getDate() + 1);
-    return tom.toISOString().split("T")[0];
-  }, []);
-  const nextWeekStr = useMemo(() => {
-    const d = new Date();
-    d.setDate(d.getDate() + 7);
-    return d.toISOString().split("T")[0];
-  }, []);
-
-  const trendingEventIds = useMemo(() => {
-    return new Set(trendingEvents.map((t) => t.id));
-  }, [trendingEvents]);
-
+  // Client-side date filtering and trending list mapping
   const filteredEvents = useMemo(() => {
-    // If user has activated the curated Trending filter
-    if (isTrendingActive) {
-      return trendingEvents.filter((event) => {
-        if (searchQuery.trim().length >= 2) {
-          const q = searchQuery.toLowerCase();
-          const matches =
-            event.name.toLowerCase().includes(q) ||
-            (event.venue_name && event.venue_name.toLowerCase().includes(q)) ||
-            (event.organizations?.name && event.organizations.name.toLowerCase().includes(q));
-          if (!matches) return false;
-        }
+    let list = isTrendingActive ? trendingEvents : events;
 
-        if (selectedDate) {
-          const start = new Date(event.start_at).toISOString().split("T")[0];
-          const end = new Date(event.end_at).toISOString().split("T")[0];
-          const matchesDate = selectedDate >= start && selectedDate <= end;
-          if (!matchesDate) return false;
-        }
-
-        return true;
+    if (activeScheduleFilter === "today") {
+      const todayStr = new Date().toISOString().split("T")[0];
+      list = list.filter((e) => {
+        const eDate = new Date(e.start_at).toISOString().split("T")[0];
+        return eDate === todayStr;
+      });
+    } else if (activeScheduleFilter === "tomorrow") {
+      const tomorrow = new Date();
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const tomorrowStr = tomorrow.toISOString().split("T")[0];
+      list = list.filter((e) => {
+        const eDate = new Date(e.start_at).toISOString().split("T")[0];
+        return eDate === tomorrowStr;
+      });
+    } else if (activeScheduleFilter === "weekend") {
+      list = list.filter((e) => {
+        const d = new Date(e.start_at);
+        const day = d.getDay();
+        return day === 0 || day === 6; // Sunday or Saturday
+      });
+    } else if (activeScheduleFilter === "custom" && selectedDate) {
+      list = list.filter((e) => {
+        const eDate = new Date(e.start_at).toISOString().split("T")[0];
+        return eDate === selectedDate;
       });
     }
 
-    if (searchQuery.trim().length >= 2) {
-      // Results from searchEvents RPC are already server-filtered and ranked by relevance
-      return events.map((evt) => ({
-        ...evt,
-        is_trending: trendingEventIds.has(evt.id)
-      }));
-    }
+    return list;
+  }, [events, trendingEvents, isTrendingActive, activeScheduleFilter, selectedDate]);
 
-    return events
-      .filter((event) => {
-        // Custom selected date
-        if (selectedDate) {
-          const start = new Date(event.start_at).toISOString().split("T")[0];
-          const end = new Date(event.end_at).toISOString().split("T")[0];
-          const matchesDate = selectedDate >= start && selectedDate <= end;
-          if (!matchesDate) return false;
-        }
-
-        // Schedule quick filters
-        if (activeScheduleFilter !== "all") {
-          const start = new Date(event.start_at).toISOString().split("T")[0];
-          const end = new Date(event.end_at).toISOString().split("T")[0];
-
-          if (activeScheduleFilter === "today") {
-            const matchesToday = todayStr >= start && todayStr <= end;
-            if (!matchesToday) return false;
-          } else if (activeScheduleFilter === "tomorrow") {
-            const matchesTomorrow = tomorrowStr >= start && tomorrowStr <= end;
-            if (!matchesTomorrow) return false;
-          } else if (activeScheduleFilter === "this_week") {
-            const matchesThisWeek = start >= todayStr && start <= nextWeekStr;
-            if (!matchesThisWeek) return false;
-          } else if (activeScheduleFilter === "upcoming") {
-            const matchesUpcoming = start > todayStr;
-            if (!matchesUpcoming) return false;
-          }
-        }
-
-        return true;
-      })
-      .map((evt) => ({
-        ...evt,
-        is_trending: trendingEventIds.has(evt.id)
-      }));
-  }, [events, trendingEvents, isTrendingActive, trendingEventIds, searchQuery, selectedDate, activeScheduleFilter, todayStr, tomorrowStr, nextWeekStr]);
-
+  // Paginated/Limited display list for upcoming events feed
   const displayedEvents = useMemo(() => {
     return filteredEvents.slice(0, visibleEventsCount);
   }, [filteredEvents, visibleEventsCount]);
 
   return (
-    <div className="relative min-h-screen bg-transparent text-on-surface font-body transition-colors duration-300 pb-16 overflow-x-hidden">
-      {/* Desktop Optical Refraction Canvas (Animated) */}
+    <div className="min-h-screen bg-[#faf8f5] dark:bg-[#060709] text-gray-900 dark:text-gray-100 transition-colors duration-300 relative selection:bg-primary/20 selection:text-primary overflow-x-hidden font-sans">
+      {/* Light Mode High-Performance Fixed Ambient Light Canvas (Zero Lag, Sub-pixel Soft Blurred Blobs) */}
       <div 
-        style={{ contain: 'strict', transform: 'translateZ(0)' }}
-        className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none transition-opacity duration-700 hidden sm:block"
+        style={{ contain: 'strict' }}
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none hidden sm:block"
       >
-        {/* 1. Solar Tangerine Wave */}
-        <div className="animate-blob-1 absolute -top-36 left-1/2 -translate-x-1/2 w-[750px] sm:w-[1100px] h-[480px] sm:h-[580px] rounded-full bg-gradient-to-b from-[#ff6b00]/45 via-[#ff9500]/30 to-transparent dark:from-[#ff6b00]/14 dark:via-[#ea580c]/08 dark:to-transparent blur-[60px] sm:blur-[80px]" />
-        
-        {/* 2. Warm Amber Side Flare */}
-        <div className="animate-blob-2 absolute top-16 -right-20 w-[450px] sm:w-[580px] h-[450px] sm:h-[580px] rounded-full bg-gradient-to-bl from-[#ff8c00]/38 via-[#ffa500]/22 to-transparent dark:from-[#ff6b00]/10 dark:via-transparent blur-[60px] sm:blur-[85px]" />
+        {/* 1. Golden Amber Sun Burst (Top Center-Right) */}
+        <div className="animate-blob-1 absolute -top-24 right-1/4 w-[500px] sm:w-[680px] h-[500px] sm:h-[680px] rounded-full bg-gradient-to-br from-[#ff6b00]/45 via-[#ff9500]/25 to-transparent dark:from-[#ea580c]/12 dark:via-transparent blur-[70px] sm:blur-[100px]" />
 
-        {/* 3. Deep Twilight Slate Ambient Ribbon */}
+        {/* 2. Sunset Crimson Bloom (Top Left) */}
+        <div className="animate-blob-2 absolute -top-16 -left-20 w-[420px] sm:w-[560px] h-[420px] sm:h-[560px] rounded-full bg-gradient-to-br from-[#ff3d00]/30 via-[#ff6b00]/18 to-transparent dark:from-[#ea580c]/08 dark:via-transparent blur-[60px] sm:blur-[90px]" />
+
+        {/* 3. Violet Cyan Contrast Sky (Mid-Left Horizon) */}
         <div className="animate-blob-3 absolute top-[32%] -left-24 -translate-y-1/2 w-[460px] sm:w-[600px] h-[460px] sm:h-[600px] rounded-full bg-gradient-to-tr from-[#3b82f6]/28 via-[#6366f1]/20 to-transparent dark:from-[#ea580c]/08 dark:via-transparent blur-[65px] sm:blur-[90px]" />
 
         {/* 4. Golden Sun Ribbon */}
@@ -531,9 +559,15 @@ export default function App() {
         />
 
         <main className="w-full max-w-[98%] mx-auto px-2.5 sm:px-4 md:px-6 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6 overflow-hidden">
-          {selectedEventId ? (
+          {currentView === 'about' ? (
+            <AboutUsView onBack={() => handleNavigate('home')} />
+          ) : currentView === 'privacy' ? (
+            <PrivacyPolicyView onBack={() => handleNavigate('home')} />
+          ) : currentView === 'terms' ? (
+            <TermsOfServiceView onBack={() => handleNavigate('home')} />
+          ) : (currentView === 'event-details' || selectedEventId) ? (
             <EventDetailsView
-              eventId={selectedEventId}
+              eventId={selectedEventId!}
               onBack={() => handleSelectEvent(null)}
               onSelectEvent={handleSelectEvent}
               ads={ads}
@@ -638,39 +672,10 @@ export default function App() {
           )}
         </main>
 
-        <footer className="mt-12 sm:mt-20 glass-panel deferred-feed-section border-t border-white/95 dark:border-white/10 text-gray-700 dark:text-on-surface-variant transition-colors duration-300 shadow-[0_-15px_40px_rgba(15,23,42,0.06)]">
-          <div className="max-w-[98%] mx-auto px-4 sm:px-6 py-6 sm:py-12 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-6 sm:gap-8">
-            <div className="col-span-2 md:col-span-1">
-              <div className="flex items-center gap-2.5 mb-3">
-                <LpuLogo className="h-8 w-8 shrink-0 drop-shadow-sm" />
-                <div className="font-heading text-base sm:text-lg font-black text-gray-900 dark:text-white">LPU Events</div>
-              </div>
-              <p className="text-xs text-gray-600 dark:text-gray-300 mb-4 sm:mb-6 leading-relaxed">
-                Your central hub for discovering and participating in the vibrant campus life at Lovely Professional University.
-              </p>
-              <p className="text-[10px] text-gray-500 dark:text-gray-400 font-heading font-semibold">
-                © 2026 LPU Events. All rights reserved.
-              </p>
-            </div>
-            <div className="flex flex-col gap-1">
-              <h4 className="font-heading font-black text-gray-900 dark:text-white text-xs sm:text-sm mb-1 sm:mb-2">Explore</h4>
-              <a href="#" className="text-xs text-gray-600 dark:text-gray-300 hover:text-primary transition-colors py-2 min-h-[44px] flex items-center">About Us</a>
-              <a href="#categories" className="text-xs text-gray-600 dark:text-gray-300 hover:text-primary transition-colors py-2 min-h-[44px] flex items-center">Categories</a>
-              <a href="#events" className="text-xs text-gray-600 dark:text-gray-300 hover:text-primary transition-colors py-2 min-h-[44px] flex items-center">Student Clubs</a>
-            </div>
-            <div className="flex flex-col gap-1">
-              <h4 className="font-heading font-black text-gray-900 dark:text-white text-xs sm:text-sm mb-1 sm:mb-2">Help</h4>
-              <a href="#" className="text-xs text-gray-600 dark:text-gray-300 hover:text-primary transition-colors py-2 min-h-[44px] flex items-center">Support Center</a>
-              <a href="https://www.lpueventsadmin.live/apply" target="_blank" rel="noopener noreferrer" className="text-xs text-gray-600 dark:text-gray-300 hover:text-primary transition-colors py-2 min-h-[44px] flex items-center">Organizer Portal</a>
-              <a href="#" className="text-xs text-gray-600 dark:text-gray-300 hover:text-primary transition-colors py-2 min-h-[44px] flex items-center">Contact Us</a>
-            </div>
-            <div className="flex flex-col gap-1">
-              <h4 className="font-heading font-black text-gray-900 dark:text-white text-xs sm:text-sm mb-1 sm:mb-2">Legal</h4>
-              <a href="#" className="text-xs text-gray-600 dark:text-gray-300 hover:text-primary transition-colors py-2 min-h-[44px] flex items-center">Privacy Policy</a>
-              <a href="#" className="text-xs text-gray-600 dark:text-gray-300 hover:text-primary transition-colors py-2 min-h-[44px] flex items-center">Terms of Service</a>
-            </div>
-          </div>
-        </footer>
+        <Footer
+          onNavigate={handleNavigate}
+          onGoToCategories={handleGoToCategories}
+        />
       </div>
     </div>
   );
