@@ -100,8 +100,8 @@ export const EventDetailsModal = ({ eventId, onClose }: {
               {/* Left Column */}
               <div className="lg:col-span-2 flex flex-col gap-4 sm:gap-6">
                 <div className="flex flex-col gap-2 sm:gap-3">
-                  <h3 className="font-heading text-base sm:text-lg font-black text-primary uppercase tracking-wider">About the Event</h3>
-                  <p className="text-gray-700 dark:text-gray-200 text-xs sm:text-sm md:text-base leading-relaxed break-safe">
+                  <h3 className="font-heading text-sm sm:text-base font-black text-primary uppercase tracking-wider">About the Event</h3>
+                  <p className="text-gray-700 dark:text-zinc-200 text-sm sm:text-[15px] md:text-base leading-[1.8] tracking-[-0.011em] font-sans antialiased break-safe">
                     {event.description}
                   </p>
                 </div>
@@ -113,24 +113,27 @@ export const EventDetailsModal = ({ eventId, onClose }: {
                       .sort((a: any, b: any) => a.sort_order - b.sort_order)
                       .map((sec: any) => (
                         <div key={sec.id} className="flex flex-col gap-2 sm:gap-3">
-                          <h4 className="font-heading text-sm sm:text-base font-bold text-gray-900 dark:text-white break-safe">{sec.title}</h4>
+                          <h4 className="font-heading text-sm sm:text-base font-bold text-gray-900 dark:text-white tracking-tight break-safe">{sec.title}</h4>
                           {sec.section_type === "rules" && sec.content?.rules_list ? (
-                            <ul className="list-disc list-inside space-y-1 text-gray-700 dark:text-gray-300 text-xs sm:text-sm md:text-base leading-relaxed">
+                            <ul className="space-y-2 text-gray-700 dark:text-zinc-200 text-sm sm:text-[15px] leading-relaxed font-sans">
                               {sec.content.rules_list.map((rule: string, i: number) => (
-                                <li key={i} className="break-safe">{rule}</li>
+                                <li key={i} className="flex items-start gap-2.5 break-safe">
+                                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-2 shrink-0" />
+                                  <span>{rule}</span>
+                                </li>
                               ))}
                             </ul>
                           ) : sec.section_type === "timeline" && sec.content?.schedule ? (
-                            <div className="flex flex-col gap-2 border border-white/90 dark:border-white/10 glass-card rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm">
+                            <div className="flex flex-col gap-2 border border-white/90 dark:border-white/10 glass-card rounded-xl sm:rounded-2xl p-3 sm:p-4 shadow-sm font-sans">
                               {sec.content.schedule.map((item: any, i: number) => (
                                 <div key={i} className="flex flex-col xs:flex-row gap-1 xs:gap-4 border-b border-gray-200/60 dark:border-white/10 last:border-0 pb-2 last:pb-0">
-                                  <span className="font-bold text-primary text-xs sm:text-sm shrink-0">{item.time}</span>
-                                  <span className="text-gray-800 dark:text-gray-200 text-xs sm:text-sm break-safe">{item.details}</span>
+                                  <span className="font-heading font-bold text-primary text-xs sm:text-sm shrink-0">{item.time}</span>
+                                  <span className="text-gray-800 dark:text-zinc-200 text-xs sm:text-sm break-safe">{item.details}</span>
                                 </div>
                               ))}
                             </div>
                           ) : (
-                            <p className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm md:text-base leading-relaxed break-safe">
+                            <p className="text-gray-700 dark:text-zinc-200 text-sm sm:text-[15px] md:text-base leading-[1.8] tracking-[-0.011em] font-sans antialiased break-safe">
                               {typeof sec.content === "string" ? sec.content : JSON.stringify(sec.content)}
                             </p>
                           )}

@@ -257,7 +257,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
   const renderSectionContent = (content: any) => {
     if (!content) {
       return (
-        <p className="text-gray-500 dark:text-gray-400 text-base sm:text-lg italic font-normal">
+        <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base italic font-normal">
           No detailed content has been provided for this section yet.
         </p>
       );
@@ -266,7 +266,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
     if (typeof content === "string") {
       const lines = content.split("\n");
       return (
-        <div className="space-y-4 sm:space-y-5 text-[15px] sm:text-lg md:text-xl lg:text-[22px] text-gray-800 dark:text-zinc-100 leading-[1.75] sm:leading-[1.85] font-normal tracking-[-0.01em] break-safe">
+        <div className="space-y-4 sm:space-y-4.5 text-[15px] sm:text-base md:text-[17px] text-gray-700 dark:text-zinc-200 leading-[1.8] sm:leading-[1.85] font-normal tracking-[-0.011em] font-sans antialiased break-safe">
           {lines.map((line, i) => {
             const trimmed = line.trim();
             if (!trimmed) return <div key={i} className="h-2" />;
@@ -275,9 +275,9 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
             if (trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("*")) {
               const clean = trimmed.replace(/^[-•*]\s*/, "");
               return (
-                <div key={i} className="flex items-start gap-3.5 sm:gap-4 pl-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-br from-[#FF5E00] to-[#FFA000] mt-2.5 sm:mt-3 shrink-0 shadow-[0_0_12px_rgba(255,94,0,0.7)]" />
-                  <span className="text-gray-800 dark:text-zinc-100 leading-[1.75]">{clean}</span>
+                <div key={i} className="flex items-start gap-3 sm:gap-3.5 pl-0.5">
+                  <span className="w-2 h-2 rounded-full bg-gradient-to-r from-[#FF5E00] to-[#FFA000] mt-2.5 shrink-0 shadow-[0_0_8px_rgba(255,94,0,0.4)]" />
+                  <span className="text-gray-700 dark:text-zinc-200 leading-[1.8]">{clean}</span>
                 </div>
               );
             }
@@ -286,16 +286,27 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
             if (/^\d+[\.\)]\s/.test(trimmed)) {
               const match = trimmed.match(/^(\d+[\.\)])\s*(.*)$/);
               return (
-                <div key={i} className="flex items-start gap-3.5 sm:gap-4 pl-1">
-                  <span className="inline-flex items-center justify-center min-w-[26px] h-[26px] px-1.5 rounded-lg bg-orange-500/15 border border-orange-500/30 text-orange-500 font-heading font-black text-xs sm:text-sm shrink-0 mt-1 shadow-xs">
+                <div key={i} className="flex items-start gap-3 sm:gap-3.5 pl-0.5">
+                  <span className="inline-flex items-center justify-center min-w-[24px] h-[24px] px-1 rounded-lg bg-orange-500/10 dark:bg-orange-500/15 border border-orange-500/25 text-orange-600 dark:text-orange-400 font-heading font-bold text-xs shrink-0 mt-0.5 shadow-xs">
                     {match ? match[1].replace(/[\.\)]/, '') : i + 1}
                   </span>
-                  <span className="text-gray-800 dark:text-zinc-100 leading-[1.75]">{match ? match[2] : trimmed}</span>
+                  <span className="text-gray-700 dark:text-zinc-200 leading-[1.8]">{match ? match[2] : trimmed}</span>
                 </div>
               );
             }
 
-            return <p key={i}>{line}</p>;
+            // Key: Value pattern (e.g., Eligibility: All students)
+            const colonMatch = trimmed.match(/^([A-Za-z0-9\s/&-]+):(\s+.*)$/);
+            if (colonMatch && colonMatch[1].length < 35) {
+              return (
+                <p key={i} className="leading-[1.8]">
+                  <strong className="font-semibold text-gray-900 dark:text-white">{colonMatch[1]}:</strong>
+                  <span className="text-gray-700 dark:text-zinc-200">{colonMatch[2]}</span>
+                </p>
+              );
+            }
+
+            return <p key={i} className="leading-[1.8]">{line}</p>;
           })}
         </div>
       );
@@ -303,11 +314,11 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
     if (content.rules_list && Array.isArray(content.rules_list)) {
       return (
-        <ul className="space-y-3 sm:space-y-4 text-base sm:text-lg md:text-xl text-gray-800 dark:text-zinc-100">
+        <ul className="space-y-3 sm:space-y-3.5 text-[15px] sm:text-base text-gray-700 dark:text-zinc-200 font-sans">
           {content.rules_list.map((rule: string, i: number) => (
-            <li key={i} className="flex items-start gap-3.5 sm:gap-4 p-4 sm:p-5 rounded-[20px] bg-white/40 dark:bg-white/[0.03] border border-white/60 dark:border-white/5 shadow-xs">
-              <CheckCircle2 className="h-5 w-5 sm:h-6 sm:w-6 text-emerald-500 shrink-0 mt-0.5" />
-              <span className="break-safe leading-relaxed font-medium">{rule}</span>
+            <li key={i} className="flex items-start gap-3 sm:gap-3.5 p-3.5 sm:p-4 rounded-2xl bg-white/45 dark:bg-white/[0.03] border border-white/70 dark:border-white/8 shadow-xs">
+              <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
+              <span className="break-safe leading-relaxed font-normal">{rule}</span>
             </li>
           ))}
         </ul>
@@ -316,13 +327,13 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
     if (content.schedule && Array.isArray(content.schedule)) {
       return (
-        <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex flex-col gap-3 sm:gap-3.5 font-sans">
           {content.schedule.map((item: any, i: number) => (
-            <div key={i} className="flex flex-col xs:flex-row gap-3 xs:gap-5 p-4 sm:p-5 rounded-[22px] bg-white/50 dark:bg-white/[0.04] border border-white/80 dark:border-white/8 shadow-xs hover:border-primary/40 transition-colors">
-              <span className="font-heading font-black text-primary text-xs sm:text-sm shrink-0 tracking-wider uppercase px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 self-start">{item.time}</span>
+            <div key={i} className="flex flex-col xs:flex-row gap-3 xs:gap-4 p-4 sm:p-4.5 rounded-2xl bg-white/50 dark:bg-white/[0.04] border border-white/80 dark:border-white/8 shadow-xs hover:border-primary/40 transition-colors">
+              <span className="font-heading font-extrabold text-primary dark:text-orange-400 text-xs sm:text-sm shrink-0 tracking-wider uppercase px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 self-start">{item.time}</span>
               <div className="flex flex-col">
                 <span className="font-heading font-bold text-base sm:text-lg text-gray-900 dark:text-white break-safe">{item.title || item.details}</span>
-                {item.description && <span className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-300 mt-1 break-safe leading-relaxed">{item.description}</span>}
+                {item.description && <span className="text-sm text-gray-600 dark:text-zinc-300 mt-1 break-safe leading-relaxed font-normal">{item.description}</span>}
               </div>
             </div>
           ))}
@@ -331,7 +342,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
     }
 
     return (
-      <div className="text-base sm:text-lg md:text-xl text-gray-800 dark:text-zinc-100 leading-relaxed whitespace-pre-line break-safe">
+      <div className="text-[15px] sm:text-base text-gray-700 dark:text-zinc-200 leading-relaxed whitespace-pre-line break-safe font-sans">
         {JSON.stringify(content, null, 2)}
       </div>
     );
@@ -614,7 +625,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
       {/* Section Navigation Tabs (Unified Parent Glass Container) */}
       {tabs.length > 0 && (
         <div className="w-full overflow-x-auto hide-scrollbar mb-4 sm:mb-6 select-none touch-pan-x">
-          <div className="inline-flex glass-tabs-container p-1 sm:p-1.5 rounded-xl sm:rounded-full gap-1 sm:gap-2 min-w-full sm:min-w-0 border border-white/80 dark:border-white/10">
+          <div className="inline-flex glass-tabs-container p-1 sm:p-1.5 rounded-xl sm:rounded-2xl gap-1 sm:gap-1.5 min-w-full sm:min-w-0 border border-white/80 dark:border-white/10 shadow-xs">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;
               return (
@@ -622,10 +633,10 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2 sm:px-6 sm:py-2.5 rounded-lg sm:rounded-full text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 cursor-pointer touch-target font-heading outline-none shrink-0 ${
+                  className={`px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 cursor-pointer touch-target font-heading outline-none shrink-0 tracking-wide ${
                     isActive
-                      ? "!bg-gradient-to-r !from-[#FF5E00] !to-[#FFA000] !text-white shadow-[0_4px_16px_rgba(255,94,0,0.4)] !border-transparent scale-[1.02]"
-                      : "text-gray-700 dark:text-gray-300 hover:text-primary hover:bg-black/5 dark:hover:bg-white/5 !bg-transparent border-transparent"
+                      ? "!bg-gradient-to-r !from-[#FF5E00] !to-[#FFA000] !text-white shadow-[0_4px_16px_rgba(255,94,0,0.35)] !border-transparent scale-[1.01]"
+                      : "text-gray-600 dark:text-zinc-300 hover:text-primary hover:bg-black/5 dark:hover:bg-white/5 !bg-transparent border-transparent"
                   }`}
                 >
                   {tab.label}
@@ -637,7 +648,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
       )}
 
       {/* Content Area */}
-      <div className="relative glass-panel rounded-[16px] sm:rounded-[34px] md:rounded-[40px] px-4 py-5 sm:p-9 md:p-12 lg:p-14 mb-8 sm:mb-12 border border-white/90 dark:border-white/10 shadow-[0_12px_35px_rgba(0,0,0,0.06)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.35)] overflow-hidden">
+      <div className="relative glass-panel rounded-[18px] sm:rounded-[30px] md:rounded-[36px] px-5 py-6 sm:p-8 md:p-10 lg:p-12 mb-8 sm:mb-12 border border-white/90 dark:border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.35)] overflow-hidden">
         {/* Atmospheric Ambient Glow */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-orange-500/15 via-amber-500/8 to-transparent rounded-full blur-3xl pointer-events-none hidden sm:block" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-rose-500/10 via-transparent to-transparent rounded-full blur-3xl pointer-events-none hidden sm:block" />
