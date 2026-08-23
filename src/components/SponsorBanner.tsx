@@ -43,30 +43,30 @@ export const SponsorBannerComponent: React.FC<{
       <div className="hidden sm:block absolute -right-12 -bottom-12 w-52 h-52 bg-purple-500/18 rounded-full blur-3xl pointer-events-none" />
 
       {/* Banner Content */}
-      <div className="relative z-10 w-full h-full px-4 sm:px-8 md:px-10 py-3 flex items-center justify-between gap-3 sm:gap-6">
+      <div className="relative z-10 w-full h-full px-4 sm:px-8 md:px-10 py-4 flex items-center justify-between gap-3 sm:gap-6">
         <div className="flex flex-col justify-center max-w-xl min-w-0 flex-1">
           {/* Badge */}
-          <div className="flex items-center gap-2 mb-1">
-            <span className="inline-flex items-center gap-1.5 px-3 py-0.5 glass-badge-ad rounded-full font-heading text-[9px] sm:text-xs font-black uppercase tracking-widest shadow-xs">
-              <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
-              <Sparkles className="h-2.5 w-2.5 sm:h-3 sm:w-3 fill-current" />
+          <div className="flex items-center gap-2 mb-1.5">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/40 backdrop-blur-md border border-white/10 text-[9px] sm:text-xs font-heading font-black tracking-wider text-amber-400 dark:text-orange-400 uppercase shadow-xs">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 dark:bg-orange-400 animate-pulse" />
+              <Sparkles className="h-3 w-3 fill-current" />
               {tag}
             </span>
           </div>
 
           {/* Ad Title */}
-          <h3 className="text-sm xs:text-base sm:text-xl md:text-2xl font-black font-heading text-gray-900 dark:text-white tracking-tight leading-snug group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors line-clamp-1 break-safe">
+          <h3 className="text-base sm:text-xl md:text-2xl font-black font-heading text-gray-900 dark:text-white tracking-tight leading-snug group-hover:text-primary transition-colors line-clamp-1 break-safe">
             {ad.name}
           </h3>
 
-          <p className="text-xs sm:text-sm text-gray-700 dark:text-gray-300 font-medium line-clamp-1 mt-0.5 hidden sm:block">
+          <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 font-medium line-clamp-1 mt-0.5 hidden sm:block">
             Featured Partner Spotlight • Click to explore details and registration
           </p>
         </div>
 
         {/* Action Button */}
         <div className="shrink-0">
-          <div className="flex items-center gap-1.5 px-4 py-2.5 sm:px-6 sm:py-3 rounded-lg sm:rounded-2xl glass-btn-ad font-heading font-black text-[11px] sm:text-sm shadow-md transition-all duration-200 touch-target cursor-pointer">
+          <div className="flex items-center gap-1.5 px-6 py-3 rounded-full bg-gradient-to-r from-[#fc721e] to-[#ff8c42] hover:brightness-110 text-white font-heading font-black text-xs sm:text-sm shadow-[0_4px_20px_rgba(252,114,30,0.45)] transition-all duration-200 touch-target cursor-pointer">
             <span>Learn More</span>
             <ArrowUpRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-transform" />
           </div>
