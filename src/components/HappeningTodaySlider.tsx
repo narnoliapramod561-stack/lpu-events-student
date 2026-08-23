@@ -225,10 +225,8 @@ export const HappeningTodaySliderComponent = ({
           <div className="w-1.5 h-1.5 rounded-full bg-primary/70 animate-pulse shrink-0" />
           <div className="w-4 sm:w-12 h-px bg-gradient-to-r from-primary/50 to-transparent" />
         </div>
-      </div>
-
-      {/* Main Viewport Container with Fixed Mobile Aspect Ratio */}
-      <div className="relative w-full aspect-[16/9] xs:aspect-[16/10] sm:aspect-auto sm:min-h-[500px] md:h-[490px] lg:h-[510px] overflow-hidden rounded-[16px] sm:rounded-[34px] md:rounded-[40px] glass-panel shadow-[0_24px_60px_rgba(15,23,42,0.12)] flex flex-col">
+      </div>      {/* Main Viewport Container with Generous Mobile Height & Desktop Proportion */}
+      <div className="relative w-full h-[375px] min-[390px]:h-[405px] min-[430px]:h-[425px] sm:h-auto sm:min-h-[500px] md:h-[490px] lg:h-[510px] overflow-hidden rounded-[20px] sm:rounded-[34px] md:rounded-[40px] glass-panel shadow-[0_24px_60px_rgba(15,23,42,0.12)] flex flex-col">
         
         {/* Atmospheric Ambient Glow with Breathing Motion */}
         <motion.div
@@ -267,75 +265,123 @@ export const HappeningTodaySliderComponent = ({
             className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col flex-1"
           >
             {/* =========================================================
-                MOBILE SLIDE LAYOUT (< sm): Canonical Fixed Landscape Frame
+                MOBILE SLIDE LAYOUT (< sm): Ultra-Premium Editorial Billboard
+                Generous vertical canvas with rich metadata and full-width CTA
                ========================================================= */}
-            <div className="sm:hidden relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex flex-col justify-end p-2.5 xs:p-3.5 pb-5.5 xs:pb-6.5">
+            <div className="sm:hidden relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex flex-col justify-between p-3.5 pb-6 min-[390px]:p-4.5 min-[390px]:pb-7">
+              {/* Background Cover Image with Cinematic Zoom */}
               <img
                 src={currentSlide.image}
                 alt={currentSlide.title}
                 loading="lazy"
                 decoding="async"
-                className="absolute inset-0 w-full h-full object-cover select-none group-hover:scale-[1.02] transition-transform duration-500"
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src =
+                    "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800&auto=format&fit=crop";
+                }}
+                className="absolute inset-0 w-full h-full object-cover select-none group-hover:scale-[1.03] transition-transform duration-700 ease-out"
               />
 
-              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/35 to-transparent pointer-events-none" />
+              {/* Multi-layered Cinematic Gradient Scrims for High Text Legibility */}
+              <div className="absolute inset-0 bg-gradient-to-t from-black/98 via-black/55 via-45% to-transparent pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-transparent to-transparent h-24 pointer-events-none" />
+              <div className="absolute inset-0 bg-gradient-to-tr from-orange-950/25 via-transparent to-amber-500/10 mix-blend-screen pointer-events-none" />
 
-              {/* Localized Glass Overlay Capsule (Level 1 Visual Glass) */}
+              {/* Top Floating Badges Row */}
+              <div className="relative z-20 flex items-center justify-between w-full">
+                {/* Live Beacon / Sponsored Badge */}
+                <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full backdrop-blur-md border font-heading text-[10px] font-black uppercase tracking-wider shadow-md ${
+                  currentSlide.type === "ad"
+                    ? "bg-indigo-950/80 text-indigo-300 border-indigo-400/40 shadow-[0_0_12px_rgba(99,102,241,0.4)]"
+                    : "bg-black/75 dark:bg-black/85 text-white border-white/20"
+                }`}>
+                  <span className="relative flex h-2 w-2">
+                    <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                      currentSlide.type === "ad" ? "bg-indigo-400" : "bg-red-500"
+                    }`} />
+                    <span className={`relative inline-flex rounded-full h-2 w-2 ${
+                      currentSlide.type === "ad" ? "bg-indigo-400" : "bg-red-500"
+                    }`} />
+                  </span>
+                  <span className={currentSlide.type === "ad" ? "text-indigo-300 font-extrabold" : "text-orange-400 font-extrabold"}>
+                    {currentSlide.badge}
+                  </span>
+                </span>
+
+                {/* Right Category Pill */}
+                {currentSlide.category && (
+                  <span className="inline-flex items-center px-2.5 py-1.5 rounded-full bg-black/75 dark:bg-black/85 backdrop-blur-md border border-white/20 text-[10px] text-white/95 font-bold uppercase tracking-wider font-heading truncate max-w-[150px] shadow-md">
+                    {currentSlide.category}
+                  </span>
+                )}
+              </div>
+
+              {/* Bottom Editorial Content Deck */}
               <motion.div
                 variants={contentStagger}
                 initial="hidden"
                 animate="visible"
-                className="relative z-20 flex flex-col justify-end w-full p-2.5 xs:p-3 rounded-xl sm:rounded-2xl bg-black/75 dark:bg-black/85 border border-white/20 shadow-md"
+                className="relative z-20 flex flex-col justify-end w-full"
               >
-                {/* Beacon Badge */}
-                <motion.div variants={contentItem} className="flex items-center gap-1.5 mb-1">
-                  <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full font-heading text-[8px] xs:text-[9px] font-black uppercase tracking-widest border shadow-xs ${
-                    currentSlide.type === "ad"
-                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-indigo-300/40 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
-                      : "bg-gradient-to-r from-red-600 to-orange-600 text-white border-white/25"
-                  }`}>
-                    <span className="relative flex h-1.5 w-1.5">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                      <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
-                    </span>
-                    {currentSlide.badge}
-                  </span>
-                  {currentSlide.category && (
-                    <span className="text-white/80 text-[8px] xs:text-[9px] font-bold uppercase tracking-wider font-heading truncate">
-                      • {currentSlide.category}
-                    </span>
-                  )}
-                </motion.div>
+                {/* Schedule & Venue Tags */}
+                {currentSlide.type === "event" && (currentSlide.time || currentSlide.venue) && (
+                  <motion.div variants={contentItem} className="flex flex-wrap items-center gap-1.5 mb-2">
+                    {currentSlide.time && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-orange-300 font-heading text-[10.5px] font-black tracking-wide shadow-xs">
+                        <Clock className="w-3 h-3 text-orange-400 shrink-0" />
+                        <span>{currentSlide.time}</span>
+                      </span>
+                    )}
+                    {currentSlide.venue && (
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-gray-200 font-heading text-[10.5px] font-bold tracking-wide truncate max-w-[190px] shadow-xs">
+                        <MapPin className="w-3 h-3 text-rose-400 shrink-0" />
+                        <span className="truncate">{currentSlide.venue}</span>
+                      </span>
+                    )}
+                  </motion.div>
+                )}
 
-                {/* Title */}
+                {/* Event Title */}
                 <motion.h3
                   variants={contentItem}
-                  className="text-xs xs:text-sm font-black font-heading text-white tracking-tight line-clamp-1 leading-tight mb-1 drop-shadow-md break-safe"
+                  className="text-lg min-[390px]:text-xl min-[430px]:text-2xl font-black font-heading text-white tracking-tight leading-snug line-clamp-2 drop-shadow-md mb-1.5 break-safe"
                 >
                   {currentSlide.title}
                 </motion.h3>
 
-                {/* Time / Venue & CTA Row */}
-                <motion.div variants={contentItem} className="flex items-center justify-between gap-2 mt-0.5">
-                  <p className="text-gray-200 text-[10px] xs:text-[11px] font-medium leading-tight truncate flex-1 break-safe">
-                    {currentSlide.type === "event" ? (
-                      `${currentSlide.time || ""}${currentSlide.time && currentSlide.venue ? " • " : ""}${currentSlide.venue || ""}`
-                    ) : (
-                      currentSlide.description || "Official university partner session."
-                    )}
-                  </p>
+                {/* Description Subtitle */}
+                {currentSlide.description && (
+                  <motion.p
+                    variants={contentItem}
+                    className="text-gray-200/90 text-xs min-[390px]:text-[13px] font-medium leading-relaxed line-clamp-2 mb-3.5 break-safe drop-shadow-xs"
+                  >
+                    {currentSlide.description}
+                  </motion.p>
+                )}
 
+                {/* CTA Action Row & Slide Counter */}
+                <motion.div variants={contentItem} className="flex items-center justify-between gap-3 pt-0.5">
                   <button
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
                       handleAction();
                     }}
-                    className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full ${currentSlide.type === "ad" ? "glass-btn-ad" : "glass-btn-primary"} font-black text-[10px] font-heading shadow-xs cursor-pointer`}
+                    className={`flex-1 flex items-center justify-center gap-2 py-3 px-5 rounded-full ${
+                      currentSlide.type === "ad" ? "glass-btn-ad" : "glass-btn-primary"
+                    } font-heading font-black text-xs min-[390px]:text-sm shadow-lg transition-transform active:scale-97 cursor-pointer touch-target`}
                   >
                     <span>{currentSlide.ctaText || "View Details"}</span>
-                    <ArrowRight className="h-2.5 w-2.5" />
+                    <ArrowRight className="h-3.5 w-3.5 min-[390px]:h-4 min-[390px]:w-4 group-hover:translate-x-0.5 transition-transform" />
                   </button>
+
+                  {slides.length > 1 && (
+                    <div className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-full bg-black/60 backdrop-blur-md border border-white/20 text-white font-heading font-bold text-xs select-none">
+                      <span className="text-orange-400 font-black">{String(activeIndex + 1).padStart(2, "0")}</span>
+                      <span className="text-white/40">/</span>
+                      <span className="text-white/80">{String(slides.length).padStart(2, "0")}</span>
+                    </div>
+                  )}
                 </motion.div>
               </motion.div>
             </div>
