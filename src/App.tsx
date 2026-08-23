@@ -671,7 +671,7 @@ export default function App() {
                       ? "Search Results"
                       : isTrendingActive
                       ? "🔥 Trending Events"
-                      : "Event's Hub"
+                      : "Event Hub"
                   }
                   searchQuery={searchQuery.trim()}
                 />

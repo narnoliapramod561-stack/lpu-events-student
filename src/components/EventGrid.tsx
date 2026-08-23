@@ -264,7 +264,7 @@ export const EventGridComponent = ({
   onResetFilters,
   onSelectEvent,
   adInterval = 6,
-  title = "Event's Hub",
+  title = "Event Hub",
   searchQuery = ""
 }: {
   events: EventFeedItem[];
@@ -280,15 +280,17 @@ export const EventGridComponent = ({
   if (loading) {
     return (
       <section className="w-full">
-        <div className="flex items-center justify-between mb-4 sm:mb-8">
-          <div>
-            <h2 className="text-xl sm:text-3xl font-black font-heading tracking-tight text-gray-900 dark:text-white">
+        <div className="flex flex-col items-center justify-center mb-6 sm:mb-8">
+          <div className="w-full flex items-center gap-3 sm:gap-6">
+            <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-white/20 to-gray-300 dark:to-white/20" />
+            <h2 className="text-xl sm:text-3xl font-black font-heading tracking-tight text-gray-900 dark:text-white whitespace-nowrap px-1">
               {title}
             </h2>
-            <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 font-medium">
-              Loading campus events...
-            </p>
+            <div className="flex-1 h-px bg-gradient-to-l from-transparent via-gray-300 dark:via-white/20 to-gray-300 dark:to-white/20" />
           </div>
+          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-1.5 font-medium text-center">
+            Loading campus events...
+          </p>
         </div>
 
         <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
@@ -342,15 +344,17 @@ export const EventGridComponent = ({
 
   return (
     <section className="w-full">
-      <div className="flex items-center justify-between mb-4 sm:mb-8">
-        <div>
-          <h2 className="text-xl sm:text-3xl font-black font-heading tracking-tight text-gray-900 dark:text-white">
+      <div className="flex flex-col items-center justify-center mb-6 sm:mb-8">
+        <div className="w-full flex items-center gap-3 sm:gap-6">
+          <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-white/20 to-gray-300 dark:to-white/20" />
+          <h2 className="text-xl sm:text-3xl font-black font-heading tracking-tight text-gray-900 dark:text-white whitespace-nowrap px-1">
             {title}
           </h2>
-          <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-0.5 sm:mt-1 font-medium">
-            Showing <span className="font-bold text-gray-900 dark:text-white">{events.length}</span> campus opportunities
-          </p>
+          <div className="flex-1 h-px bg-gradient-to-l from-transparent via-gray-300 dark:via-white/20 to-gray-300 dark:to-white/20" />
         </div>
+        <p className="text-xs sm:text-sm text-gray-500 dark:text-gray-400 mt-1 sm:mt-1.5 font-medium text-center">
+          Showing <span className="font-bold text-gray-900 dark:text-white">{events.length}</span> campus opportunities
+        </p>
       </div>
 
       <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
