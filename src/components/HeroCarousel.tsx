@@ -375,35 +375,35 @@ export const HeroCarouselComponent = ({
                       </p>
                     )}
 
-                    {/* Information Stack Card (Exact match to Image 1: rounded-3xl glass container with circular icon pills) */}
-                    <div className="rounded-[24px] sm:rounded-[30px] p-4 sm:p-6 bg-gradient-to-br from-white/[0.09] via-white/[0.04] to-black/25 dark:from-white/[0.07] dark:via-[#2b1f1a]/60 dark:to-[#1a120e]/80 border border-white/15 shadow-[inset_0_1px_1px_rgba(255,255,255,0.15),0_12px_36px_rgba(0,0,0,0.35)] backdrop-blur-2xl space-y-3.5 sm:space-y-4 mb-6 sm:mb-8">
+                    {/* Information Stack Card (Matching page color theme with soft dark glass and circular icon pills) */}
+                    <div className="rounded-[24px] sm:rounded-[30px] p-4 sm:p-6 bg-black/[0.03] dark:bg-black/35 border border-black/5 dark:border-white/[0.08] backdrop-blur-xl space-y-3.5 sm:space-y-4 mb-6 sm:mb-8">
                       {/* Date & Time */}
                       <div className="flex items-center gap-3.5 sm:gap-4">
-                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/[0.05] border border-white/15 flex items-center justify-center text-[#fc721e] shrink-0 shadow-xs">
+                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/[0.04] dark:bg-black/40 border border-black/5 dark:border-white/10 flex items-center justify-center text-[#fc721e] shrink-0">
                           <Calendar className="w-4.5 h-4.5 text-[#fc721e]" />
                         </div>
-                        <span className="text-xs sm:text-sm md:text-base font-black font-heading text-white truncate">
+                        <span className="text-xs sm:text-sm md:text-base font-black font-heading text-gray-900 dark:text-white truncate">
                           {currentSlide.date} • {currentSlide.time}
                         </span>
                       </div>
 
                       {/* Venue */}
                       <div className="flex items-center gap-3.5 sm:gap-4">
-                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/[0.05] border border-white/15 flex items-center justify-center text-[#fc721e] shrink-0 shadow-xs">
+                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/[0.04] dark:bg-black/40 border border-black/5 dark:border-white/10 flex items-center justify-center text-[#fc721e] shrink-0">
                           <MapPin className="w-4.5 h-4.5 text-[#fc721e]" />
                         </div>
-                        <span className="text-xs sm:text-sm md:text-base font-semibold text-gray-200 dark:text-gray-200 truncate">
+                        <span className="text-xs sm:text-sm md:text-base font-semibold text-gray-700 dark:text-gray-200 truncate">
                           {currentSlide.venue || "LPU Campus"}
                         </span>
                       </div>
 
                       {/* Organizer */}
                       <div className="flex items-center gap-3.5 sm:gap-4">
-                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-white/[0.05] border border-white/15 flex items-center justify-center text-[#fc721e] shrink-0 shadow-xs">
+                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/[0.04] dark:bg-black/40 border border-black/5 dark:border-white/10 flex items-center justify-center text-[#fc721e] shrink-0">
                           <Users className="w-4.5 h-4.5 text-[#fc721e]" />
                         </div>
-                        <span className="text-xs sm:text-sm md:text-base text-gray-300 truncate">
-                          By <strong className="text-white font-black font-heading">{currentSlide.organizer || "LPU Club"}</strong>
+                        <span className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-300 truncate">
+                          By <strong className="text-gray-900 dark:text-white font-black font-heading">{currentSlide.organizer || "LPU Club"}</strong>
                         </span>
                       </div>
                     </div>
