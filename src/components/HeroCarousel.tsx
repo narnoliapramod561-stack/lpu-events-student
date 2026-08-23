@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { motion, AnimatePresence, type Variants } from "framer-motion";
-import { Calendar, MapPin, Users, ArrowRight, Star, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
+import { Calendar, MapPin, Users, ArrowRight, Star, ChevronLeft, ChevronRight } from "lucide-react";
 import { 
   EventFeedItem, 
   AdvertisementFeedItem, 
@@ -32,55 +32,30 @@ export interface HeroSlideModel {
 
 const slideVariants: Variants = {
   enter: (direction: number) => ({
-    x: direction > 0 ? "100%" : "-100%",
+    x: direction > 0 ? 60 : -60,
     opacity: 0,
-    scale: 0.94,
-    filter: "blur(6px)",
+    scale: 0.98,
   }),
   center: {
     x: 0,
     opacity: 1,
     scale: 1,
-    filter: "blur(0px)",
     transition: {
-      x: { type: "spring" as const, stiffness: 280, damping: 30, mass: 0.8 },
-      opacity: { duration: 0.35, ease: "easeOut" },
-      scale: { duration: 0.45, ease: [0.25, 1, 0.5, 1] },
-      filter: { duration: 0.3 },
+      x: { type: "spring" as const, stiffness: 300, damping: 32, mass: 0.6 },
+      opacity: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
+      scale: { duration: 0.35, ease: [0.16, 1, 0.3, 1] },
     },
   },
   exit: (direction: number) => ({
-    x: direction > 0 ? "-100%" : "100%",
+    x: direction > 0 ? -60 : 60,
     opacity: 0,
-    scale: 0.94,
-    filter: "blur(6px)",
+    scale: 0.98,
     transition: {
-      x: { type: "spring" as const, stiffness: 280, damping: 30, mass: 0.8 },
-      opacity: { duration: 0.3, ease: "easeIn" },
-      scale: { duration: 0.35, ease: "easeIn" },
-      filter: { duration: 0.25 },
+      x: { duration: 0.25, ease: [0.32, 0, 0.67, 0] },
+      opacity: { duration: 0.2, ease: "easeIn" },
+      scale: { duration: 0.22, ease: "easeIn" },
     },
   }),
-};
-
-const contentStagger: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.06,
-      delayChildren: 0.1,
-    },
-  },
-};
-
-const contentItem: Variants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring" as const, stiffness: 320, damping: 26 },
-  },
 };
 
 const swipeConfidenceThreshold = 10000;
@@ -124,10 +99,10 @@ export const HeroCarouselComponent = ({
             category: item.badge_text?.trim() || evt.categories?.name || "Featured Event",
             date: new Date(evt.start_at).toLocaleDateString(undefined, {
               weekday: "short",
-              month: "short",
               day: "numeric",
+              month: "short",
             }),
-            time: new Date(evt.start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            time: new Date(evt.start_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
             venue: evt.venue_name,
             organizer: evt.organizations?.name || "LPU Club",
             ctaText: item.custom_cta_text?.trim() || "View Details",
@@ -144,7 +119,7 @@ export const HeroCarouselComponent = ({
             title: item.custom_title?.trim() || mem.title,
             description: item.custom_subtitle?.trim() || mem.description || "",
             image: getEventImage(mem, "hero", 1200),
-            category: item.badge_text?.trim() || "Past Event Memory",
+            category: item.badge_text?.trim() || "Campus Memory",
             date: "Recent",
             time: "Highlights",
             venue: "LPU Campus",
@@ -185,10 +160,10 @@ export const HeroCarouselComponent = ({
         category: fe.categories?.name || "Featured Event",
         date: new Date(fe.start_at).toLocaleDateString(undefined, {
           weekday: "short",
-          month: "short",
           day: "numeric",
+          month: "short",
         }),
-        time: new Date(fe.start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        time: new Date(fe.start_at).toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true }),
         venue: fe.venue_name,
         organizer: fe.organizations?.name || "LPU Club",
         ctaText: "View Details",
@@ -239,7 +214,7 @@ export const HeroCarouselComponent = ({
           title: ad.name,
           description: "Featured university partner session and promotion. Explore opportunities and register.",
           image: getEventImage(ad, "hero", 1200),
-          category: "Sponsored Promotion",
+          category: "Partner Spotlight",
           date: "Partner",
           time: "Session",
           venue: "Virtual & On-Campus",
@@ -257,7 +232,7 @@ export const HeroCarouselComponent = ({
         title: "Campus Partner Spotlight",
         description: "Official university partner session and promotion.",
         image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop",
-        category: "Partner Spotlight",
+        category: "Partner",
         date: "Partner",
         time: "Spotlight",
         venue: "LPU Campus",
@@ -327,10 +302,10 @@ export const HeroCarouselComponent = ({
       ref={containerRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="w-full relative rounded-[22px] sm:rounded-[28px] md:rounded-[36px] select-none group/carousel"
+      className="w-full relative select-none group/carousel"
     >
-      {/* 1. Ambient Background Light Glow (Behind the Card) */}
-      <div className="absolute -inset-1 sm:-inset-2 rounded-[28px] sm:rounded-[40px] overflow-hidden pointer-events-none opacity-45 dark:opacity-30 blur-2xl z-0 transition-opacity duration-700">
+      {/* 1. Ambient Background Light Glow */}
+      <div className="absolute -inset-1 sm:-inset-2 rounded-[36px] sm:rounded-[46px] overflow-hidden pointer-events-none opacity-40 dark:opacity-30 blur-3xl z-0 transition-opacity duration-700">
         <AnimatePresence mode="wait">
           <motion.div
             key={`ambient-glow-${currentIndex}`}
@@ -344,21 +319,17 @@ export const HeroCarouselComponent = ({
               <img
                 src={currentSlide.image}
                 alt=""
-                className="w-full h-full object-cover blur-[80px] brightness-125 dark:brightness-100 saturate-150"
+                className="w-full h-full object-cover blur-[90px] brightness-110 saturate-150"
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-tr from-orange-600/30 via-amber-500/15 to-transparent mix-blend-screen" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-orange-600/25 via-amber-500/10 to-transparent mix-blend-screen" />
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* 2. Main Carousel Viewport Frame */}
-      <div className="relative z-10 w-full min-h-[480px] sm:min-h-[520px] lg:h-[540px] xl:h-[560px] overflow-hidden rounded-[22px] sm:rounded-[28px] md:rounded-[36px] glass-panel shadow-2xl border border-white/60 dark:border-white/10 bg-white/40 dark:bg-[#07090e]/85 backdrop-blur-2xl flex flex-col">
+      {/* 2. Main Outer Hero Card Frame */}
+      <div className="relative z-10 w-full overflow-hidden rounded-[28px] sm:rounded-[38px] md:rounded-[44px] glass-panel border border-white/80 dark:border-white/10 bg-white/40 dark:bg-[#18110d]/90 backdrop-blur-2xl shadow-[0_20px_70px_rgba(0,0,0,0.3)] dark:shadow-[0_24px_80px_rgba(0,0,0,0.5)]">
         
-        {/* Subtle Decorative Ambient Flares */}
-        <div className="hidden dark:block absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-orange-500/15 via-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none z-20" />
-        <div className="hidden dark:block absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-orange-600/15 via-transparent to-transparent rounded-full blur-3xl pointer-events-none z-20" />
-
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
             key={currentIndex}
@@ -369,7 +340,7 @@ export const HeroCarouselComponent = ({
             exit="exit"
             drag="x"
             dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.2}
+            dragElastic={0.15}
             onDragEnd={(_e, { offset, velocity }) => {
               const swipe = swipePower(offset.x, velocity.x);
               if (swipe < -swipeConfidenceThreshold || offset.x < -50) {
@@ -378,7 +349,7 @@ export const HeroCarouselComponent = ({
                 paginate(-1);
               }
             }}
-            className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col flex-1"
+            className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col md:flex-row"
           >
             {/* Google AdSense Isolated Slot */}
             {currentSlide.type === "adsense" ? (
@@ -389,300 +360,159 @@ export const HeroCarouselComponent = ({
                   adSenseConfig={adSystemConfig?.adsense}
                 />
               </div>
-            ) : currentSlide.type === "event" ? (
-              /* EVENT SLIDE LAYOUT: Stacked on mobile, 50/50 split on desktop */
-              <div className="flex flex-col-reverse lg:flex-row h-full w-full flex-1">
+            ) : (
+              /* Two-Zone Layout (Left: Info Deck, Right: Rounded Stage Image) */
+              <div className="w-full flex flex-col-reverse md:flex-row p-4 sm:p-6 md:p-8 lg:p-10 gap-6 md:gap-8 items-center justify-between">
                 
-                {/* Content Panel (Left on Desktop, Bottom on Mobile) */}
-                <motion.div
-                  variants={contentStagger}
-                  initial="hidden"
-                  animate="visible"
-                  className="flex flex-col justify-between p-4 sm:p-6 md:p-8 lg:p-10 xl:p-12 lg:w-1/2 flex-1 bg-gradient-to-t lg:bg-gradient-to-r from-white/90 via-white/70 to-orange-50/30 dark:bg-gradient-to-br dark:from-[#0b0d16]/95 dark:via-[#0e111d]/85 dark:to-[#080a11]/90 backdrop-blur-2xl relative z-10"
-                >
-                  <div className="flex flex-col">
-                    {/* Badge & Category Pill */}
-                    <motion.div variants={contentItem} className="flex items-center gap-2 mb-2.5 sm:mb-3.5 flex-wrap">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-orange-500/20 to-amber-500/15 text-orange-600 dark:text-orange-300 border border-orange-500/35 rounded-full font-heading text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-[0_0_12px_rgba(255,107,0,0.2)] backdrop-blur-md">
-                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                        <Star className="h-3 w-3 fill-current" />
-                        Featured Event
+                {/* LEFT COLUMN: Event Content & Info Card */}
+                <div className="w-full md:w-1/2 flex flex-col justify-between z-10">
+                  <div>
+                    {/* Top Pill Badges */}
+                    <div className="flex items-center gap-2 mb-3 sm:mb-4 flex-wrap">
+                      <span className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-black/40 dark:bg-white/10 backdrop-blur-md border border-white/15 text-[10px] sm:text-xs font-heading font-black tracking-wider text-amber-400 dark:text-orange-400 uppercase shadow-xs">
+                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 dark:bg-orange-400 animate-pulse" />
+                        <Star className="w-3 h-3 fill-current" />
+                        {currentSlide.type === "event" ? "FEATURED EVENT" : currentSlide.type === "memory" ? "CAMPUS MEMORY" : "SPONSORED"}
                       </span>
                       {currentSlide.category && (
-                        <span className="text-gray-600 dark:text-on-surface-muted text-[11px] sm:text-xs font-black uppercase tracking-wide font-heading">
+                        <span className="text-[11px] sm:text-xs font-heading font-extrabold uppercase tracking-wider text-gray-500 dark:text-gray-400">
                           • {currentSlide.category}
                         </span>
                       )}
-                    </motion.div>
+                    </div>
 
                     {/* Headline */}
-                    <motion.h1
-                      variants={contentItem}
-                      onClick={handleAction}
-                      className="text-xl sm:text-2xl md:text-3xl lg:text-[36px] xl:text-[40px] font-black tracking-tight text-gray-900 dark:text-white font-heading leading-tight sm:leading-[1.15] line-clamp-2 cursor-pointer hover:text-primary transition-colors mb-2 sm:mb-3 drop-shadow-sm break-safe"
-                    >
+                    <h1 className="text-xl min-[390px]:text-2xl sm:text-3xl md:text-4xl lg:text-[38px] xl:text-[40px] font-black font-heading text-gray-900 dark:text-white tracking-tight leading-tight mb-2 sm:mb-3 line-clamp-2 break-safe">
                       {currentSlide.title}
-                    </motion.h1>
+                    </h1>
 
-                    {/* Short Description */}
-                    <motion.p
-                      variants={contentItem}
-                      className="text-gray-700 dark:text-gray-300 text-xs sm:text-sm lg:text-base font-normal leading-relaxed line-clamp-2 sm:line-clamp-3 mb-3 sm:mb-5 max-w-xl break-safe"
-                    >
-                      {currentSlide.description}
-                    </motion.p>
-
-                    {/* Schedule & Venue Card */}
-                    {(currentSlide.date || currentSlide.venue || currentSlide.organizer) && (
-                      <motion.div
-                        variants={contentItem}
-                        className="flex flex-col gap-1.5 sm:gap-2.5 p-3.5 sm:p-4 rounded-xl sm:rounded-2xl glass-card border border-white/80 dark:border-white/10 mb-4 sm:mb-6 text-xs sm:text-sm text-gray-900 dark:text-white shadow-sm"
-                      >
-                        {/* Date & Time */}
-                        {(currentSlide.date || currentSlide.time) && (
-                          <div className="flex items-center gap-2.5 font-black font-heading text-xs sm:text-sm md:text-base text-gray-900 dark:text-white">
-                            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-orange-500/15 border border-orange-300/40 dark:border-transparent flex items-center justify-center shrink-0">
-                              <Calendar className="h-4 w-4 text-primary" />
-                            </div>
-                            <span className="tracking-wide truncate">
-                              {currentSlide.date}
-                              {currentSlide.time ? ` • ${currentSlide.time}` : ""}
-                            </span>
-                          </div>
-                        )}
-
-                        {/* Venue */}
-                        {currentSlide.venue && (
-                          <div className="flex items-center gap-2.5 text-gray-700 dark:text-gray-300 font-semibold text-xs sm:text-sm">
-                            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-orange-500/10 border border-orange-300/30 dark:border-transparent flex items-center justify-center shrink-0">
-                              <MapPin className="h-4 w-4 text-primary/90" />
-                            </div>
-                            <span className="truncate">{currentSlide.venue}</span>
-                          </div>
-                        )}
-
-                        {/* Organizer */}
-                        {currentSlide.organizer && (
-                          <div className="flex items-center gap-2.5 text-gray-700 dark:text-gray-300 font-semibold text-xs sm:text-sm">
-                            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-orange-500/10 border border-orange-300/30 dark:border-transparent flex items-center justify-center shrink-0">
-                              <Users className="h-4 w-4 text-primary/90" />
-                            </div>
-                            <span className="truncate">
-                              By <span className="text-gray-900 dark:text-white font-black">{currentSlide.organizer}</span>
-                            </span>
-                          </div>
-                        )}
-                      </motion.div>
-                    )}
-                  </div>
-
-                  {/* Primary Action Button */}
-                  <motion.div variants={contentItem} className="flex items-center gap-3 pt-1">
-                    <button
-                      onClick={handleAction}
-                      className="relative group overflow-hidden flex items-center gap-2 px-6 sm:px-8 py-3 sm:py-3.5 rounded-full bg-gradient-to-r from-[#FF5E00] via-[#FF7300] to-[#FFA000] text-white font-black text-xs sm:text-sm md:text-base hover:scale-[1.02] active:scale-[0.98] transition-all duration-300 shadow-[0_6px_20px_rgba(255,107,0,0.35)] hover:shadow-[0_8px_25px_rgba(255,107,0,0.5)] cursor-pointer touch-target font-heading"
-                    >
-                      <span className="relative z-10">{currentSlide.ctaText || "View Details"}</span>
-                      <ArrowRight className="relative z-10 h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
-                      <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    </button>
-                  </motion.div>
-                </motion.div>
-
-                {/* Hero Banner Image (Top on Mobile, Right on Desktop) */}
-                <div
-                  onClick={handleAction}
-                  className="relative w-full lg:w-1/2 h-[200px] xs:h-[230px] sm:h-[280px] lg:h-full overflow-hidden cursor-pointer shrink-0 group/img"
-                >
-                  <motion.img
-                    src={currentSlide.image}
-                    alt={currentSlide.title}
-                    initial={{ scale: 1.06 }}
-                    animate={{ scale: 1 }}
-                    transition={{ duration: 1.2, ease: "easeOut" }}
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src =
-                        "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1200&auto=format&fit=crop";
-                    }}
-                    className="absolute inset-0 w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-700 ease-out"
-                  />
-                  {/* Blending Gradients */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-white/95 dark:from-[#0b0d16] via-transparent to-transparent lg:hidden pointer-events-none" />
-                  <div className="hidden lg:block absolute inset-y-0 left-0 w-36 bg-gradient-to-r from-white/90 dark:from-[#0b0d16]/95 via-white/30 dark:via-[#0b0d16]/30 to-transparent pointer-events-none" />
-                </div>
-              </div>
-            ) : currentSlide.type === "memory" ? (
-              /* Memory Slide Layout */
-              <div
-                onClick={handleAction}
-                className="relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex flex-col justify-end p-5 sm:p-8 md:p-12 lg:p-16 pb-16 sm:pb-20"
-              >
-                <motion.img
-                  src={currentSlide.image}
-                  alt={currentSlide.title}
-                  initial={{ scale: 1.06 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 1.2, ease: "easeOut" }}
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src =
-                      "https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=1400&auto=format&fit=crop";
-                  }}
-                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
-                />
-
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/20 pointer-events-none" />
-                <div className="absolute inset-0 bg-gradient-to-tr from-orange-900/30 via-transparent to-amber-500/15 mix-blend-screen pointer-events-none" />
-
-                <motion.div
-                  variants={contentStagger}
-                  initial="hidden"
-                  animate="visible"
-                  className="relative z-20 max-w-3xl"
-                >
-                  <motion.div variants={contentItem} className="mb-2 sm:mb-3">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-black/60 backdrop-blur-md text-amber-300 border border-amber-500/40 rounded-full font-heading text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-md">
-                      <Sparkles className="w-3 h-3" />
-                      Past Event Memory
-                    </span>
-                  </motion.div>
-
-                  <motion.h1
-                    variants={contentItem}
-                    className="text-xl sm:text-2xl md:text-3xl lg:text-5xl font-black text-white font-heading leading-tight mb-2 sm:mb-3 drop-shadow-[0_4px_20px_rgba(0,0,0,0.85)] break-safe"
-                  >
-                    {currentSlide.title}
-                  </motion.h1>
-
-                  {currentSlide.description && (
-                    <motion.p
-                      variants={contentItem}
-                      className="text-gray-200 text-xs sm:text-sm lg:text-base font-medium leading-relaxed max-w-2xl line-clamp-2 break-safe"
-                    >
-                      {currentSlide.description}
-                    </motion.p>
-                  )}
-                </motion.div>
-              </div>
-            ) : (
-              /* Sponsored Advertisement Slide */
-              <div
-                onClick={handleAction}
-                className="relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex flex-col justify-end p-5 sm:p-8 md:p-12 lg:p-16 pb-16 sm:pb-20"
-              >
-                <motion.img
-                  src={currentSlide.image}
-                  alt={currentSlide.title}
-                  initial={{ scale: 1.06 }}
-                  animate={{ scale: 1 }}
-                  transition={{ duration: 1.2, ease: "easeOut" }}
-                  onError={(e) => {
-                    (e.currentTarget as HTMLImageElement).src =
-                      "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop";
-                  }}
-                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
-                />
-
-                <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30 pointer-events-none" />
-                <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/30 via-purple-600/15 to-transparent mix-blend-screen pointer-events-none" />
-
-                <motion.div
-                  variants={contentStagger}
-                  initial="hidden"
-                  animate="visible"
-                  className="relative z-20 flex flex-col sm:flex-row sm:items-end justify-between gap-4 sm:gap-6 w-full max-w-6xl"
-                >
-                  <div className="max-w-2xl">
-                    <motion.div variants={contentItem} className="flex items-center gap-2 mb-2 sm:mb-3">
-                      <span className="flex items-center gap-1.5 px-3 py-1 bg-indigo-950/80 backdrop-blur-md text-indigo-300 border border-indigo-500/50 rounded-full font-heading text-[10px] sm:text-xs font-black uppercase tracking-wider shadow-md">
-                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-                        Sponsored Promotion
-                      </span>
-                      {currentSlide.category && (
-                        <span className="px-2.5 py-0.5 bg-white/10 backdrop-blur-md text-white/90 border border-white/20 rounded-full text-[10px] sm:text-xs font-bold uppercase">
-                          {currentSlide.category}
-                        </span>
-                      )}
-                    </motion.div>
-
-                    <motion.h1
-                      variants={contentItem}
-                      className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-black text-white font-heading leading-tight mb-2 drop-shadow-md break-safe"
-                    >
-                      {currentSlide.title}
-                    </motion.h1>
-
+                    {/* Description */}
                     {currentSlide.description && (
-                      <motion.p
-                        variants={contentItem}
-                        className="text-gray-200 text-xs sm:text-sm font-medium line-clamp-2 leading-relaxed break-safe"
-                      >
+                      <p className="text-gray-600 dark:text-gray-300 text-xs sm:text-sm md:text-base leading-relaxed line-clamp-2 sm:line-clamp-3 mb-4 sm:mb-6 break-safe">
                         {currentSlide.description}
-                      </motion.p>
+                      </p>
                     )}
+
+                    {/* Information Stack Card (Matching Reference Shape, Circular Icons & Translucent Glass) */}
+                    <div className="rounded-[24px] sm:rounded-[30px] p-4 sm:p-5 md:p-6 bg-black/[0.04] dark:bg-white/[0.05] border border-black/5 dark:border-white/[0.08] shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)] backdrop-blur-xl space-y-3.5 sm:space-y-4 mb-6 sm:mb-8">
+                      {/* Date & Time */}
+                      <div className="flex items-center gap-3.5 sm:gap-4">
+                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/[0.04] dark:bg-white/[0.05] border border-black/5 dark:border-white/10 flex items-center justify-center text-[#fc721e] shrink-0 shadow-xs">
+                          <Calendar className="w-4.5 h-4.5 text-[#fc721e]" />
+                        </div>
+                        <span className="text-xs sm:text-sm md:text-base font-black font-heading text-gray-900 dark:text-white truncate">
+                          {currentSlide.date} • {currentSlide.time}
+                        </span>
+                      </div>
+
+                      {/* Venue */}
+                      <div className="flex items-center gap-3.5 sm:gap-4">
+                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/[0.04] dark:bg-white/[0.05] border border-black/5 dark:border-white/10 flex items-center justify-center text-[#fc721e] shrink-0 shadow-xs">
+                          <MapPin className="w-4.5 h-4.5 text-[#fc721e]" />
+                        </div>
+                        <span className="text-xs sm:text-sm md:text-base font-medium text-gray-700 dark:text-gray-200 truncate">
+                          {currentSlide.venue || "LPU Campus"}
+                        </span>
+                      </div>
+
+                      {/* Organizer */}
+                      <div className="flex items-center gap-3.5 sm:gap-4">
+                        <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-full bg-black/[0.04] dark:bg-white/[0.05] border border-black/5 dark:border-white/10 flex items-center justify-center text-[#fc721e] shrink-0 shadow-xs">
+                          <Users className="w-4.5 h-4.5 text-[#fc721e]" />
+                        </div>
+                        <span className="text-xs sm:text-sm md:text-base text-gray-600 dark:text-gray-300 truncate">
+                          By <strong className="text-gray-900 dark:text-white font-black font-heading">{currentSlide.organizer || "LPU Club"}</strong>
+                        </span>
+                      </div>
+                    </div>
                   </div>
 
-                  <motion.div variants={contentItem} className="shrink-0">
+                  {/* Action CTA Button */}
+                  <div>
                     <button
+                      type="button"
                       onClick={(e) => {
                         e.stopPropagation();
                         handleAction();
                       }}
-                      className="flex items-center gap-2 px-6 py-3 rounded-full glass-btn-ad font-black text-xs sm:text-sm shadow-[0_6px_20px_rgba(99,102,241,0.4)] transition-all hover:scale-105 active:scale-95 group cursor-pointer touch-target font-heading"
+                      className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-8 py-3.5 rounded-full bg-gradient-to-r from-[#fc721e] to-[#ff8c42] hover:brightness-110 text-white font-heading font-black text-xs sm:text-sm shadow-[0_4px_25px_rgba(252,114,30,0.45)] transition-all hover:scale-103 active:scale-97 cursor-pointer touch-target"
                     >
-                      <span>{currentSlide.ctaText || "Explore More"}</span>
-                      <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                      <span>{currentSlide.ctaText || "View Details"}</span>
+                      <ArrowRight className="w-4 h-4" />
                     </button>
-                  </motion.div>
-                </motion.div>
+                  </div>
+                </div>
+
+                {/* RIGHT COLUMN: Large Rounded Stage Image */}
+                <div className="w-full md:w-1/2 flex items-center justify-center">
+                  <div
+                    onClick={handleAction}
+                    className="relative w-full h-[220px] min-[390px]:h-[260px] sm:h-[340px] md:h-[450px] lg:h-[480px] rounded-[24px] sm:rounded-[32px] md:rounded-[36px] overflow-hidden shadow-2xl bg-slate-900 border border-white/80 dark:border-white/12 group/img cursor-pointer"
+                  >
+                    <img
+                      src={currentSlide.image}
+                      alt={currentSlide.title}
+                      loading={currentIndex === 0 ? "eager" : "lazy"}
+                      decoding="async"
+                      className="w-full h-full object-cover group-hover/img:scale-105 transition-transform duration-700 ease-out"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src =
+                          "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1200&auto=format&fit=crop";
+                      }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none" />
+                  </div>
+                </div>
+
               </div>
             )}
           </motion.div>
         </AnimatePresence>
 
-        {/* 3. Progress Dots Capsule */}
-        <div className="absolute bottom-2 sm:bottom-5 left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-1 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full glass-pill shadow-lg border border-white/80 dark:border-white/15 pointer-events-auto max-w-fit w-auto">
-          {slides.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => goToSlide(idx)}
-              aria-label={`Go to slide ${idx + 1}`}
-              className="group relative h-1 sm:h-2 rounded-full overflow-hidden cursor-pointer bg-gray-400/40 dark:bg-white/20 transition-all duration-300 hover:scale-110"
-              style={{ width: idx === currentIndex ? "20px" : "5px" }}
-            >
-              {idx === currentIndex && (
-                <motion.div
-                  layoutId="heroActiveProgress"
-                  className="absolute inset-0 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full shadow-[0_0_8px_rgba(255,107,0,0.8)]"
-                  initial={{ width: 0 }}
-                  animate={{ width: "100%" }}
-                  transition={{
-                    duration: isHovered ? 0 : (slides[currentIndex]?.duration || 5000) / 1000,
-                    ease: "linear",
-                  }}
-                />
-              )}
-            </button>
-          ))}
-        </div>
-
-        {/* 4. Side Navigation Arrows */}
+        {/* Side Navigation Arrow Buttons */}
         {slides.length > 1 && (
           <>
             <button
-              onClick={() => paginate(-1)}
-              className="hidden sm:flex absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full glass-pill items-center justify-center transition-all duration-300 cursor-pointer shadow-xl hover:scale-110 active:scale-95 group border border-white/95 dark:border-white/15 bg-white/85 dark:bg-black/75 backdrop-blur-2xl touch-target"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                paginate(-1);
+              }}
+              className="hidden sm:flex absolute left-3 md:left-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-11 md:h-11 rounded-full glass-pill items-center justify-center cursor-pointer shadow-xl border border-white/95 dark:border-white/20 bg-white/90 dark:bg-black/75 backdrop-blur-2xl transition-transform hover:scale-110 active:scale-95"
               aria-label="Previous slide"
             >
-              <ChevronLeft className="h-5 w-5 md:h-6 md:w-6 text-gray-800 dark:text-white group-hover:-translate-x-0.5 group-hover:text-primary transition-transform duration-200" />
+              <ChevronLeft className="h-5 w-5 text-gray-900 dark:text-white" />
             </button>
+
             <button
-              onClick={() => paginate(1)}
-              className="hidden sm:flex absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full glass-pill items-center justify-center transition-all duration-300 cursor-pointer shadow-xl hover:scale-110 active:scale-95 group border border-white/95 dark:border-white/15 bg-white/85 dark:bg-black/75 backdrop-blur-2xl touch-target"
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                paginate(1);
+              }}
+              className="hidden sm:flex absolute right-3 md:right-4 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-11 md:h-11 rounded-full glass-pill items-center justify-center cursor-pointer shadow-xl border border-white/95 dark:border-white/20 bg-white/90 dark:bg-black/75 backdrop-blur-2xl transition-transform hover:scale-110 active:scale-95"
               aria-label="Next slide"
             >
-              <ChevronRight className="h-5 w-5 md:h-6 md:w-6 text-gray-800 dark:text-white group-hover:translate-x-0.5 group-hover:text-primary transition-transform duration-200" />
+              <ChevronRight className="h-5 w-5 text-gray-900 dark:text-white" />
             </button>
           </>
+        )}
+
+        {/* Centered Pagination Dots Capsule */}
+        {slides.length > 1 && (
+          <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-30 flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/50 dark:bg-black/60 backdrop-blur-md border border-white/15">
+            {slides.map((_, idx) => (
+              <button
+                key={idx}
+                type="button"
+                onClick={() => goToSlide(idx)}
+                className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                  idx === currentIndex ? "w-6 bg-primary" : "w-2 bg-white/50 hover:bg-white/80"
+                }`}
+                aria-label={`Go to slide ${idx + 1}`}
+              />
+            ))}
+          </div>
         )}
       </div>
     </section>
