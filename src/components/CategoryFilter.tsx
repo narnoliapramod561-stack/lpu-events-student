@@ -148,37 +148,59 @@ export const CategoryFilterComponent = ({
   return (
     <div id="categories" className="w-full flex flex-col gap-4 sm:gap-8">
       
-      {/* 1. Schedule Quick Filters */}
-      <div className="w-full flex flex-col gap-2.5 sm:gap-3.5">
-        <div className="flex items-center justify-between">
-          <h3 className="font-heading text-base sm:text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-            Timeline & Schedule
-          </h3>
+      {/* 1. Schedule Quick Filters - Time Segmenter Tray */}
+      <div className="w-full flex flex-col gap-2 p-2 sm:p-3 rounded-2xl bg-slate-900/30 dark:bg-white/[0.03] border border-white/80 dark:border-white/10 shadow-xs backdrop-blur-md">
+        <div className="flex items-center justify-between px-1">
+          <div className="flex items-center gap-1.5">
+            <div className="w-5 h-5 rounded-md bg-amber-500/15 flex items-center justify-center text-amber-500">
+              <Clock className="h-3 w-3" />
+            </div>
+            <h3 className="font-heading text-xs sm:text-sm font-black uppercase tracking-wider text-gray-800 dark:text-gray-200">
+              Timeline & Schedule
+            </h3>
+          </div>
+
+          {(activeScheduleFilter !== "all" || selectedDate) && (
+            <button
+              type="button"
+              onClick={() => {
+                onSelectScheduleFilter("all");
+                onSelectDate("");
+              }}
+              className="text-[10px] sm:text-xs font-bold text-amber-500 hover:text-amber-400 transition-colors cursor-pointer flex items-center gap-1 px-2 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20"
+            >
+              <span>Reset Time</span>
+              <X className="h-2.5 w-2.5" />
+            </button>
+          )}
         </div>
 
         {/* Timeline Pills */}
-        <div className="flex gap-2 sm:gap-3 overflow-x-auto hide-scrollbar py-1 select-none items-center touch-pan-x">
+        <div className="flex gap-1.5 sm:gap-2.5 overflow-x-auto hide-scrollbar py-0.5 select-none items-center touch-pan-x">
           {[
-            { id: "all", name: "ALL", icon: LayoutGrid },
-            { id: "today", name: "TODAY", icon: Calendar },
-            { id: "tomorrow", name: "TOMORROW", icon: CalendarDays },
-            { id: "this_week", name: "THIS WEEK", icon: CalendarRange },
-            { id: "upcoming", name: "UPCOMING", icon: Clock }
+            { id: "all", name: "Anytime", icon: LayoutGrid },
+            { id: "today", name: "Today", icon: Calendar },
+            { id: "tomorrow", name: "Tomorrow", icon: CalendarDays },
+            { id: "this_week", name: "This Week", icon: CalendarRange },
+            { id: "upcoming", name: "Upcoming", icon: Clock }
           ].map((sched) => {
-            const isSelected = !isTrendingActive && activeScheduleFilter === sched.id;
+            const isSelected = !isTrendingActive && activeScheduleFilter === sched.id && !selectedDate;
             const SchedIcon = sched.icon;
             return (
               <button
                 key={sched.id}
                 type="button"
-                onClick={() => onSelectScheduleFilter(sched.id)}
-                className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5.5 sm:py-3.5 rounded-lg sm:rounded-2xl font-heading font-black text-xs sm:text-sm cursor-pointer outline-none active:scale-[0.97] transition-transform duration-150 whitespace-nowrap touch-target shrink-0 ${
+                onClick={() => {
+                  onSelectDate("");
+                  onSelectScheduleFilter(sched.id);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-xl font-heading font-black text-xs sm:text-sm cursor-pointer outline-none active:scale-[0.97] transition-all whitespace-nowrap touch-target shrink-0 ${
                   isSelected
-                    ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white border border-white/50 shadow-[0_6px_20px_rgba(255,107,0,0.45)]"
-                    : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary hover:border-primary/50 shadow-sm"
+                    ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm shadow-amber-500/30 border border-amber-400/40"
+                    : "bg-black/5 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10 hover:text-amber-500 border border-black/5 dark:border-white/5"
                 }`}
               >
-                <SchedIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <SchedIcon className={`h-3.5 w-3.5 ${isSelected ? "text-white" : "text-amber-500"}`} />
                 <span>{sched.name}</span>
               </button>
             );
@@ -188,18 +210,18 @@ export const CategoryFilterComponent = ({
             <button
               type="button"
               onClick={() => dateInputRef.current && dateInputRef.current.showPicker()}
-              className={`flex items-center gap-1.5 sm:gap-2 px-3 py-2 sm:px-5.5 sm:py-3.5 rounded-lg sm:rounded-2xl font-heading font-black text-xs sm:text-sm cursor-pointer outline-none active:scale-[0.97] transition-transform duration-150 whitespace-nowrap touch-target ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 sm:px-4 sm:py-2.5 rounded-xl font-heading font-black text-xs sm:text-sm cursor-pointer outline-none active:scale-[0.97] transition-all whitespace-nowrap touch-target ${
                 selectedDate
-                  ? "bg-primary/20 text-primary border border-primary/50 shadow-sm"
-                  : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary hover:border-primary/50 shadow-sm"
+                  ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm shadow-amber-500/30 border border-amber-400/40"
+                  : "bg-black/5 dark:bg-white/5 text-gray-700 dark:text-gray-300 hover:bg-black/10 dark:hover:bg-white/10 hover:text-amber-500 border border-black/5 dark:border-white/5"
               }`}
             >
-              <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <CalendarDays className={`h-3.5 w-3.5 ${selectedDate ? "text-white" : "text-amber-500"}`} />
               <span>{formatDisplayDate(selectedDate)}</span>
               {selectedDate && (
                 <span
                   onClick={handleClearDate}
-                  className="ml-1 hover:text-on-surface text-xs leading-none bg-primary/20 hover:bg-primary/35 rounded-full p-1 transition-colors"
+                  className="ml-1 hover:text-on-surface text-xs leading-none bg-black/20 hover:bg-black/40 rounded-full p-0.5 transition-colors"
                 >
                   <X className="h-3 w-3" />
                 </span>
@@ -217,7 +239,7 @@ export const CategoryFilterComponent = ({
       </div>
 
       {/* 2. Primary Event Categories Bar & Search */}
-      <div className="w-full flex flex-col gap-2.5 sm:gap-3.5">
+      <div className="w-full flex flex-col gap-2.5 sm:gap-3.5 mt-1 sm:mt-2">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
           <div className="flex items-center gap-2 flex-wrap">
             <h3 className="font-heading text-base sm:text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
@@ -252,7 +274,7 @@ export const CategoryFilterComponent = ({
                 value={categorySearch}
                 onChange={(e) => setCategorySearch(e.target.value)}
                 placeholder="Search categories & subcategories..."
-                className="w-full pl-9 pr-9 py-2.5 rounded-xl sm:rounded-2xl glass-well text-xs sm:text-sm font-medium text-gray-900 dark:text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/40 border border-white/80 dark:border-white/10 shadow-sm transition-all"
+                className="w-full pl-9 pr-9 py-2 sm:py-2.5 rounded-xl sm:rounded-2xl glass-well text-xs sm:text-sm font-medium text-gray-900 dark:text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/40 border border-white/80 dark:border-white/10 shadow-sm transition-all"
               />
               {categorySearch && (
                 <button
@@ -308,8 +330,8 @@ export const CategoryFilterComponent = ({
 
         {/* Scrollable Category Pills */}
         {filteredCategories.length > 0 ? (
-          <div className="flex gap-2.5 sm:gap-3.5 overflow-x-auto hide-scrollbar py-2 px-1 select-none items-center touch-pan-x">
-            {/* "ALL" Category Pill */}
+          <div className="flex gap-2 sm:gap-3 overflow-x-auto hide-scrollbar py-1 select-none items-center touch-pan-x">
+            {/* "ALL CATEGORIES" Pill */}
             {!cleanQuery && (
               <button
                 type="button"
@@ -317,7 +339,7 @@ export const CategoryFilterComponent = ({
                   onSelectCategory("all");
                   onSelectSubcategory("");
                 }}
-                className={`group flex items-center gap-2 px-3 py-2 sm:px-6 sm:py-3 rounded-xl sm:rounded-full font-heading font-black text-[11px] sm:text-sm whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 touch-target ${
+                className={`group flex items-center gap-2 px-3.5 py-2 sm:px-5 sm:py-3 rounded-xl sm:rounded-full font-heading font-black text-xs sm:text-sm whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 touch-target ${
                   selectedCategory === "all"
                     ? "glass-pill-active"
                     : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary"
@@ -326,7 +348,7 @@ export const CategoryFilterComponent = ({
                 <div className={`w-6 h-6 sm:w-7 sm:h-7 rounded-full flex items-center justify-center ${selectedCategory === "all" ? "bg-white/25 text-white" : "bg-primary/15 text-primary"}`}>
                   <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
                 </div>
-                <span>ALL</span>
+                <span>ALL CATEGORIES</span>
               </button>
             )}
 
@@ -344,7 +366,7 @@ export const CategoryFilterComponent = ({
                     onSelectCategory(isSelected ? "all" : cat.id);
                     onSelectSubcategory("");
                   }}
-                  className={`group flex items-center gap-2 px-3 py-2 sm:px-6 sm:py-3 rounded-xl sm:rounded-full font-heading font-black text-[11px] sm:text-sm whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 touch-target ${
+                  className={`group flex items-center gap-2 px-3.5 py-2 sm:px-5 sm:py-3 rounded-xl sm:rounded-full font-heading font-black text-xs sm:text-sm whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 touch-target ${
                     isSelected
                       ? "glass-pill-active"
                       : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary"
