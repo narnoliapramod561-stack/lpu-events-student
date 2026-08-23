@@ -141,7 +141,7 @@ export const AdBannerCardComponent = ({ ad }: { ad: AdvertisementFeedItem }) => 
   const imageUrl = getEventImage(ad, 'advertisement', 480);
 
   return (
-    <article className="col-span-1 min-[340px]:col-span-2 md:col-span-1 glass-panel mobile-card-contained group flex flex-col h-full overflow-hidden border border-orange-500/40 dark:border-orange-500/35 rounded-[14px] sm:rounded-[32px] p-2 sm:p-3.5 transition-all duration-200">
+    <article className="col-span-1 min-[340px]:col-span-2 md:col-span-1 glass-panel-ad mobile-card-contained group flex flex-col h-full overflow-hidden border border-indigo-500/40 dark:border-indigo-500/35 hover:border-indigo-500/70 rounded-[14px] sm:rounded-[32px] p-2 sm:p-3.5 transition-all duration-200 shadow-md hover:shadow-[0_20px_50px_rgba(99,102,241,0.22)]">
       <div className="aspect-[16/9] sm:h-[230px] sm:aspect-auto w-full relative overflow-hidden rounded-[10px] sm:rounded-[24px] shrink-0 border border-white/50 dark:border-white/10 bg-black/10">
         <img
           src={imageUrl}
@@ -156,15 +156,15 @@ export const AdBannerCardComponent = ({ ad }: { ad: AdvertisementFeedItem }) => 
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
         <div className="absolute top-2 left-2 sm:top-3.5 sm:left-3.5">
-          <span className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3.5 sm:py-1.5 glass-pill-active text-white rounded-full font-heading text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider">
-            <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+          <span className="flex items-center gap-1.5 px-2.5 py-1 sm:px-3.5 sm:py-1.5 glass-badge-ad rounded-full font-heading text-[9px] sm:text-[10px] font-extrabold uppercase tracking-wider shadow-md">
+            <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 dark:bg-indigo-400 animate-pulse" />
             Sponsored
           </span>
         </div>
       </div>
 
       <div className="p-2 sm:p-4 flex flex-col flex-1">
-        <h3 className="text-sm sm:text-xl font-black font-heading text-gray-900 dark:text-white mb-1.5 sm:mb-3 tracking-tight line-clamp-2 group-hover:text-primary transition-colors leading-snug break-safe">
+        <h3 className="text-sm sm:text-xl font-black font-heading text-gray-900 dark:text-white mb-1.5 sm:mb-3 tracking-tight line-clamp-2 group-hover:text-indigo-600 dark:group-hover:text-indigo-300 transition-colors leading-snug break-safe">
           {ad.name}
         </h3>
 
@@ -173,13 +173,13 @@ export const AdBannerCardComponent = ({ ad }: { ad: AdvertisementFeedItem }) => 
         </p>
 
         <div className="flex justify-between items-center pt-2 sm:pt-3.5 border-t border-white/60 dark:border-white/10 mt-auto gap-2">
-          <span className="text-[9px] sm:text-[11px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider font-heading">
+          <span className="text-[9px] sm:text-[11px] font-black text-indigo-600 dark:text-indigo-400 uppercase tracking-wider font-heading">
             Spotlight
           </span>
           <button 
             type="button"
             onClick={() => ad.redirect_url && window.open(ad.redirect_url, "_blank")}
-            className="flex items-center gap-1.5 px-3 py-1.5 sm:px-5 sm:py-2.5 glass-btn-primary rounded-lg sm:rounded-full font-heading font-black text-[11px] sm:text-xs cursor-pointer shrink-0 touch-target"
+            className="flex items-center gap-1.5 px-3 py-1.5 sm:px-5 sm:py-2.5 glass-btn-ad rounded-lg sm:rounded-full font-heading font-black text-[11px] sm:text-xs cursor-pointer shrink-0 touch-target"
           >
             <span>Learn More</span>
             <ArrowUpRight className="h-3 w-3 sm:h-3.5 sm:w-3.5" />

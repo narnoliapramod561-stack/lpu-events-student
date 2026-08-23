@@ -362,8 +362,8 @@ export const HeroCarouselComponent = ({
                     </>
                   ) : (
                     <>
-                      <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse shadow-[0_0_6px_rgba(251,191,36,1)]" />
-                      <span className="text-amber-300 font-extrabold">Sponsored</span>
+                      <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_6px_rgba(99,102,241,1)]" />
+                      <span className="text-indigo-300 font-extrabold">Sponsored</span>
                     </>
                   )}
                 </span>
@@ -627,7 +627,7 @@ export const HeroCarouselComponent = ({
                 />
 
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30 pointer-events-none" />
-                <div className="absolute inset-0 bg-gradient-to-tr from-amber-600/25 via-transparent to-orange-600/20 mix-blend-screen pointer-events-none" />
+                <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/30 via-purple-600/15 to-transparent mix-blend-screen pointer-events-none" />
 
                 <motion.div
                   variants={contentStagger}
@@ -637,8 +637,8 @@ export const HeroCarouselComponent = ({
                 >
                   <div className="max-w-2xl">
                     <motion.div variants={contentItem} className="flex items-center gap-2 mb-3">
-                      <span className="flex items-center gap-1.5 px-3 py-1 bg-black/70 backdrop-blur-md text-amber-300 border border-amber-500/50 rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-md">
-                        <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                      <span className="flex items-center gap-1.5 px-3 py-1 bg-indigo-950/80 backdrop-blur-md text-indigo-300 border border-indigo-500/50 rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-md">
+                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
                         Sponsored Promotion
                       </span>
                       {currentSlide.category && (
@@ -671,7 +671,7 @@ export const HeroCarouselComponent = ({
                         e.stopPropagation();
                         handleAction();
                       }}
-                      className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 hover:from-amber-300 hover:to-orange-500 text-black font-black text-sm shadow-[0_6px_20px_rgba(255,140,0,0.4)] transition-all hover:scale-105 active:scale-95 group cursor-pointer touch-target font-heading"
+                      className="flex items-center gap-2 px-6 py-3 rounded-2xl glass-btn-ad font-black text-sm shadow-[0_6px_20px_rgba(99,102,241,0.4)] transition-all hover:scale-105 active:scale-95 group cursor-pointer touch-target font-heading"
                     >
                       <span>{currentSlide.ctaText || "Explore More"}</span>
                       <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />

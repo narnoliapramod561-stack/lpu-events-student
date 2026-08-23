@@ -291,7 +291,7 @@ export const HappeningTodaySliderComponent = ({
                 <motion.div variants={contentItem} className="flex items-center gap-1.5 mb-1">
                   <span className={`flex items-center gap-1 px-2 py-0.5 rounded-full font-heading text-[8px] xs:text-[9px] font-black uppercase tracking-widest border shadow-xs ${
                     currentSlide.type === "ad"
-                      ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white border-amber-300/40"
+                      ? "bg-gradient-to-r from-indigo-600 to-purple-600 text-white border-indigo-300/40 shadow-[0_0_10px_rgba(99,102,241,0.5)]"
                       : "bg-gradient-to-r from-red-600 to-orange-600 text-white border-white/25"
                   }`}>
                     <span className="relative flex h-1.5 w-1.5">
@@ -331,7 +331,7 @@ export const HappeningTodaySliderComponent = ({
                       e.stopPropagation();
                       handleAction();
                     }}
-                    className="shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full glass-btn-primary font-black text-[10px] font-heading shadow-xs cursor-pointer"
+                    className={`shrink-0 flex items-center gap-1 px-2.5 py-1 rounded-full ${currentSlide.type === "ad" ? "glass-btn-ad" : "glass-btn-primary"} font-black text-[10px] font-heading shadow-xs cursor-pointer`}
                   >
                     <span>{currentSlide.ctaText || "View Details"}</span>
                     <ArrowRight className="h-2.5 w-2.5" />
@@ -365,7 +365,7 @@ export const HappeningTodaySliderComponent = ({
                   >
                     <span className={`flex items-center gap-2 px-3.5 py-1.5 backdrop-blur-md rounded-full font-heading text-xs font-black uppercase tracking-widest border shadow-lg ${
                       currentSlide.type === "ad"
-                        ? "bg-gradient-to-r from-amber-500/90 to-orange-500/90 text-white border-amber-300/40 shadow-[0_0_15px_rgba(245,158,11,0.5)]"
+                        ? "bg-gradient-to-r from-indigo-600/90 to-purple-600/90 text-white border-indigo-300/40 shadow-[0_0_15px_rgba(99,102,241,0.5)]"
                         : "bg-gradient-to-r from-red-600/90 to-orange-600/90 text-white border-white/25 shadow-[0_0_15px_rgba(255,50,0,0.5)]"
                     }`}>
                       <span className="relative flex h-2 w-2">
@@ -464,7 +464,7 @@ export const HappeningTodaySliderComponent = ({
                       e.stopPropagation();
                       handleAction();
                     }}
-                    className="relative group/btn overflow-hidden flex items-center gap-2 px-10 py-3.5 rounded-full glass-btn-primary font-black text-sm md:text-base cursor-pointer font-heading touch-target shadow-md transition-transform duration-200 hover:scale-103 active:scale-97"
+                    className={`relative group/btn overflow-hidden flex items-center gap-2 px-10 py-3.5 rounded-full ${currentSlide.type === "ad" ? "glass-btn-ad" : "glass-btn-primary"} font-black text-sm md:text-base cursor-pointer font-heading touch-target shadow-md transition-transform duration-200 hover:scale-103 active:scale-97`}
                   >
                     <span className="relative z-10">{currentSlide.ctaText}</span>
                     <ArrowRight className="relative z-10 h-4 w-4 group-hover/btn:translate-x-1 transition-transform duration-300" />
