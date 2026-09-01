@@ -55,6 +55,7 @@ function getR2Config(): R2Config | null {
       accessKeyId: accessKeyId || "anonymous",
       secretAccessKey: secretAccessKey || "anonymous",
     },
+    maxAttempts: 1,
   });
 
   return { accountId, accessKeyId, secretAccessKey, bucketName, publicBaseUrl, s3 };
@@ -69,9 +70,11 @@ async function uploadObjectToR2(
 ): Promise<{ success: boolean; error?: string }> {
   const cleanKey = key.replace(/^\/+/, "");
 
-  // 1. Try S3 SDK if credentials look valid
+  // 1. Fast S3 Attempt (single attempt, max 4s timeout)
   if (r2.accessKeyId && r2.secretAccessKey && r2.accessKeyId !== "anonymous") {
     try {
+      const abortCtrl = new AbortController();
+      const timeoutId = setTimeout(() => abortCtrl.abort(), 4000);
       await r2.s3.send(
         new PutObjectCommand({
           Bucket: r2.bucketName,
@@ -79,15 +82,17 @@ async function uploadObjectToR2(
           Body: body,
           ContentType: contentType,
           CacheControl: cacheControl,
-        })
+        }),
+        { abortSignal: abortCtrl.signal }
       );
+      clearTimeout(timeoutId);
       return { success: true };
     } catch (s3Err: any) {
       console.warn("S3 SDK upload error for key:", cleanKey, s3Err?.message);
     }
   }
 
-  // 2. Try Cloudflare REST API direct PUT with Bearer Token
+  // 2. Fast Cloudflare REST API Attempt (max 4s timeout)
   const candidateTokens = [
     Deno.env.get("CLOUDFLARE_API_TOKEN"),
     Deno.env.get("R2_ACCESS_KEY_ID"),
@@ -105,6 +110,7 @@ async function uploadObjectToR2(
           "Cache-Control": cacheControl,
         },
         body: body,
+        signal: AbortSignal.timeout(4000),
       });
 
       if (res.ok) {
@@ -115,7 +121,7 @@ async function uploadObjectToR2(
     }
   }
 
-  return { success: false, error: "R2 write failed across S3 and REST APIs." };
+  return { success: false, error: "R2 write timed out or rejected across S3 and REST APIs." };
 }
 
 async function deleteObjectFromR2(r2: R2Config, key: string): Promise<boolean> {
