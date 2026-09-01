@@ -19,7 +19,8 @@ import {
   trackEvent, 
   trackRegistrationClick,
   getStudentEventUrl,
-  generateQrDataUrl
+  generateQrDataUrl,
+  formatEventDateRange
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { AdSenseSlot } from "./AdSenseSlot";
@@ -128,30 +129,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
   // Safe Date Formatting
   const dateDisplay = useMemo(() => {
     if (!event || !event.start_at) return "Date to be announced";
-    try {
-      const start = new Date(event.start_at);
-      if (isNaN(start.getTime())) return "Date to be announced";
-      const startFormatted = start.toLocaleDateString("en-US", {
-        day: "numeric",
-        month: "short",
-        year: "numeric"
-      });
-
-      if (event.end_at) {
-        const end = new Date(event.end_at);
-        if (!isNaN(end.getTime()) && end.toDateString() !== start.toDateString()) {
-          const endFormatted = end.toLocaleDateString("en-US", {
-            day: "numeric",
-            month: "short",
-            year: "numeric"
-          });
-          return `${startFormatted} – ${endFormatted}`;
-        }
-      }
-      return startFormatted;
-    } catch {
-      return "Date to be announced";
-    }
+    return formatEventDateRange(event.start_at, event.end_at);
   }, [event]);
 
   // Safe Time Formatting
@@ -460,10 +438,6 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
           alt={event.name}
           decoding="async"
           fetchPriority="high"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src =
-              "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800&auto=format&fit=crop";
-          }}
         />
       </div>
 
@@ -479,41 +453,28 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
       {/* Sponsored Spotlight 1 / AdSense */}
       {(() => {
+        if (!adSystemConfig || !adSystemConfig.global_enabled) return null;
         const detailsConfig = adSystemConfig?.placements?.event_details;
-        const isGlobalEnabled = adSystemConfig?.global_enabled !== false;
+        if (!detailsConfig || !detailsConfig.enabled || detailsConfig.provider === 'disabled') return null;
         
-        // If explicitly configured and enabled
-        if (detailsConfig && isGlobalEnabled && detailsConfig.enabled) {
-          if (detailsConfig.provider === 'adsense') {
-            return (
-              <div className="mb-4 sm:mb-6">
-                <AdSenseSlot
-                  format="banner"
-                  slotId={detailsConfig.ad_unit_id || "1000000004"}
-                  adSenseConfig={adSystemConfig?.adsense}
-                />
-              </div>
-            );
-          }
-          if (detailsConfig.provider === 'direct' && spotlight1) {
-            return (
-              <div className="mb-4 sm:mb-6">
-                <SponsorBanner ad={spotlight1} />
-              </div>
-            );
-          }
-          return null;
+        if (detailsConfig.provider === 'adsense') {
+          return (
+            <div className="mb-4 sm:mb-6">
+              <AdSenseSlot
+                format="banner"
+                slotId={detailsConfig.ad_unit_id || "1000000004"}
+                adSenseConfig={adSystemConfig?.adsense}
+              />
+            </div>
+          );
         }
-
-        // Fallback default: show direct spotlight1 if present and no explicit disable config
-        if (!detailsConfig && spotlight1) {
+        if (detailsConfig.provider === 'direct' && spotlight1) {
           return (
             <div className="mb-4 sm:mb-6">
               <SponsorBanner ad={spotlight1} />
             </div>
           );
         }
-
         return null;
       })()}
 
@@ -603,28 +564,17 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
       {/* Sponsored Spotlight 2 / AdSense Bottom */}
       {(() => {
+        if (!adSystemConfig || !adSystemConfig.global_enabled) return null;
         const detailsConfig = adSystemConfig?.placements?.event_details;
-        const isGlobalEnabled = adSystemConfig?.global_enabled !== false;
+        if (!detailsConfig || !detailsConfig.enabled || detailsConfig.provider === 'disabled') return null;
 
-        if (detailsConfig && isGlobalEnabled && detailsConfig.enabled) {
-          if (detailsConfig.provider === 'direct' && spotlight2) {
-            return (
-              <div className="mb-4 sm:mb-6">
-                <SponsorBanner ad={spotlight2} />
-              </div>
-            );
-          }
-          return null;
-        }
-
-        if (!detailsConfig && spotlight2) {
+        if (detailsConfig.provider === 'direct' && spotlight2) {
           return (
             <div className="mb-4 sm:mb-6">
               <SponsorBanner ad={spotlight2} />
             </div>
           );
         }
-
         return null;
       })()}
 

@@ -608,6 +608,15 @@ body {
 }
 
 /* Lightweight Skeleton Loading */
+@keyframes skeleton-wave {
+  0% {
+    background-position: 200% 0%;
+  }
+  100% {
+    background-position: -200% 0%;
+  }
+}
+
 .skeleton-base {
   background-color: rgba(220, 228, 238, 0.7);
   background-image: linear-gradient(

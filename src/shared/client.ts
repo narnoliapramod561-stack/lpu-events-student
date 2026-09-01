@@ -50,7 +50,7 @@ export class LpuEventsClient {
     if (filters?.show_past) {
       let query = this.supabase
         .from('events')
-        .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,organizations(name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
+        .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key,bucket),organizations(name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
         .in('status', ['PUBLISHED', 'COMPLETED'])
         .or(`status.eq.COMPLETED,end_at.lt.${nowIso}`)
         .order('end_at', { ascending: false });
@@ -75,9 +75,8 @@ export class LpuEventsClient {
     } else {
       let query = this.supabase
         .from('events')
-        .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,organizations(name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
+        .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key,bucket),organizations(name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
         .eq('status', 'PUBLISHED')
-        .gte('end_at', nowIso)
         .order('start_at', { ascending: true });
 
       if (filters?.category_id) query = query.eq('category_id', filters.category_id);
@@ -140,7 +139,7 @@ export class LpuEventsClient {
   async fetchEventDetails(id: string): Promise<{ data: Event | null; error: any }> {
     const { data, error } = await this.supabase
       .from('events')
-      .select('*,organizations(*),categories(name,key),subcategories(name,key),event_content_sections(*)')
+      .select('*,media_assets:banner_media_id(id,object_key,bucket),organizations(*),categories(name,key),subcategories(name,key),event_content_sections(*)')
       .eq('id', id)
       .single();
 
@@ -189,9 +188,9 @@ export class LpuEventsClient {
       .from('carousel_items')
       .select(`
         *,
-        events:event_id ( id, name, description, start_at, end_at, venue_name, registration_mode, pricing_type, banner_media_id, status, organizations ( name ), categories ( name ) ),
+        events:event_id ( id, name, description, start_at, end_at, venue_name, registration_mode, pricing_type, banner_media_id, media_assets:banner_media_id(id,object_key,bucket), status, organizations ( name ), categories ( name ) ),
         advertisements:advertisement_id ( id, name, redirect_url, media_id, status ),
-        event_memories:memory_id ( id, title, description, cover_media_id, status, media_assets:cover_media_id ( id, object_key ), events ( id, name, description, start_at, venue_name, banner_media_id, organizations ( name ) ) ),
+        event_memories:memory_id ( id, title, description, cover_media_id, status, media_assets:cover_media_id ( id, object_key ), events ( id, name, description, start_at, venue_name, banner_media_id, media_assets:banner_media_id(id,object_key,bucket), organizations ( name ) ) ),
         media_assets:media_id ( id, bucket, object_key )
       `)
       .eq('is_active', true)

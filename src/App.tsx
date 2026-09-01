@@ -9,7 +9,7 @@ import { AboutUsView } from "./components/AboutUsView";
 import { PrivacyPolicyView } from "./components/PrivacyPolicyView";
 import { TermsOfServiceView } from "./components/TermsOfServiceView";
 import { Footer } from "./components/Footer";
-import { SponsorBanner } from "./components/SponsorBanner";
+import { UnifiedAdSlot } from "./components/UnifiedAdSlot";
 import { OFFICIAL_PLATFORM_CATEGORIES } from "./utils/categories";
 import { lpuClient } from "./supabase";
 import { 
@@ -21,7 +21,9 @@ import {
   AdSystemConfig,
   DEFAULT_AD_SYSTEM_CONFIG,
   trackPageView,
-  trackEvent
+  trackEvent,
+  isEventToday,
+  matchesScheduleFilter
 } from "@lpu-events/shared";
 
 export type StudentRoute = 'home' | 'about' | 'privacy' | 'terms' | 'event-details';
@@ -58,6 +60,14 @@ const parseCurrentRoute = (): RouteState => {
   }
 
   return { route: 'home', eventId: null };
+};
+
+const normalizeEventDates = (evts: EventFeedItem[]): EventFeedItem[] => {
+  if (!evts || evts.length === 0) return evts;
+  return evts
+    .filter((e) => e && e.start_at)
+    .slice()
+    .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
 };
 
 export default function App() {
@@ -97,6 +107,7 @@ export default function App() {
   const [events, setEvents] = useState<EventFeedItem[]>([]);
   const [eventsLoading, setEventsLoading] = useState(true);
   const [visibleEventsCount, setVisibleEventsCount] = useState(10);
+  const [appLoading, setAppLoading] = useState(true);
   const searchReqIdRef = useRef(0);
 
   // Route state
@@ -302,8 +313,8 @@ export default function App() {
         if (data) {
           const resolved: EventFeedItem[] = data
             .map((fe: any) => fe.events)
-            .filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at && new Date(evt.end_at) >= new Date());
-          setFeaturedEvents(resolved);
+            .filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at);
+          setFeaturedEvents(normalizeEventDates(resolved));
         }
       } catch (err) {
         console.error("Failed to load featured events:", err);
@@ -314,9 +325,9 @@ export default function App() {
         const { data } = await lpuClient.fetchTrendingEvents();
         if (data) {
           const validTrending = data.filter(
-            (evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at && new Date(evt.end_at) >= new Date()
+            (evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at
           );
-          setTrendingEvents(validTrending);
+          setTrendingEvents(normalizeEventDates(validTrending));
         }
       } catch (err) {
         console.error("Failed to load trending events:", err);
@@ -332,16 +343,20 @@ export default function App() {
         console.error("Failed to load hero carousel slides:", err);
       }
 
-      // 5. Fetch unfiltered live events for Happening Today slider
+      // 5. Fetch live events strictly STARTING today for Happening Today slider
       try {
         const { data, error } = await lpuClient.fetchEventFeed();
         if (!error && data) {
-          const validLive = data.filter(
+          const now = new Date();
+          const published = data.filter((evt) => evt.status === 'PUBLISHED' && !evt.deleted_at);
+          const normalized = normalizeEventDates(published);
+          const validLive = normalized.filter(
             (evt) =>
               evt.status !== 'CANCELLED' &&
               evt.status !== 'DELETED' &&
               !evt.deleted_at &&
-              new Date(evt.end_at) >= new Date()
+              isEventToday(evt.start_at, evt.end_at, now) &&
+              new Date(evt.end_at || evt.start_at) >= now
           );
           setHappeningTodayEvents(validLive);
         }
@@ -350,8 +365,15 @@ export default function App() {
       }
     };
 
-    loadSettings();
-    loadGlobalData();
+    const loadAllData = async () => {
+      try {
+        await Promise.all([loadSettings(), loadGlobalData()]);
+      } finally {
+        setAppLoading(false);
+      }
+    };
+    
+    loadAllData();
   }, []);
 
   // Fetch upcoming events dynamically when query/category/schedule states update
@@ -364,14 +386,14 @@ export default function App() {
       try {
         if (isSearching) {
           const { data, error } = await lpuClient.searchEvents(searchQuery.trim(), {
-            show_past: false,
+            show_past: true,
             limit: 50
           });
           if (!error && data && currentReqId === searchReqIdRef.current) {
             const valid = data.filter(
-              (evt) => evt.status === 'PUBLISHED' && !evt.deleted_at && new Date(evt.end_at) >= new Date()
+              (evt) => evt.status === 'PUBLISHED' && !evt.deleted_at
             );
-            setEvents(valid);
+            setEvents(normalizeEventDates(valid));
           }
         } else {
           let filters: any = {};
@@ -385,9 +407,9 @@ export default function App() {
           const { data, error } = await lpuClient.fetchEventFeed(filters);
           if (!error && data && currentReqId === searchReqIdRef.current) {
             const validEvents = data.filter(
-              (evt) => evt.status === 'PUBLISHED' && !evt.deleted_at && new Date(evt.end_at) >= new Date()
+              (evt) => evt.status === 'PUBLISHED' && !evt.deleted_at
             );
-            setEvents(validEvents);
+            setEvents(normalizeEventDates(validEvents));
           }
         }
       } catch (err) {
@@ -421,6 +443,10 @@ export default function App() {
       setSelectedEventId(null);
       setCurrentView('home');
       setIsTrendingActive(false);
+      setActiveScheduleFilter("all");
+      if (typeof window !== 'undefined') {
+        window.scrollTo({ top: 0, behavior: "smooth" });
+      }
     }
   }, []);
 
@@ -489,38 +515,16 @@ export default function App() {
     }
   }, []);
 
-  // Client-side date filtering and trending list mapping
+  // Client-side date filtering and trending list mapping using industry-standard schedule matcher
   const filteredEvents = useMemo(() => {
-    let list = isTrendingActive ? trendingEvents : events;
+    const list = isTrendingActive ? trendingEvents : events;
+    const now = new Date();
 
-    if (activeScheduleFilter === "today") {
-      const todayStr = new Date().toISOString().split("T")[0];
-      list = list.filter((e) => {
-        const eDate = new Date(e.start_at).toISOString().split("T")[0];
-        return eDate === todayStr;
-      });
-    } else if (activeScheduleFilter === "tomorrow") {
-      const tomorrow = new Date();
-      tomorrow.setDate(tomorrow.getDate() + 1);
-      const tomorrowStr = tomorrow.toISOString().split("T")[0];
-      list = list.filter((e) => {
-        const eDate = new Date(e.start_at).toISOString().split("T")[0];
-        return eDate === tomorrowStr;
-      });
-    } else if (activeScheduleFilter === "weekend") {
-      list = list.filter((e) => {
-        const d = new Date(e.start_at);
-        const day = d.getDay();
-        return day === 0 || day === 6; // Sunday or Saturday
-      });
-    } else if (activeScheduleFilter === "custom" && selectedDate) {
-      list = list.filter((e) => {
-        const eDate = new Date(e.start_at).toISOString().split("T")[0];
-        return eDate === selectedDate;
-      });
-    }
+    const result = list.filter((e) => {
+      return matchesScheduleFilter(e, activeScheduleFilter, selectedDate, now);
+    });
 
-    return list;
+    return result.slice().sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
   }, [events, trendingEvents, isTrendingActive, activeScheduleFilter, selectedDate]);
 
   // Paginated/Limited display list for upcoming events feed
@@ -530,6 +534,131 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#faf8f5] dark:bg-[#060709] text-gray-900 dark:text-gray-100 transition-colors duration-300 relative selection:bg-primary/20 selection:text-primary overflow-x-hidden font-sans">
+      {appLoading && currentView === 'home' && (
+        <div className="relative z-20">
+          {/* Navbar Skeleton */}
+          <div className="sticky top-0 z-50 w-full backdrop-blur-lg bg-white/80 dark:bg-black/60 border-b border-white/20 dark:border-white/10">
+            <div className="max-w-[98%] mx-auto px-2.5 sm:px-4 md:px-6">
+              <div className="flex items-center justify-between h-16">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full skeleton-base" />
+                  <div className="h-6 w-24 rounded-md skeleton-base" />
+                </div>
+                <div className="hidden md:flex flex-1 max-w-md">
+                  <div className="h-10 w-full rounded-full skeleton-base" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="h-10 w-10 rounded-full skeleton-base" />
+                  <div className="h-10 w-10 rounded-full skeleton-base" />
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          {/* Main Content Skeleton */}
+          <main className="w-full max-w-[98%] mx-auto px-2.5 sm:px-4 md:px-6 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6 overflow-hidden">
+            {/* Hero Carousel Skeleton */}
+            <div className="relative h-[300px] sm:h-[450px] md:h-[550px] w-full rounded-[32px] sm:rounded-[40px] overflow-hidden skeleton-base" />
+            
+            {/* Ad Banner Skeleton */}
+            <div className="h-16 w-full rounded-xl skeleton-base" />
+            
+            {/* Happening Today Skeleton */}
+            <div className="w-full">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-6 w-32 rounded-md skeleton-base" />
+                <div className="h-8 w-20 rounded-full skeleton-base" />
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="h-[180px] rounded-[20px] skeleton-base" />
+                ))}
+              </div>
+            </div>
+            
+            {/* Categories Skeleton */}
+            <div className="w-full">
+              <div className="flex items-center justify-between mb-4">
+                <div className="h-6 w-24 rounded-md skeleton-base" />
+                <div className="h-8 w-20 rounded-full skeleton-base" />
+              </div>
+              <div className="flex gap-2 overflow-x-auto pb-2">
+                {Array.from({ length: 8 }).map((_, i) => (
+                  <div key={i} className="h-8 w-20 rounded-full skeleton-base flex-shrink-0" />
+                ))}
+              </div>
+            </div>
+            
+            {/* Event Grid Skeleton */}
+            <div className="w-full">
+              <div className="w-full flex items-center justify-center gap-2.5 sm:gap-4 mb-6 sm:mb-8">
+                <div className="flex-1 flex items-center">
+                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-white/20 to-primary/50" />
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rotate-45 bg-primary/20 border border-primary/60 dark:border-primary/80 rounded-[1px] shrink-0 ml-1.5 sm:ml-2 shadow-xs" />
+                </div>
+                <div className="h-8 w-32 rounded-md skeleton-base px-1" />
+                <div className="flex-1 flex items-center">
+                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rotate-45 bg-primary/20 border border-primary/60 dark:border-primary/80 rounded-[1px] shrink-0 mr-1.5 sm:mr-2 shadow-xs" />
+                  <div className="flex-1 h-px bg-gradient-to-l from-transparent via-gray-300 dark:via-white/20 to-primary/50" />
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                {Array.from({ length: 10 }).map((_, i) => (
+                  <div key={i} className="flex flex-col h-full rounded-[20px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md">
+                    <div className="h-[155px] xs:h-[175px] sm:h-[230px] w-full bg-gray-200/70 dark:bg-white/5 skeleton-base" />
+                    <div className="p-3.5 sm:p-5 flex flex-col flex-1 space-y-3">
+                      <div className="h-3.5 sm:h-4 w-20 rounded-md skeleton-base" />
+                      <div className="h-5 sm:h-6 w-3/4 rounded-md skeleton-base" />
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 shrink-0 rounded-full skeleton-base" />
+                          <div className="space-y-1 flex-1">
+                            <div className="h-2.5 w-12 rounded-md skeleton-base" />
+                            <div className="h-3.5 w-20 rounded-md skeleton-base" />
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 shrink-0 rounded-full skeleton-base" />
+                          <div className="space-y-1 flex-1">
+                            <div className="h-2.5 w-12 rounded-md skeleton-base" />
+                            <div className="h-3.5 w-16 rounded-md skeleton-base" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            {/* View More Button Skeleton */}
+            <div className="flex justify-center -mt-4 sm:-mt-6">
+              <div className="h-12 w-48 rounded-xl skeleton-base" />
+            </div>
+          </main>
+          
+          {/* Footer Skeleton */}
+          <div className="mt-12 py-8 border-t border-white/20 dark:border-white/10">
+            <div className="max-w-[98%] mx-auto px-2.5 sm:px-4 md:px-6">
+              <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 rounded-full skeleton-base" />
+                  <div className="h-6 w-24 rounded-md skeleton-base" />
+                </div>
+                <div className="flex gap-4">
+                  <div className="h-8 w-20 rounded-full skeleton-base" />
+                  <div className="h-8 w-20 rounded-full skeleton-base" />
+                </div>
+              </div>
+              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
+                <div className="h-4 w-48 rounded-md skeleton-base" />
+                <div className="h-4 w-32 rounded-md skeleton-base" />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
       {/* Light Mode High-Performance Fixed Ambient Light Canvas (Zero Lag, Sub-pixel Soft Blurred Blobs) */}
       <div 
         style={{ contain: 'strict' }}
@@ -606,8 +735,17 @@ export default function App() {
                   />
 
                   {/* Ad Slot 1: Below Hero Carousel */}
-                  {adSlots.hero_below && ads.length > 0 && (
-                    <SponsorBanner ad={ads[0]} tag="Featured Partner Spotlight" />
+                  {adSystemConfig?.global_enabled &&
+                    adSystemConfig?.placements?.hero_carousel?.enabled &&
+                    adSystemConfig?.placements?.hero_carousel?.provider !== 'disabled' &&
+                    adSlots.hero_below &&
+                    ads.length > 0 && (
+                      <UnifiedAdSlot
+                        placementKey="hero_carousel"
+                        adSystemConfig={adSystemConfig}
+                        directAd={ads[0]}
+                        tag="Featured Partner Spotlight"
+                      />
                   )}
 
                   {/* Happening Today Slider */}
@@ -620,8 +758,18 @@ export default function App() {
                   />
 
                   {/* Ad Slot 2: Below Happening Today */}
-                  {adSlots.happening_today_below && ads.length > 0 && happeningTodayEvents.length > 0 && (
-                    <SponsorBanner ad={ads.length > 1 ? ads[1] : ads[0]} tag="Happening Today Sponsor" />
+                  {adSystemConfig?.global_enabled &&
+                    adSystemConfig?.placements?.happening_today?.enabled &&
+                    adSystemConfig?.placements?.happening_today?.provider !== 'disabled' &&
+                    adSlots.happening_today_below &&
+                    ads.length > 0 &&
+                    happeningTodayEvents.length > 0 && (
+                      <UnifiedAdSlot
+                        placementKey="happening_today"
+                        adSystemConfig={adSystemConfig}
+                        directAd={ads.length > 1 ? ads[1] : ads[0]}
+                        tag="Happening Today Sponsor"
+                      />
                   )}
 
                   {/* Categories & Filter Bar */}
@@ -642,6 +790,10 @@ export default function App() {
                       }}
                       selectedDate={selectedDate}
                       onSelectDate={(date) => {
+                        setIsTrendingActive(false);
+                        if (date) {
+                          trackEvent('date_filter_selected', { date });
+                        }
                         setSelectedDate(date);
                       }}
                       activeScheduleFilter={activeScheduleFilter}

@@ -155,10 +155,7 @@ export const NavbarComponent = ({
         onSearch(trimmed);
         setShowSuggestions(false);
         setMobileSearchOpen(false);
-        const el = document.getElementById("events");
-        if (el) {
-          el.scrollIntoView({ behavior: "smooth" });
-        }
+        window.scrollTo({ top: 0, behavior: "smooth" });
       }
     } else if (e.key === "Escape") {
       setShowSuggestions(false);
@@ -172,10 +169,7 @@ export const NavbarComponent = ({
     onSearch(title);
     setShowSuggestions(false);
     setMobileSearchOpen(false);
-    const el = document.getElementById("events");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth" });
-    }
+    window.scrollTo({ top: 0, behavior: "smooth" });
   };
 
   const handleClearSearch = () => {

@@ -12,7 +12,6 @@
  */
 
 import { ImageContext, IMAGE_CONTEXT_CONFIGS } from './config';
-import { resolveDefaultEventImage } from './defaults';
 
 export interface OptimizedImageOptions {
   variant?: 'desktop' | 'tablet' | 'mobile';
@@ -201,25 +200,37 @@ export function getKeywordFallbackImage(nameOrText: string): string {
 /**
  * Resolves the base CDN / Storage URL for Cloudflare R2 Delivery
  */
+/**
+ * Resolves the base CDN / Storage URL for Cloudflare R2 Delivery
+ */
 export function getStorageBaseUrl(): string {
-  const globalEnv = typeof globalThis !== 'undefined' ? (globalThis as any).process?.env : (typeof process !== 'undefined' ? process.env : undefined);
-  const r2Url = globalEnv?.VITE_R2_PUBLIC_URL || globalEnv?.EXPO_PUBLIC_R2_PUBLIC_URL;
-  if (r2Url && typeof r2Url === 'string' && r2Url.trim()) {
-    return r2Url.trim().replace(/\/+$/, '');
-  }
+  // 1. Check browser Vite env (import.meta.env)
+  try {
+    if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
+      const r2Url = (import.meta as any).env.VITE_R2_PUBLIC_URL;
+      if (r2Url && typeof r2Url === 'string' && r2Url.trim()) {
+        return r2Url.trim().replace(/\/+$/, '');
+      }
+    }
+  } catch {}
 
-  // Canonical Cloudflare R2 Custom Image Domain
+  // 2. Check Node / Process env
+  try {
+    const globalEnv = typeof globalThis !== 'undefined' ? (globalThis as any).process?.env : (typeof process !== 'undefined' ? process.env : undefined);
+    const r2Url = globalEnv?.VITE_R2_PUBLIC_URL || globalEnv?.EXPO_PUBLIC_R2_PUBLIC_URL;
+    if (r2Url && typeof r2Url === 'string' && r2Url.trim()) {
+      return r2Url.trim().replace(/\/+$/, '');
+    }
+  } catch {}
+
+  // 3. Canonical Cloudflare R2 Custom Image Domain
   return 'https://images.lpuevents.live';
 }
 
 /**
  * Primary Centralized Image URL Resolver
- *
- * Usage:
- * getOptimizedImage(event, 'event-card')
- * getOptimizedImage(slide, 'hero')
- * getOptimizedImage(mediaId, 'event-banner')
- * getOptimizedImage(sponsor, 'sponsor-logo')
+ * Directly maps uploaded media assets from Cloudflare R2 CDN or direct URLs.
+ * No synthetic stock photo fallbacks.
  */
 export function getOptimizedImage(
   source: any,
@@ -227,38 +238,81 @@ export function getOptimizedImage(
   options: OptimizedImageOptions = {}
 ): string {
   if (!source) {
-    return getKeywordFallbackImage(options.fallbackTopic || '');
+    return '';
   }
 
-  // 1. Direct string URL or data URL
+  // 1. Direct string URL, data URL, blob URL, or object key
   if (typeof source === 'string') {
     const str = source.trim();
-    if (str.startsWith('http://') || str.startsWith('https://') || str.startsWith('data:image/')) {
+    if (!str) return '';
+    if (str.startsWith('http://') || str.startsWith('https://') || str.startsWith('data:') || str.startsWith('blob:')) {
       return str;
     }
-    if (EVENT_MOCK_FALLBACK_IMAGES[str]) {
-      return EVENT_MOCK_FALLBACK_IMAGES[str];
-    }
-    if (str.includes('/')) {
-      return `${getStorageBaseUrl()}/${str.replace(/^\/+/, '')}`;
-    }
-    if (str.length > 0) {
-      return `${getStorageBaseUrl()}/${str.replace(/^\/+/, '')}`;
-    }
+    return `${getStorageBaseUrl()}/${str.replace(/^\/+/, '')}`;
   }
 
-  // 2. Direct banner_url if present
+  // 2. Direct banner_url or public_url on entity
   if (source.banner_url && typeof source.banner_url === 'string' && source.banner_url.trim()) {
-    return source.banner_url.trim();
+    const str = source.banner_url.trim();
+    if (str.startsWith('http://') || str.startsWith('https://') || str.startsWith('data:') || str.startsWith('blob:')) {
+      return str;
+    }
+    return `${getStorageBaseUrl()}/${str.replace(/^\/+/, '')}`;
   }
 
-  // 3. Media asset relation
+  if (source.image_url && typeof source.image_url === 'string' && source.image_url.trim()) {
+    const str = source.image_url.trim();
+    if (str.startsWith('http://') || str.startsWith('https://') || str.startsWith('data:') || str.startsWith('blob:')) {
+      return str;
+    }
+    return `${getStorageBaseUrl()}/${str.replace(/^\/+/, '')}`;
+  }
+
+  if (source.public_url && typeof source.public_url === 'string' && source.public_url.trim()) {
+    const str = source.public_url.trim();
+    if (str.startsWith('http://') || str.startsWith('https://') || str.startsWith('data:') || str.startsWith('blob:')) {
+      return str;
+    }
+    return `${getStorageBaseUrl()}/${str.replace(/^\/+/, '')}`;
+  }
+
+  if (source.image && typeof source.image === 'string' && source.image.trim()) {
+    const str = source.image.trim();
+    if (str.startsWith('http://') || str.startsWith('https://') || str.startsWith('data:') || str.startsWith('blob:')) {
+      return str;
+    }
+    return `${getStorageBaseUrl()}/${str.replace(/^\/+/, '')}`;
+  }
+
+  // 3. Media asset relation from database
   if (source.media_assets?.object_key) {
     const key = source.media_assets.object_key;
-    if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:')) return key;
-    if (EVENT_MOCK_FALLBACK_IMAGES[key]) return EVENT_MOCK_FALLBACK_IMAGES[key];
-    if (source.media_assets.id && EVENT_MOCK_FALLBACK_IMAGES[source.media_assets.id]) {
-      return EVENT_MOCK_FALLBACK_IMAGES[source.media_assets.id];
+    if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
+      return key;
+    }
+    return `${getStorageBaseUrl()}/${key.replace(/^\/+/, '')}`;
+  }
+
+  if (source.media_asset?.object_key) {
+    const key = source.media_asset.object_key;
+    if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
+      return key;
+    }
+    return `${getStorageBaseUrl()}/${key.replace(/^\/+/, '')}`;
+  }
+
+  if (source.banner_object_key) {
+    const key = source.banner_object_key;
+    if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
+      return key;
+    }
+    return `${getStorageBaseUrl()}/${key.replace(/^\/+/, '')}`;
+  }
+
+  if (source.object_key) {
+    const key = source.object_key;
+    if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
+      return key;
     }
     return `${getStorageBaseUrl()}/${key.replace(/^\/+/, '')}`;
   }
@@ -274,36 +328,7 @@ export function getOptimizedImage(
     return getOptimizedImage(source.event_memories, context, options);
   }
 
-  // 5. Check known mock IDs for source.id or source.banner_media_id or source.media_id or source.cover_media_id
-  if (source.id && EVENT_MOCK_FALLBACK_IMAGES[source.id]) {
-    return EVENT_MOCK_FALLBACK_IMAGES[source.id];
-  }
-  if (source.banner_media_id && EVENT_MOCK_FALLBACK_IMAGES[source.banner_media_id]) {
-    return EVENT_MOCK_FALLBACK_IMAGES[source.banner_media_id];
-  }
-  if (source.cover_media_id && EVENT_MOCK_FALLBACK_IMAGES[source.cover_media_id]) {
-    return EVENT_MOCK_FALLBACK_IMAGES[source.cover_media_id];
-  }
-  if (source.media_id && EVENT_MOCK_FALLBACK_IMAGES[source.media_id]) {
-    return EVENT_MOCK_FALLBACK_IMAGES[source.media_id];
-  }
-  if (source.logo_media_id && EVENT_MOCK_FALLBACK_IMAGES[source.logo_media_id]) {
-    return EVENT_MOCK_FALLBACK_IMAGES[source.logo_media_id];
-  }
-
-  // 6. Subcategory & Category taxonomy-based official default asset fallback
-  if (source.subcategory_id || source.category_id || source.subcategories || source.categories || source.category || source.subcategory) {
-    const defaultImg = resolveDefaultEventImage(source);
-    if (defaultImg) return defaultImg;
-  }
-
-  // 7. Topic-based keyword match fallback
-  const text = `${source.name || ''} ${source.title || ''} ${source.description || ''} ${options.fallbackTopic || ''}`;
-  if (text.trim()) {
-    return getKeywordFallbackImage(text);
-  }
-
-  return resolveDefaultEventImage(null);
+  return '';
 }
 
 /**

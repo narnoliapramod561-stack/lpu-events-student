@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Calendar, Clock, MapPin, Users, ShieldAlert, ExternalLink } from "lucide-react";
 import { lpuClient } from "../supabase";
-import { Event } from "@lpu-events/shared";
+import { Event, formatEventDateRange } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 
 export const EventDetailsModal = ({ eventId, onClose }: {
@@ -78,10 +78,6 @@ export const EventDetailsModal = ({ eventId, onClose }: {
                 src={getEventImage(event, 'event-banner')}
                 alt={event.name}
                 className="w-full h-full object-cover"
-                onError={(e) => {
-                  (e.currentTarget as HTMLImageElement).src =
-                    "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1200&auto=format&fit=crop";
-                }}
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
               <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 pr-4 sm:pr-6">
@@ -154,7 +150,7 @@ export const EventDetailsModal = ({ eventId, onClose }: {
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider font-heading">Date</span>
-                      <span className="text-xs sm:text-sm font-bold truncate text-gray-900 dark:text-white">{new Date(event.start_at).toLocaleDateString()}</span>
+                      <span className="text-xs sm:text-sm font-bold truncate text-gray-900 dark:text-white">{formatEventDateRange(event.start_at, event.end_at)}</span>
                     </div>
                   </div>
 

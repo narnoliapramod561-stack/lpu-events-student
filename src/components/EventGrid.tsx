@@ -5,7 +5,8 @@ import {
   EventFeedItem, 
   AdvertisementFeedItem, 
   AdSystemConfig,
-  injectAdsIntoSequence 
+  injectAdsIntoSequence,
+  formatEventDateRange
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { AdSenseSlot } from "./AdSenseSlot";
@@ -22,11 +23,8 @@ export const EventCardComponent = ({
   const imageUrl = getEventImage(event, 'event-card', 480);
   const startDate = new Date(event.start_at);
 
-  // Format Date: DD/MM/YYYY
-  const day = String(startDate.getDate()).padStart(2, '0');
-  const month = String(startDate.getMonth() + 1).padStart(2, '0');
-  const year = startDate.getFullYear();
-  const dateFormatted = `${day}/${month}/${year}`;
+  // Format Date: DD/MM/YYYY or DD/MM/YYYY – DD/MM/YYYY (if multi-day)
+  const dateFormatted = formatEventDateRange(event.start_at, event.end_at);
 
   // Format Time: 1:25 AM
   const timeFormatted = startDate.toLocaleTimeString('en-US', {
@@ -53,10 +51,6 @@ export const EventCardComponent = ({
           loading="lazy"
           decoding="async"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src =
-              "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800&auto=format&fit=crop";
-          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
@@ -175,10 +169,6 @@ export const AdBannerCardComponent = ({ ad }: { ad: AdvertisementFeedItem }) => 
           loading="lazy"
           decoding="async"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-          onError={(e) => {
-            (e.currentTarget as HTMLImageElement).src =
-              "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=800&auto=format&fit=crop";
-          }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
         
@@ -238,19 +228,53 @@ export const AdBannerCard = React.memo(AdBannerCardComponent);
 
 export const SkeletonCard = React.memo(() => {
   return (
-    <div className="flex flex-col h-full rounded-[20px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md p-3.5 sm:p-4 space-y-3 sm:space-y-4">
-      <div className="h-[155px] xs:h-[175px] sm:h-[200px] w-full bg-gray-200/70 dark:bg-white/5 rounded-[16px] sm:rounded-[20px] skeleton-base" />
-      <div className="space-y-2 sm:space-y-3 flex-1">
-        <div className="h-3.5 sm:h-4 w-20 rounded-md skeleton-base" />
-        <div className="h-5 sm:h-6 w-3/4 rounded-md skeleton-base" />
-        <div className="space-y-2 mt-3 sm:mt-4">
-          <div className="h-3.5 sm:h-4 w-full rounded-md skeleton-base" />
-          <div className="h-3.5 sm:h-4 w-2/3 rounded-md skeleton-base" />
+    <div className="flex flex-col h-full rounded-[20px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md">
+      {/* Event Cover Image Skeleton */}
+      <div className="h-[155px] xs:h-[175px] sm:h-[230px] w-full bg-gray-200/70 dark:bg-white/5 skeleton-base" />
+      
+      {/* Event Body Skeleton */}
+      <div className="p-3.5 sm:p-5 flex flex-col flex-1">
+        {/* Category Tag Skeleton */}
+        <div className="h-3.5 sm:h-4 w-20 rounded-md skeleton-base mb-1 sm:mb-1.5" />
+        
+        {/* Event Title Skeleton */}
+        <div className="h-5 sm:h-6 w-3/4 rounded-md skeleton-base mb-2.5 sm:mb-4" />
+        
+        {/* Metadata Stack Skeleton */}
+        <div className="space-y-2 sm:space-y-3 mb-0 sm:mb-5 mt-auto">
+          {/* Date Skeleton */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full skeleton-base" />
+            <div className="space-y-1">
+              <div className="h-2.5 w-12 rounded-md skeleton-base" />
+              <div className="h-3.5 w-20 rounded-md skeleton-base" />
+            </div>
+          </div>
+          
+          {/* Schedule Skeleton */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full skeleton-base" />
+            <div className="space-y-1">
+              <div className="h-2.5 w-12 rounded-md skeleton-base" />
+              <div className="h-3.5 w-16 rounded-md skeleton-base" />
+            </div>
+          </div>
+          
+          {/* Venue Skeleton */}
+          <div className="flex items-center gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full skeleton-base" />
+            <div className="space-y-1 flex-1">
+              <div className="h-2.5 w-12 rounded-md skeleton-base" />
+              <div className="h-3.5 w-24 rounded-md skeleton-base" />
+            </div>
+          </div>
         </div>
-      </div>
-      <div className="hidden sm:flex justify-between items-center pt-3 border-t border-white/10">
-        <div className="h-4 w-24 rounded-md skeleton-base" />
-        <div className="h-8 w-24 rounded-full skeleton-base" />
+        
+        {/* Desktop-only Footer Skeleton */}
+        <div className="hidden sm:flex justify-between items-center pt-3.5 border-t border-white/10 mt-auto">
+          <div className="h-3.5 w-24 rounded-md skeleton-base" />
+          <div className="h-8 w-24 rounded-full skeleton-base" />
+        </div>
       </div>
     </div>
   );
@@ -297,7 +321,7 @@ export const EventGridComponent = ({
         </div>
 
         <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-          {Array.from({ length: 6 }).map((_, i) => (
+          {Array.from({ length: 10 }).map((_, i) => (
             <SkeletonCard key={i} />
           ))}
         </div>

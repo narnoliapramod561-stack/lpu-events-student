@@ -194,7 +194,7 @@ export const HappeningTodaySliderComponent = ({
         id: `ht-ad-fallback-${idx}`,
         title: "Campus Partner Spotlight",
         description: "Official university partner session and promotion.",
-        image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop",
+        image: "",
         badge: "Sponsored",
         category: "Partner",
         ctaText: "Learn More",
@@ -364,10 +364,6 @@ export const HappeningTodaySliderComponent = ({
                     alt={currentSlide.title}
                     loading="lazy"
                     decoding="async"
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src =
-                        "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1200&auto=format&fit=crop";
-                    }}
                     className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                   />
 
@@ -466,10 +462,6 @@ export const HappeningTodaySliderComponent = ({
                       alt={currentSlide.title}
                       loading="lazy"
                       decoding="async"
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src =
-                          "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1200&auto=format&fit=crop";
-                      }}
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                     />
 

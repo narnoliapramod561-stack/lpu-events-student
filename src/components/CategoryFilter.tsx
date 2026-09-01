@@ -23,7 +23,7 @@ import {
   MoreHorizontal,
   Search
 } from "lucide-react";
-import { CategoryFeedItem } from "@lpu-events/shared";
+import { CategoryFeedItem, toLocalDateString } from "@lpu-events/shared";
 
 // Map dynamic Lucide icons for official platform categories and subcategories
 export const getCategoryIcon = (keyOrName: string) => {
@@ -131,8 +131,38 @@ export const CategoryFilterComponent = ({
     return [];
   }, [subcategories, cleanQuery, activeCategoryData]);
 
+  const todayStr = useMemo(() => toLocalDateString(new Date()), []);
+
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    onSelectDate(e.target.value);
+    const val = e.target.value;
+    if (!val) {
+      onSelectDate("");
+      return;
+    }
+    // Prevent back-date selection: only today and future dates allowed
+    if (val < todayStr) {
+      onSelectDate(todayStr);
+    } else {
+      onSelectDate(val);
+    }
+  };
+
+  const openDatePicker = (ref: React.RefObject<HTMLInputElement>) => {
+    if (!ref.current) return;
+    try {
+      if (typeof ref.current.showPicker === 'function') {
+        ref.current.showPicker();
+        return;
+      }
+    } catch (e) {
+      // Fallback
+    }
+    try {
+      ref.current.focus();
+      ref.current.click();
+    } catch (e) {
+      // Fallback
+    }
   };
 
   const handleClearDate = (e: React.MouseEvent) => {
@@ -223,30 +253,40 @@ export const CategoryFilterComponent = ({
               })}
 
               {/* Date Picker Pill */}
-              <div className="relative shrink-0">
+              <div className="relative shrink-0 flex items-center">
                 <button
                   type="button"
-                  onClick={() => mobileDateInputRef.current?.showPicker()}
-                  className={`flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap active:scale-[0.96] transition-all duration-200 ${
+                  onClick={() => openDatePicker(mobileDateInputRef)}
+                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap active:scale-[0.96] transition-all duration-200 cursor-pointer ${
                     selectedDate
                       ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-300/30"
                       : "bg-white/[0.05] text-slate-300 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
                   }`}
                 >
                   <CalendarDays className={`h-3.5 w-3.5 ${selectedDate ? "text-white" : "text-cyan-400"}`} />
-                  {formatDisplayDate(selectedDate)}
+                  <span>{formatDisplayDate(selectedDate)}</span>
                   {selectedDate && (
-                    <span onClick={handleClearDate} className="ml-0.5">
-                      <X className="h-3 w-3 text-white/70 hover:text-white" />
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={handleClearDate}
+                      onKeyDown={(e) => { if (e.key === 'Enter') handleClearDate(e as any); }}
+                      className="ml-0.5 p-0.5 rounded-full hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer"
+                      title="Clear date filter"
+                    >
+                      <X className="h-3 w-3" />
                     </span>
                   )}
                 </button>
                 <input
                   type="date"
                   ref={mobileDateInputRef}
+                  min={todayStr}
                   onChange={handleDateChange}
                   value={selectedDate}
-                  className="absolute inset-0 opacity-0 pointer-events-none w-0 h-0"
+                  className="sr-only"
+                  tabIndex={-1}
+                  aria-hidden="true"
                 />
               </div>
             </div>
@@ -390,10 +430,10 @@ export const CategoryFilterComponent = ({
 
             {/* Subcategories expansion (horizontal scroll in one line) */}
             {selectedCategory !== "all" && activeCategoryData && subcategories.length > 0 && (
-              <div className="flex flex-col gap-1.5 p-2.5 rounded-xl bg-white/[0.04] border border-amber-500/15 mt-0.5">
+              <div className="flex flex-col gap-2 p-3 rounded-2xl bg-white/[0.04] border border-amber-500/20 mt-1">
                 <div className="flex items-center justify-between px-0.5">
-                  <span className="text-[10px] font-black uppercase tracking-wider text-amber-300/80 font-heading">
-                    {activeCategoryData.name} › Topics
+                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 font-heading">
+                    {activeCategoryData.name} › Subcategories
                   </span>
                   {selectedSubcategory && (
                     <button
@@ -405,16 +445,19 @@ export const CategoryFilterComponent = ({
                     </button>
                   )}
                 </div>
-                <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
+                <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 select-none items-center touch-pan-x">
                   <button
                     type="button"
                     onClick={() => onSelectSubcategory("")}
-                    className={`px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap shrink-0 active:scale-95 transition-all ${
+                    className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                       !selectedSubcategory
-                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm"
-                        : "bg-white/[0.06] text-white/50 border border-white/[0.06]"
+                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 ring-1 ring-amber-300/30"
+                        : "bg-white/[0.05] text-amber-200/70 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
                     }`}
                   >
+                    <div className={`w-4.5 h-4.5 rounded-md flex items-center justify-center ${!selectedSubcategory ? "text-white" : "text-amber-400"}`}>
+                      <LayoutGrid className="h-3 w-3" />
+                    </div>
                     All
                   </button>
                   {filteredActiveSubcategories.map((sub) => {
@@ -425,14 +468,14 @@ export const CategoryFilterComponent = ({
                         key={`m-sub-${sub.id}`}
                         type="button"
                         onClick={() => onSelectSubcategory(isSelected ? "" : sub.id)}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap shrink-0 active:scale-95 transition-all ${
+                        className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                           isSelected
-                            ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm"
-                            : "bg-white/[0.06] text-white/50 border border-white/[0.06]"
+                            ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 ring-1 ring-amber-300/30"
+                            : "bg-white/[0.05] text-amber-200/70 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
                         }`}
                       >
-                        <SubIcon className="h-3 w-3" />
-                        {sub.name}
+                        <SubIcon className={`h-3.5 w-3.5 ${isSelected ? "text-white" : "text-amber-400/80"}`} />
+                        <span>{sub.name}</span>
                       </button>
                     );
                   })}
@@ -486,10 +529,10 @@ export const CategoryFilterComponent = ({
               );
             })}
 
-            <div className="relative shrink-0">
+            <div className="relative shrink-0 flex items-center">
               <button
                 type="button"
-                onClick={() => dateInputRef.current && dateInputRef.current.showPicker()}
+                onClick={() => openDatePicker(dateInputRef)}
                 className={`flex items-center gap-2 px-5.5 py-3.5 rounded-2xl font-heading font-black text-sm cursor-pointer outline-none active:scale-[0.97] transition-transform duration-150 whitespace-nowrap touch-target ${
                   selectedDate
                     ? "bg-primary/20 text-primary border border-primary/50 shadow-sm"
@@ -500,8 +543,12 @@ export const CategoryFilterComponent = ({
                 <span>{formatDisplayDate(selectedDate)}</span>
                 {selectedDate && (
                   <span
+                    role="button"
+                    tabIndex={0}
                     onClick={handleClearDate}
-                    className="ml-1 hover:text-on-surface text-xs leading-none bg-primary/20 hover:bg-primary/35 rounded-full p-1 transition-colors"
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleClearDate(e as any); }}
+                    className="ml-1 hover:text-on-surface text-xs leading-none bg-primary/20 hover:bg-primary/35 rounded-full p-1 transition-colors cursor-pointer"
+                    title="Clear date filter"
                   >
                     <X className="h-3 w-3" />
                   </span>
@@ -510,9 +557,12 @@ export const CategoryFilterComponent = ({
               <input
                 type="date"
                 ref={dateInputRef}
+                min={todayStr}
                 onChange={handleDateChange}
                 value={selectedDate}
-                className="absolute inset-0 opacity-0 pointer-events-none w-0 h-0"
+                className="sr-only"
+                tabIndex={-1}
+                aria-hidden="true"
               />
             </div>
           </div>
@@ -713,22 +763,24 @@ export const CategoryFilterComponent = ({
 
               {/* Scrollable Subcategory Pills */}
               {filteredActiveSubcategories.length > 0 ? (
-                <div className="flex gap-3 overflow-x-auto hide-scrollbar py-1 select-none items-center touch-pan-x">
+                <div className="flex gap-3.5 overflow-x-auto hide-scrollbar py-2 px-1 select-none items-center touch-pan-x">
                   {/* "ALL" Reset Pill */}
                   <button
                     type="button"
                     onClick={() => onSelectSubcategory("")}
-                    className={`group flex items-center gap-2 px-5 py-2.5 rounded-xl font-heading font-black text-xs whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 touch-target ${
+                    className={`group flex items-center gap-2 px-6 py-3 rounded-full font-heading font-black text-sm whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 touch-target ${
                       !selectedSubcategory
-                        ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white border border-white/40 shadow-[0_4px_14px_rgba(255,107,0,0.4)]"
-                        : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary shadow-sm"
+                        ? "glass-pill-active"
+                        : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary"
                     }`}
                   >
-                    <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
+                    <div className={`w-7 h-7 rounded-full flex items-center justify-center ${!selectedSubcategory ? "bg-white/25 text-white" : "bg-primary/15 text-primary"}`}>
+                      <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
+                    </div>
                     <span>ALL</span>
                   </button>
 
-                  {/* Dynamic Subcategory Pills */}
+                  {/* Dynamic Subcategory Pills matching Category Pill styling */}
                   {filteredActiveSubcategories.map((sub) => {
                     const isSelected =
                       selectedSubcategory === sub.id || selectedSubcategory === sub.name;
@@ -739,13 +791,15 @@ export const CategoryFilterComponent = ({
                         key={sub.id}
                         type="button"
                         onClick={() => onSelectSubcategory(isSelected ? "" : sub.id)}
-                        className={`group flex items-center gap-2 px-5 py-2.5 rounded-xl font-heading font-black text-xs whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 touch-target ${
+                        className={`group flex items-center gap-2 px-6 py-3 rounded-full font-heading font-black text-sm whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 touch-target ${
                           isSelected
-                            ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white border border-white/40 shadow-[0_4px_14px_rgba(255,107,0,0.4)]"
-                            : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary shadow-sm"
+                            ? "glass-pill-active"
+                            : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary"
                         }`}
                       >
-                        <SubIcon className="h-3.5 w-3.5 shrink-0" />
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center ${isSelected ? "bg-white/25 text-white" : "bg-primary/15 text-primary"}`}>
+                          <SubIcon className="h-3.5 w-3.5 shrink-0" />
+                        </div>
                         <span>{sub.name.toUpperCase()}</span>
                       </button>
                     );
