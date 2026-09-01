@@ -352,10 +352,10 @@ export async function processImageForContext(
 
     const varCanvas = renderDownscaledCanvas(
       img,
-      targetDims.cropX,
-      targetDims.cropY,
-      targetDims.cropWidth,
-      targetDims.cropHeight,
+      varDims.cropX,
+      varDims.cropY,
+      varDims.cropWidth,
+      varDims.cropHeight,
       varDims.width,
       varDims.height
     );
