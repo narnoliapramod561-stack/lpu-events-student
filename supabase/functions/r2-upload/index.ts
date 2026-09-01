@@ -9,6 +9,8 @@ import { S3Client, PutObjectCommand, DeleteObjectCommand } from "npm:@aws-sdk/cl
 
 // Explicit Allowed CORS Origins
 const ALLOWED_ORIGINS = [
+  "https://www.lpueventsadmin.live",
+  "https://lpueventsadmin.live",
   "https://admin.lpuevents.live",
   "https://lpuevents.live",
   "https://www.lpuevents.live",
@@ -20,7 +22,7 @@ const ALLOWED_ORIGINS = [
 
 function getCorsHeaders(req: Request): HeadersInit {
   const origin = req.headers.get("Origin") || "";
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : "https://admin.lpuevents.live";
+  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : "https://www.lpueventsadmin.live";
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
