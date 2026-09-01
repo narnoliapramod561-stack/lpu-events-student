@@ -203,8 +203,13 @@ export function getKeywordFallbackImage(nameOrText: string): string {
 /**
  * Resolves the base CDN / Storage URL for Cloudflare R2 Delivery
  */
-export function getStorageBaseUrl(): string {
-  // 1. Check browser Vite env (import.meta.env)
+export function getStorageBaseUrl(bucket?: string): string {
+  // 1. If bucket is 'media' or default Supabase storage, route directly to public Supabase Storage CDN
+  if (bucket === 'media') {
+    return 'https://nhjphyqiqhmxdhppljap.supabase.co/storage/v1/object/public/media';
+  }
+
+  // 2. Check browser Vite env (import.meta.env)
   try {
     if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
       const r2Url = (import.meta as any).env.VITE_R2_PUBLIC_URL;
@@ -214,7 +219,7 @@ export function getStorageBaseUrl(): string {
     }
   } catch {}
 
-  // 2. Check Node / Process env
+  // 3. Check Node / Process env
   try {
     const globalEnv = typeof globalThis !== 'undefined' ? (globalThis as any).process?.env : (typeof process !== 'undefined' ? process.env : undefined);
     const r2Url = globalEnv?.VITE_R2_PUBLIC_URL || globalEnv?.EXPO_PUBLIC_R2_PUBLIC_URL;
@@ -223,13 +228,13 @@ export function getStorageBaseUrl(): string {
     }
   } catch {}
 
-  // 3. Canonical Cloudflare R2 Custom Image Domain
-  return 'https://images.lpuevents.live';
+  // 4. Default fallback
+  return 'https://nhjphyqiqhmxdhppljap.supabase.co/storage/v1/object/public/media';
 }
 
 /**
  * Primary Centralized Image URL Resolver
- * Directly maps uploaded media assets from Cloudflare R2 CDN or direct URLs.
+ * Directly maps uploaded media assets from Cloudflare R2 CDN or Supabase Storage.
  * No synthetic stock photo fallbacks.
  */
 export function getOptimizedImage(
@@ -287,18 +292,20 @@ export function getOptimizedImage(
   // 3. Media asset relation from database
   if (source.media_assets?.object_key) {
     const key = source.media_assets.object_key;
+    const bucket = source.media_assets.bucket;
     if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
       return key;
     }
-    return `${getStorageBaseUrl()}/${key.replace(/^\/+/, '')}`;
+    return `${getStorageBaseUrl(bucket)}/${key.replace(/^\/+/, '')}`;
   }
 
   if (source.media_asset?.object_key) {
     const key = source.media_asset.object_key;
+    const bucket = source.media_asset.bucket;
     if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
       return key;
     }
-    return `${getStorageBaseUrl()}/${key.replace(/^\/+/, '')}`;
+    return `${getStorageBaseUrl(bucket)}/${key.replace(/^\/+/, '')}`;
   }
 
   if (source.banner_object_key) {
@@ -311,10 +318,11 @@ export function getOptimizedImage(
 
   if (source.object_key) {
     const key = source.object_key;
+    const bucket = source.bucket;
     if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
       return key;
     }
-    return `${getStorageBaseUrl()}/${key.replace(/^\/+/, '')}`;
+    return `${getStorageBaseUrl(bucket)}/${key.replace(/^\/+/, '')}`;
   }
 
   // 4. Nested relation sources (Carousel Slide / Item)
