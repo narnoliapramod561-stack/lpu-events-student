@@ -62,6 +62,78 @@ const parseCurrentRoute = (): RouteState => {
   return { route: 'home', eventId: null };
 };
 
+interface InitialFilterState {
+  searchQuery: string;
+  selectedCategory: string;
+  selectedSubcategory: string;
+  selectedDate: string;
+  activeScheduleFilter: string;
+  selectedPricingType: 'ALL' | 'FREE' | 'PAID';
+  isTrendingActive: boolean;
+}
+
+const parseFilterStateFromUrl = (): InitialFilterState => {
+  const defaultState: InitialFilterState = {
+    searchQuery: '',
+    selectedCategory: 'all',
+    selectedSubcategory: '',
+    selectedDate: '',
+    activeScheduleFilter: 'all',
+    selectedPricingType: 'ALL',
+    isTrendingActive: false,
+  };
+
+  if (typeof window === 'undefined') return defaultState;
+
+  const params = new URLSearchParams(window.location.search);
+
+  // 1. Event Type / Pricing Type
+  const typeParam = params.get('type')?.toLowerCase();
+  let pricingType: 'ALL' | 'FREE' | 'PAID' = 'ALL';
+  let isTrending = false;
+
+  if (typeParam === 'trending') {
+    isTrending = true;
+  } else if (typeParam === 'free') {
+    pricingType = 'FREE';
+  } else if (typeParam === 'paid') {
+    pricingType = 'PAID';
+  }
+
+  // 2. Timeline Schedule
+  const validTimelines = ['today', 'tomorrow', 'this_week', 'upcoming'];
+  const timelineParam = params.get('timeline')?.toLowerCase();
+  const schedule = (!isTrending && timelineParam && validTimelines.includes(timelineParam))
+    ? timelineParam
+    : 'all';
+
+  // 3. Date
+  const dateParam = params.get('date');
+  const datePattern = /^\d{4}-\d{2}-\d{2}$/;
+  const validDate = (!isTrending && dateParam && datePattern.test(dateParam))
+    ? dateParam
+    : '';
+
+  // 4. Category & Subcategory
+  const catParam = params.get('category')?.trim();
+  const subcatParam = params.get('subcategory')?.trim();
+  const category = (!isTrending && catParam && catParam !== 'all') ? catParam : 'all';
+  const subcategory = (!isTrending && subcatParam) ? subcatParam : '';
+
+  // 5. Search
+  const searchParam = params.get('q') || params.get('search') || '';
+
+  return {
+    searchQuery: isTrending ? '' : searchParam.trim(),
+    selectedCategory: category,
+    selectedSubcategory: subcategory,
+    selectedDate: validDate,
+    activeScheduleFilter: schedule,
+    selectedPricingType: pricingType,
+    isTrendingActive: isTrending,
+  };
+};
+
 const normalizeEventDates = (evts: EventFeedItem[]): EventFeedItem[] => {
   if (!evts || evts.length === 0) return evts;
   return evts
@@ -95,13 +167,21 @@ export default function App() {
     event_details_bottom: false,
   });
 
-  // Filter States
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState("all");
-  const [selectedSubcategory, setSelectedSubcategory] = useState("");
-  const [selectedDate, setSelectedDate] = useState("");
-  const [activeScheduleFilter, setActiveScheduleFilter] = useState("all");
-  const [isTrendingActive, setIsTrendingActive] = useState(false);
+  // Filter States initialized from URL query parameters
+  const initialFilterState = useMemo(() => parseFilterStateFromUrl(), []);
+  const [searchQuery, setSearchQuery] = useState(initialFilterState.searchQuery);
+  const [selectedCategory, setSelectedCategory] = useState(initialFilterState.selectedCategory);
+  const [selectedSubcategory, setSelectedSubcategory] = useState(initialFilterState.selectedSubcategory);
+  const [selectedDate, setSelectedDate] = useState(initialFilterState.selectedDate);
+  const [activeScheduleFilter, setActiveScheduleFilter] = useState(initialFilterState.activeScheduleFilter);
+  const [selectedPricingType, setSelectedPricingType] = useState<'ALL' | 'FREE' | 'PAID'>(initialFilterState.selectedPricingType);
+  const [isTrendingActive, setIsTrendingActive] = useState(initialFilterState.isTrendingActive);
+  const previousFiltersBeforeTrendingRef = useRef<{
+    selectedCategory: string;
+    selectedSubcategory: string;
+    selectedDate: string;
+    activeScheduleFilter: string;
+  } | null>(null);
 
   // Pagination lists & loading
   const [events, setEvents] = useState<EventFeedItem[]>([]);
@@ -197,6 +277,15 @@ export default function App() {
       document.title = titles[route] || 'LPU Events — Student Website';
 
       if (route === 'home') {
+        const filters = parseFilterStateFromUrl();
+        setIsTrendingActive(filters.isTrendingActive);
+        setSelectedPricingType(filters.selectedPricingType);
+        setActiveScheduleFilter(filters.activeScheduleFilter);
+        setSelectedDate(filters.selectedDate);
+        setSelectedCategory(filters.selectedCategory);
+        setSelectedSubcategory(filters.selectedSubcategory);
+        setSearchQuery(filters.searchQuery);
+
         const targetY = previousScrollPosRef.current;
         requestAnimationFrame(() => {
           window.scrollTo({ top: targetY, left: 0, behavior: 'instant' });
@@ -211,6 +300,71 @@ export default function App() {
     window.addEventListener('popstate', handlePopState);
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
+
+  // Synchronize Filter State -> URL Query Params
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (currentView !== 'home' || selectedEventId) return;
+
+    const url = new URL(window.location.href);
+    const params = url.searchParams;
+
+    // Clear managed filter params
+    params.delete('type');
+    params.delete('timeline');
+    params.delete('date');
+    params.delete('category');
+    params.delete('subcategory');
+    params.delete('q');
+    params.delete('search');
+
+    if (isTrendingActive) {
+      params.set('type', 'trending');
+    } else {
+      if (selectedPricingType === 'FREE') {
+        params.set('type', 'free');
+      } else if (selectedPricingType === 'PAID') {
+        params.set('type', 'paid');
+      }
+
+      if (activeScheduleFilter && activeScheduleFilter !== 'all') {
+        params.set('timeline', activeScheduleFilter);
+      }
+
+      if (selectedDate) {
+        params.set('date', selectedDate);
+      }
+
+      if (selectedCategory && selectedCategory !== 'all') {
+        params.set('category', selectedCategory);
+      }
+
+      if (selectedSubcategory) {
+        params.set('subcategory', selectedSubcategory);
+      }
+
+      if (searchQuery.trim().length >= 2) {
+        params.set('q', searchQuery.trim());
+      }
+    }
+
+    const newSearch = params.toString();
+    const newRelativePathQuery = url.pathname + (newSearch ? `?${newSearch}` : '') + url.hash;
+
+    if (window.location.pathname + window.location.search + window.location.hash !== newRelativePathQuery) {
+      window.history.replaceState(window.history.state, '', newRelativePathQuery);
+    }
+  }, [
+    currentView,
+    selectedEventId,
+    isTrendingActive,
+    selectedPricingType,
+    activeScheduleFilter,
+    selectedDate,
+    selectedCategory,
+    selectedSubcategory,
+    searchQuery
+  ]);
 
   // Initialize Theme, dynamic settings, and initial pageview on mount
   useEffect(() => {
@@ -385,10 +539,14 @@ export default function App() {
       setEventsLoading(true);
       try {
         if (isSearching) {
-          const { data, error } = await lpuClient.searchEvents(searchQuery.trim(), {
+          const searchOpts: any = {
             show_past: true,
             limit: 50
-          });
+          };
+          if (selectedPricingType !== 'ALL') {
+            searchOpts.pricing_type = selectedPricingType;
+          }
+          const { data, error } = await lpuClient.searchEvents(searchQuery.trim(), searchOpts);
           if (!error && data && currentReqId === searchReqIdRef.current) {
             const valid = data.filter(
               (evt) => evt.status === 'PUBLISHED' && !evt.deleted_at
@@ -402,6 +560,9 @@ export default function App() {
           }
           if (selectedSubcategory) {
             filters.subcategory_id = selectedSubcategory;
+          }
+          if (selectedPricingType !== 'ALL') {
+            filters.pricing_type = selectedPricingType;
           }
 
           const { data, error } = await lpuClient.fetchEventFeed(filters);
@@ -422,7 +583,7 @@ export default function App() {
     };
 
     fetchUpcomingEvents();
-  }, [selectedCategory, selectedSubcategory, searchQuery, activeScheduleFilter, selectedDate]);
+  }, [selectedCategory, selectedSubcategory, searchQuery, activeScheduleFilter, selectedDate, selectedPricingType]);
 
   const toggleTheme = useCallback(() => {
     setTheme((prevTheme) => {
@@ -452,22 +613,26 @@ export default function App() {
 
   const handleResetFilters = useCallback(() => {
     trackEvent('filters_reset');
+    previousFiltersBeforeTrendingRef.current = null;
     setSearchQuery("");
     setSelectedCategory("all");
     setSelectedSubcategory("");
     setSelectedDate("");
     setActiveScheduleFilter("all");
+    setSelectedPricingType("ALL");
     setIsTrendingActive(false);
   }, []);
 
   const handleGoToDashboard = useCallback(() => {
     trackEvent('nav_home_dashboard');
     handleNavigate('home');
+    previousFiltersBeforeTrendingRef.current = null;
     setSearchQuery("");
     setSelectedCategory("all");
     setSelectedSubcategory("");
     setSelectedDate("");
     setActiveScheduleFilter("all");
+    setSelectedPricingType("ALL");
     setIsTrendingActive(false);
 
     if (typeof window !== 'undefined') {
@@ -505,15 +670,42 @@ export default function App() {
     trackEvent('trending_filter_selected');
     setSelectedEventId(null);
     setCurrentView('home');
+    if (!isTrendingActive) {
+      previousFiltersBeforeTrendingRef.current = {
+        selectedCategory,
+        selectedSubcategory,
+        selectedDate,
+        activeScheduleFilter,
+      };
+    }
+    setSearchQuery("");
     setIsTrendingActive(true);
     setSelectedCategory("all");
     setSelectedSubcategory("");
+    setSelectedDate("");
     setActiveScheduleFilter("all");
+    setSelectedPricingType("ALL");
     const el = document.getElementById("events");
     if (el) {
       el.scrollIntoView({ behavior: "smooth", block: "start" });
     }
-  }, []);
+  }, [isTrendingActive, selectedCategory, selectedSubcategory, selectedDate, activeScheduleFilter]);
+
+  const handleSelectPricingType = useCallback((type: 'ALL' | 'FREE' | 'PAID') => {
+    if (isTrendingActive) {
+      setIsTrendingActive(false);
+      if (previousFiltersBeforeTrendingRef.current) {
+        const prev = previousFiltersBeforeTrendingRef.current;
+        setSelectedCategory(prev.selectedCategory);
+        setSelectedSubcategory(prev.selectedSubcategory);
+        setSelectedDate(prev.selectedDate);
+        setActiveScheduleFilter(prev.activeScheduleFilter);
+        previousFiltersBeforeTrendingRef.current = null;
+      }
+    }
+    setSelectedPricingType(type);
+    trackEvent('pricing_type_selected', { pricing_type: type });
+  }, [isTrendingActive]);
 
   // Client-side date filtering and trending list mapping using industry-standard schedule matcher
   const filteredEvents = useMemo(() => {
@@ -521,11 +713,14 @@ export default function App() {
     const now = new Date();
 
     const result = list.filter((e) => {
+      if (!isTrendingActive && selectedPricingType !== 'ALL') {
+        if (e.pricing_type !== selectedPricingType) return false;
+      }
       return matchesScheduleFilter(e, activeScheduleFilter, selectedDate, now);
     });
 
     return result.slice().sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
-  }, [events, trendingEvents, isTrendingActive, activeScheduleFilter, selectedDate]);
+  }, [events, trendingEvents, isTrendingActive, activeScheduleFilter, selectedDate, selectedPricingType]);
 
   // Paginated/Limited display list for upcoming events feed
   const displayedEvents = useMemo(() => {
@@ -779,17 +974,20 @@ export default function App() {
                       selectedCategory={selectedCategory}
                       selectedSubcategory={selectedSubcategory}
                       onSelectCategory={(catId) => {
+                        previousFiltersBeforeTrendingRef.current = null;
                         setIsTrendingActive(false);
                         trackEvent('category_filter_selected', { category_id: catId });
                         setSelectedCategory(catId);
                       }}
                       onSelectSubcategory={(subId) => {
+                        previousFiltersBeforeTrendingRef.current = null;
                         setIsTrendingActive(false);
                         trackEvent('subcategory_filter_selected', { subcategory_id: subId });
                         setSelectedSubcategory(subId);
                       }}
                       selectedDate={selectedDate}
                       onSelectDate={(date) => {
+                        previousFiltersBeforeTrendingRef.current = null;
                         setIsTrendingActive(false);
                         if (date) {
                           trackEvent('date_filter_selected', { date });
@@ -798,11 +996,15 @@ export default function App() {
                       }}
                       activeScheduleFilter={activeScheduleFilter}
                       onSelectScheduleFilter={(sched) => {
+                        previousFiltersBeforeTrendingRef.current = null;
                         setIsTrendingActive(false);
                         trackEvent('schedule_filter_selected', { schedule: sched });
                         setActiveScheduleFilter(sched);
                       }}
+                      selectedPricingType={selectedPricingType}
+                      onSelectPricingType={handleSelectPricingType}
                       isTrendingActive={isTrendingActive}
+                      onSelectTrending={handleSelectTrending}
                     />
                   </div>
                 </>

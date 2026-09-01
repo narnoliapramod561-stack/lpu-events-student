@@ -100,6 +100,13 @@ export const NavbarComponent = ({
 
   useEffect(() => {
     setLocalSearch(searchQuery || "");
+    if (!searchQuery) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      if (debounceTimer.current) {
+        clearTimeout(debounceTimer.current);
+      }
+    }
   }, [searchQuery]);
 
   useEffect(() => {

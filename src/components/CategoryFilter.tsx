@@ -21,7 +21,9 @@ import {
   HandHeart, 
   Shirt, 
   MoreHorizontal,
-  Search
+  Search,
+  Ticket,
+  Flame
 } from "lucide-react";
 import { CategoryFeedItem, toLocalDateString } from "@lpu-events/shared";
 
@@ -54,7 +56,10 @@ interface CategoryFilterProps {
   onSelectDate: (date: string) => void;
   activeScheduleFilter: string;
   onSelectScheduleFilter: (sched: string) => void;
+  selectedPricingType?: 'ALL' | 'FREE' | 'PAID';
+  onSelectPricingType?: (type: 'ALL' | 'FREE' | 'PAID') => void;
   isTrendingActive?: boolean;
+  onSelectTrending?: () => void;
 }
 
 export const CategoryFilterComponent = ({
@@ -67,7 +72,10 @@ export const CategoryFilterComponent = ({
   onSelectDate,
   activeScheduleFilter,
   onSelectScheduleFilter,
+  selectedPricingType = 'ALL',
+  onSelectPricingType,
   isTrendingActive = false,
+  onSelectTrending,
 }: CategoryFilterProps) => {
   const dateInputRef = useRef<HTMLInputElement>(null);
   const mobileDateInputRef = useRef<HTMLInputElement>(null);
@@ -293,7 +301,76 @@ export const CategoryFilterComponent = ({
           </div>
         </div>
 
-        {/* ─── SECTION 2: CATEGORIES ─── Event Categories Explorer ─── */}
+        {/* ─── SECTION 2: EVENT TYPE ─── Pricing & Trending Strip ─── */}
+        <div className="relative overflow-hidden rounded-2xl">
+          {/* Frosted glass background with indigo/slate tone */}
+          <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-indigo-950/60 to-slate-900/80 backdrop-blur-xl" />
+          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(168,85,247,0.08),transparent_60%)]" />
+          
+          <div className="relative flex flex-col gap-2 p-3">
+            {/* Header row */}
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 rounded-lg bg-indigo-500/15 border border-indigo-400/25 flex items-center justify-center">
+                  <Ticket className="h-3.5 w-3.5 text-indigo-400" />
+                </div>
+                <span className="text-[13px] font-black text-white font-heading">
+                  Event Type
+                </span>
+              </div>
+
+              {(selectedPricingType !== "ALL" || isTrendingActive) && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (onSelectPricingType) onSelectPricingType("ALL");
+                  }}
+                  className="text-[10px] font-bold text-indigo-300 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 active:scale-95 transition-transform"
+                >
+                  <X className="h-3 w-3" />
+                  <span>Clear</span>
+                </button>
+              )}
+            </div>
+
+            {/* Event Type pills */}
+            <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 -mx-0.5 px-0.5 select-none items-center touch-pan-x">
+              {[
+                { id: "ALL", label: "All" },
+                { id: "FREE", label: "Free" },
+                { id: "PAID", label: "Paid" },
+                { id: "TRENDING", label: "Trending", emoji: "🔥" }
+              ].map((item) => {
+                const isSelected = item.id === 'TRENDING'
+                  ? isTrendingActive
+                  : !isTrendingActive && selectedPricingType === item.id;
+                return (
+                  <button
+                    key={`met-${item.id}`}
+                    type="button"
+                    onClick={() => {
+                      if (item.id === 'TRENDING') {
+                        if (onSelectTrending) onSelectTrending();
+                      } else {
+                        if (onSelectPricingType) onSelectPricingType(item.id as 'ALL' | 'FREE' | 'PAID');
+                      }
+                    }}
+                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
+                      isSelected
+                        ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/25 ring-1 ring-orange-300/30"
+                        : "bg-white/[0.05] text-slate-300 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
+                    }`}
+                  >
+                    {item.emoji && <span>{item.emoji}</span>}
+                    {item.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* ─── SECTION 3: CATEGORIES ─── Event Categories Explorer ─── */}
         <div className="relative overflow-hidden rounded-2xl">
           {/* Warm amber/rose glass background */}
           <div className="absolute inset-0 bg-gradient-to-br from-amber-950/70 via-orange-950/50 to-rose-950/60 backdrop-blur-xl" />
@@ -568,7 +645,56 @@ export const CategoryFilterComponent = ({
           </div>
         </div>
 
-        {/* 2. Primary Event Categories Bar & Search */}
+        {/* 2. Event Type Filters */}
+        <div className="w-full flex flex-col gap-3.5">
+          <div className="flex items-center justify-between">
+            <h3 className="font-heading text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+              Event Type
+            </h3>
+          </div>
+
+          {/* Event Type Pills */}
+          <div className="flex gap-3 overflow-x-auto hide-scrollbar py-1 select-none items-center touch-pan-x">
+            {[
+              { id: "ALL", name: "ALL", icon: LayoutGrid },
+              { id: "FREE", name: "FREE", icon: Sparkles },
+              { id: "PAID", name: "PAID", icon: Ticket },
+              { id: "TRENDING", name: "TRENDING", icon: Flame, isSpecial: true }
+            ].map((typeItem) => {
+              const isSelected = typeItem.id === "TRENDING"
+                ? isTrendingActive
+                : !isTrendingActive && selectedPricingType === typeItem.id;
+              const ItemIcon = typeItem.icon;
+              return (
+                <button
+                  key={typeItem.id}
+                  type="button"
+                  onClick={() => {
+                    if (typeItem.id === "TRENDING") {
+                      if (onSelectTrending) onSelectTrending();
+                    } else {
+                      if (onSelectPricingType) onSelectPricingType(typeItem.id as "ALL" | "FREE" | "PAID");
+                    }
+                  }}
+                  className={`flex items-center gap-2 px-5.5 py-3.5 rounded-2xl font-heading font-black text-sm cursor-pointer outline-none active:scale-[0.97] transition-transform duration-150 whitespace-nowrap touch-target shrink-0 ${
+                    isSelected
+                      ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white border border-white/50 shadow-[0_6px_20px_rgba(255,107,0,0.45)]"
+                      : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary hover:border-primary/50 shadow-sm"
+                  }`}
+                >
+                  {typeItem.id === "TRENDING" ? (
+                    <span>🔥</span>
+                  ) : (
+                    <ItemIcon className="h-4 w-4" />
+                  )}
+                  <span>{typeItem.name}</span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* 3. Primary Event Categories Bar & Search */}
         <div className="w-full flex flex-col gap-3.5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
