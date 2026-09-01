@@ -70,29 +70,29 @@ async function uploadObjectToR2(
 ): Promise<{ success: boolean; error?: string }> {
   const cleanKey = key.replace(/^\/+/, "");
 
-  // 1. Fast S3 Attempt (single attempt, max 4s timeout)
+  // 1. Fast S3 Attempt (single attempt, max 4s timeout using universal Promise.race)
   if (r2.accessKeyId && r2.secretAccessKey && r2.accessKeyId !== "anonymous") {
     try {
-      const abortCtrl = new AbortController();
-      const timeoutId = setTimeout(() => abortCtrl.abort(), 4000);
-      await r2.s3.send(
+      const s3Promise = r2.s3.send(
         new PutObjectCommand({
           Bucket: r2.bucketName,
           Key: cleanKey,
           Body: body,
           ContentType: contentType,
           CacheControl: cacheControl,
-        }),
-        { abortSignal: abortCtrl.signal }
+        })
       );
-      clearTimeout(timeoutId);
+      const timeoutPromise = new Promise<never>((_, reject) =>
+        setTimeout(() => reject(new Error("S3 upload timeout after 4s")), 4000)
+      );
+      await Promise.race([s3Promise, timeoutPromise]);
       return { success: true };
     } catch (s3Err: any) {
       console.warn("S3 SDK upload error for key:", cleanKey, s3Err?.message);
     }
   }
 
-  // 2. Fast Cloudflare REST API Attempt (max 4s timeout)
+  // 2. Fast Cloudflare REST API Attempt (max 4s timeout using universal Promise.race)
   const candidateTokens = [
     Deno.env.get("CLOUDFLARE_API_TOKEN"),
     Deno.env.get("R2_ACCESS_KEY_ID"),
@@ -102,7 +102,7 @@ async function uploadObjectToR2(
   for (const token of candidateTokens) {
     try {
       const restUrl = `https://api.cloudflare.com/client/v4/accounts/${r2.accountId}/r2/buckets/${r2.bucketName}/objects/${cleanKey}`;
-      const res = await fetch(restUrl, {
+      const fetchPromise = fetch(restUrl, {
         method: "PUT",
         headers: {
           Authorization: `Bearer ${token}`,
@@ -110,14 +110,17 @@ async function uploadObjectToR2(
           "Cache-Control": cacheControl,
         },
         body: body,
-        signal: AbortSignal.timeout(4000),
       });
+      const timeoutPromise = new Promise<Response>((_, reject) =>
+        setTimeout(() => reject(new Error("REST upload timeout after 4s")), 4000)
+      );
+      const res = await Promise.race([fetchPromise, timeoutPromise]);
 
       if (res.ok) {
         return { success: true };
       }
-    } catch (restErr) {
-      console.warn("Cloudflare REST API upload attempt error:", restErr);
+    } catch (restErr: any) {
+      console.warn("Cloudflare REST API upload attempt error:", restErr?.message);
     }
   }
 
@@ -210,16 +213,17 @@ serve(async (req: Request) => {
     return new Response(null, { status: 204, headers: corsHeaders });
   }
 
-  if (req.method !== "POST") {
-    return new Response(JSON.stringify({ error: "METHOD_NOT_ALLOWED", message: "Only POST requests are allowed." }), {
-      status: 405,
-      headers: corsHeaders,
-    });
-  }
+  try {
+    if (req.method !== "POST") {
+      return new Response(JSON.stringify({ error: "METHOD_NOT_ALLOWED", message: "Only POST requests are allowed." }), {
+        status: 405,
+        headers: corsHeaders,
+      });
+    }
 
-  const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
-  const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-  const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
+    const supabaseUrl = Deno.env.get("SUPABASE_URL") || "";
+    const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
+    const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") || "";
 
   // 2. Authentication: Extract and verify JWT
   const authHeader = req.headers.get("Authorization") || "";
@@ -596,4 +600,17 @@ serve(async (req: Request) => {
     }),
     { status: 200, headers: corsHeaders }
   );
+  } catch (fatalErr: any) {
+    console.error("Fatal unhandled Edge Function error in r2-upload:", fatalErr);
+    return new Response(
+      JSON.stringify({
+        error: "INTERNAL_SERVER_ERROR",
+        message: fatalErr?.message || "An unexpected error occurred during image processing.",
+      }),
+      {
+        status: 500,
+        headers: corsHeaders,
+      }
+    );
+  }
 });
