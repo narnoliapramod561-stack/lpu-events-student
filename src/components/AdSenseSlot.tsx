@@ -10,7 +10,7 @@ interface AdSenseSlotProps {
 
 export const AdSenseSlot: React.FC<AdSenseSlotProps> = ({
   adSenseConfig,
-  slotId = "1000000001",
+  slotId = "8059587837",
   format = "in_feed_card",
   className = ""
 }) => {
