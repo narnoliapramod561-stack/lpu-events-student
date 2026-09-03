@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Sun, Moon, Menu, X, Home, LayoutGrid, Flame, Users, ExternalLink, HelpCircle } from "lucide-react";
+import { Search, Sun, Moon, Menu, X, Home, LayoutGrid, Flame, Users, ExternalLink, HelpCircle, Info, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { lpuClient } from "../supabase";
 import { LpuLogo } from "./LpuLogo";
@@ -472,6 +472,24 @@ export const NavbarComponent = ({
                   <Users className="h-4.5 w-4.5 text-primary" />
                   <span>Student Clubs & Organizations</span>
                 </button>
+
+                <a
+                  href="/about"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 hover:text-primary transition-colors text-left min-h-[44px] cursor-pointer"
+                >
+                  <Info className="h-4.5 w-4.5 text-primary" />
+                  <span>About LPU Events</span>
+                </a>
+
+                <a
+                  href="/contact"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 hover:text-primary transition-colors text-left min-h-[44px] cursor-pointer"
+                >
+                  <Mail className="h-4.5 w-4.5 text-primary" />
+                  <span>Contact Support</span>
+                </a>
               </div>
 
               <div className="border-t border-gray-200/70 dark:border-white/10 pt-3 flex flex-col gap-2">

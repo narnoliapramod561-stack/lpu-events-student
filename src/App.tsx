@@ -8,6 +8,8 @@ import { EventDetailsView } from "./components/EventDetailsView";
 import { AboutUsView } from "./components/AboutUsView";
 import { PrivacyPolicyView } from "./components/PrivacyPolicyView";
 import { TermsOfServiceView } from "./components/TermsOfServiceView";
+import { ContactUsView } from "./components/ContactUsView";
+import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { Footer } from "./components/Footer";
 import { UnifiedAdSlot } from "./components/UnifiedAdSlot";
 import { OFFICIAL_PLATFORM_CATEGORIES } from "./utils/categories";
@@ -29,7 +31,7 @@ import {
   extractEventId
 } from "@lpu-events/shared";
 
-export type StudentRoute = 'home' | 'about' | 'privacy' | 'terms' | 'event-details';
+export type StudentRoute = 'home' | 'about' | 'privacy' | 'terms' | 'contact' | 'event-details';
 
 interface RouteState {
   route: StudentRoute;
@@ -46,6 +48,9 @@ const parseCurrentRoute = (): RouteState => {
 
   if (pathname === '/about' || pageParam === 'about') {
     return { route: 'about', eventId: null };
+  }
+  if (pathname === '/contact' || pageParam === 'contact') {
+    return { route: 'contact', eventId: null };
   }
   if (pathname === '/privacy' || pageParam === 'privacy') {
     return { route: 'privacy', eventId: null };
@@ -211,7 +216,7 @@ export default function App() {
   const previousScrollPosRef = useRef<number>(0);
 
   // Universal Navigation Handler for static pages
-  const handleNavigate = useCallback((route: 'home' | 'about' | 'privacy' | 'terms') => {
+  const handleNavigate = useCallback((route: 'home' | 'about' | 'privacy' | 'terms' | 'contact') => {
     setSelectedEventId(null);
     setCurrentView(route);
 
@@ -222,9 +227,10 @@ export default function App() {
         window.history.pushState({}, '', targetUrl);
       }
       const titles: Record<string, string> = {
-        home: 'LPU Events — Student Website',
+        home: 'LPU Events — Discover Campus Events, Clubs & Festivities',
         about: 'About Us — LPU Events',
-        privacy: 'Privacy Policy — LPU Events',
+        contact: 'Contact Us — LPU Events Support',
+        privacy: 'Privacy Policy & AdSense Disclosures — LPU Events',
         terms: 'Terms of Service — LPU Events',
       };
       document.title = titles[route] || 'LPU Events — Student Website';
@@ -896,8 +902,10 @@ export default function App() {
         <main className="w-full max-w-[98%] mx-auto px-2.5 sm:px-4 md:px-6 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6 overflow-hidden">
           {currentView === 'about' ? (
             <AboutUsView onBack={() => handleNavigate('home')} />
+          ) : currentView === 'contact' ? (
+            <ContactUsView onBack={() => handleNavigate('home')} />
           ) : currentView === 'privacy' ? (
-            <PrivacyPolicyView onBack={() => handleNavigate('home')} />
+            <PrivacyPolicyView onBack={() => handleNavigate('home')} onNavigateContact={() => handleNavigate('contact')} />
           ) : currentView === 'terms' ? (
             <TermsOfServiceView onBack={() => handleNavigate('home')} />
           ) : (currentView === 'event-details' || selectedEventId) ? (
@@ -1045,6 +1053,9 @@ export default function App() {
           onNavigate={handleNavigate}
           onGoToCategories={handleGoToCategories}
         />
+
+        {/* GDPR, CCPA & Google AdSense Cookie Consent Notification */}
+        <CookieConsentBanner onNavigatePrivacy={() => handleNavigate('privacy')} />
       </div>
     </div>
   );

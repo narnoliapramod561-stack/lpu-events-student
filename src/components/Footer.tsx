@@ -2,16 +2,15 @@ import React from "react";
 import { LpuLogo } from "./LpuLogo";
 
 interface FooterProps {
-  onNavigate: (route: 'home' | 'about' | 'privacy' | 'terms') => void;
+  onNavigate: (route: 'home' | 'about' | 'privacy' | 'terms' | 'contact') => void;
   onGoToCategories: () => void;
 }
 
 export const Footer: React.FC<FooterProps> = ({ onNavigate, onGoToCategories }) => {
   const handleLinkClick = (
     e: React.MouseEvent<HTMLAnchorElement>,
-    route: 'home' | 'about' | 'privacy' | 'terms'
+    route: 'home' | 'about' | 'privacy' | 'terms' | 'contact'
   ) => {
-    // Allow standard browser behavior for middle clicks or modifier keys (Ctrl/Cmd/Shift)
     if (e.button !== 0 || e.ctrlKey || e.metaKey || e.shiftKey || e.altKey) {
       return;
     }
@@ -47,16 +46,16 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onGoToCategories }) 
               </span>
             </a>
             <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 mb-4 sm:mb-6 leading-relaxed max-w-md break-safe">
-              Your central hub for discovering and participating in the vibrant campus life at Lovely Professional University.
+              Your central hub for discovering and participating in the vibrant campus life at Lovely Professional University. Fully compliant with Google AdSense Programme Policies.
             </p>
           </div>
 
           <p className="hidden md:block text-xs text-gray-500 dark:text-gray-400 font-heading font-medium">
-            © 2026 LPU Events. All rights reserved.
+            © 2026 LPU Events. All rights reserved. • Lovely Professional University, Punjab
           </p>
         </div>
 
-        {/* Columns 2 & 3: Explore and Legal (Side-by-side in 2 columns on mobile, 3 cols each on desktop) */}
+        {/* Columns 2 & 3: Explore and Legal */}
         <div className="grid grid-cols-2 gap-6 sm:gap-8 md:contents">
           {/* Column 2: Explore (Desktop: 3 Columns) */}
           <div className="md:col-span-3 flex flex-col">
@@ -78,13 +77,20 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onGoToCategories }) 
               >
                 Categories
               </a>
+              <a
+                href="/contact"
+                onClick={(e) => handleLinkClick(e, 'contact')}
+                className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-1.5 sm:py-2 min-h-[36px] sm:min-h-[44px] flex items-center font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
+              >
+                Contact Us
+              </a>
             </nav>
           </div>
 
           {/* Column 3: Legal (Desktop: 3 Columns) */}
           <div className="md:col-span-3 flex flex-col">
             <h4 className="font-heading font-black text-gray-900 dark:text-white text-xs sm:text-sm uppercase tracking-wider mb-2 sm:mb-3">
-              Legal
+              Legal & Privacy
             </h4>
             <nav aria-label="Legal Links" className="flex flex-col space-y-1 sm:space-y-0">
               <a
@@ -101,6 +107,13 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onGoToCategories }) 
               >
                 Terms of Service
               </a>
+              <a
+                href="/privacy#adsense"
+                onClick={(e) => handleLinkClick(e, 'privacy')}
+                className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-1.5 sm:py-2 min-h-[36px] sm:min-h-[44px] flex items-center font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
+              >
+                AdSense Policies
+              </a>
             </nav>
           </div>
         </div>
@@ -108,7 +121,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onGoToCategories }) 
         {/* Mobile Copyright: Placed cleanly at the bottom */}
         <div className="block md:hidden pt-2 border-t border-gray-200/40 dark:border-white/5">
           <p className="text-xs text-gray-500 dark:text-gray-400 font-heading font-medium">
-            © 2026 LPU Events. All rights reserved.
+            © 2026 LPU Events. All rights reserved. • Lovely Professional University
           </p>
         </div>
       </div>
