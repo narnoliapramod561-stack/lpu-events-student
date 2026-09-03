@@ -88,23 +88,23 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
     context: 'hero',
     label: 'Hero Carousel Banner',
     description: 'High-impact top slider on Student homepage',
-    maxWidth: 1920,
-    maxHeight: 800,
-    aspectRatio: 1920 / 800, // 2.4:1 cinematic widescreen
-    aspectRatioLabel: '2.4:1 (Widescreen)',
+    maxWidth: 2560,
+    maxHeight: 1080,
+    aspectRatio: 2560 / 1080,
+    aspectRatioLabel: '2.4:1 (Ultra HD Widescreen)',
     fitMode: 'cover',
     outputFormat: 'image/webp',
-    quality: 82,
+    quality: 90,
     variants: [
-      { name: 'desktop', width: 1920, height: 800, quality: 82 },
-      { name: 'tablet', width: 1200, height: 500, quality: 80 },
-      { name: 'mobile', width: 800, height: 450, quality: 78 }
+      { name: 'desktop', width: 2560, height: 1080, quality: 90 },
+      { name: 'tablet', width: 1600, height: 675, quality: 88 },
+      { name: 'mobile', width: 1080, height: 600, quality: 85 }
     ],
     enhancement: {
       enabled: true,
-      sharpenAmount: 0.18, // Mild, natural high-pass sharpening
-      contrastClip: 0.003, // Very gentle dynamic range stretch
-      vibranceBoost: 1.03, // +3% subtle vibrance
+      sharpenAmount: 0.22,
+      contrastClip: 0.003,
+      vibranceBoost: 1.04,
       denoiseArtifacts: true
     }
   },
@@ -113,23 +113,23 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
     context: 'event-banner',
     label: 'Event Details Banner & Poster',
     description: 'Header banner inside Event Details view. Uses inside fit to ensure posters with typography/schedules are never cropped.',
-    maxWidth: 1280,
-    maxHeight: 720,
+    maxWidth: 1920,
+    maxHeight: 1080,
     aspectRatio: 16 / 9,
-    aspectRatioLabel: '16:9 (Bounds)',
+    aspectRatioLabel: '16:9 (Full HD Bounds)',
     fitMode: 'inside', // ZERO CROP for posters & flyers
     outputFormat: 'image/webp',
-    quality: 84,
+    quality: 90,
     variants: [
-      { name: 'desktop', width: 1280, height: 720, quality: 84 },
-      { name: 'tablet', width: 960, height: 540, quality: 82 },
-      { name: 'mobile', width: 640, height: 360, quality: 80 }
+      { name: 'desktop', width: 1920, height: 1080, quality: 90 },
+      { name: 'tablet', width: 1280, height: 720, quality: 88 },
+      { name: 'mobile', width: 800, height: 450, quality: 85 }
     ],
     enhancement: {
       enabled: true,
-      sharpenAmount: 0.12, // Very mild sharpening to protect fine typography
-      contrastClip: 0.0, // Zero contrast alteration to preserve poster design
-      vibranceBoost: 1.0, // Preserve original poster color balance
+      sharpenAmount: 0.16,
+      contrastClip: 0.001,
+      vibranceBoost: 1.02,
       denoiseArtifacts: true,
       preserveOriginalColorProfile: true
     }
@@ -139,22 +139,22 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
     context: 'event-card',
     label: 'Event Feed Card & Slider',
     description: 'Featured in Happening Today slider and standard Event Hub grids. Cover mode enforces uniform tile alignment.',
-    maxWidth: 800,
-    maxHeight: 480,
+    maxWidth: 1200,
+    maxHeight: 720,
     aspectRatio: 5 / 3,
     aspectRatioLabel: '5:3 (Landscape Card)',
     fitMode: 'cover',
     outputFormat: 'image/webp',
-    quality: 80,
+    quality: 88,
     variants: [
-      { name: 'desktop', width: 800, height: 480, quality: 80 },
-      { name: 'mobile', width: 480, height: 288, quality: 78 }
+      { name: 'desktop', width: 1200, height: 720, quality: 88 },
+      { name: 'mobile', width: 800, height: 480, quality: 85 }
     ],
     enhancement: {
       enabled: true,
-      sharpenAmount: 0.2, // Balanced edge crispness for medium cards
+      sharpenAmount: 0.24,
       contrastClip: 0.003,
-      vibranceBoost: 1.03,
+      vibranceBoost: 1.04,
       denoiseArtifacts: true
     }
   },
@@ -163,20 +163,20 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
     context: 'advertisement',
     label: 'Sponsored Promo Banner',
     description: 'Sponsored cards in event grids and full-width promo slots',
-    maxWidth: 1200,
-    maxHeight: 600,
+    maxWidth: 1600,
+    maxHeight: 800,
     aspectRatio: 2 / 1,
     aspectRatioLabel: '2:1 (Promo Banner)',
     fitMode: 'cover',
     outputFormat: 'image/webp',
-    quality: 82,
+    quality: 88,
     variants: [
-      { name: 'desktop', width: 1200, height: 600, quality: 82 },
-      { name: 'mobile', width: 600, height: 300, quality: 78 }
+      { name: 'desktop', width: 1600, height: 800, quality: 88 },
+      { name: 'mobile', width: 960, height: 480, quality: 85 }
     ],
     enhancement: {
       enabled: true,
-      sharpenAmount: 0.12,
+      sharpenAmount: 0.16,
       contrastClip: 0.0,
       vibranceBoost: 1.0,
       denoiseArtifacts: false,
@@ -188,44 +188,44 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
     context: 'memory',
     label: 'Past Event Memory Photo',
     description: 'Cinematic recap photo for past event galleries. Uses inside fit to accommodate both landscape and portrait event memories without cropping.',
-    maxWidth: 1280,
-    maxHeight: 720,
+    maxWidth: 1920,
+    maxHeight: 1080,
     aspectRatio: 16 / 9,
     aspectRatioLabel: '16:9 (Bounds)',
-    fitMode: 'inside', // Preserves landscape and portrait historical photos without cropping
+    fitMode: 'inside',
     outputFormat: 'image/webp',
-    quality: 82,
+    quality: 90,
     variants: [
-      { name: 'desktop', width: 1280, height: 720, quality: 82 },
-      { name: 'mobile', width: 640, height: 360, quality: 78 }
+      { name: 'desktop', width: 1920, height: 1080, quality: 90 },
+      { name: 'mobile', width: 960, height: 540, quality: 85 }
     ],
     enhancement: {
       enabled: true,
       sharpenAmount: 0.18,
-      contrastClip: 0.004,
-      vibranceBoost: 1.04,
+      contrastClip: 0.003,
+      vibranceBoost: 1.03,
       denoiseArtifacts: true
     }
   },
 
   'sponsor-logo': {
     context: 'sponsor-logo',
-    label: 'Partner & Sponsor Logo',
-    description: 'Corporate brand logo for institutional partner network. Contain mode preserves full logo and transparent alpha channel.',
-    maxWidth: 400,
-    maxHeight: 200,
+    label: 'Sponsor / Partner Brand Logo',
+    description: 'Alpha-preserved transparent logo lockups in footer & event badges',
+    maxWidth: 600,
+    maxHeight: 300,
     aspectRatio: 2 / 1,
-    aspectRatioLabel: '2:1 (Contained Logo)',
+    aspectRatioLabel: '2:1 (Flexible Contain)',
     fitMode: 'contain',
     outputFormat: 'image/webp',
-    quality: 90,
+    quality: 92,
     variants: [
-      { name: 'desktop', width: 400, height: 200, quality: 90 },
-      { name: 'mobile', width: 200, height: 100, quality: 88 }
+      { name: 'desktop', width: 600, height: 300, quality: 92 },
+      { name: 'mobile', width: 360, height: 180, quality: 90 }
     ],
     enhancement: {
-      enabled: false,
-      sharpenAmount: 0.0,
+      enabled: true,
+      sharpenAmount: 0.15,
       contrastClip: 0.0,
       vibranceBoost: 1.0,
       denoiseArtifacts: false,
@@ -235,24 +235,25 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
 
   thumbnail: {
     context: 'thumbnail',
-    label: 'Admin Table Thumbnail',
-    description: 'Compact square preview for management lists and data tables',
-    maxWidth: 200,
-    maxHeight: 200,
+    label: 'Square Micro-Thumbnail',
+    description: 'Admin table rows, search results, mini avatars',
+    maxWidth: 400,
+    maxHeight: 400,
     aspectRatio: 1 / 1,
     aspectRatioLabel: '1:1 (Square)',
     fitMode: 'cover',
     outputFormat: 'image/webp',
-    quality: 75,
+    quality: 88,
     variants: [
-      { name: 'desktop', width: 200, height: 200, quality: 75 }
+      { name: 'desktop', width: 400, height: 400, quality: 88 },
+      { name: 'mobile', width: 240, height: 240, quality: 85 }
     ],
     enhancement: {
       enabled: true,
-      sharpenAmount: 0.25,
+      sharpenAmount: 0.28,
       contrastClip: 0.003,
-      vibranceBoost: 1.02,
-      denoiseArtifacts: false
+      vibranceBoost: 1.03,
+      denoiseArtifacts: true
     }
   },
 

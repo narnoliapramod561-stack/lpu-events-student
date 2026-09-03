@@ -50,7 +50,7 @@ export interface ImageUploadOptions {
 
 export interface ReplaceEntityMediaOptions {
   supabase: SupabaseClient;
-  entityTable: 'events' | 'advertisements' | 'event_memories' | 'sponsors' | 'carousel_items';
+  entityTable: 'events' | 'advertisements' | 'carousel_items';
   entityId: string;
   mediaColumn: 'banner_media_id' | 'media_id' | 'cover_media_id' | 'logo_media_id';
   newMediaId: string | null;

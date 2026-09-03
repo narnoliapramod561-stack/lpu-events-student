@@ -3,6 +3,7 @@ import { X, Calendar, Clock, MapPin, Users, ShieldAlert, ExternalLink } from "lu
 import { lpuClient } from "../supabase";
 import { Event, formatEventDateRange } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
+import { ProgressiveImage } from "./ProgressiveImage";
 
 export const EventDetailsModal = ({ eventId, onClose }: {
   eventId: string;
@@ -72,11 +73,12 @@ export const EventDetailsModal = ({ eventId, onClose }: {
           </div>
         ) : (
           <>
-            {/* Banner Image */}
+            {/* Banner Image (Instant LQIP -> Full HD Auto-Upgrade) */}
             <div className="h-[200px] xs:h-[240px] sm:h-[300px] md:h-[340px] w-full relative overflow-hidden bg-surface-2 border-b border-white/80 dark:border-white/10 shrink-0">
-              <img
-                src={getEventImage(event, 'event-banner')}
+              <ProgressiveImage
+                src={getEventImage(event, 'event-banner', 1440)}
                 alt={event.name}
+                containerClassName="w-full h-full"
                 className="w-full h-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />

@@ -6,13 +6,13 @@ import { LpuLogo } from "./LpuLogo";
 
 export const SearchAutocompleteComponent = ({ 
   suggestions, 
-  onSelect,
+  onSelect, 
   onSelectEvent, 
   show 
 }: {
   suggestions: any[];
   onSelect: (title: string) => void;
-  onSelectEvent?: (id: string) => void;
+  onSelectEvent?: (id: string, name?: string) => void;
   show: boolean;
 }) => {
   if (!show || !suggestions || suggestions.length === 0) return null;
@@ -31,7 +31,7 @@ export const SearchAutocompleteComponent = ({
           key={item.id}
           onClick={() => {
             if (onSelectEvent) {
-              onSelectEvent(item.id);
+              onSelectEvent(item.id, item.name);
             } else {
               onSelect(item.name);
             }
@@ -50,7 +50,7 @@ export const SearchAutocompleteComponent = ({
             onClick={(e) => {
               e.stopPropagation();
               if (onSelectEvent) {
-                onSelectEvent(item.id);
+                onSelectEvent(item.id, item.name);
               } else {
                 onSelect(item.name);
               }
@@ -84,7 +84,7 @@ export const NavbarComponent = ({
   onToggleTheme: () => void;
   isTrendingActive?: boolean;
   onSelectTrending?: () => void;
-  onSelectEvent?: (id: string) => void;
+  onSelectEvent?: (id: string, name?: string) => void;
   onGoHome?: () => void;
   onSelectCategories?: () => void;
 }) => {

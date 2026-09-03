@@ -9,6 +9,7 @@ import {
   formatEventDateRange
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
+import { ProgressiveImage } from "./ProgressiveImage";
 import { AdSenseSlot } from "./AdSenseSlot";
 
 export const EventCardComponent = ({
@@ -17,10 +18,10 @@ export const EventCardComponent = ({
   idx = 0,
 }: {
   event: EventFeedItem;
-  onSelect: (id: string) => void;
+  onSelect: (id: string, name?: string) => void;
   idx?: number;
 }) => {
-  const imageUrl = getEventImage(event, 'event-card', 480);
+  const imageUrl = getEventImage(event, 'event-card', 1080);
   const startDate = new Date(event.start_at);
 
   // Format Date: DD/MM/YYYY or DD/MM/YYYY – DD/MM/YYYY (if multi-day)
@@ -40,16 +41,15 @@ export const EventCardComponent = ({
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(idx * 0.04, 0.25) }}
-      onClick={() => onSelect(event.id)}
+      onClick={() => onSelect(event.id, event.name)}
       className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-[20px] sm:rounded-[28px] shadow-md hover:shadow-2xl transition-all duration-300 border border-white/80 dark:border-white/10 hover:border-primary/50 relative hover:scale-[1.01] active:scale-[0.99]"
     >
-      {/* Event Cover Image */}
+      {/* Event Cover Image (Progressive Instant Preview -> Full HD Auto-Upgrade) */}
       <div className="h-[155px] xs:h-[175px] sm:h-[230px] w-full relative overflow-hidden bg-slate-900/40 shrink-0">
-        <img
+        <ProgressiveImage
           src={imageUrl}
           alt={event.name}
           loading="lazy"
-          decoding="async"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
@@ -158,16 +158,15 @@ export const EventCard = React.memo(EventCardComponent);
 export const AdBannerCardComponent = ({ ad }: { ad: AdvertisementFeedItem }) => {
   if (!ad) return null;
 
-  const imageUrl = getEventImage(ad, 'advertisement', 480);
+  const imageUrl = getEventImage(ad, 'advertisement', 1280);
 
   return (
     <article className="glass-panel group flex flex-col h-full overflow-hidden border border-indigo-500/40 dark:border-indigo-500/30 rounded-[20px] sm:rounded-[28px] shadow-lg hover:shadow-2xl transition-all duration-300 relative bg-gradient-to-b from-indigo-950/20 via-purple-950/10 to-transparent">
       <div className="h-[155px] xs:h-[175px] sm:h-[230px] w-full relative overflow-hidden shrink-0 bg-slate-900/50">
-        <img
+        <ProgressiveImage
           src={imageUrl}
           alt={ad.name}
           loading="lazy"
-          decoding="async"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent pointer-events-none" />
@@ -296,7 +295,7 @@ export const EventGridComponent = ({
   adSystemConfig?: AdSystemConfig | null;
   loading: boolean;
   onResetFilters: () => void;
-  onSelectEvent: (id: string) => void;
+  onSelectEvent: (id: string, name?: string) => void;
   adInterval?: number;
   title?: string;
   searchQuery?: string;

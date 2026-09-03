@@ -1,14 +1,14 @@
 // client.ts
 // LPU Events Supabase API client wrapper serving as the unified gateway
+// All public reads route through /api/public/* Cloudflare Edge Worker in production.
+// Direct Supabase is only used in local development (no Worker available).
 
 import { createClient, SupabaseClient } from '@supabase/supabase-js';
-import { 
-  CategoryFeedItem, 
-  EventFeedItem, 
+import {
+  CategoryFeedItem,
+  EventFeedItem,
   CarouselItemFeedItem,
   AdvertisementFeedItem,
-  EventMemoryFeedItem,
-  SponsorFeedItem,
   Event,
   OrganizerAccessRequest,
   PublishEventPayload,
@@ -17,80 +17,269 @@ import {
   ResourceVersionMap,
   ResourceVersionItem
 } from './types';
+import { slugify } from './slug';
+
+interface MemoryCacheEntry<T> {
+  data: T;
+  expiresAt: number;
+}
+
+/**
+ * Homepage bundle response from /api/public/homepage
+ */
+export interface HomepageBundleData {
+  categories: CategoryFeedItem[];
+  carousel: CarouselItemFeedItem[];
+  featured: any[];
+  trending: EventFeedItem[];
+  advertisements: AdvertisementFeedItem[];
+  settings: { key: string; value: any }[];
+  events: EventFeedItem[];
+}
 
 export class LpuEventsClient {
   public supabase: SupabaseClient;
+
+  // In-memory client cache to eliminate redundant requests within the same browser session
+  private _cache = new Map<string, MemoryCacheEntry<any>>();
+  private _inFlight = new Map<string, Promise<any>>();
 
   constructor(supabaseUrl: string, supabaseAnonKey: string, options?: any) {
     this.supabase = createClient(supabaseUrl, supabaseAnonKey, options);
   }
 
-  // --- Public Read APIs ---
+  /**
+   * Clears in-memory client cache matching an optional key prefix
+   */
+  public invalidateClientCache(prefix?: string): void {
+    if (!prefix) {
+      this._cache.clear();
+      return;
+    }
+    for (const key of this._cache.keys()) {
+      if (key.startsWith(prefix) || key.includes(prefix)) {
+        this._cache.delete(key);
+      }
+    }
+  }
+
+  /**
+   * Helper executing fetch with single-flight request coalescing and in-memory TTL caching
+   */
+  private async _fetchWithCache<T>(
+    cacheKey: string,
+    ttlMs: number,
+    fetcher: () => Promise<{ data: T | null; error: any }>
+  ): Promise<{ data: T | null; error: any }> {
+    // 1. Check in-memory session cache
+    const cached = this._cache.get(cacheKey);
+    if (cached && cached.expiresAt > Date.now()) {
+      return { data: cached.data as T, error: null };
+    }
+
+    // 2. Check in-flight promise to coalesce simultaneous requests
+    const inFlight = this._inFlight.get(cacheKey);
+    if (inFlight) {
+      return inFlight;
+    }
+
+    // 3. Execute fetcher and record in in-flight map
+    const promise = (async () => {
+      try {
+        const result = await fetcher();
+        if (!result.error && result.data !== null && result.data !== undefined) {
+          this._cache.set(cacheKey, {
+            data: result.data,
+            expiresAt: Date.now() + ttlMs
+          });
+        }
+        return result;
+      } finally {
+        this._inFlight.delete(cacheKey);
+      }
+    })();
+
+    this._inFlight.set(cacheKey, promise);
+    return promise;
+  }
+
+  /**
+   * Determines if the current environment should route through the edge Worker.
+   * Returns true in production (lpuevents.live or wrangler dev port 8787).
+   * Returns false in local development (localhost:3000 without Worker).
+   */
+  private _isEdgeEnvironment(): boolean {
+    if (typeof window === 'undefined' || !window.location) return false;
+    const hostname = window.location.hostname;
+    return (
+      hostname === 'lpuevents.live' ||
+      hostname.endsWith('.lpuevents.live') ||
+      window.location.port === '8787'
+    );
+  }
+
+  /**
+   * Fetch from the Cloudflare Edge Worker public API.
+   * In production: always uses /api/public/* (never falls back to Supabase).
+   * In development: uses the provided fallback function.
+   */
+  private async _fetchPublic<T>(
+    edgePath: string,
+    fallback: () => Promise<{ data: T | null; error: any }>
+  ): Promise<{ data: T | null; error: any }> {
+    if (this._isEdgeEnvironment()) {
+      const res = await fetch(`/api/public/${edgePath.replace(/^\//, '')}`, {
+        headers: { 'Accept': 'application/json' },
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        return { data: data as T, error: null };
+      }
+
+      // In production, propagate edge errors — do NOT silently fall back to Supabase
+      const errorText = await res.text().catch(() => 'Edge request failed');
+      return {
+        data: null,
+        error: {
+          message: `Edge API error (${res.status}): ${errorText.substring(0, 200)}`,
+          code: 'EDGE_API_ERROR',
+          status: res.status,
+        },
+      };
+    }
+
+    // Local development fallback
+    return fallback();
+  }
+
+  /**
+   * Normalize a search query string: trim, lowercase, collapse whitespace.
+   */
+  private _normalizeSearch(query: string): string {
+    return query
+      .trim()
+      .toLowerCase()
+      .replace(/\s+/g, ' ')
+      .replace(/^[^\w]+|[^\w]+$/g, '')
+      .substring(0, 100);
+  }
+
+  // =========================================================================
+  // --- Public Read APIs (Edge-Cached & Minimally Projected) ---
+  // =========================================================================
+
+  /**
+   * Fetch the entire homepage bundle in a single request.
+   * Returns all homepage data (categories, carousel, featured, trending, ads, settings, events).
+   */
+  async fetchHomepageBundle(): Promise<{ data: HomepageBundleData | null; error: any }> {
+    return this._fetchWithCache<HomepageBundleData>('public:homepage:bundle', 60_000, async () => {
+      return this._fetchPublic<HomepageBundleData>('homepage', async () => {
+        // Dev fallback: fetch all individually and assemble
+        const [cats, carousel, featured, trending, ads, settings, events] = await Promise.all([
+          this.fetchCategories(),
+          this.fetchHomepageCarousel(),
+          this.fetchFeaturedEvents(),
+          this.fetchTrendingEvents(),
+          this.fetchActiveAdvertisements(),
+          this.fetchGlobalSettings(),
+          this.fetchEventFeed(),
+        ]);
+        return {
+          data: {
+            categories: cats.data || [],
+            carousel: carousel.data || [],
+            featured: featured.data || [],
+            trending: trending.data || [],
+            advertisements: ads.data || [],
+            settings: settings.data || [],
+            events: events.data || [],
+          },
+          error: null,
+        };
+      });
+    });
+  }
 
   async fetchCategories(): Promise<{ data: CategoryFeedItem[] | null; error: any }> {
-    const { data, error } = await this.supabase
-      .from('categories')
-      .select('id,key,name,sort_order,subcategories(id,key,name,sort_order)')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true })
-      .order('sort_order', { referencedTable: 'subcategories', ascending: true });
-    return { data: data as CategoryFeedItem[] | null, error };
+    return this._fetchWithCache<CategoryFeedItem[]>('public:categories', 300_000, async () => {
+      return this._fetchPublic<CategoryFeedItem[]>('categories', async () => {
+        const { data, error } = await this.supabase
+          .from('categories')
+          .select('id,key,name,sort_order,subcategories(id,key,name,sort_order)')
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true })
+          .order('sort_order', { referencedTable: 'subcategories', ascending: true });
+        return { data: data as CategoryFeedItem[] | null, error };
+      });
+    });
   }
 
   async fetchEventFeed(filters?: {
     category_id?: string;
     subcategory_id?: string;
     pricing_type?: string;
+    timeline?: string;
+    date?: string;
     limit?: number;
     offset?: number;
     show_past?: boolean;
   }): Promise<{ data: EventFeedItem[] | null; error: any }> {
-    const nowIso = new Date().toISOString();
+    const limit = Math.min(Math.max(filters?.limit ?? 20, 1), 20);
+    const offset = Math.max(filters?.offset ?? 0, 0);
+    const catId = filters?.category_id || '';
+    const subId = filters?.subcategory_id || '';
+    const priceType = filters?.pricing_type || '';
+    const timeline = filters?.timeline || '';
+    const date = filters?.date || '';
+    const showPast = Boolean(filters?.show_past);
 
-    if (filters?.show_past) {
-      let query = this.supabase
-        .from('events')
-        .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key,bucket),organizations(name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
-        .in('status', ['PUBLISHED', 'COMPLETED'])
-        .or(`status.eq.COMPLETED,end_at.lt.${nowIso}`)
-        .order('end_at', { ascending: false });
+    const cacheKey = `public:events:feed:${catId}:${subId}:${priceType}:${timeline}:${date}:${showPast}:${limit}:${offset}`;
 
-      if (filters?.category_id) query = query.eq('category_id', filters.category_id);
-      if (filters?.subcategory_id) query = query.eq('subcategory_id', filters.subcategory_id);
-      if (filters?.pricing_type) query = query.eq('pricing_type', filters.pricing_type);
-      if (filters?.limit) query = query.limit(filters.limit);
-      if (filters?.offset) query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
+    return this._fetchWithCache<EventFeedItem[]>(cacheKey, 60_000, async () => {
+      const edgeQueryParams = new URLSearchParams();
+      if (catId) edgeQueryParams.set('category_id', catId);
+      if (subId) edgeQueryParams.set('subcategory_id', subId);
+      if (priceType) edgeQueryParams.set('pricing_type', priceType);
+      if (timeline) edgeQueryParams.set('timeline', timeline);
+      if (date) edgeQueryParams.set('date', date);
+      if (showPast) edgeQueryParams.set('show_past', 'true');
+      edgeQueryParams.set('limit', String(limit));
+      edgeQueryParams.set('offset', String(offset));
 
-      const { data, error } = await query;
-      const sanitized = data
-        ? (data as any[]).filter(
-            (evt) =>
-              evt.status !== 'CANCELLED' &&
-              evt.status !== 'DELETED' &&
-              !evt.deleted_at &&
-              (evt.status === 'COMPLETED' || new Date(evt.end_at) < new Date(nowIso))
-          )
-        : null;
-      return { data: sanitized as EventFeedItem[] | null, error };
-    } else {
-      let query = this.supabase
-        .from('events')
-        .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key,bucket),organizations(name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
-        .eq('status', 'PUBLISHED')
-        .order('start_at', { ascending: true });
+      return this._fetchPublic<EventFeedItem[]>(
+        `events?${edgeQueryParams.toString()}`,
+        async () => {
+          const projection =
+            'id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)';
 
-      if (filters?.category_id) query = query.eq('category_id', filters.category_id);
-      if (filters?.subcategory_id) query = query.eq('subcategory_id', filters.subcategory_id);
-      if (filters?.pricing_type) query = query.eq('pricing_type', filters.pricing_type);
-      if (filters?.limit) query = query.limit(filters.limit);
-      if (filters?.offset) query = query.range(filters.offset, filters.offset + (filters.limit || 10) - 1);
+          let query = this.supabase.from('events').select(projection);
 
-      const { data, error } = await query;
-      const sanitized = data
-        ? (data as any[]).filter((evt) => evt.status === 'PUBLISHED' && !evt.deleted_at)
-        : null;
-      return { data: sanitized as EventFeedItem[] | null, error };
-    }
+          if (showPast) {
+            query = query
+              .in('status', ['PUBLISHED', 'COMPLETED'])
+              .order('end_at', { ascending: false });
+          } else {
+            query = query
+              .eq('status', 'PUBLISHED')
+              .order('start_at', { ascending: true });
+          }
+
+          if (catId) query = query.eq('category_id', catId);
+          if (subId) query = query.eq('subcategory_id', subId);
+          if (priceType) query = query.eq('pricing_type', priceType);
+
+          query = query.range(offset, offset + limit - 1);
+
+          const { data, error } = await query;
+          const sanitized = data
+            ? (data as any[]).filter((evt) => evt.status !== 'CANCELLED' && evt.status !== 'DELETED')
+            : null;
+          return { data: sanitized as EventFeedItem[] | null, error };
+        }
+      );
+    });
   }
 
   async searchEvents(
@@ -109,45 +298,102 @@ export class LpuEventsClient {
     } = 20,
     offsetCount = 0
   ): Promise<{ data: EventFeedItem[] | null; error: any }> {
+    const cleanQuery = this._normalizeSearch(queryText);
+    if (!cleanQuery || cleanQuery.length < 2) {
+      return { data: [], error: null };
+    }
+
     const isOptionsObj = typeof optionsOrLimit === 'object' && optionsOrLimit !== null;
-    const limit = isOptionsObj ? optionsOrLimit.limit ?? 20 : optionsOrLimit;
-    const offset = isOptionsObj ? optionsOrLimit.offset ?? 0 : offsetCount;
+    const limit = Math.min(Math.max(isOptionsObj ? optionsOrLimit.limit ?? 20 : optionsOrLimit, 1), 20);
+    const offset = Math.max(isOptionsObj ? optionsOrLimit.offset ?? 0 : offsetCount, 0);
     const categoryId = isOptionsObj ? optionsOrLimit.category_id || null : null;
     const subcategoryId = isOptionsObj ? optionsOrLimit.subcategory_id || null : null;
     const pricingType = isOptionsObj ? optionsOrLimit.pricing_type || null : null;
-    const timeline = isOptionsObj ? optionsOrLimit.timeline || null : null;
-    const targetDate = isOptionsObj ? optionsOrLimit.target_date || null : null;
-    const showPast = isOptionsObj ? optionsOrLimit.show_past ?? false : false;
     const eventNameOnly = isOptionsObj ? Boolean(optionsOrLimit.event_name_only ?? optionsOrLimit.eventNameOnly ?? false) : false;
 
-    const { data, error } = await this.supabase
-      .rpc('search_events', {
-        query_text: queryText,
-        limit_count: limit,
-        offset_count: offset,
-        p_category_id: categoryId,
-        p_subcategory_id: subcategoryId,
-        p_pricing_type: pricingType,
-        p_timeline: timeline,
-        p_target_date: targetDate,
-        p_show_past: showPast,
-        p_event_name_only: eventNameOnly
-      });
-    return { data: data as EventFeedItem[] | null, error };
+    const cacheKey = `public:search:${cleanQuery}:${categoryId || ''}:${subcategoryId || ''}:${pricingType || ''}:${limit}:${offset}:${eventNameOnly}`;
+
+    return this._fetchWithCache<EventFeedItem[]>(cacheKey, 60_000, async () => {
+      const edgeQueryParams = new URLSearchParams();
+      edgeQueryParams.set('q', cleanQuery);
+      if (categoryId) edgeQueryParams.set('category_id', categoryId);
+      if (subcategoryId) edgeQueryParams.set('subcategory_id', subcategoryId);
+      if (pricingType) edgeQueryParams.set('pricing_type', pricingType);
+      edgeQueryParams.set('limit', String(limit));
+      edgeQueryParams.set('offset', String(offset));
+      if (eventNameOnly) edgeQueryParams.set('event_name_only', 'true');
+
+      return this._fetchPublic<EventFeedItem[]>(
+        `search?${edgeQueryParams.toString()}`,
+        async () => {
+          const { data, error } = await this.supabase.rpc('search_events', {
+            query_text: cleanQuery,
+            limit_count: limit,
+            offset_count: offset,
+            p_category_id: categoryId,
+            p_subcategory_id: subcategoryId,
+            p_pricing_type: pricingType,
+            p_timeline: null,
+            p_target_date: null,
+            p_show_past: false,
+            p_event_name_only: eventNameOnly
+          });
+          return { data: data as EventFeedItem[] | null, error };
+        }
+      );
+    });
   }
 
-  async fetchEventDetails(id: string): Promise<{ data: Event | null; error: any }> {
-    const { data, error } = await this.supabase
-      .from('events')
-      .select('*,media_assets:banner_media_id(id,object_key,bucket),organizations(*),categories(name,key),subcategories(name,key),event_content_sections(*)')
-      .eq('id', id)
-      .single();
+  async fetchEventDetails(idOrSlug: string): Promise<{ data: Event | null; error: any }> {
+    if (!idOrSlug) return { data: null, error: { message: 'Missing event identifier' } };
 
-    if (data && (data.status === 'CANCELLED' || data.status === 'DELETED' || (data as any).deleted_at)) {
-      return { data: null, error: { message: 'Event has been cancelled or removed.', code: 'EVENT_NOT_AVAILABLE' } };
-    }
+    const clean = idOrSlug.trim();
+    const isUuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(clean);
 
-    return { data, error } as any;
+    return this._fetchWithCache<Event>(`public:event:detail:${clean}`, 120_000, async () => {
+      const projection =
+        'id,name,description,start_at,end_at,venue_name,registration_mode,external_registration_url,pricing_type,price_amount,registration_format,capacity_limit,banner_media_id,category_id,subcategory_id,organization_id,status,created_at,updated_at,' +
+        'media_assets:banner_media_id(id,object_key),' +
+        'organizations(id,name),' +
+        'categories(id,name,key),' +
+        'subcategories(id,name,key),' +
+        'event_content_sections(id,section_type,title,content,sort_order)';
+
+      if (isUuid) {
+        return this._fetchPublic<Event>(`events/${clean}`, async () => {
+          const { data, error } = await this.supabase
+            .from('events')
+            .select(projection)
+            .eq('id', clean)
+            .single();
+
+          const event = data as any;
+          if (event && (event.status === 'CANCELLED' || event.status === 'DELETED')) {
+            return { data: null, error: { message: 'Event has been cancelled or removed.', code: 'EVENT_NOT_AVAILABLE' } };
+          }
+
+          return { data, error } as any;
+        });
+      }
+
+      // Clean slug fallback lookup:
+      const words = clean.split('-').filter(w => w.length > 2);
+      const queryPattern = words.length > 0 ? words[0] : clean.replace(/-/g, ' ');
+
+      const { data, error } = await this.supabase
+        .from('events')
+        .select(projection)
+        .eq('status', 'PUBLISHED')
+        .ilike('name', `%${queryPattern}%`)
+        .limit(10);
+
+      if (error || !data || data.length === 0) {
+        return { data: null, error: error || { message: 'Event not found', code: 'EVENT_NOT_FOUND' } };
+      }
+
+      const match = (data as any[]).find(e => slugify(e.name) === clean) || data[0];
+      return { data: match as any, error: null };
+    });
   }
 
   // --- View Tracking with Client-Side Deduplication (Minimal DB Stress) ---
@@ -156,10 +402,8 @@ export class LpuEventsClient {
   async incrementEventView(id: string): Promise<void> {
     if (!id) return;
 
-    // Fast in-memory deduplication
     if (this._viewedEventsSession.has(id)) return;
 
-    // Session-based deduplication (persists per browser tab session)
     try {
       if (typeof window !== 'undefined' && window.sessionStorage) {
         const key = `lpu_viewed_${id}`;
@@ -175,158 +419,182 @@ export class LpuEventsClient {
 
     this._viewedEventsSession.add(id);
 
-    // Asynchronous atomic RPC dispatch with fire-and-forget (zero blocking overhead)
     try {
-      await this.supabase.rpc('increment_event_view', { target_event_id: id });
+      if (this._isEdgeEnvironment()) {
+        // Route through Worker to avoid direct Supabase call
+        await fetch('/api/public/view', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ event_id: id }),
+        });
+      } else {
+        await this.supabase.rpc('increment_event_view', { target_event_id: id });
+      }
     } catch {
       // Non-blocking telemetry error suppression
     }
   }
 
   async fetchHomepageCarousel(): Promise<{ data: CarouselItemFeedItem[] | null; error: any }> {
-    const { data, error } = await this.supabase
-      .from('carousel_items')
-      .select(`
-        *,
-        events:event_id ( id, name, description, start_at, end_at, venue_name, registration_mode, pricing_type, banner_media_id, media_assets:banner_media_id(id,object_key,bucket), status, organizations ( name ), categories ( name ) ),
-        advertisements:advertisement_id ( id, name, redirect_url, media_id, status ),
-        event_memories:memory_id ( id, title, description, cover_media_id, status, media_assets:cover_media_id ( id, object_key ), events ( id, name, description, start_at, venue_name, banner_media_id, media_assets:banner_media_id(id,object_key,bucket), organizations ( name ) ) ),
-        media_assets:media_id ( id, bucket, object_key )
-      `)
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true });
+    return this._fetchWithCache<CarouselItemFeedItem[]>('public:carousel', 120_000, async () => {
+      return this._fetchPublic<CarouselItemFeedItem[]>('carousel', async () => {
+        const projection =
+          'id,item_type,event_id,advertisement_id,media_id,sort_order,is_active,start_at,end_at,display_duration_ms,custom_title,custom_subtitle,custom_cta_text,custom_cta_url,badge_text,' +
+          'events:event_id(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,banner_media_id,status,media_assets:banner_media_id(id,object_key),organizations(name),categories(name)),' +
+          'advertisements:advertisement_id(id,name,redirect_url,media_id,status),' +
+          'media_assets:media_id(id,object_key)';
 
-    if (error || !data) {
-      return { data: null, error };
-    }
+        const { data, error } = await this.supabase
+          .from('carousel_items')
+          .select(projection)
+          .eq('is_active', true)
+          .order('sort_order', { ascending: true });
 
-    const now = new Date();
-    const sanitized = (data as any[]).filter((slide) => {
-      // Check date window if set
-      if (slide.start_at && new Date(slide.start_at) > now) return false;
-      if (slide.end_at && new Date(slide.end_at) < now) return false;
+        if (error || !data) return { data: null, error };
 
-      // Check referenced entity status
-      if (slide.item_type === 'EVENT') {
-        if (!slide.events) return false;
-        if (
-          slide.events.status === 'CANCELLED' ||
-          slide.events.status === 'DELETED' ||
-          slide.events.deleted_at
-        ) {
-          return false;
-        }
-      } else if (slide.item_type === 'ADVERTISEMENT') {
-        if (!slide.advertisements || slide.advertisements.status !== 'active') {
-          return false;
-        }
-      } else if (slide.item_type === 'MEMORY') {
-        if (!slide.event_memories) return false;
-      }
-      return true;
+        const now = new Date();
+        const sanitized = (data as any[]).filter((slide) => {
+          if (slide.start_at && new Date(slide.start_at) > now) return false;
+          if (slide.end_at && new Date(slide.end_at) < now) return false;
+          if (slide.item_type === 'EVENT') {
+            if (!slide.events || slide.events.status !== 'PUBLISHED') return false;
+          } else if (slide.item_type === 'ADVERTISEMENT') {
+            if (!slide.advertisements || slide.advertisements.status !== 'active') return false;
+          }
+          return true;
+        });
+
+        return { data: sanitized as CarouselItemFeedItem[], error: null };
+      });
     });
-
-    return { data: sanitized as CarouselItemFeedItem[], error: null };
   }
 
   async fetchFeaturedEvents(): Promise<{ data: any[] | null; error: any }> {
-    const { data, error } = await this.supabase
-      .from('featured_events')
-      .select('event_id,sort_order,events(*,organizations(*))')
-      .order('sort_order', { ascending: true });
-    const sanitized = data
-      ? data.filter(
-          (fe: any) =>
-            fe.events &&
-            (fe.events as any).status === 'PUBLISHED' &&
-            !(fe.events as any).deleted_at
-        )
-      : null;
-    return { data: sanitized, error };
+    return this._fetchWithCache<any[]>('public:featured', 120_000, async () => {
+      return this._fetchPublic<any[]>('featured', async () => {
+        const projection =
+          'event_id,sort_order,events(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(id,name))';
+
+        const { data, error } = await this.supabase
+          .from('featured_events')
+          .select(projection)
+          .order('sort_order', { ascending: true });
+
+        const sanitized = data
+          ? data.filter((fe: any) => fe.events && fe.events.status === 'PUBLISHED')
+          : null;
+        return { data: sanitized, error };
+      });
+    });
   }
 
   async fetchTrendingEvents(): Promise<{ data: EventFeedItem[] | null; error: any }> {
-    const { data, error } = await this.supabase
-      .from('trending_events')
-      .select('event_id,sort_order,events(*,organizations(name),categories(name,key),subcategories(name,key))')
-      .order('sort_order', { ascending: true });
+    return this._fetchWithCache<EventFeedItem[]>('public:trending', 120_000, async () => {
+      return this._fetchPublic<EventFeedItem[]>('trending', async () => {
+        const projection =
+          'event_id,sort_order,events(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(id,name),categories(name,key),subcategories(name,key))';
 
-    if (error || !data) {
-      return { data: null, error };
-    }
+        const { data, error } = await this.supabase
+          .from('trending_events')
+          .select(projection)
+          .order('sort_order', { ascending: true });
 
-    const now = new Date();
-    const sanitized: EventFeedItem[] = (data as any[])
-      .filter(
-        (te) =>
-          te.events &&
-          te.events.status === 'PUBLISHED' &&
-          !te.events.deleted_at &&
-          new Date(te.events.end_at) >= now
-      )
-      .map((te) => ({
-        ...te.events,
-        is_trending: true,
-        trending_sort_order: te.sort_order
-      }));
+        if (error || !data) return { data: null, error };
 
-    return { data: sanitized, error: null };
+        const now = new Date();
+        const sanitized: EventFeedItem[] = (data as any[])
+          .filter(
+            (te) =>
+              te.events &&
+              te.events.status === 'PUBLISHED' &&
+              new Date(te.events.end_at) >= now
+          )
+          .map((te) => ({
+            ...te.events,
+            is_trending: true,
+            trending_sort_order: te.sort_order
+          }));
+
+        return { data: sanitized, error: null };
+      });
+    });
   }
 
   async fetchActiveAdvertisements(): Promise<{ data: AdvertisementFeedItem[] | null; error: any }> {
-    const { data, error } = await this.supabase
-      .from('advertisements')
-      .select('*,advertisement_positions(*)')
-      .eq('status', 'active')
-      .order('created_at', { ascending: false });
-    return { data: data as AdvertisementFeedItem[] | null, error };
-  }
+    return this._fetchWithCache<AdvertisementFeedItem[]>('public:ads', 180_000, async () => {
+      return this._fetchPublic<AdvertisementFeedItem[]>('advertisements', async () => {
+        const projection =
+          'id,name,media_id,redirect_url,start_at,end_at,status,media_assets:media_id(id,object_key)';
 
-  async fetchEventMemories(): Promise<{ data: EventMemoryFeedItem[] | null; error: any }> {
-    const { data, error } = await this.supabase
-      .from('event_memories')
-      .select('*, events(id, name, status, start_at, venue_name, organizations(name), categories(name)), media_assets:cover_media_id(*)')
-      .eq('status', 'PUBLISHED')
-      .order('created_at', { ascending: false });
-    const sanitized = data
-      ? (data as any[]).filter(
-          (mem) =>
-            !mem.events ||
-            ((mem.events as any).status !== 'CANCELLED' &&
-              (mem.events as any).status !== 'DELETED' &&
-              !(mem.events as any).deleted_at)
-        )
-      : null;
-    return { data: sanitized as EventMemoryFeedItem[] | null, error };
-  }
+        const { data, error } = await this.supabase
+          .from('advertisements')
+          .select(projection)
+          .eq('status', 'active')
+          .order('created_at', { ascending: false });
 
-  async fetchSponsors(): Promise<{ data: SponsorFeedItem[] | null; error: any }> {
-    const { data, error } = await this.supabase
-      .from('sponsors')
-      .select('*')
-      .eq('is_active', true)
-      .order('sort_order', { ascending: true });
-    return { data: data as SponsorFeedItem[] | null, error };
+        return { data: data as AdvertisementFeedItem[] | null, error };
+      });
+    });
   }
 
   async fetchGlobalSettings(): Promise<{ data: { key: string; value: any }[] | null; error: any }> {
-    const { data, error } = await this.supabase
-      .from('global_settings')
-      .select('key,value');
-    return { data, error } as any;
+    return this._fetchWithCache<{ key: string; value: any }[]>('public:settings:all', 300_000, async () => {
+      return this._fetchPublic<{ key: string; value: any }[]>('settings', async () => {
+        const { data, error } = await this.supabase
+          .from('global_settings')
+          .select('key,value');
+        return { data, error } as any;
+      });
+    });
   }
 
   async fetchHappeningTodayConfig(): Promise<{ data: any | null; error: any }> {
-    const { data, error } = await this.supabase
-      .from('global_settings')
-      .select('value')
-      .eq('key', 'happening_today_config')
-      .maybeSingle();
-    return { data: data?.value || null, error };
+    const { data: allSettings, error } = await this.fetchGlobalSettings();
+    if (error || !allSettings) return { data: null, error };
+    const row = allSettings.find((s) => s.key === 'happening_today_config');
+    return { data: row?.value || null, error: null };
   }
 
+  // =========================================================================
+  // --- Protected Admin/Organizer APIs (Never Cached) ---
+  // =========================================================================
 
-  // --- Protected Admin/Organizer APIs (No Cache-Control Headers) ---
+  /**
+   * Dispatches cache invalidation to the STUDENT site's Worker.
+   * In production, targets https://lpuevents.live/api/cache/invalidate.
+   * Includes authentication via shared secret.
+   */
+  private async _dispatchTargetedEdgeInvalidation(tags: string[]): Promise<void> {
+    this.invalidateClientCache();
+    if (typeof window !== 'undefined') {
+      try {
+        // Read the invalidation secret from env
+        let secret = '';
+        try {
+          secret = (import.meta as any).env?.VITE_CACHE_INVALIDATION_SECRET || '';
+        } catch { /* env unavailable */ }
+
+        // Determine the student site invalidation URL
+        const studentSiteUrl = 'https://lpuevents.live';
+        const invalidationUrl = `${studentSiteUrl}/api/cache/invalidate`;
+
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (secret) {
+          headers['X-Invalidation-Secret'] = secret;
+        }
+
+        await fetch(invalidationUrl, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ tags }),
+        });
+      } catch {
+        // Non-blocking telemetry
+      }
+    }
+  }
 
   async submitAccessRequest(orgName: string, remarks?: string): Promise<{ data: any; error: any }> {
     return this.supabase
@@ -353,53 +621,59 @@ export class LpuEventsClient {
   }
 
   async publishEvent(payload: PublishEventPayload, sections: ContentSectionInput[]): Promise<{ data: any; error: any }> {
-    return this.supabase
-      .rpc('publish_event', {
-        p_event_payload: payload,
-        p_content_sections: sections
-      });
+    const res = await this.supabase.rpc('publish_event', {
+      p_event_payload: payload,
+      p_content_sections: sections
+    });
+    if (!res.error) {
+      this._dispatchTargetedEdgeInvalidation(['events', 'homepage']);
+    }
+    return res;
   }
 
   async editEvent(id: string, payload: PublishEventPayload, sections: ContentSectionInput[]): Promise<{ data: any; error: any }> {
-    return this.supabase
-      .rpc('edit_event', {
-        p_event_id: id,
-        p_event_payload: payload,
-        p_content_sections: sections
-      });
+    const res = await this.supabase.rpc('edit_event', {
+      p_event_id: id,
+      p_event_payload: payload,
+      p_content_sections: sections
+    });
+    if (!res.error) {
+      this._dispatchTargetedEdgeInvalidation(['events', 'homepage', `event:${id}`]);
+    }
+    return res;
   }
 
   async cancelEvent(id: string, reason: string): Promise<{ data: any; error: any }> {
-    return this.supabase
-      .rpc('cancel_event', {
-        p_event_id: id,
-        p_reason: reason
-      });
+    const res = await this.supabase.rpc('cancel_event', {
+      p_event_id: id,
+      p_reason: reason
+    });
+    if (!res.error) {
+      this._dispatchTargetedEdgeInvalidation(['events', 'homepage', `event:${id}`]);
+    }
+    return res;
   }
 
   async requestMediaUpload(mediaType: string, mimeType: string, fileSize: number): Promise<{ data: any; error: any }> {
-    return this.supabase
-      .rpc('request_media_upload', {
-        p_media_type: mediaType,
-        p_mime_type: mimeType,
-        p_file_size_bytes: fileSize
-      });
+    return this.supabase.rpc('request_media_upload', {
+      p_media_type: mediaType,
+      p_mime_type: mimeType,
+      p_file_size_bytes: fileSize
+    });
   }
 
   async confirmMediaUpload(mediaId: string): Promise<{ data: any; error: any }> {
-    return this.supabase
-      .rpc('confirm_media_upload', {
-        p_media_id: mediaId
-      });
+    return this.supabase.rpc('confirm_media_upload', {
+      p_media_id: mediaId
+    });
   }
 
-
-  // --- Super Admin Content Management RPCs (Phase 6.1 Security Hardening) ---
+  // --- Super Admin Content Management RPCs ---
 
   async manageCategory(action: string, params?: {
     id?: string; key?: string; name?: string; sort_order?: number; is_active?: boolean;
   }): Promise<{ data: any; error: any }> {
-    return this.supabase.rpc('manage_category', {
+    const res = await this.supabase.rpc('manage_category', {
       p_action: action,
       p_id: params?.id || null,
       p_key: params?.key || null,
@@ -407,12 +681,16 @@ export class LpuEventsClient {
       p_sort_order: params?.sort_order ?? 0,
       p_is_active: params?.is_active ?? true
     });
+    if (!res.error) {
+      this._dispatchTargetedEdgeInvalidation(['categories', 'taxonomy', 'events']);
+    }
+    return res;
   }
 
   async manageSubcategory(action: string, params?: {
     id?: string; category_id?: string; key?: string; name?: string; sort_order?: number;
   }): Promise<{ data: any; error: any }> {
-    return this.supabase.rpc('manage_subcategory', {
+    const res = await this.supabase.rpc('manage_subcategory', {
       p_action: action,
       p_id: params?.id || null,
       p_category_id: params?.category_id || null,
@@ -420,13 +698,17 @@ export class LpuEventsClient {
       p_name: params?.name || null,
       p_sort_order: params?.sort_order ?? 0
     });
+    if (!res.error) {
+      this._dispatchTargetedEdgeInvalidation(['categories', 'taxonomy', 'events']);
+    }
+    return res;
   }
 
   async manageAdvertisement(action: string, params?: {
     id?: string; name?: string; media_id?: string; redirect_url?: string;
     start_at?: string; end_at?: string; status?: string;
   }): Promise<{ data: any; error: any }> {
-    return this.supabase.rpc('manage_advertisement', {
+    const res = await this.supabase.rpc('manage_advertisement', {
       p_action: action,
       p_id: params?.id || null,
       p_name: params?.name || null,
@@ -436,87 +718,42 @@ export class LpuEventsClient {
       p_end_at: params?.end_at || null,
       p_status: params?.status || null
     });
+    if (!res.error) {
+      this._dispatchTargetedEdgeInvalidation(['advertisements', 'homepage']);
+    }
+    return res;
   }
 
   async manageCarouselItem(action: string, params?: {
     id?: string; is_active?: boolean;
   }): Promise<{ data: any; error: any }> {
-    return this.supabase.rpc('manage_carousel_item', {
+    const res = await this.supabase.rpc('manage_carousel_item', {
       p_action: action,
       p_id: params?.id || null,
       p_is_active: params?.is_active ?? null
     });
-  }
-
-  async manageSponsor(action: string, params?: {
-    id?: string; name?: string; media_id?: string; website_url?: string; sort_order?: number;
-  }): Promise<{ data: any; error: any }> {
-    return this.supabase.rpc('manage_sponsor', {
-      p_action: action,
-      p_id: params?.id || null,
-      p_name: params?.name || null,
-      p_media_id: params?.media_id || null,
-      p_website_url: params?.website_url || null,
-      p_sort_order: params?.sort_order ?? 0
-    });
-  }
-
-  async manageMemory(action: string, params?: {
-    id?: string; status?: string;
-  }): Promise<{ data: any; error: any }> {
-    return this.supabase.rpc('manage_memory', {
-      p_action: action,
-      p_id: params?.id || null,
-      p_status: params?.status || null
-    });
+    if (!res.error) {
+      this._dispatchTargetedEdgeInvalidation(['carousel', 'homepage']);
+    }
+    return res;
   }
 
   async manageGlobalSetting(action: string, params?: {
     key?: string; value?: any; description?: string;
   }): Promise<{ data: any; error: any }> {
-    return this.supabase.rpc('manage_global_setting', {
+    const res = await this.supabase.rpc('manage_global_setting', {
       p_action: action,
       p_key: params?.key || null,
       p_value: params?.value ?? null,
       p_description: params?.description || null
     });
-  }
-
-
-  // --- Phase 7 Transactional Outbox & Notification RPCs ---
-
-  async claimOutboxEvents(batchSize: number = 50): Promise<{ data: any; error: any }> {
-    return this.supabase.rpc('claim_outbox_events', { p_batch_size: batchSize });
-  }
-
-  async completeOutboxEvent(eventId: string): Promise<{ data: any; error: any }> {
-    return this.supabase.rpc('complete_outbox_event', { p_event_id: eventId });
-  }
-
-  async failOutboxEvent(eventId: string, errorMessage: string): Promise<{ data: any; error: any }> {
-    return this.supabase.rpc('fail_outbox_event', { p_event_id: eventId, p_error_message: errorMessage });
-  }
-
-  async retryOutboxEvent(eventId: string): Promise<{ data: any; error: any }> {
-    return this.supabase.rpc('retry_outbox_event', { p_event_id: eventId });
-  }
-
-  async getOutboxEvents(filters?: { status?: string; eventType?: string }): Promise<{ data: any; error: any }> {
-    let query = this.supabase.from('outbox_events').select('*').order('created_at', { ascending: false }).limit(50);
-    if (filters?.status && filters.status !== 'ALL') {
-      query = query.eq('status', filters.status);
+    if (!res.error) {
+      this._dispatchTargetedEdgeInvalidation(['settings', 'homepage']);
     }
-    if (filters?.eventType && filters.eventType !== 'ALL') {
-      query = query.eq('event_type', filters.eventType);
-    }
-    return query;
+    return res;
   }
 
-  async cleanupProcessedOutboxEvents(retentionDays: number = 7): Promise<{ data: any; error: any }> {
-    return this.supabase.rpc('cleanup_processed_outbox_events', { p_retention_days: retentionDays });
-  }
-
-  // --- Phase 8 Resource Versioning RPCs & Utilities ---
+  // --- Resource Versioning RPCs & Utilities ---
 
   async getResourceVersions(): Promise<{ data: ResourceVersionMap | null; error: any }> {
     const { data: rows, error } = await this.supabase.rpc('get_resource_versions');
@@ -527,9 +764,7 @@ export class LpuEventsClient {
       categories: 1,
       ads: 1,
       featured: 1,
-      memories: 1,
       carousel: 1,
-      sponsors: 1,
       settings: 1
     };
 
@@ -556,5 +791,3 @@ export function buildVersionedCacheKey(resource: CanonicalResourceType, version:
   const cleanSuffix = suffix ? `:${suffix.trim()}` : '';
   return `public:${resource}:v${version}${cleanSuffix}`;
 }
-
-

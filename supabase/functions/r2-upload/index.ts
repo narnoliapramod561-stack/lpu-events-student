@@ -5,7 +5,7 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.1";
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from "npm:@aws-sdk/client-s3@3.600.0";
+import { AwsClient } from "https://esm.sh/aws4fetch@1.0.18";
 
 // Explicit Allowed CORS Origins
 const ALLOWED_ORIGINS = [
@@ -38,7 +38,6 @@ interface R2Config {
   secretAccessKey: string;
   bucketName: string;
   publicBaseUrl: string;
-  s3: S3Client;
 }
 
 function getR2Config(): R2Config | null {
@@ -48,17 +47,7 @@ function getR2Config(): R2Config | null {
   const bucketName = Deno.env.get("R2_BUCKET_NAME") || "lpu-events-images";
   const publicBaseUrl = (Deno.env.get("R2_PUBLIC_URL") || "https://images.lpuevents.live").replace(/\/+$/, "");
 
-  const s3 = new S3Client({
-    region: "auto",
-    endpoint: `https://${accountId}.r2.cloudflarestorage.com`,
-    credentials: {
-      accessKeyId: accessKeyId || "anonymous",
-      secretAccessKey: secretAccessKey || "anonymous",
-    },
-    maxAttempts: 1,
-  });
-
-  return { accountId, accessKeyId, secretAccessKey, bucketName, publicBaseUrl, s3 };
+  return { accountId, accessKeyId, secretAccessKey, bucketName, publicBaseUrl };
 }
 
 async function uploadObjectToR2(
@@ -69,76 +58,66 @@ async function uploadObjectToR2(
   cacheControl: string = "public, max-age=31536000, immutable"
 ): Promise<{ success: boolean; error?: string }> {
   const cleanKey = key.replace(/^\/+/, "");
+  let lastError = "";
 
-  // 1. Fast S3 Attempt (single attempt, max 4s timeout using universal Promise.race)
+  // 1. Native AWS SigV4 via aws4fetch (Fast, zero-hang, native to Deno Edge)
   if (r2.accessKeyId && r2.secretAccessKey && r2.accessKeyId !== "anonymous") {
     try {
-      const s3Promise = r2.s3.send(
-        new PutObjectCommand({
-          Bucket: r2.bucketName,
-          Key: cleanKey,
-          Body: body,
-          ContentType: contentType,
-          CacheControl: cacheControl,
-        })
-      );
-      const timeoutPromise = new Promise<never>((_, reject) =>
-        setTimeout(() => reject(new Error("S3 upload timeout after 4s")), 4000)
-      );
-      await Promise.race([s3Promise, timeoutPromise]);
-      return { success: true };
-    } catch (s3Err: any) {
-      console.warn("S3 SDK upload error for key:", cleanKey, s3Err?.message);
-    }
-  }
+      const aws = new AwsClient({
+        accessKeyId: r2.accessKeyId,
+        secretAccessKey: r2.secretAccessKey,
+        service: "s3",
+        region: "auto",
+      });
 
-  // 2. Fast Cloudflare REST API Attempt (max 4s timeout using universal Promise.race)
-  const candidateTokens = [
-    Deno.env.get("CLOUDFLARE_API_TOKEN"),
-    Deno.env.get("R2_ACCESS_KEY_ID"),
-    Deno.env.get("R2_SECRET_ACCESS_KEY"),
-  ].filter(Boolean) as string[];
-
-  for (const token of candidateTokens) {
-    try {
-      const restUrl = `https://api.cloudflare.com/client/v4/accounts/${r2.accountId}/r2/buckets/${r2.bucketName}/objects/${cleanKey}`;
-      const fetchPromise = fetch(restUrl, {
+      const targetUrl = `https://${r2.accountId}.r2.cloudflarestorage.com/${r2.bucketName}/${cleanKey}`;
+      const fetchPromise = aws.fetch(targetUrl, {
         method: "PUT",
         headers: {
-          Authorization: `Bearer ${token}`,
           "Content-Type": contentType,
           "Cache-Control": cacheControl,
         },
         body: body,
       });
-      const timeoutPromise = new Promise<Response>((_, reject) =>
-        setTimeout(() => reject(new Error("REST upload timeout after 4s")), 4000)
-      );
-      const res = await Promise.race([fetchPromise, timeoutPromise]);
 
+      const timeoutPromise = new Promise<Response>((_, reject) =>
+        setTimeout(() => reject(new Error("R2 upload timeout after 5s")), 5000)
+      );
+
+      const res = await Promise.race([fetchPromise, timeoutPromise]);
       if (res.ok) {
         return { success: true };
+      } else {
+        const txt = await res.text().catch(() => "");
+        lastError = `R2 S3 HTTP ${res.status}: ${txt}`;
+        console.warn("R2 S3 upload error:", lastError);
       }
-    } catch (restErr: any) {
-      console.warn("Cloudflare REST API upload attempt error:", restErr?.message);
+    } catch (s3Err: any) {
+      lastError = `R2 S3 Error: ${s3Err?.message || String(s3Err)}`;
+      console.warn("R2 S3 upload exception:", cleanKey, lastError);
     }
+  } else {
+    lastError = "Missing R2_ACCESS_KEY_ID or R2_SECRET_ACCESS_KEY in Edge environment.";
   }
 
-  return { success: false, error: "R2 write timed out or rejected across S3 and REST APIs." };
+  return { success: false, error: lastError || "R2 write rejected." };
 }
 
 async function deleteObjectFromR2(r2: R2Config, key: string): Promise<boolean> {
   try {
     const cleanKey = key.replace(/^\/+/, "");
-    await r2.s3.send(
-      new DeleteObjectCommand({
-        Bucket: r2.bucketName,
-        Key: cleanKey,
-      })
-    );
-    return true;
+    if (!r2.accessKeyId || !r2.secretAccessKey || r2.accessKeyId === "anonymous") return false;
+    const aws = new AwsClient({
+      accessKeyId: r2.accessKeyId,
+      secretAccessKey: r2.secretAccessKey,
+      service: "s3",
+      region: "auto",
+    });
+    const targetUrl = `https://${r2.accountId}.r2.cloudflarestorage.com/${r2.bucketName}/${cleanKey}`;
+    const res = await aws.fetch(targetUrl, { method: "DELETE" });
+    return res.ok;
   } catch (err) {
-    console.error("R2 DeleteObjectCommand failed for key:", key, err);
+    console.warn("R2 delete error:", err);
     return false;
   }
 }
@@ -636,6 +615,8 @@ serve(async (req: Request) => {
       object_key: primaryObjectKey,
       public_url: primaryPublicUrl,
       context,
+      storage_target: targetBucket,
+      r2_diagnostics: r2Error || null,
       variants: finalMetadata.variants,
     }),
     { status: 200, headers: corsHeaders }

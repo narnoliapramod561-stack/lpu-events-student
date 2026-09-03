@@ -9,6 +9,7 @@ import {
   injectAdsIntoSequence 
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
+import { ProgressiveImage } from "./ProgressiveImage";
 import { AdSenseSlot } from "./AdSenseSlot";
 
 const cardVariants: Variants = {
@@ -93,7 +94,7 @@ export const HappeningTodaySliderComponent = ({
   ads?: AdvertisementFeedItem[];
   config?: HappeningTodayConfig | null;
   adSystemConfig?: AdSystemConfig | null;
-  onSelectEvent: (id: string) => void;
+  onSelectEvent: (id: string, name?: string) => void;
 }) => {
   const [[activeIndex, direction], setPage] = useState<[number, number]>([0, 0]);
   const [isHovered, setIsHovered] = useState(false);
@@ -130,7 +131,7 @@ export const HappeningTodaySliderComponent = ({
         eventId: evt.id,
         title: evt.name,
         description: evt.description,
-        image: getEventImage(evt, "hero", 1200),
+        image: getEventImage(evt, "hero", 1920),
         badge: "Happening Today",
         category: evt.categories?.name,
         date: dateString,
@@ -181,7 +182,7 @@ export const HappeningTodaySliderComponent = ({
           id: `ht-ad-${ad.id}-${idx}`,
           title: ad.name,
           description: "Exclusive university partner opportunity & promotion.",
-          image: getEventImage(ad, "hero", 1200),
+          image: getEventImage(ad, "hero", 1920),
           badge: "Sponsored",
           category: "Partner",
           ctaText: "Learn More",
@@ -253,7 +254,7 @@ export const HappeningTodaySliderComponent = ({
         window.location.href = currentSlide.ctaUrl;
       }
     } else if (currentSlide.eventId) {
-      onSelectEvent(currentSlide.eventId);
+      onSelectEvent(currentSlide.eventId, currentSlide.title);
     }
   };
 
@@ -358,13 +359,13 @@ export const HappeningTodaySliderComponent = ({
                   onClick={handleAction}
                   className="md:hidden relative w-full h-full flex flex-col justify-between p-4 pb-4.5 overflow-hidden cursor-pointer group"
                 >
-                  {/* Cinematic Background Image */}
-                  <img
+                  {/* Cinematic Background Image (Instant LQIP -> Full HD Auto-Upgrade) */}
+                  <ProgressiveImage
                     src={currentSlide.image}
                     alt={currentSlide.title}
                     loading="lazy"
-                    decoding="async"
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                    containerClassName="absolute inset-0 w-full h-full"
+                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                   />
 
                   {/* Clean Multi-layered Gradient Scrim */}
@@ -457,11 +458,11 @@ export const HappeningTodaySliderComponent = ({
                     onClick={handleAction}
                     className="relative w-1/2 h-full overflow-hidden cursor-pointer group shrink-0"
                   >
-                    <img
+                    <ProgressiveImage
                       src={currentSlide.image}
                       alt={currentSlide.title}
                       loading="lazy"
-                      decoding="async"
+                      containerClassName="w-full h-full"
                       className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
                     />
 

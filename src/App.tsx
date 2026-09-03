@@ -23,7 +23,10 @@ import {
   trackPageView,
   trackEvent,
   isEventToday,
-  matchesScheduleFilter
+  matchesScheduleFilter,
+  createEventSlug,
+  slugify,
+  extractEventId
 } from "@lpu-events/shared";
 
 export type StudentRoute = 'home' | 'about' | 'privacy' | 'terms' | 'event-details';
@@ -53,10 +56,10 @@ const parseCurrentRoute = (): RouteState => {
 
   const match = window.location.pathname.match(/^\/events\/([^\/?#]+)/);
   if (match && match[1]) {
-    return { route: 'event-details', eventId: decodeURIComponent(match[1]) };
+    return { route: 'event-details', eventId: extractEventId(decodeURIComponent(match[1])) };
   }
   if (eventParam) {
-    return { route: 'event-details', eventId: eventParam };
+    return { route: 'event-details', eventId: extractEventId(eventParam) };
   }
 
   return { route: 'home', eventId: null };
@@ -190,6 +193,15 @@ export default function App() {
   const [appLoading, setAppLoading] = useState(true);
   const searchReqIdRef = useRef(0);
 
+  // Aggregated in-memory events for instant detail-view lookup
+  const allAvailableEvents = useMemo(() => {
+    const map = new Map<string, EventFeedItem>();
+    [...events, ...featuredEvents, ...trendingEvents, ...happeningTodayEvents].forEach(evt => {
+      if (evt && evt.id) map.set(evt.id, evt);
+    });
+    return Array.from(map.values());
+  }, [events, featuredEvents, trendingEvents, happeningTodayEvents]);
+
   // Route state
   const initialRouteState = useMemo(() => parseCurrentRoute(), []);
   const [currentView, setCurrentView] = useState<StudentRoute>(initialRouteState.route);
@@ -221,20 +233,30 @@ export default function App() {
   }, []);
 
   // Event Selection Handler
-  const handleSelectEvent = useCallback((id: string | null) => {
+  const handleSelectEvent = useCallback((id: string | null, name?: string) => {
     if (id) {
+      const cleanId = extractEventId(id);
       if (typeof window !== 'undefined') {
         previousScrollPosRef.current = window.scrollY || document.documentElement.scrollTop || 0;
       }
-      setSelectedEventId(id);
+
+      let eventName = name;
+      if (!eventName) {
+        const found = allAvailableEvents.find(e => e.id === cleanId || slugify(e.name) === cleanId || e.name === cleanId);
+        eventName = found?.name;
+      }
+
+      const slug = createEventSlug(eventName, cleanId);
+
+      setSelectedEventId(slug || cleanId);
       setCurrentView('event-details');
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
         const url = new URL(window.location.href);
-        url.pathname = `/events/${id}`;
+        url.pathname = `/events/${slug}`;
         url.searchParams.delete('event');
         url.searchParams.delete('page');
-        trackPageView(`Event Details: ${id}`);
+        trackPageView(`Event Details: ${eventName || slug}`);
         window.history.pushState({}, '', url.toString());
       }
     } else {
@@ -258,7 +280,7 @@ export default function App() {
         });
       }
     }
-  }, []);
+  }, [allAvailableEvents]);
 
   // Browser back/forward navigation sync
   useEffect(() => {
@@ -387,21 +409,58 @@ export default function App() {
       document.documentElement.classList.remove("dark");
     }
 
-    // Load dynamic global configuration settings
-    const loadSettings = async () => {
+    // Load all homepage data in a single bundled request.
+    // In production, this produces ONE Cloudflare edge request instead of 7 individual Supabase calls.
+    const loadAllData = async () => {
       try {
-        const { data, error } = await lpuClient.fetchGlobalSettings();
-        if (!error && data) {
-          const limitSetting = data.find(s => s.key === "initial_event_limit");
+        const { data: bundle, error } = await lpuClient.fetchHomepageBundle();
+        if (error || !bundle) {
+          console.error("Failed to load homepage bundle:", error);
+          return;
+        }
+
+        // Distribute bundled data to component state
+
+        // Categories
+        if (bundle.categories) setCategories(bundle.categories);
+
+        // Advertisements
+        if (bundle.advertisements) setAds(bundle.advertisements);
+
+        // Featured Events
+        if (bundle.featured) {
+          const resolved: EventFeedItem[] = bundle.featured
+            .map((fe: any) => fe.events || fe)
+            .filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at);
+          setFeaturedEvents(normalizeEventDates(resolved));
+        }
+
+        // Trending Events
+        if (bundle.trending) {
+          const validTrending = bundle.trending.filter(
+            (evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at
+          );
+          setTrendingEvents(normalizeEventDates(validTrending));
+        }
+
+        // Carousel
+        if (bundle.carousel) {
+          setCarouselSlides(bundle.carousel);
+        }
+
+        // Global Settings
+        if (bundle.settings && Array.isArray(bundle.settings)) {
+          const allSettings = bundle.settings;
+          const limitSetting = allSettings.find((s: any) => s.key === "initial_event_limit");
           if (limitSetting) {
             setLimit(Number(limitSetting.value) || 10);
             setVisibleEventsCount(Number(limitSetting.value) || 10);
           }
-          const incSetting = data.find(s => s.key === "show_more_increment");
+          const incSetting = allSettings.find((s: any) => s.key === "show_more_increment");
           if (incSetting) setShowMoreIncrement(Number(incSetting.value) || 5);
-          const adSetting = data.find(s => s.key === "ad_placement_interval");
+          const adSetting = allSettings.find((s: any) => s.key === "ad_placement_interval");
           if (adSetting) setAdInterval(Number(adSetting.value) || 6);
-          const slotsSetting = data.find(s => s.key === "ad_placement_slots");
+          const slotsSetting = allSettings.find((s: any) => s.key === "ad_placement_slots");
           if (slotsSetting) {
             try {
               const parsed = typeof slotsSetting.value === 'string'
@@ -415,7 +474,7 @@ export default function App() {
               }));
             } catch {}
           }
-          const htSetting = data.find(s => s.key === "happening_today_config");
+          const htSetting = allSettings.find((s: any) => s.key === "happening_today_config");
           if (htSetting) {
             try {
               const parsed = typeof htSetting.value === 'string'
@@ -424,7 +483,7 @@ export default function App() {
               setHappeningTodayConfig(parsed);
             } catch {}
           }
-          const adSysSetting = data.find(s => s.key === "ad_system_config");
+          const adSysSetting = allSettings.find((s: any) => s.key === "ad_system_config");
           if (adSysSetting) {
             try {
               const parsed = typeof adSysSetting.value === 'string'
@@ -439,70 +498,11 @@ export default function App() {
             } catch {}
           }
         }
-      } catch (err) {
-        console.error("Failed to load global configurations:", err);
-      }
-    };
 
-    const loadGlobalData = async () => {
-      // 1. Fetch categories
-      try {
-        const { data } = await lpuClient.fetchCategories();
-        if (data) setCategories(data);
-      } catch (err) {
-        console.error("Failed to load categories:", err);
-      }
-
-      // 2. Fetch active ads
-      try {
-        const { data } = await lpuClient.fetchActiveAdvertisements();
-        if (data) setAds(data);
-      } catch (err) {
-        console.error("Failed to load advertisements:", err);
-      }
-
-      // 3. Fetch featured events
-      try {
-        const { data } = await lpuClient.fetchFeaturedEvents();
-        if (data) {
-          const resolved: EventFeedItem[] = data
-            .map((fe: any) => fe.events)
-            .filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at);
-          setFeaturedEvents(normalizeEventDates(resolved));
-        }
-      } catch (err) {
-        console.error("Failed to load featured events:", err);
-      }
-
-      // 3B. Fetch trending events
-      try {
-        const { data } = await lpuClient.fetchTrendingEvents();
-        if (data) {
-          const validTrending = data.filter(
-            (evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at
-          );
-          setTrendingEvents(normalizeEventDates(validTrending));
-        }
-      } catch (err) {
-        console.error("Failed to load trending events:", err);
-      }
-
-      // 4. Fetch Hero Carousel items from backend
-      try {
-        const { data } = await lpuClient.fetchHomepageCarousel();
-        if (data) {
-          setCarouselSlides(data);
-        }
-      } catch (err) {
-        console.error("Failed to load hero carousel slides:", err);
-      }
-
-      // 5. Fetch live events strictly STARTING today for Happening Today slider
-      try {
-        const { data, error } = await lpuClient.fetchEventFeed();
-        if (!error && data) {
+        // Happening Today events (from initial event feed)
+        if (bundle.events) {
           const now = new Date();
-          const published = data.filter((evt) => evt.status === 'PUBLISHED' && !evt.deleted_at);
+          const published = bundle.events.filter((evt: any) => evt.status === 'PUBLISHED' && !evt.deleted_at);
           const normalized = normalizeEventDates(published);
           const validLive = normalized.filter(
             (evt) =>
@@ -515,13 +515,7 @@ export default function App() {
           setHappeningTodayEvents(validLive);
         }
       } catch (err) {
-        console.error("Failed to load happening today events:", err);
-      }
-    };
-
-    const loadAllData = async () => {
-      try {
-        await Promise.all([loadSettings(), loadGlobalData()]);
+        console.error("Failed to load homepage data:", err);
       } finally {
         setAppLoading(false);
       }
@@ -912,7 +906,7 @@ export default function App() {
               onBack={() => handleSelectEvent(null)}
               onSelectEvent={handleSelectEvent}
               ads={ads}
-              allEvents={events}
+              allEvents={allAvailableEvents}
               adSystemConfig={adSystemConfig}
             />
           ) : (

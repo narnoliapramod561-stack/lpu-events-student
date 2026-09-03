@@ -1,16 +1,20 @@
 import QRCode from 'qrcode';
+import { createEventSlug } from './slug';
 
 /**
  * Returns the canonical public student website URL for a given event ID.
+ * Generates SEO-friendly URLs containing event name slug when available.
  * This URL directly opens the event details page on the student website with zero login requirements.
  */
-export function getStudentEventUrl(eventId: string): string {
+export function getStudentEventUrl(eventId: string, eventName?: string): string {
   if (!eventId) return '';
+
+  const segment = eventName ? createEventSlug(eventName, eventId) : eventId;
 
   // 1. Check if an explicit environment variable is defined
   const envUrl = typeof import.meta !== 'undefined' ? (import.meta as any).env?.VITE_PUBLIC_STUDENT_URL : undefined;
   if (envUrl && typeof envUrl === 'string' && envUrl.trim()) {
-    return `${envUrl.trim().replace(/\/+$/, '')}/events/${eventId}`;
+    return `${envUrl.trim().replace(/\/+$/, '')}/events/${segment}`;
   }
 
   // 2. Browser runtime environment detection
@@ -29,12 +33,12 @@ export function getStudentEventUrl(eventId: string): string {
       else if (!port) targetPort = '3000';
 
       const portSegment = targetPort ? `:${targetPort}` : '';
-      return `${protocol}//${hostname}${portSegment}/events/${eventId}`;
+      return `${protocol}//${hostname}${portSegment}/events/${segment}`;
     }
   }
 
   // 3. Canonical production URL
-  return `https://lpuevents.live/events/${eventId}`;
+  return `https://lpuevents.live/events/${segment}`;
 }
 
 /**

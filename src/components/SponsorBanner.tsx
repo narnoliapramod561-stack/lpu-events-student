@@ -1,6 +1,7 @@
 import React from "react";
 import { AdvertisementFeedItem, trackEvent } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
+import { ProgressiveImage } from "./ProgressiveImage";
 
 export interface SponsorBannerProps {
   ad: AdvertisementFeedItem;
@@ -14,7 +15,7 @@ export const SponsorBannerComponent: React.FC<SponsorBannerProps> = ({
 }) => {
   if (!ad) return null;
 
-  const imageUrl = getEventImage(ad, 'hero', 1200);
+  const imageUrl = getEventImage(ad, 'advertisement', 1600);
 
   const handleClick = () => {
     if (ad.redirect_url) {
@@ -43,16 +44,12 @@ export const SponsorBannerComponent: React.FC<SponsorBannerProps> = ({
       aria-label={ad.name || "Sponsored Advertisement"}
       className={`group relative w-full h-[58px] xs:h-[68px] sm:h-[80px] md:h-[92px] rounded-xl sm:rounded-2xl overflow-hidden cursor-pointer border border-white/80 dark:border-white/10 shadow-xs hover:shadow-lg transition-all duration-300 hover:scale-[1.005] active:scale-[0.99] focus:outline-none focus-visible:ring-2 focus-visible:ring-primary ${className}`}
     >
-      <img
+      <ProgressiveImage
         src={imageUrl}
         alt={ad.name || "Advertisement"}
         loading="lazy"
-        decoding="async"
+        containerClassName="w-full h-full"
         className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
-        onError={(e) => {
-          (e.currentTarget as HTMLImageElement).src =
-            "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop";
-        }}
       />
     </div>
   );

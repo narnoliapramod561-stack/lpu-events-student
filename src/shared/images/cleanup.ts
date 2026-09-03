@@ -39,19 +39,17 @@ export async function isMediaAssetReferenced(
   mediaId: string
 ): Promise<boolean> {
   try {
-    const [eventsRes, adsRes, memoriesRes, sponsorsRes] = await Promise.all([
+    const [eventsRes, adsRes, carouselRes] = await Promise.all([
       supabase.from('events').select('id').eq('banner_media_id', mediaId).limit(1),
       supabase.from('advertisements').select('id').eq('media_id', mediaId).limit(1),
-      supabase.from('event_memories').select('id').eq('cover_media_id', mediaId).limit(1),
-      supabase.from('sponsors').select('id').eq('logo_media_id', mediaId).limit(1)
+      supabase.from('carousel_items').select('id').eq('media_id', mediaId).limit(1)
     ]);
 
-    const hasEvents = (eventsRes.data && eventsRes.data.length > 0);
-    const hasAds = (adsRes.data && adsRes.data.length > 0);
-    const hasMemories = (memoriesRes.data && memoriesRes.data.length > 0);
-    const hasSponsors = (sponsorsRes.data && sponsorsRes.data.length > 0);
+    const hasEvents = Boolean(eventsRes.data && eventsRes.data.length > 0);
+    const hasAds = Boolean(adsRes.data && adsRes.data.length > 0);
+    const hasCarousel = Boolean(carouselRes.data && carouselRes.data.length > 0);
 
-    return Boolean(hasEvents || hasAds || hasMemories || hasSponsors);
+    return Boolean(hasEvents || hasAds || hasCarousel);
   } catch (err) {
     console.error(`Error verifying media asset references for ${mediaId}:`, err);
     // Fail-safe: assume referenced to prevent accidental deletion

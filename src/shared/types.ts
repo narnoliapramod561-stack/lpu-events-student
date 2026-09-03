@@ -10,16 +10,14 @@ export type EventPricingType = 'FREE' | 'PAID';
 export type MediaType = 'EVENT_BANNER' | 'ADVERTISEMENT' | 'SPONSOR_LOGO' | 'CAROUSEL_IMAGE' | 'MEMORY_IMAGE';
 export type MediaStatus = 'UPLOADING' | 'READY' | 'FAILED' | 'PENDING_DELETE' | 'DELETED';
 export type AdvertisementStatus = 'active' | 'inactive';
-export type CarouselItemType = 'EVENT' | 'ADVERTISEMENT' | 'MEMORY' | 'MEDIA';
+export type CarouselItemType = 'EVENT' | 'ADVERTISEMENT' | 'MEDIA';
 
 export type CanonicalResourceType =
   | 'events'
   | 'categories'
   | 'ads'
   | 'featured'
-  | 'memories'
   | 'carousel'
-  | 'sponsors'
   | 'settings';
 
 export type ResourceVersionMap = Record<CanonicalResourceType, number>;
@@ -106,19 +104,14 @@ export interface Event {
   venue_name: string;
   registration_mode: RegistrationMode;
   external_registration_url: string | null;
-  registration_opens_at: string | null;
-  registration_closes_at: string | null;
   pricing_type: EventPricingType;
   registration_format: 'INDIVIDUAL' | 'TEAM' | null;
   capacity_limit: number | null;
-  capacity_counts_by: 'TEAMS' | 'STUDENTS' | null;
-  team_pricing_mode: 'FIXED_TEAM_PRICE' | 'PER_MEMBER_PRICE' | null;
   price_amount: number;
   status: EventStatus;
   view_count: number;
   created_at: string;
   updated_at: string;
-  completed_at: string | null;
 }
 
 export interface EventContentSection {
@@ -209,13 +202,9 @@ export interface PublishEventPayload {
   end_at: string;
   registration_mode: RegistrationMode;
   external_registration_url?: string | null;
-  registration_opens_at?: string | null;
-  registration_closes_at?: string | null;
   pricing_type: EventPricingType;
   registration_format?: 'INDIVIDUAL' | 'TEAM' | null;
   capacity_limit?: number | null;
-  capacity_counts_by?: 'TEAMS' | 'STUDENTS' | null;
-  team_pricing_mode?: 'FIXED_TEAM_PRICE' | 'PER_MEMBER_PRICE' | null;
   price_amount?: number | null;
 }
 
@@ -307,7 +296,6 @@ export interface CarouselItemFeedItem {
   item_type: CarouselItemType;
   event_id?: string | null;
   advertisement_id?: string | null;
-  memory_id?: string | null;
   media_id?: string | null;
   sort_order: number;
   is_active: boolean;
@@ -340,18 +328,6 @@ export interface CarouselItemFeedItem {
     redirect_url: string | null;
     media_id: string | null;
     status: AdvertisementStatus;
-  } | null;
-  event_memories?: {
-    id: string;
-    title: string;
-    description: string | null;
-    cover_media_id: string | null;
-    status: EventStatus;
-    media_assets?: {
-      id: string;
-      object_key: string;
-    } | null;
-    events?: any | null;
   } | null;
   media_assets?: {
     id: string;

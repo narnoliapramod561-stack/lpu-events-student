@@ -12,6 +12,7 @@
  */
 
 import { ImageContext, IMAGE_CONTEXT_CONFIGS } from './config';
+import { resolveDefaultEventImage } from './defaults';
 
 export interface OptimizedImageOptions {
   variant?: 'desktop' | 'tablet' | 'mobile';
@@ -203,13 +204,8 @@ export function getKeywordFallbackImage(nameOrText: string): string {
 /**
  * Resolves the base CDN / Storage URL for Cloudflare R2 Delivery
  */
-export function getStorageBaseUrl(bucket?: string): string {
-  // 1. If bucket is 'media' or default Supabase storage, route directly to public Supabase Storage CDN
-  if (bucket === 'media') {
-    return 'https://nhjphyqiqhmxdhppljap.supabase.co/storage/v1/object/public/media';
-  }
-
-  // 2. Check browser Vite env (import.meta.env)
+export function getStorageBaseUrl(_bucket?: string): string {
+  // 1. Check browser Vite env (import.meta.env)
   try {
     if (typeof import.meta !== 'undefined' && (import.meta as any).env) {
       const r2Url = (import.meta as any).env.VITE_R2_PUBLIC_URL;
@@ -219,7 +215,7 @@ export function getStorageBaseUrl(bucket?: string): string {
     }
   } catch {}
 
-  // 3. Check Node / Process env
+  // 2. Check Node / Process env
   try {
     const globalEnv = typeof globalThis !== 'undefined' ? (globalThis as any).process?.env : (typeof process !== 'undefined' ? process.env : undefined);
     const r2Url = globalEnv?.VITE_R2_PUBLIC_URL || globalEnv?.EXPO_PUBLIC_R2_PUBLIC_URL;
@@ -228,8 +224,8 @@ export function getStorageBaseUrl(bucket?: string): string {
     }
   } catch {}
 
-  // 4. Default fallback
-  return 'https://nhjphyqiqhmxdhppljap.supabase.co/storage/v1/object/public/media';
+  // 3. Authoritative default: Cloudflare R2 delivery domain (zero Supabase egress)
+  return 'https://images.lpuevents.live';
 }
 
 /**
@@ -336,7 +332,23 @@ export function getOptimizedImage(
     return getOptimizedImage(source.event_memories, context, options);
   }
 
-  return '';
+  // 5. Curated Mock / Fallback ID Map
+  if (source.id && EVENT_MOCK_FALLBACK_IMAGES[source.id]) {
+    return EVENT_MOCK_FALLBACK_IMAGES[source.id];
+  }
+  if (source.banner_media_id && EVENT_MOCK_FALLBACK_IMAGES[source.banner_media_id]) {
+    return EVENT_MOCK_FALLBACK_IMAGES[source.banner_media_id];
+  }
+
+  // 6. Intelligent Keyword Matcher (Ultra-HD photography)
+  const nameOrDesc = source.name || source.title || source.description || '';
+  if (nameOrDesc) {
+    const keywordFallback = getKeywordFallbackImage(nameOrDesc);
+    if (keywordFallback) return keywordFallback;
+  }
+
+  // 7. Category / Subcategory Taxonomy Fallback
+  return resolveDefaultEventImage(source);
 }
 
 /**

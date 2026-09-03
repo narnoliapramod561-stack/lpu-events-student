@@ -3,13 +3,12 @@ import {
   ArrowLeft, 
   Calendar, 
   Clock, 
-  MapPin, 
+  MapPin,
+  QrCode,
   CheckCircle2, 
   ShieldAlert, 
   Share2, 
-  Check, 
-  ExternalLink, 
-  QrCode
+  ExternalLink
 } from "lucide-react";
 import { lpuClient } from "../supabase";
 import { 
@@ -19,17 +18,21 @@ import {
   trackEvent, 
   trackRegistrationClick,
   getStudentEventUrl,
+  createEventSlug,
+  slugify,
   generateQrDataUrl,
   formatEventDateRange
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
+import { ProgressiveImage } from "./ProgressiveImage";
 import { AdSenseSlot } from "./AdSenseSlot";
 import { SponsorBanner } from "./SponsorBanner";
+import { ShareModal } from "./ShareModal";
 
 interface EventDetailsViewProps {
   eventId: string;
   onBack: () => void;
-  onSelectEvent: (id: string) => void;
+  onSelectEvent: (id: string, name?: string) => void;
   ads: AdvertisementFeedItem[];
   allEvents?: EventFeedItem[];
   adSystemConfig?: AdSystemConfig | null;
@@ -44,20 +47,41 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 }) => {
   // Pre-seed with existing event from memory for instant render
   const initialEvent = useMemo(() => {
-    return allEvents.find((e) => e.id === eventId) || null;
+    if (!eventId) return null;
+    const clean = eventId.toLowerCase().trim();
+    return allEvents.find((e) => {
+      if (!e) return false;
+      if (e.id && e.id.toLowerCase() === clean) return true;
+      if (slugify(e.name) === clean) return true;
+      if (createEventSlug(e.name) === clean) return true;
+      return false;
+    }) || null;
   }, [eventId, allEvents]);
 
   const [event, setEvent] = useState<any | null>(initialEvent);
   const [loading, setLoading] = useState(!initialEvent);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("about");
-  const [copied, setCopied] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+
+  // Synchronize browser address bar with human-readable SEO slug
+  useEffect(() => {
+    if (event?.id && event?.name && typeof window !== 'undefined') {
+      const slug = createEventSlug(event.name, event.id);
+      const expectedPath = `/events/${slug}`;
+      if (window.location.pathname.startsWith('/events/') && window.location.pathname !== expectedPath) {
+        const url = new URL(window.location.href);
+        url.pathname = expectedPath;
+        window.history.replaceState({}, '', url.toString());
+      }
+    }
+  }, [event?.id, event?.name]);
 
   useEffect(() => {
     if (!event?.id) return;
     let isMounted = true;
-    const canonicalUrl = getStudentEventUrl(event.id);
+    const canonicalUrl = getStudentEventUrl(event.id, event.name);
     generateQrDataUrl(canonicalUrl, { width: 360, margin: 2 })
       .then((url) => {
         if (isMounted) setQrDataUrl(url);
@@ -69,7 +93,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
     return () => {
       isMounted = false;
     };
-  }, [event?.id]);
+  }, [event?.id, event?.name]);
 
   useEffect(() => {
     window.scrollTo({ top: 0, left: 0, behavior: "instant" });
@@ -152,17 +176,6 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
       return "Time to be announced";
     }
   }, [event]);
-
-  const handleCopyLink = () => {
-    try {
-      navigator.clipboard.writeText(window.location.href);
-      setCopied(true);
-      trackEvent('event_share_clicked', { event_id: event?.id, share_method: 'copy_link' });
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Fallback
-    }
-  };
 
   const handleRegister = () => {
     if (event?.external_registration_url) {
@@ -420,23 +433,24 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
         <div className="flex items-center gap-2 sm:gap-3">
           <button
-            onClick={handleCopyLink}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full glass-pill border border-white/95 dark:border-white/10 text-xs font-bold text-gray-800 dark:text-gray-200 hover:text-primary cursor-pointer transition-all shadow-xs touch-target"
+            type="button"
+            onClick={() => setShareModalOpen(true)}
+            className="flex items-center gap-1.5 px-4 py-2 rounded-full glass-pill border border-white/95 dark:border-white/10 text-xs font-bold text-gray-800 dark:text-gray-200 hover:text-primary hover:border-primary/40 cursor-pointer transition-all shadow-xs touch-target group"
             aria-label="Share event"
           >
-            {copied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Share2 className="h-3.5 w-3.5" />}
-            <span>{copied ? "Copied" : "Share"}</span>
+            <Share2 className="h-3.5 w-3.5 text-primary transition-transform group-hover:scale-110" />
+            <span>Share</span>
           </button>
         </div>
       </div>
 
-      {/* Hero Banner */}
+      {/* Hero Banner (Instant LQIP -> Full HD Auto-Upgrade) */}
       <div className="w-full aspect-[4/3] sm:aspect-[16/9] md:h-[460px] lg:h-[500px] overflow-hidden rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 relative glass-panel shadow-xl">
-        <img
+        <ProgressiveImage
           className="w-full h-full object-cover object-center"
-          src={getEventImage(event, "event-banner", 800)}
+          containerClassName="w-full h-full"
+          src={getEventImage(event, "event-banner", 1920)}
           alt={event.name}
-          decoding="async"
           fetchPriority="high"
         />
       </div>
@@ -645,8 +659,18 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
               </span>
             </div>
 
-            {/* Right Side: External Book Ticket Button */}
+            {/* Right Side: Share + External Book Ticket Button */}
             <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+              <button
+                type="button"
+                onClick={() => setShareModalOpen(true)}
+                className="px-3.5 py-2.5 sm:px-5 sm:py-3.5 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-gray-800 dark:text-gray-200 font-heading font-bold text-xs sm:text-sm transition-all flex items-center gap-1.5 border border-black/5 dark:border-white/10 cursor-pointer touch-target shadow-xs hover:border-primary/40 active:scale-95"
+                title="Share Event"
+              >
+                <Share2 className="h-3.5 w-3.5 text-primary" />
+                <span className="hidden sm:inline">Share</span>
+              </button>
+
               <button
                 type="button"
                 onClick={handleRegister}
@@ -660,6 +684,13 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
           </div>
         </div>
       )}
+
+      {/* Interactive Share Modal Dialog */}
+      <ShareModal
+        isOpen={shareModalOpen}
+        onClose={() => setShareModalOpen(false)}
+        event={event}
+      />
 
     </div>
   );

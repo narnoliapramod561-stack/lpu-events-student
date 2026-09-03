@@ -9,6 +9,7 @@ import {
   injectAdsIntoSequence 
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
+import { ProgressiveImage } from "./ProgressiveImage";
 import { AdSenseSlot } from "./AdSenseSlot";
 
 export interface HeroSlideModel {
@@ -99,7 +100,7 @@ export const HeroCarouselComponent = ({
   featuredEvents?: EventFeedItem[];
   ads?: AdvertisementFeedItem[];
   adSystemConfig?: AdSystemConfig | null;
-  onSelectEvent: (id: string) => void;
+  onSelectEvent: (id: string, name?: string) => void;
 }) => {
   const [[currentIndex, direction], setPage] = useState<[number, number]>([0, 0]);
   const [isHovered, setIsHovered] = useState(false);
@@ -120,7 +121,7 @@ export const HeroCarouselComponent = ({
             type: "event",
             title: item.custom_title?.trim() || evt.name,
             description: item.custom_subtitle?.trim() || evt.description,
-            image: getEventImage(evt, "hero", 1200),
+            image: getEventImage(evt, "hero", 1920),
             category: item.badge_text?.trim() || evt.categories?.name || "Featured Event",
             date: new Date(evt.start_at).toLocaleDateString(undefined, {
               weekday: "short",
@@ -134,25 +135,6 @@ export const HeroCarouselComponent = ({
             ctaUrl: item.custom_cta_url,
             duration: item.display_duration_ms || 5000,
           });
-        } else if (item.item_type === "MEMORY" && item.event_memories) {
-          const mem = item.event_memories;
-          const memEvt = mem.events;
-          baseSlides.push({
-            id: item.id,
-            eventId: memEvt?.id || null,
-            type: "memory",
-            title: item.custom_title?.trim() || mem.title,
-            description: item.custom_subtitle?.trim() || mem.description || "",
-            image: getEventImage(mem, "hero", 1200),
-            category: item.badge_text?.trim() || "Past Event Memory",
-            date: "Recent",
-            time: "Highlights",
-            venue: "LPU Campus",
-            organizer: "Student Life",
-            ctaText: item.custom_cta_text?.trim() || "View Details",
-            ctaUrl: item.custom_cta_url,
-            duration: item.display_duration_ms || 5000,
-          });
         } else if (item.item_type === "MEDIA") {
           const media = item.media_assets;
           baseSlides.push({
@@ -160,7 +142,7 @@ export const HeroCarouselComponent = ({
             type: "media",
             title: item.custom_title?.trim() || "Campus Spotlight",
             description: item.custom_subtitle?.trim() || "Featured university stories and announcements.",
-            image: getEventImage(media, "hero", 1200),
+            image: getEventImage(media, "hero", 1920),
             category: item.badge_text?.trim() || "Spotlight",
             date: "Special",
             time: "Announcements",
@@ -181,7 +163,7 @@ export const HeroCarouselComponent = ({
         eventId: fe.id,
         title: fe.name,
         description: fe.description,
-        image: getEventImage(fe, "hero", 1200),
+        image: getEventImage(fe, "hero", 1920),
         category: fe.categories?.name || "Featured Event",
         date: new Date(fe.start_at).toLocaleDateString(undefined, {
           weekday: "short",
@@ -238,7 +220,7 @@ export const HeroCarouselComponent = ({
           isSponsored: true,
           title: ad.name,
           description: "Featured university partner session and promotion. Explore opportunities and register.",
-          image: getEventImage(ad, "hero", 1200),
+          image: getEventImage(ad, "hero", 1920),
           category: "Sponsored Promotion",
           date: "Partner",
           time: "Session",
@@ -318,7 +300,7 @@ export const HeroCarouselComponent = ({
         window.location.href = currentSlide.ctaUrl;
       }
     } else if (currentSlide.eventId) {
-      onSelectEvent(currentSlide.eventId);
+      onSelectEvent(currentSlide.eventId, currentSlide.title);
     }
   };
 
@@ -402,18 +384,14 @@ export const HeroCarouselComponent = ({
                   onClick={handleAction}
                   className="sm:hidden relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex flex-col justify-between p-3.5 pb-7 min-[400px]:p-4.5 min-[400px]:pb-8"
                 >
-                  {/* HD Hero Background Image */}
-                  <img
+                  {/* HD Hero Background Image with Instant LQIP -> Full HD Auto-Upgrade */}
+                  <ProgressiveImage
                     src={currentSlide.image}
                     alt={currentSlide.title}
                     loading={currentIndex === 0 ? "eager" : "lazy"}
-                    decoding="async"
                     fetchPriority={currentIndex === 0 ? "high" : "auto"}
-                    onError={(e) => {
-                      (e.currentTarget as HTMLImageElement).src =
-                        "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=800&auto=format&fit=crop";
-                    }}
-                    className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out"
+                    containerClassName="absolute inset-0 w-full h-full"
+                    className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out"
                   />
 
                   {/* Smooth Multi-layered Gradient Scrim */}
@@ -617,16 +595,10 @@ export const HeroCarouselComponent = ({
                       className="relative w-full lg:w-1/2 p-4 lg:p-5 flex items-center justify-center shrink-0 cursor-pointer group/img"
                     >
                       <div className="relative w-full sm:h-[260px] lg:h-full rounded-[26px] lg:rounded-[32px] overflow-hidden shadow-2xl border border-white/80 dark:border-white/10 bg-slate-900/30">
-                        <motion.img
+                        <ProgressiveImage
                           src={currentSlide.image}
                           alt={currentSlide.title}
-                          initial={{ scale: 1.06 }}
-                          animate={{ scale: 1 }}
-                          transition={{ duration: 1.2, ease: "easeOut" }}
-                          onError={(e) => {
-                            (e.currentTarget as HTMLImageElement).src =
-                              "https://images.unsplash.com/photo-1540575467063-178a50c2df87?q=80&w=1200&auto=format&fit=crop";
-                          }}
+                          containerClassName="w-full h-full"
                           className="w-full h-full object-cover group-hover/img:scale-106 transition-transform duration-700 ease-out"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/15 pointer-events-none" />
@@ -639,17 +611,11 @@ export const HeroCarouselComponent = ({
                     onClick={handleAction}
                     className="hidden sm:flex relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex-col justify-end p-8 md:p-12 lg:p-16 pb-20"
                   >
-                    <motion.img
+                    <ProgressiveImage
                       src={currentSlide.image}
                       alt={currentSlide.title}
-                      initial={{ scale: 1.06 }}
-                      animate={{ scale: 1 }}
-                      transition={{ duration: 1.2, ease: "easeOut" }}
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src =
-                          "https://images.unsplash.com/photo-1511578314322-379afb476865?q=80&w=1400&auto=format&fit=crop";
-                      }}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
+                      containerClassName="absolute inset-0 w-full h-full"
+                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
                     />
 
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/20 pointer-events-none" />
@@ -691,17 +657,11 @@ export const HeroCarouselComponent = ({
                     onClick={handleAction}
                     className="hidden sm:flex relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex-col justify-end p-8 md:p-12 lg:p-16 pb-20"
                   >
-                    <motion.img
+                    <ProgressiveImage
                       src={currentSlide.image}
                       alt={currentSlide.title}
-                      initial={{ scale: 1.06 }}
-                      animate={{ scale: 1 }}
-                      transition={{ duration: 1.2, ease: "easeOut" }}
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src =
-                          "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop";
-                      }}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
+                      containerClassName="absolute inset-0 w-full h-full"
+                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
                     />
 
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30 pointer-events-none" />

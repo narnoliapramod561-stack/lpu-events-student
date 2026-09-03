@@ -1,6 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "lpu-events-student",
+  "main": "./src/worker.ts",
   "compatibility_date": "2026-08-20",
   "observability": {
     "enabled": true
@@ -8,5 +9,9 @@
   "assets": {
     "directory": "./dist",
     "not_found_handling": "single-page-application"
+  },
+  "vars": {
+    "SUPABASE_URL": "https://nhjphyqiqhmxdhppljap.supabase.co",
+    "SUPABASE_ANON_KEY": "sb_publishable_S9KH9_RTpx1MiPwyEBWxRQ_QkJVgzsA"
   }
 }
