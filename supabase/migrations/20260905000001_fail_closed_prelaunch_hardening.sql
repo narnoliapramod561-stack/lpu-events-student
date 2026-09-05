@@ -70,6 +70,9 @@ create policy event_content_sections_super_admin on public.event_content_section
 -- ==============================================================================
 
 -- Replaces hard DELETE with controlled status transition: PUBLISHED -> COMPLETED
+drop function if exists public.cleanup_past_events();
+drop function if exists public.cleanup_past_events(integer);
+
 create or replace function public.cleanup_past_events(
   p_batch_size integer default 100
 )
@@ -132,6 +135,9 @@ grant execute on function public.cleanup_past_events(integer) to authenticated, 
 -- ==============================================================================
 
 -- 4.1 Audit Logs Retention (Default 15 days)
+drop function if exists public.cleanup_old_audit_logs();
+drop function if exists public.cleanup_old_audit_logs(integer);
+
 create or replace function public.cleanup_old_audit_logs(
   p_retention_days integer default 15
 )
@@ -163,6 +169,9 @@ $$ language plpgsql;
 grant execute on function public.cleanup_old_audit_logs(integer) to authenticated, service_role;
 
 -- 4.2 Resolved Access Requests Retention (Default 30 days)
+drop function if exists public.cleanup_old_access_requests();
+drop function if exists public.cleanup_old_access_requests(integer);
+
 create or replace function public.cleanup_old_access_requests(
   p_retention_days integer default 30
 )
