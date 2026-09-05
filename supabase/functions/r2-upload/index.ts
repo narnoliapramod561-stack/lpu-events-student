@@ -456,67 +456,66 @@ serve(async (req: Request) => {
   const r2Config = getR2Config();
   const completedR2Keys: string[] = [];
   let r2Error: string | null = null;
-  let targetBucket = "lpu-events-images";
 
-  if (r2Config) {
-    targetBucket = r2Config.bucketName;
-    for (const item of variantUploads) {
-      const uploadRes = await uploadObjectToR2(
-        r2Config,
-        item.objectKey,
-        item.bytes,
-        "image/webp",
-        "public, max-age=31536000, immutable"
-      );
+  if (!r2Config || !r2Config.accessKeyId || !r2Config.secretAccessKey || r2Config.accessKeyId === "anonymous") {
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "R2_CONFIGURATION_MISSING",
+        message: "Cloudflare R2 storage credentials are not configured on Supabase Edge Functions. Refusing to write to Supabase Storage fallback."
+      }),
+      { status: 502, headers: corsHeaders }
+    );
+  }
 
-      if (!uploadRes.success) {
-        r2Error = uploadRes.error || `Failed uploading variant ${item.name} to R2.`;
-        break;
-      }
-      completedR2Keys.push(item.objectKey);
+  const targetBucket = r2Config.bucketName;
+  for (const item of variantUploads) {
+    const uploadRes = await uploadObjectToR2(
+      r2Config,
+      item.objectKey,
+      item.bytes,
+      "image/webp",
+      "public, max-age=31536000, immutable"
+    );
+
+    if (!uploadRes.success) {
+      r2Error = uploadRes.error || `Failed uploading variant ${item.name} to R2.`;
+      break;
     }
+    completedR2Keys.push(item.objectKey);
+  }
 
-    // Rollback on Partial R2 Failure
-    if (r2Error) {
-      console.warn("R2 Upload failed, attempting Supabase storage fallback:", r2Error);
-      targetBucket = "media";
+  // Fail-Closed: Rollback on Partial R2 Failure
+  if (r2Error) {
+    for (const k of completedR2Keys) {
       try {
-        for (const item of variantUploads) {
-          await adminClient.storage.from("media").upload(item.objectKey, item.bytes, {
-            contentType: "image/webp",
-            cacheControl: "public, max-age=31536000, immutable",
-            upsert: true,
-          });
-          completedR2Keys.push(item.objectKey);
-        }
-      } catch (storageErr) {
-        console.warn("Storage fallback error:", storageErr);
-      }
-    }
-  } else {
-    // If running without R2 keys configured, store in Supabase storage emulation
-    targetBucket = "media";
-    console.warn("Cloudflare R2 secrets not configured. Storing in Supabase storage emulation mode.");
-    try {
-      for (const item of variantUploads) {
-        await adminClient.storage.from("media").upload(item.objectKey, item.bytes, {
-          contentType: "image/webp",
-          cacheControl: "public, max-age=31536000, immutable",
-          upsert: true,
+        const aws = new AwsClient({
+          accessKeyId: r2Config.accessKeyId,
+          secretAccessKey: r2Config.secretAccessKey,
+          service: "s3",
+          region: "auto",
         });
-        completedR2Keys.push(item.objectKey);
-      }
-    } catch (storageErr) {
-      console.warn("Storage fallback error:", storageErr);
+        await aws.fetch(
+          `https://${r2Config.accountId}.r2.cloudflarestorage.com/${r2Config.bucketName}/${k.replace(/^\/+/, '')}`,
+          { method: "DELETE" }
+        );
+      } catch { /* non-fatal */ }
     }
+
+    return new Response(
+      JSON.stringify({
+        success: false,
+        error: "R2_STORAGE_UNAVAILABLE",
+        message: r2Error
+      }),
+      { status: 502, headers: corsHeaders }
+    );
   }
 
   // 7. Atomic PostgreSQL Registration (media_assets)
-  const publicBaseUrl = r2Config?.publicBaseUrl || "https://images.lpuevents.live";
+  const publicBaseUrl = r2Config.publicBaseUrl || "https://images.lpuevents.live";
   const primaryObjectKey = desktopVariant.objectKey;
-  const primaryPublicUrl = targetBucket === "media"
-    ? `https://nhjphyqiqhmxdhppljap.supabase.co/storage/v1/object/public/media/${primaryObjectKey}`
-    : `${publicBaseUrl}/${primaryObjectKey}`;
+  const primaryPublicUrl = `${publicBaseUrl}/${primaryObjectKey}`;
   const mediaType = contextToMediaType(context);
 
   const finalMetadata = {

@@ -7,12 +7,15 @@
  *   Student Browser → Cloudflare Edge Cache → Supabase Origin (on miss only)
  *
  * Protections:
+ *   - Aggressive Cache-First with Stale-While-Revalidate & Stale-If-Error
  *   - 1-minute origin refresh gate per canonical key
  *   - Single-flight request coalescing (concurrent misses → 1 origin fetch)
  *   - Stale backup store for origin failure fallback
- *   - Parameter allowlists prevent cache-key explosion
+ *   - Fail-Closed: Return HTTP 503 if origin is unavailable and no cache exists (No browser direct fallthrough to Supabase)
+ *   - Strict Temporal Filtering: Only status = 'PUBLISHED' and end_at >= now()
  *   - Response size guards (200 KB max)
- *   - Security: reject auth/cookie headers on public endpoints
+ *   - Parameter allowlists prevent cache-key explosion
+ *   - Security: Reject auth/cookie headers on public endpoints
  *   - Authenticated cache invalidation with proactive warming
  *
  * Security & Isolation Invariants:
@@ -39,9 +42,9 @@ interface ExecutionContext {
 
 const DEFAULT_SUPABASE_URL = 'https://nhjphyqiqhmxdhppljap.supabase.co';
 const DEFAULT_ANON_KEY = 'sb_publishable_S9KH9_RTpx1MiPwyEBWxRQ_QkJVgzsA';
-const STALE_CACHE_NAME = 'lpu-stale-v1';
+const STALE_CACHE_NAME = 'lpu-stale-v2';
 const MAX_RESPONSE_SIZE = 200 * 1024; // 200 KB
-const MIN_ORIGIN_REFRESH_MS = 60_000; // 1 minute
+const MIN_ORIGIN_REFRESH_MS = 60_000; // 1 minute origin refresh gate
 const MAX_QUERY_STRING_LENGTH = 512;
 const MAX_SEARCH_QUERY_LENGTH = 100;
 const MIN_SEARCH_QUERY_LENGTH = 2;
@@ -65,25 +68,26 @@ const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Max-Age': '86400',
 };
 
-// ─── TTL Configuration ───────────────────────────────────────────────────────
+// ─── Cache TTL & SWR Policy Matrix ──────────────────────────────────────────
 
 interface CacheConfig {
-  edgeTtl: number;      // s-maxage for Cloudflare edge
-  browserTtl: number;   // max-age for browser
-  staleTtl: number;     // stale backup TTL (last-known-good)
+  edgeTtl: number;      // Fresh TTL on Edge (in seconds)
+  browserTtl: number;   // Browser cache TTL (in seconds)
+  swrTtl: number;       // stale-while-revalidate (in seconds)
+  staleTtl: number;     // stale-if-error & stale backup TTL (in seconds)
 }
 
 const CACHE_CONFIGS: Record<string, CacheConfig> = {
-  homepage:       { edgeTtl: 180,  browserTtl: 60,  staleTtl: 86400 },
-  categories:     { edgeTtl: 3600, browserTtl: 300, staleTtl: 86400 },
-  carousel:       { edgeTtl: 900,  browserTtl: 60,  staleTtl: 86400 },
-  featured:       { edgeTtl: 900,  browserTtl: 60,  staleTtl: 86400 },
-  trending:       { edgeTtl: 900,  browserTtl: 60,  staleTtl: 86400 },
-  advertisements: { edgeTtl: 900,  browserTtl: 60,  staleTtl: 86400 },
-  settings:       { edgeTtl: 900,  browserTtl: 60,  staleTtl: 86400 },
-  events:         { edgeTtl: 180,  browserTtl: 30,  staleTtl: 7200  },
-  eventDetail:    { edgeTtl: 600,  browserTtl: 60,  staleTtl: 86400 },
-  search:         { edgeTtl: 180,  browserTtl: 30,  staleTtl: 1800  },
+  homepage:       { edgeTtl: 900,   browserTtl: 60,  swrTtl: 21600,  staleTtl: 86400 },   // 15m fresh, 6h swr, 24h stale-if-error
+  events:         { edgeTtl: 900,   browserTtl: 30,  swrTtl: 21600,  staleTtl: 86400 },   // 15m fresh, 6h swr, 24h stale-if-error
+  featured:       { edgeTtl: 1800,  browserTtl: 60,  swrTtl: 43200,  staleTtl: 86400 },   // 30m fresh, 12h swr, 24h stale-if-error
+  trending:       { edgeTtl: 1800,  browserTtl: 60,  swrTtl: 21600,  staleTtl: 86400 },   // 30m fresh, 6h swr, 24h stale-if-error
+  search:         { edgeTtl: 900,   browserTtl: 30,  swrTtl: 21600,  staleTtl: 86400 },   // 15m fresh, 6h swr, 24h stale-if-error
+  categories:     { edgeTtl: 21600, browserTtl: 300, swrTtl: 86400,  staleTtl: 604800 },  // 6h fresh, 24h swr, 7d stale-if-error
+  eventDetail:    { edgeTtl: 1800,  browserTtl: 60,  swrTtl: 86400,  staleTtl: 604800 },  // 30m fresh, 24h swr, 7d stale-if-error
+  advertisements: { edgeTtl: 1800,  browserTtl: 60,  swrTtl: 43200,  staleTtl: 86400 },   // 30m fresh, 12h swr, 24h stale-if-error
+  settings:       { edgeTtl: 3600,  browserTtl: 60,  swrTtl: 43200,  staleTtl: 86400 },   // 1h fresh, 12h swr, 24h stale-if-error
+  carousel:       { edgeTtl: 1800,  browserTtl: 60,  swrTtl: 43200,  staleTtl: 86400 },   // 30m fresh, 12h swr, 24h stale-if-error
 };
 
 // ─── Supabase Query Projections ──────────────────────────────────────────────
@@ -112,8 +116,8 @@ function jsonResponse(data: unknown, status = 200, extraHeaders: Record<string, 
   });
 }
 
-function errorResponse(message: string, status = 400): Response {
-  return jsonResponse({ error: { message, code: 'EDGE_API_ERROR' } }, status);
+function errorResponse(message: string, status = 400, extraHeaders: Record<string, string> = {}): Response {
+  return jsonResponse({ error: { message, code: status === 503 ? 'SERVICE_UNAVAILABLE' : 'EDGE_API_ERROR' } }, status, extraHeaders);
 }
 
 /**
@@ -122,7 +126,6 @@ function errorResponse(message: string, status = 400): Response {
  */
 function normalizeSearchQuery(raw: string): string | null {
   let q = raw.trim().toLowerCase().replace(/\s+/g, ' ');
-  // Strip leading/trailing punctuation
   q = q.replace(/^[^\w]+|[^\w]+$/g, '');
   if (q.length < MIN_SEARCH_QUERY_LENGTH) return null;
   if (q.length > MAX_SEARCH_QUERY_LENGTH) q = q.substring(0, MAX_SEARCH_QUERY_LENGTH);
@@ -138,84 +141,88 @@ function buildCacheKey(origin: string, path: string, params: Record<string, stri
   return qs ? `${origin}${path}?${qs}` : `${origin}${path}`;
 }
 
-/**
- * Compute today's date string in UTC: YYYY-MM-DD
- */
 function todayUTC(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
-/**
- * Compute tomorrow's date string in UTC: YYYY-MM-DD
- */
 function tomorrowUTC(): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10);
 }
 
-/**
- * Compute the start (Monday) and end (Sunday) of the current week in UTC.
- */
 function thisWeekUTC(): { start: string; end: string } {
   const now = new Date();
-  const day = now.getUTCDay(); // 0=Sun, 1=Mon, ...
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-  const monday = new Date(now);
-  monday.setUTCDate(now.getUTCDate() + diffToMonday);
-  const sunday = new Date(monday);
-  sunday.setUTCDate(monday.getUTCDate() + 6);
-  return {
-    start: monday.toISOString().slice(0, 10),
-    end: sunday.toISOString().slice(0, 10),
-  };
+  const start = now.toISOString().slice(0, 10);
+  const end = new Date(now);
+  end.setUTCDate(end.getUTCDate() + 7);
+  return { start, end: end.toISOString().slice(0, 10) };
 }
 
 // ─── Supabase Origin Fetcher ─────────────────────────────────────────────────
 
 async function fetchFromSupabase(
-  pathWithQuery: string,
-  method = 'GET',
+  path: string,
+  method: 'GET' | 'POST' = 'GET',
   body?: unknown,
   env?: Env
-): Promise<{ ok: boolean; status: number; data: unknown; headers: Headers }> {
-  const supabaseUrl = (env?.SUPABASE_URL || DEFAULT_SUPABASE_URL).replace(/\/$/, '');
+): Promise<{ ok: boolean; status: number; data: unknown }> {
+  const supabaseUrl = (env?.SUPABASE_URL || DEFAULT_SUPABASE_URL).replace(/\/+$/, '');
   const anonKey = env?.SUPABASE_ANON_KEY || DEFAULT_ANON_KEY;
 
-  const targetUrl = `${supabaseUrl}/rest/v1/${pathWithQuery.replace(/^\//, '')}`;
-  const res = await fetch(targetUrl, {
-    method,
-    headers: {
-      'apikey': anonKey,
-      'Authorization': `Bearer ${anonKey}`,
-      'Content-Type': 'application/json',
-      'Accept': 'application/json',
-      'Accept-Encoding': 'gzip',
-    },
-    body: body ? JSON.stringify(body) : undefined,
-  });
+  const url = `${supabaseUrl}/rest/v1/${path}`;
+  const headers: Record<string, string> = {
+    'apikey': anonKey,
+    'Authorization': `Bearer ${anonKey}`,
+    'Accept': 'application/json',
+    'Accept-Encoding': 'gzip, deflate, br',
+  };
 
-  const text = await res.text();
-  let data: unknown = null;
-  try {
-    data = JSON.parse(text);
-  } catch {
-    data = text;
+  if (method === 'POST') {
+    headers['Content-Type'] = 'application/json';
   }
 
-  return { ok: res.ok, status: res.status, data, headers: res.headers };
+  try {
+    const res = await fetch(url, {
+      method,
+      headers,
+      body: body ? JSON.stringify(body) : undefined,
+    });
+
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => 'Unknown error');
+      return { ok: false, status: res.status, data: { message: errorText } };
+    }
+
+    const data = await res.json();
+    return { ok: true, status: 200, data };
+  } catch (err) {
+    return {
+      ok: false,
+      status: 502,
+      data: { message: err instanceof Error ? err.message : 'Network failure fetching from Supabase' },
+    };
+  }
 }
 
-// ─── Core Caching Engine ─────────────────────────────────────────────────────
+// ─── Security Check for Public Endpoints ─────────────────────────────────────
 
-/**
- * The main caching function that enforces:
- * 1. Origin refresh gate (1 request per key per minute)
- * 2. Single-flight coalescing
- * 3. Stale backup for origin failures
- * 4. Response size guards
- * 5. Diagnostic headers
- */
+function isPublicRequestSafe(request: Request): { safe: boolean; reason?: string } {
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader && !authHeader.startsWith('Bearer sb_')) {
+    return { safe: false, reason: 'Authorization header not permitted on public endpoints' };
+  }
+
+  const cookie = request.headers.get('Cookie');
+  if (cookie && (cookie.includes('sb-') || cookie.includes('supabase-auth') || cookie.includes('session'))) {
+    return { safe: false, reason: 'Auth cookies not permitted on public endpoints' };
+  }
+
+  return { safe: true };
+}
+
+// ─── Core Cache-First Handler with Fail-Closed Circuit Protection ──────────
+
 async function handleCachedEndpoint(
   cacheKeyUrl: string,
   configName: string,
@@ -227,35 +234,39 @@ async function handleCachedEndpoint(
   const staleCache = await caches.open(STALE_CACHE_NAME);
   const cacheKey = new Request(cacheKeyUrl, { method: 'GET' });
 
-  // 1. Check primary edge cache
+  // 1. Check primary edge cache (HIT)
   const cached = await cache.match(cacheKey);
   if (cached) {
     const headers = new Headers(cached.headers);
+    const newHeaders = headers;
+    newHeaders.set('CF-Cache-Status', 'HIT');
     headers.set('X-Edge-Cache', 'HIT');
+    headers.set('X-Cache-Status', 'HIT');
     headers.set('X-Origin-Refreshed', 'false');
     for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
     return new Response(cached.body, { status: cached.status, headers });
   }
 
-  // 2. Check origin refresh gate — was this key refreshed within the last minute?
-  const lastRefresh = lastRefreshTimestamps.get(cacheKeyUrl);
+  // 2. Check origin refresh gate — serve stale backup if refreshed within the last minute
+  const inFlightKey = cacheKeyUrl;
+  const lastRefresh = lastRefreshTimestamps.get(inFlightKey);
   const now = Date.now();
   if (lastRefresh && (now - lastRefresh) < MIN_ORIGIN_REFRESH_MS) {
-    // Serve from stale backup instead of hitting origin again
     const stale = await staleCache.match(cacheKey);
     if (stale) {
       const headers = new Headers(stale.headers);
+      headers.set('CF-Cache-Status', 'STALE');
       headers.set('X-Edge-Cache', 'STALE');
+      headers.set('X-Cache-Status', 'STALE');
       headers.set('X-Origin-Refreshed', 'false');
-      headers.set('X-Refresh-Gate', 'blocked');
+      headers.set('X-Refresh-Gate', 'active');
       for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
       return new Response(stale.body, { status: stale.status, headers });
     }
-    // No stale backup and refresh gate active — fall through to origin
   }
 
-  // 3. Single-flight coalescing
-  const existingFlight = inFlightRequests.get(cacheKeyUrl);
+  // 3. Single-flight request coalescing
+  const existingFlight = inFlightRequests.get(inFlightKey);
   if (existingFlight) {
     try {
       const flightResponse = await existingFlight;
@@ -271,19 +282,25 @@ async function handleCachedEndpoint(
       const result = await fetcher();
 
       if (!result.ok) {
-        // Origin returned error — try stale backup
+        // Origin error: try stale backup first
         const stale = await staleCache.match(cacheKey);
         if (stale) {
           const headers = new Headers(stale.headers);
+          headers.set('CF-Cache-Status', 'STALE');
           headers.set('X-Edge-Cache', 'STALE');
+          headers.set('X-Cache-Status', 'STALE');
           headers.set('X-Origin-Refreshed', 'false');
           headers.set('X-Origin-Error', String(result.status));
           for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
           return new Response(stale.body, { status: stale.status, headers });
         }
-        return jsonResponse(result.data, result.status, {
-          'X-Edge-Cache': 'BYPASS',
-          'X-Origin-Refreshed': 'true',
+
+        // Fail-Closed: Return HTTP 503 instead of falling through to raw Supabase
+        return errorResponse('Origin service temporarily unavailable. No cached data available.', 503, {
+          'CF-Cache-Status': 'FAIL_CLOSED',
+          'X-Edge-Cache': 'FAIL_CLOSED',
+          'X-Cache-Status': 'FAIL_CLOSED',
+          'Retry-After': '30',
         });
       }
 
@@ -291,11 +308,15 @@ async function handleCachedEndpoint(
       const body = JSON.stringify(result.data);
       const bodySize = new Blob([body]).size;
 
+      const cacheControlHeader = `public, s-maxage=${config.edgeTtl}, max-age=${config.browserTtl}, stale-while-revalidate=${config.swrTtl}, stale-if-error=${config.staleTtl}`;
+
       const responseHeaders: Record<string, string> = {
         'Content-Type': 'application/json; charset=utf-8',
-        'Cache-Control': `public, s-maxage=${config.edgeTtl}, max-age=${config.browserTtl}`,
+        'Cache-Control': cacheControlHeader,
         'Vary': 'Accept-Encoding',
+        'CF-Cache-Status': 'MISS',
         'X-Edge-Cache': 'MISS',
+        'X-Cache-Status': 'MISS',
         'X-Origin-Refreshed': 'true',
         'X-Response-Size': String(bodySize),
         ...CORS_HEADERS,
@@ -303,7 +324,6 @@ async function handleCachedEndpoint(
 
       if (bodySize > MAX_RESPONSE_SIZE) {
         responseHeaders['X-Size-Warning'] = 'exceeds-200kb';
-        // Return but don't cache oversized responses
         return new Response(body, { status: 200, headers: responseHeaders });
       }
 
@@ -312,12 +332,12 @@ async function handleCachedEndpoint(
       // Update refresh gate
       lastRefreshTimestamps.set(cacheKeyUrl, Date.now());
 
-      // Store in primary edge cache
+      // Store in primary edge cache (Fresh TTL)
       try {
         await cache.put(cacheKey, response.clone());
       } catch { /* non-fatal */ }
 
-      // Store in stale backup with extended TTL
+      // Store in stale backup (Stale TTL)
       try {
         const staleHeaders = new Headers(responseHeaders);
         staleHeaders.set('Cache-Control', `public, s-maxage=${config.staleTtl}, max-age=${config.staleTtl}`);
@@ -327,17 +347,24 @@ async function handleCachedEndpoint(
 
       return response;
     } catch (err) {
-      // Network failure — try stale backup
+      // Network failure: try stale backup first
       const stale = await staleCache.match(cacheKey);
       if (stale) {
         const headers = new Headers(stale.headers);
         headers.set('X-Edge-Cache', 'STALE');
+        headers.set('X-Cache-Status', 'STALE');
         headers.set('X-Origin-Refreshed', 'false');
         headers.set('X-Origin-Error', 'network-failure');
         for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
         return new Response(stale.body, { status: stale.status, headers });
       }
-      return errorResponse('Origin unavailable and no cached data available', 503);
+
+      // Fail-Closed: Return HTTP 503
+      return errorResponse('Origin service temporarily unavailable. No cached data available.', 503, {
+        'X-Edge-Cache': 'FAIL_CLOSED',
+        'X-Cache-Status': 'FAIL_CLOSED',
+        'Retry-After': '30',
+      });
     } finally {
       inFlightRequests.delete(cacheKeyUrl);
     }
@@ -349,7 +376,7 @@ async function handleCachedEndpoint(
   return response.clone();
 }
 
-// ─── Endpoint Handlers ───────────────────────────────────────────────────────
+// ─── Public API Handlers (Strict Temporal Filtering: end_at >= now) ─────────
 
 async function handleCategories(origin: string, env: Env, ctx: ExecutionContext): Promise<Response> {
   const cacheKeyUrl = buildCacheKey(origin, '/api/public/categories', {});
@@ -374,7 +401,7 @@ async function handleCarousel(origin: string, env: Env, ctx: ExecutionContext): 
       if (slide.start_at && new Date(slide.start_at) > now) return false;
       if (slide.end_at && new Date(slide.end_at) < now) return false;
       if (slide.item_type === 'EVENT') {
-        if (!slide.events || slide.events.status !== 'PUBLISHED') return false;
+        if (!slide.events || slide.events.status !== 'PUBLISHED' || new Date(slide.events.end_at) < now) return false;
       } else if (slide.item_type === 'ADVERTISEMENT') {
         if (!slide.advertisements || slide.advertisements.status !== 'active') return false;
       }
@@ -392,7 +419,10 @@ async function handleFeatured(origin: string, env: Env, ctx: ExecutionContext): 
       'GET', undefined, env
     );
     if (!res.ok || !Array.isArray(res.data)) return res;
-    const filtered = (res.data as any[]).filter((fe: any) => fe.events && fe.events.status === 'PUBLISHED');
+    const now = new Date();
+    const filtered = (res.data as any[]).filter(
+      (fe: any) => fe.events && fe.events.status === 'PUBLISHED' && new Date(fe.events.end_at) >= now
+    );
     return { ok: true, status: 200, data: filtered };
   }, ctx);
 }
@@ -438,54 +468,42 @@ async function handleSettings(origin: string, env: Env, ctx: ExecutionContext): 
 async function handleEventFeed(
   origin: string, url: URL, env: Env, ctx: ExecutionContext
 ): Promise<Response> {
-  // Approved parameters with validation
   const categoryId = url.searchParams.get('category_id') || '';
   const subcategoryId = url.searchParams.get('subcategory_id') || '';
   const pricingType = url.searchParams.get('pricing_type') || '';
   const timeline = url.searchParams.get('timeline') || '';
   const date = url.searchParams.get('date') || '';
-  const showPast = url.searchParams.get('show_past') === 'true';
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '20', 10) || 20, 1), 20);
   const offset = Math.min(Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0), 200);
 
-  // Validate UUIDs
-  if (categoryId && !UUID_REGEX.test(categoryId)) return errorResponse('Invalid category_id');
-  if (subcategoryId && !UUID_REGEX.test(subcategoryId)) return errorResponse('Invalid subcategory_id');
+  // Validate parameters
+  if (categoryId && !UUID_REGEX.test(categoryId)) return errorResponse('Invalid category ID');
+  if (subcategoryId && !UUID_REGEX.test(subcategoryId)) return errorResponse('Invalid subcategory ID');
+  if (pricingType && !['FREE', 'PAID'].includes(pricingType.toUpperCase())) return errorResponse('Invalid pricing type');
+  if (date && !DATE_REGEX.test(date)) return errorResponse('Invalid date format (YYYY-MM-DD)');
 
-  // Validate enum values
-  const validPricingTypes = ['', 'FREE', 'PAID'];
-  if (!validPricingTypes.includes(pricingType)) return errorResponse('Invalid pricing_type');
-
-  const validTimelines = ['', 'today', 'tomorrow', 'this-week', 'this_week'];
-  if (!validTimelines.includes(timeline.toLowerCase())) return errorResponse('Invalid timeline');
-
-  if (date && !DATE_REGEX.test(date)) return errorResponse('Invalid date format (expected YYYY-MM-DD)');
-
-  // Build deterministic cache key params
-  const params: Record<string, string> = {};
-  if (categoryId) params.category_id = categoryId.toLowerCase();
-  if (subcategoryId) params.subcategory_id = subcategoryId.toLowerCase();
-  if (pricingType) params.pricing_type = pricingType;
-  if (timeline) params.timeline = timeline.toLowerCase().replace('_', '-');
+  const params: Record<string, string> = {
+    limit: String(limit),
+    offset: String(offset),
+  };
+  if (categoryId) params.category_id = categoryId;
+  if (subcategoryId) params.subcategory_id = subcategoryId;
+  if (pricingType) params.pricing_type = pricingType.toUpperCase();
+  if (timeline) params.timeline = timeline.toLowerCase();
   if (date) params.date = date;
-  if (showPast) params.show_past = 'true';
-  params.limit = String(limit);
-  params.offset = String(offset);
 
   const cacheKeyUrl = buildCacheKey(origin, '/api/public/events', params);
 
   return handleCachedEndpoint(cacheKeyUrl, 'events', async () => {
     let path = `events?select=${encodeURIComponent(PROJECTIONS.eventFeed)}`;
 
-    if (showPast) {
-      path += `&status=in.(PUBLISHED,COMPLETED)&order=end_at.desc`;
-    } else {
-      path += `&status=eq.PUBLISHED&order=start_at.asc`;
-    }
+    // Strict temporal boundary: Only active published events
+    const nowIso = new Date().toISOString();
+    path += `&status=eq.PUBLISHED&end_at=gte.${nowIso}&order=start_at.asc`;
 
     if (categoryId) path += `&category_id=eq.${categoryId}`;
     if (subcategoryId) path += `&subcategory_id=eq.${subcategoryId}`;
-    if (pricingType) path += `&pricing_type=eq.${pricingType}`;
+    if (pricingType) path += `&pricing_type=eq.${pricingType.toUpperCase()}`;
 
     // Apply timeline filter server-side for deterministic caching
     const normalizedTimeline = timeline.toLowerCase().replace('_', '-');
@@ -511,7 +529,6 @@ async function handleEventFeed(
 async function handleEventDetail(
   origin: string, eventId: string, env: Env, ctx: ExecutionContext
 ): Promise<Response> {
-  // Validate UUID
   const normalizedId = eventId.toLowerCase();
   if (!UUID_REGEX.test(normalizedId)) {
     return errorResponse('Invalid event ID format');
@@ -520,8 +537,9 @@ async function handleEventDetail(
   const cacheKeyUrl = buildCacheKey(origin, `/api/public/events/${normalizedId}`, {});
 
   return handleCachedEndpoint(cacheKeyUrl, 'eventDetail', async () => {
+    const nowIso = new Date().toISOString();
     const res = await fetchFromSupabase(
-      `events?id=eq.${normalizedId}&select=${encodeURIComponent(PROJECTIONS.eventDetail)}`,
+      `events?id=eq.${normalizedId}&status=eq.PUBLISHED&end_at=gte.${nowIso}&select=${encodeURIComponent(PROJECTIONS.eventDetail)}`,
       'GET', undefined, env
     );
 
@@ -529,8 +547,9 @@ async function handleEventDetail(
     const rows = res.data as any[];
     const event = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
 
-    if (!event || event.status === 'CANCELLED' || event.status === 'DELETED') {
-      return { ok: false, status: 404, data: { message: 'Event not found or inactive' } };
+    // Fail-closed: If not found, completed, or cancelled, return 404
+    if (!event || event.status !== 'PUBLISHED' || new Date(event.end_at) < new Date()) {
+      return { ok: false, status: 404, data: { message: 'Event not found or has completed' } };
     }
 
     return { ok: true, status: 200, data: event };
@@ -544,55 +563,55 @@ async function handleSearch(
   const normalizedQuery = normalizeSearchQuery(rawQuery);
 
   if (!normalizedQuery) {
-    return jsonResponse([], 200, { 'X-Edge-Cache': 'BYPASS' });
+    return jsonResponse([]);
   }
 
   const categoryId = url.searchParams.get('category_id') || '';
   const subcategoryId = url.searchParams.get('subcategory_id') || '';
   const pricingType = url.searchParams.get('pricing_type') || '';
+  const timeline = url.searchParams.get('timeline') || '';
+  const date = url.searchParams.get('date') || '';
   const limit = Math.min(Math.max(parseInt(url.searchParams.get('limit') || '20', 10) || 20, 1), 20);
   const offset = Math.min(Math.max(parseInt(url.searchParams.get('offset') || '0', 10) || 0, 0), 100);
-  const eventNameOnly = url.searchParams.get('event_name_only') === 'true';
 
-  // Validate UUIDs
-  if (categoryId && !UUID_REGEX.test(categoryId)) return errorResponse('Invalid category_id');
-  if (subcategoryId && !UUID_REGEX.test(subcategoryId)) return errorResponse('Invalid subcategory_id');
-
-  const validPricingTypes = ['', 'FREE', 'PAID'];
-  if (!validPricingTypes.includes(pricingType)) return errorResponse('Invalid pricing_type');
-
-  // Build deterministic cache key
-  const params: Record<string, string> = { q: normalizedQuery };
-  if (categoryId) params.category_id = categoryId.toLowerCase();
-  if (subcategoryId) params.subcategory_id = subcategoryId.toLowerCase();
-  if (pricingType) params.pricing_type = pricingType;
-  params.limit = String(limit);
-  params.offset = String(offset);
-  if (eventNameOnly) params.event_name_only = 'true';
+  const params: Record<string, string> = {
+    q: normalizedQuery,
+    limit: String(limit),
+    offset: String(offset),
+  };
+  if (categoryId) params.category_id = categoryId;
+  if (subcategoryId) params.subcategory_id = subcategoryId;
+  if (pricingType) params.pricing_type = pricingType.toUpperCase();
+  if (timeline) params.timeline = timeline.toLowerCase();
+  if (date) params.date = date;
 
   const cacheKeyUrl = buildCacheKey(origin, '/api/public/search', params);
 
-  return handleCachedEndpoint(cacheKeyUrl, 'search', () =>
-    fetchFromSupabase('rpc/search_events', 'POST', {
+  return handleCachedEndpoint(cacheKeyUrl, 'search', () => {
+    const rpcPayload: Record<string, unknown> = {
       query_text: normalizedQuery,
       limit_count: limit,
       offset_count: offset,
-      p_category_id: categoryId || null,
-      p_subcategory_id: subcategoryId || null,
-      p_pricing_type: pricingType || null,
-      p_timeline: null,
-      p_target_date: null,
-      p_show_past: false,
-      p_event_name_only: eventNameOnly,
-    }, env), ctx
-  );
+      p_show_past: false, // Students NEVER receive past events
+    };
+    if (categoryId && UUID_REGEX.test(categoryId)) rpcPayload.p_category_id = categoryId;
+    if (subcategoryId && UUID_REGEX.test(subcategoryId)) rpcPayload.p_subcategory_id = subcategoryId;
+    if (pricingType && ['FREE', 'PAID'].includes(pricingType.toUpperCase())) rpcPayload.p_pricing_type = pricingType.toUpperCase();
+    if (timeline) rpcPayload.p_timeline = timeline;
+    if (date && DATE_REGEX.test(date)) rpcPayload.p_target_date = date;
+
+    return fetchFromSupabase('rpc/search_events', 'POST', rpcPayload, env);
+  }, ctx);
 }
+
+// ─── Homepage Aggregation ───────────────────────────────────────────────────
 
 async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext): Promise<Response> {
   const cacheKeyUrl = buildCacheKey(origin, '/api/public/homepage', {});
 
   return handleCachedEndpoint(cacheKeyUrl, 'homepage', async () => {
-    // Fetch all homepage data in parallel (7 queries → 1 cache entry)
+    const nowIso = new Date().toISOString();
+
     const [
       categoriesRes,
       carouselRes,
@@ -627,30 +646,29 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext): 
         'GET', undefined, env
       ),
       fetchFromSupabase(
-        `events?select=${encodeURIComponent(PROJECTIONS.eventFeed)}&status=eq.PUBLISHED&order=start_at.asc&limit=20&offset=0`,
+        `events?select=${encodeURIComponent(PROJECTIONS.eventFeed)}&status=eq.PUBLISHED&end_at=gte.${nowIso}&order=start_at.asc&limit=20&offset=0`,
         'GET', undefined, env
       ),
     ]);
 
-    // Check if any critical query failed
     if (!categoriesRes.ok || !eventsRes.ok) {
       return {
         ok: false,
         status: 502,
-        data: { message: 'Origin error fetching homepage data' },
+        data: { message: 'Origin error fetching homepage bundle' },
       };
     }
 
     const now = new Date();
 
-    // Filter carousel
+    // Filter carousel (strictly end_at >= now)
     let carousel: any[] = [];
     if (carouselRes.ok && Array.isArray(carouselRes.data)) {
       carousel = (carouselRes.data as any[]).filter((slide: any) => {
         if (slide.start_at && new Date(slide.start_at) > now) return false;
         if (slide.end_at && new Date(slide.end_at) < now) return false;
         if (slide.item_type === 'EVENT') {
-          if (!slide.events || slide.events.status !== 'PUBLISHED') return false;
+          if (!slide.events || slide.events.status !== 'PUBLISHED' || new Date(slide.events.end_at) < now) return false;
         } else if (slide.item_type === 'ADVERTISEMENT') {
           if (!slide.advertisements || slide.advertisements.status !== 'active') return false;
         }
@@ -658,15 +676,15 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext): 
       });
     }
 
-    // Filter featured
+    // Filter featured (strictly end_at >= now)
     let featured: any[] = [];
     if (featuredRes.ok && Array.isArray(featuredRes.data)) {
       featured = (featuredRes.data as any[]).filter(
-        (fe: any) => fe.events && fe.events.status === 'PUBLISHED'
+        (fe: any) => fe.events && fe.events.status === 'PUBLISHED' && new Date(fe.events.end_at) >= now
       );
     }
 
-    // Filter trending
+    // Filter trending (strictly end_at >= now)
     let trending: any[] = [];
     if (trendingRes.ok && Array.isArray(trendingRes.data)) {
       trending = (trendingRes.data as any[])
@@ -699,9 +717,8 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext): 
   }, ctx);
 }
 
-// ─── Cache Invalidation ──────────────────────────────────────────────────────
+// ─── Cache Invalidation & Measured Warming ──────────────────────────────────
 
-// Maps tag names to the canonical cache URL path patterns they should invalidate
 function getInvalidationUrls(origin: string, tags: string[]): string[] {
   const urls = new Set<string>();
 
@@ -710,8 +727,6 @@ function getInvalidationUrls(origin: string, tags: string[]): string[] {
       urls.add(buildCacheKey(origin, '/api/public/homepage', {}));
     }
     if (tag === 'events') {
-      // Invalidate default events feed — we can't invalidate all parameterized variants
-      // so we invalidate the default and let TTL handle the rest
       urls.add(buildCacheKey(origin, '/api/public/events', { limit: '20', offset: '0' }));
     }
     if (tag === 'categories' || tag === 'taxonomy') {
@@ -760,111 +775,53 @@ async function handleInvalidation(
     return errorResponse('Method Not Allowed', 405);
   }
 
-  // Authentication check
   const secret = env.CACHE_INVALIDATION_SECRET;
   if (secret) {
-    const providedSecret = request.headers.get('X-Invalidation-Secret') || '';
-    if (providedSecret !== secret) {
-      return errorResponse('Unauthorized', 401);
+    const authHeader = request.headers.get('X-Invalidation-Secret');
+    if (authHeader !== secret) {
+      return errorResponse('Unauthorized invalidation request', 401);
     }
   }
 
   try {
-    const body = (await request.json().catch(() => ({}))) as {
-      tags?: string[];
-      keys?: string[];
-      all?: boolean;
-    };
+    const body = await request.json() as { tags?: string[]; urls?: string[] };
+    const tags = Array.isArray(body.tags) ? body.tags : [];
+    const directUrls = Array.isArray(body.urls) ? body.urls : [];
+
+    const targetUrls = new Set<string>([
+      ...getInvalidationUrls(origin, tags),
+      ...directUrls,
+    ]);
 
     const cache = (caches as any).default;
-    const staleCache = await caches.open(STALE_CACHE_NAME);
-    let invalidatedCount = 0;
+    const invalidated: string[] = [];
 
-    if (body.all) {
-      inFlightRequests.clear();
-      lastRefreshTimestamps.clear();
-      return jsonResponse({
-        status: 'success',
-        message: 'Global cache purge acknowledged',
-        invalidated: true,
-      });
+    for (const urlStr of targetUrls) {
+      const req = new Request(urlStr, { method: 'GET' });
+      await cache.delete(req);
+      lastRefreshTimestamps.delete(urlStr);
+      invalidated.push(urlStr);
     }
 
-    const urlsToPurge: string[] = [];
-
-    if (body.tags && Array.isArray(body.tags)) {
-      urlsToPurge.push(...getInvalidationUrls(origin, body.tags));
-    }
-
-    if (body.keys && Array.isArray(body.keys)) {
-      urlsToPurge.push(...body.keys);
-    }
-
-    for (const url of urlsToPurge) {
-      const req = new Request(url, { method: 'GET' });
-      try {
-        const deleted = await cache.delete(req);
-        if (deleted) invalidatedCount++;
-      } catch { /* non-fatal */ }
-      try {
-        await staleCache.delete(req);
-      } catch { /* non-fatal */ }
-      // Clear refresh gate for this key
-      lastRefreshTimestamps.delete(url);
-      inFlightRequests.delete(url);
-    }
-
-    // Proactive cache warming via waitUntil
-    if (urlsToPurge.length > 0) {
-      ctx.waitUntil(warmCacheEntries(urlsToPurge, origin));
-    }
+    // Controlled background warming of primary homepage bundle
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const warmReq = new Request(`${origin}/api/public/homepage`, { method: 'GET' });
+          await fetch(warmReq);
+        } catch { /* non-fatal */ }
+      })()
+    );
 
     return jsonResponse({
-      status: 'success',
-      invalidated_keys: invalidatedCount,
-      warmed_keys: urlsToPurge.length,
-      tags_requested: body.tags || [],
+      ok: true,
+      invalidatedCount: invalidated.length,
+      invalidatedUrls: invalidated,
+      warmed: ['/api/public/homepage'],
     });
-  } catch (err: any) {
-    return errorResponse(err.message || 'Invalidation error', 500);
+  } catch {
+    return errorResponse('Invalid invalidation payload', 400);
   }
-}
-
-/**
- * Proactively warm invalidated cache entries by self-fetching.
- * Uses single-flight to avoid storms. Errors are non-fatal.
- */
-async function warmCacheEntries(urls: string[], _origin: string): Promise<void> {
-  // Small delay to let the invalidation propagate
-  await new Promise(resolve => setTimeout(resolve, 100));
-
-  const warmPromises = urls.map(async (url) => {
-    try {
-      await fetch(url, {
-        method: 'GET',
-        headers: { 'Accept': 'application/json' },
-      });
-    } catch { /* non-fatal warming error */ }
-  });
-
-  await Promise.allSettled(warmPromises);
-}
-
-// ─── Security Checks ─────────────────────────────────────────────────────────
-
-function isPublicRequestSafe(request: Request): { safe: boolean; reason?: string } {
-  // Reject requests that include Authorization headers on public endpoints
-  if (request.headers.has('Authorization')) {
-    return { safe: false, reason: 'Public endpoints must not include Authorization headers' };
-  }
-
-  // Check for user-specific cookies that would make caching unsafe
-  const cookie = request.headers.get('Cookie') || '';
-  if (cookie.includes('sb-') || cookie.includes('supabase-auth')) {
-    return { safe: false, reason: 'Public endpoints must not include Supabase auth cookies' };
-  }
-
-  return { safe: true };
 }
 
 // ─── Main Worker Entry Point ─────────────────────────────────────────────────
@@ -884,8 +841,8 @@ export default {
       return env.ASSETS.fetch(request);
     }
 
-    // 3. Only GET allowed for public endpoints (POST for invalidation and search RPC)
-    if (url.pathname.startsWith('/api/public/') && request.method !== 'GET') {
+    // 3. Only GET allowed for public endpoints (POST for invalidation, view tracking, and search RPC)
+    if (url.pathname.startsWith('/api/public/') && request.method !== 'GET' && url.pathname !== '/api/public/view' && url.pathname !== '/api/public/search') {
       return errorResponse('Method Not Allowed', 405);
     }
 
@@ -909,58 +866,49 @@ export default {
 
     // ─── Public API Routes ─────────────────────────────────────────────
 
-    // A. Homepage Bundle
     if (url.pathname === '/api/public/homepage') {
       return handleHomepage(origin, env, ctx);
     }
 
-    // B. Categories
     if (url.pathname === '/api/public/categories') {
       return handleCategories(origin, env, ctx);
     }
 
-    // C. Carousel
     if (url.pathname === '/api/public/carousel') {
       return handleCarousel(origin, env, ctx);
     }
 
-    // D. Featured
     if (url.pathname === '/api/public/featured') {
       return handleFeatured(origin, env, ctx);
     }
 
-    // E. Trending
     if (url.pathname === '/api/public/trending') {
       return handleTrending(origin, env, ctx);
     }
 
-    // F. Advertisements
     if (url.pathname === '/api/public/advertisements') {
       return handleAdvertisements(origin, env, ctx);
     }
 
-    // G. Settings
     if (url.pathname === '/api/public/settings') {
       return handleSettings(origin, env, ctx);
     }
 
-    // H. Event Feed
     if (url.pathname === '/api/public/events') {
       return handleEventFeed(origin, url, env, ctx);
     }
 
-    // I. Event Detail
+    // Route: /api/public/events/:id
     const eventDetailMatch = url.pathname.match(/^\/api\/public\/events\/([a-f0-9-]+)$/i);
     if (eventDetailMatch) {
       return handleEventDetail(origin, eventDetailMatch[1], env, ctx);
     }
 
-    // J. Search
     if (url.pathname === '/api/public/search') {
       return handleSearch(origin, url, env, ctx);
     }
 
-    // 7. View tracking (pass-through to Supabase, not cached)
+    // 7. View tracking (pass-through to Supabase, fire-and-forget)
     if (url.pathname === '/api/public/view' && request.method === 'POST') {
       try {
         const body = await request.json() as { event_id?: string };
@@ -976,7 +924,6 @@ export default {
       }
     }
 
-    // 8. Default fallback
     return errorResponse('API endpoint not found', 404);
   },
 };

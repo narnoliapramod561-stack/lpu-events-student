@@ -108,7 +108,7 @@ export function initSentry(config: SentryConfig): boolean {
       dsn,
       environment: config.environment || (typeof process !== 'undefined' ? process.env?.VITE_SENTRY_ENVIRONMENT : 'production') || 'production',
       release: config.release || (typeof process !== 'undefined' ? process.env?.VITE_SENTRY_RELEASE : undefined) || '1.0.0',
-      tracesSampleRate: config.tracesSampleRate ?? 0.2, // 20% performance trace sampling
+      tracesSampleRate: config.tracesSampleRate ?? 0.01, // 1% performance trace sampling (safe for 10k free tier quota)
       
       // Privacy-first data scrubber on all captured events
       beforeSend(event: any, _hint?: any) {

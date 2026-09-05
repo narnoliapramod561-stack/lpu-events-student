@@ -44,7 +44,7 @@ export function initPostHog(config: PostHogConfig): typeof posthog | null {
   try {
     posthog.init(apiKey, {
       api_host: apiHost,
-      autocapture: true,
+      autocapture: false,
       capture_pageview: false, // We control pageviews explicitly for single-page apps
       capture_pageleave: true,
       disable_session_recording: true, // We use Microsoft Clarity for recordings

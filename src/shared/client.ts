@@ -261,8 +261,10 @@ export class LpuEventsClient {
               .in('status', ['PUBLISHED', 'COMPLETED'])
               .order('end_at', { ascending: false });
           } else {
+            const nowIso = new Date().toISOString();
             query = query
               .eq('status', 'PUBLISHED')
+              .gte('end_at', nowIso)
               .order('start_at', { ascending: true });
           }
 
@@ -359,17 +361,21 @@ export class LpuEventsClient {
         'subcategories(id,name,key),' +
         'event_content_sections(id,section_type,title,content,sort_order)';
 
+      const nowIso = new Date().toISOString();
+
       if (isUuid) {
         return this._fetchPublic<Event>(`events/${clean}`, async () => {
           const { data, error } = await this.supabase
             .from('events')
             .select(projection)
             .eq('id', clean)
+            .eq('status', 'PUBLISHED')
+            .gte('end_at', nowIso)
             .single();
 
           const event = data as any;
-          if (event && (event.status === 'CANCELLED' || event.status === 'DELETED')) {
-            return { data: null, error: { message: 'Event has been cancelled or removed.', code: 'EVENT_NOT_AVAILABLE' } };
+          if (!event || event.status !== 'PUBLISHED' || new Date(event.end_at) < new Date()) {
+            return { data: null, error: { message: 'Event not found or has completed.', code: 'EVENT_NOT_AVAILABLE' } };
           }
 
           return { data, error } as any;
@@ -384,6 +390,7 @@ export class LpuEventsClient {
         .from('events')
         .select(projection)
         .eq('status', 'PUBLISHED')
+        .gte('end_at', nowIso)
         .ilike('name', `%${queryPattern}%`)
         .limit(10);
 
