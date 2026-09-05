@@ -282,7 +282,32 @@ async function handleCachedEndpoint(
       const result = await fetcher();
 
       if (!result.ok) {
-        // Origin error: try stale backup first
+        // Distinguish Client/Not-Found errors (404/400) from Infrastructure/Origin failures (5xx)
+        if (result.status === 404) {
+          const notFoundBody = JSON.stringify({ error: { message: (result.data as any)?.message || 'Resource not found', code: 'NOT_FOUND' } });
+          const notFoundResponse = new Response(notFoundBody, {
+            status: 404,
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Cache-Control': 'public, s-maxage=60, max-age=60', // Short negative cache (60s) to prevent random UUID query storms
+              'CF-Cache-Status': 'MISS',
+              'X-Edge-Cache': 'MISS',
+              'X-Cache-Status': 'MISS',
+              'X-Origin-Refreshed': 'true',
+              ...CORS_HEADERS,
+            },
+          });
+          try {
+            await cache.put(cacheKey, notFoundResponse.clone());
+          } catch { /* non-fatal */ }
+          return notFoundResponse;
+        }
+
+        if (result.status === 400) {
+          return errorResponse((result.data as any)?.message || 'Bad Request', 400);
+        }
+
+        // Origin error (5xx / network): try stale backup first
         const stale = await staleCache.match(cacheKey);
         if (stale) {
           const headers = new Headers(stale.headers);
@@ -531,7 +556,7 @@ async function handleEventDetail(
 ): Promise<Response> {
   const normalizedId = eventId.toLowerCase();
   if (!UUID_REGEX.test(normalizedId)) {
-    return errorResponse('Invalid event ID format');
+    return errorResponse('Invalid event ID format', 400);
   }
 
   const cacheKeyUrl = buildCacheKey(origin, `/api/public/events/${normalizedId}`, {});
@@ -543,7 +568,10 @@ async function handleEventDetail(
       'GET', undefined, env
     );
 
-    if (!res.ok) return res;
+    if (!res.ok) {
+      if (res.status >= 500) return res;
+      return { ok: false, status: 404, data: { message: 'Event not found or has completed' } };
+    }
     const rows = res.data as any[];
     const event = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
 
