@@ -56,6 +56,10 @@ const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
 // Prevents more than ~1 origin request per key per minute.
 const lastRefreshTimestamps = new Map<string, number>();
 
+// Dynamic cache version tracking & status
+let currentCacheVersion = Date.now();
+let isRebuildingCache = false;
+
 // ─── Single-Flight Coalescing ────────────────────────────────────────────────
 // Prevents N concurrent cache misses from producing N origin requests.
 const inFlightRequests = new Map<string, Promise<Response>>();
@@ -344,11 +348,11 @@ async function handleCachedEndpoint(
         }
 
         // Fail-Closed: Return HTTP 503 instead of falling through to raw Supabase
-        return errorResponse('Origin service temporarily unavailable. No cached data available.', 503, {
+        return errorResponse('Campus event stream is currently initializing in background. Please wait a moment...', 503, {
           'CF-Cache-Status': 'FAIL_CLOSED',
           'X-Edge-Cache': 'FAIL_CLOSED',
-          'X-Cache-Status': 'FAIL_CLOSED',
-          'Retry-After': '30',
+          'X-Cache-Status': 'MAINTENANCE_WARMING',
+          'Retry-After': '3',
         });
       }
 
@@ -870,12 +874,11 @@ async function handleInvalidation(
       invalidated.push(urlStr);
     }
 
-    // Controlled background warming of primary homepage bundle
+    // Controlled background warming of primary homepage bundle and core snapshots
     ctx.waitUntil(
       (async () => {
         try {
-          const warmReq = new Request(`${origin}/api/public/homepage`, { method: 'GET' });
-          await fetch(warmReq);
+          await handleCacheRebuild(origin, env, ctx);
         } catch { /* non-fatal */ }
       })()
     );
@@ -885,9 +888,96 @@ async function handleInvalidation(
       invalidatedCount: invalidated.length,
       invalidatedUrls: invalidated,
       warmed: ['/api/public/homepage'],
+      version: currentCacheVersion,
     });
   } catch {
     return errorResponse('Invalid invalidation payload', 400);
+  }
+}
+
+async function handleCacheRebuild(
+  origin: string,
+  env: Env,
+  ctx: ExecutionContext
+): Promise<Response> {
+  isRebuildingCache = true;
+  currentCacheVersion = Date.now();
+  lastRefreshTimestamps.clear();
+  inFlightRequests.clear();
+
+  const cache = (caches as any).default;
+  const staleCache = await caches.open(STALE_CACHE_NAME);
+  const warmedEndpoints: string[] = [];
+
+  try {
+    // 1. Rebuild primary homepage bundle and warm cache
+    const homepageRes = await handleHomepage(origin, env, ctx);
+    if (homepageRes.status === 200) {
+      const hpKey = new Request(`${origin}/api/public/homepage`, { method: 'GET' });
+      await cache.put(hpKey, homepageRes.clone());
+      try { await staleCache.put(hpKey, homepageRes.clone()); } catch {}
+      warmedEndpoints.push('/api/public/homepage');
+    }
+
+    // 2. Warm Categories
+    const catRes = await handleCategories(origin, env, ctx);
+    if (catRes.status === 200) {
+      const catKey = new Request(`${origin}/api/public/categories`, { method: 'GET' });
+      await cache.put(catKey, catRes.clone());
+      try { await staleCache.put(catKey, catRes.clone()); } catch {}
+      warmedEndpoints.push('/api/public/categories');
+    }
+
+    // 3. Warm Events Feed (default feed)
+    const eventsUrl = new URL(`${origin}/api/public/events?limit=20&offset=0`);
+    const eventsRes = await handleEventFeed(origin, eventsUrl, env, ctx);
+    if (eventsRes.status === 200) {
+      const evtKey = new Request(buildCacheKey(origin, '/api/public/events', { limit: '20', offset: '0' }), { method: 'GET' });
+      await cache.put(evtKey, eventsRes.clone());
+      try { await staleCache.put(evtKey, eventsRes.clone()); } catch {}
+      warmedEndpoints.push('/api/public/events?limit=20&offset=0');
+    }
+
+    // 4. Warm Featured
+    const featRes = await handleFeatured(origin, env, ctx);
+    if (featRes.status === 200) {
+      const featKey = new Request(`${origin}/api/public/featured`, { method: 'GET' });
+      await cache.put(featKey, featRes.clone());
+      try { await staleCache.put(featKey, featRes.clone()); } catch {}
+      warmedEndpoints.push('/api/public/featured');
+    }
+
+    // 5. Warm Trending
+    const trendRes = await handleTrending(origin, env, ctx);
+    if (trendRes.status === 200) {
+      const trendKey = new Request(`${origin}/api/public/trending`, { method: 'GET' });
+      await cache.put(trendKey, trendRes.clone());
+      try { await staleCache.put(trendKey, trendRes.clone()); } catch {}
+      warmedEndpoints.push('/api/public/trending');
+    }
+
+    // 6. Warm Carousel
+    const carRes = await handleCarousel(origin, env, ctx);
+    if (carRes.status === 200) {
+      const carKey = new Request(`${origin}/api/public/carousel`, { method: 'GET' });
+      await cache.put(carKey, carRes.clone());
+      try { await staleCache.put(carKey, carRes.clone()); } catch {}
+      warmedEndpoints.push('/api/public/carousel');
+    }
+
+    isRebuildingCache = false;
+
+    return jsonResponse({
+      ok: true,
+      status: 'WARMED',
+      version: currentCacheVersion,
+      warmedCount: warmedEndpoints.length,
+      warmedEndpoints,
+      timestamp: new Date().toISOString()
+    });
+  } catch (err: any) {
+    isRebuildingCache = false;
+    return errorResponse(`Cache rebuild error: ${err?.message || 'Unknown error'}`, 500);
   }
 }
 
@@ -908,22 +998,46 @@ export default {
       return env.ASSETS.fetch(request);
     }
 
-    // 3. Only GET allowed for public endpoints (POST for invalidation, view tracking, and search RPC)
+    // 3. Cache Version & Health Endpoint (always fresh)
+    if (url.pathname === '/api/public/version') {
+      return jsonResponse({
+        ok: true,
+        version: currentCacheVersion,
+        status: isRebuildingCache ? 'REBUILDING' : 'READY',
+        timestamp: new Date().toISOString(),
+      }, 200, {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+      });
+    }
+
+    // 4. Cache Rebuild Endpoint
+    if (url.pathname === '/api/cache/rebuild') {
+      const secret = env.CACHE_INVALIDATION_SECRET;
+      if (secret) {
+        const authHeader = request.headers.get('X-Invalidation-Secret');
+        if (authHeader && authHeader !== secret) {
+          return errorResponse('Unauthorized cache rebuild request', 401);
+        }
+      }
+      return handleCacheRebuild(origin, env, ctx);
+    }
+
+    // 5. Only GET allowed for remaining public endpoints (POST for invalidation, view tracking, and search RPC)
     if (url.pathname.startsWith('/api/public/') && request.method !== 'GET' && url.pathname !== '/api/public/view' && url.pathname !== '/api/public/search') {
       return errorResponse('Method Not Allowed', 405);
     }
 
-    // 4. Query string length guard
+    // 6. Query string length guard
     if (url.search.length > MAX_QUERY_STRING_LENGTH) {
       return errorResponse('Query string too long', 414);
     }
 
-    // 5. Cache Invalidation Endpoint
+    // 7. Cache Invalidation Endpoint
     if (url.pathname === '/api/cache/invalidate') {
       return handleInvalidation(request, origin, env, ctx);
     }
 
-    // 6. Security check for public endpoints
+    // 8. Security check for public endpoints
     if (url.pathname.startsWith('/api/public/')) {
       const check = isPublicRequestSafe(request);
       if (!check.safe) {

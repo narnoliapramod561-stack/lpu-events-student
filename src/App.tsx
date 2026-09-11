@@ -12,6 +12,7 @@ import { ContactUsView } from "./components/ContactUsView";
 import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { Footer } from "./components/Footer";
 import { UnifiedAdSlot } from "./components/UnifiedAdSlot";
+import { MaintenanceView } from "./components/MaintenanceView";
 import { OFFICIAL_PLATFORM_CATEGORIES } from "./utils/categories";
 import { lpuClient } from "./supabase";
 import { 
@@ -196,6 +197,7 @@ export default function App() {
   const [eventsLoading, setEventsLoading] = useState(true);
   const [visibleEventsCount, setVisibleEventsCount] = useState(10);
   const [appLoading, setAppLoading] = useState(true);
+  const [isMaintenanceWarming, setIsMaintenanceWarming] = useState(false);
   const searchReqIdRef = useRef(0);
 
   // Aggregated in-memory events for instant detail-view lookup
@@ -421,9 +423,15 @@ export default function App() {
       try {
         const { data: bundle, error } = await lpuClient.fetchHomepageBundle();
         if (error || !bundle) {
+          if (error?.code === 'MAINTENANCE_WARMING' || error?.status === 503) {
+            setIsMaintenanceWarming(true);
+            return;
+          }
           console.error("Failed to load homepage bundle:", error);
           return;
         }
+
+        setIsMaintenanceWarming(false);
 
         // Distribute bundled data to component state
 
@@ -725,6 +733,19 @@ export default function App() {
   const displayedEvents = useMemo(() => {
     return filteredEvents.slice(0, visibleEventsCount);
   }, [filteredEvents, visibleEventsCount]);
+
+  if (isMaintenanceWarming) {
+    return (
+      <MaintenanceView
+        onRetry={() => {
+          lpuClient.invalidateClientCache();
+          window.location.reload();
+        }}
+        message="University campus event stream is compiling into the edge memory cache. Automatic background synchronization in progress."
+        autoRetrySeconds={3}
+      />
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#faf8f5] dark:bg-[#060709] text-gray-900 dark:text-gray-100 transition-colors duration-300 relative selection:bg-primary/20 selection:text-primary overflow-x-hidden font-sans">
