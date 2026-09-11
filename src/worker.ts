@@ -141,22 +141,45 @@ function buildCacheKey(origin: string, path: string, params: Record<string, stri
   return qs ? `${origin}${path}?${qs}` : `${origin}${path}`;
 }
 
-function todayUTC(): string {
-  return new Date().toISOString().slice(0, 10);
+/**
+ * LPU Campus operates under India Standard Time (Asia/Kolkata, UTC+05:30).
+ * All calendar-day calculations must strictly anchor to IST to prevent
+ * the negative calendar shift (-1 day) when UTC is between 18:30 and 23:59.
+ */
+function getISTDateString(d: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Kolkata',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).format(d);
 }
 
-function tomorrowUTC(): string {
-  const d = new Date();
-  d.setUTCDate(d.getUTCDate() + 1);
-  return d.toISOString().slice(0, 10);
-}
-
-function thisWeekUTC(): { start: string; end: string } {
+function getISTDayOffset(daysOffset: number): string {
   const now = new Date();
-  const start = now.toISOString().slice(0, 10);
-  const end = new Date(now);
-  end.setUTCDate(end.getUTCDate() + 7);
-  return { start, end: end.toISOString().slice(0, 10) };
+  const target = new Date(now.getTime() + daysOffset * 86400000);
+  return getISTDateString(target);
+}
+
+function todayIST(): string {
+  return getISTDateString();
+}
+
+function tomorrowIST(): string {
+  return getISTDayOffset(1);
+}
+
+function thisWeekIST(): { start: string; end: string } {
+  return {
+    start: getISTDayOffset(0),
+    end: getISTDayOffset(7),
+  };
+}
+
+function getISTDayBounds(dateStr: string): { startIso: string; endIso: string } {
+  const start = new Date(`${dateStr}T00:00:00+05:30`);
+  const end = new Date(`${dateStr}T23:59:59.999+05:30`);
+  return { startIso: start.toISOString(), endIso: end.toISOString() };
 }
 
 // ─── Supabase Origin Fetcher ─────────────────────────────────────────────────
@@ -333,7 +356,7 @@ async function handleCachedEndpoint(
       const body = JSON.stringify(result.data);
       const bodySize = new Blob([body]).size;
 
-      const cacheControlHeader = `public, s-maxage=${config.edgeTtl}, max-age=${config.browserTtl}, stale-while-revalidate=${config.swrTtl}, stale-if-error=${config.staleTtl}`;
+      const cacheControlHeader = `public, s-maxage=${config.edgeTtl}, max-age=0, must-revalidate, no-transform, stale-while-revalidate=${config.swrTtl}, stale-if-error=${config.staleTtl}`;
 
       const responseHeaders: Record<string, string> = {
         'Content-Type': 'application/json; charset=utf-8',
@@ -520,30 +543,35 @@ async function handleEventFeed(
   const cacheKeyUrl = buildCacheKey(origin, '/api/public/events', params);
 
   return handleCachedEndpoint(cacheKeyUrl, 'events', async () => {
-    let path = `events?select=${encodeURIComponent(PROJECTIONS.eventFeed)}`;
+    let path = `events?select=${encodeURIComponent(PROJECTIONS.eventFeed)}&status=eq.PUBLISHED`;
 
-    // Strict temporal boundary: Only active published events
     const nowIso = new Date().toISOString();
-    path += `&status=eq.PUBLISHED&end_at=gte.${nowIso}&order=start_at.asc`;
+    const normalizedTimeline = timeline.toLowerCase().replace('_', '-');
+
+    if (normalizedTimeline === 'today') {
+      const today = todayIST();
+      const bounds = getISTDayBounds(today);
+      path += `&start_at=lte.${encodeURIComponent(bounds.endIso)}&end_at=gte.${encodeURIComponent(bounds.startIso)}&order=start_at.asc`;
+    } else if (normalizedTimeline === 'tomorrow') {
+      const tmrw = tomorrowIST();
+      const bounds = getISTDayBounds(tmrw);
+      path += `&start_at=lte.${encodeURIComponent(bounds.endIso)}&end_at=gte.${encodeURIComponent(bounds.startIso)}&order=start_at.asc`;
+    } else if (normalizedTimeline === 'this-week') {
+      const week = thisWeekIST();
+      const startBounds = getISTDayBounds(week.start);
+      const endBounds = getISTDayBounds(week.end);
+      path += `&start_at=lte.${encodeURIComponent(endBounds.endIso)}&end_at=gte.${encodeURIComponent(startBounds.startIso)}&order=start_at.asc`;
+    } else if (date) {
+      const bounds = getISTDayBounds(date);
+      path += `&start_at=lte.${encodeURIComponent(bounds.endIso)}&end_at=gte.${encodeURIComponent(bounds.startIso)}&order=start_at.asc`;
+    } else {
+      // Default / upcoming feed
+      path += `&end_at=gte.${nowIso}&order=start_at.asc`;
+    }
 
     if (categoryId) path += `&category_id=eq.${categoryId}`;
     if (subcategoryId) path += `&subcategory_id=eq.${subcategoryId}`;
     if (pricingType) path += `&pricing_type=eq.${pricingType.toUpperCase()}`;
-
-    // Apply timeline filter server-side for deterministic caching
-    const normalizedTimeline = timeline.toLowerCase().replace('_', '-');
-    if (normalizedTimeline === 'today') {
-      const today = todayUTC();
-      path += `&start_at=lte.${today}T23:59:59Z&end_at=gte.${today}T00:00:00Z`;
-    } else if (normalizedTimeline === 'tomorrow') {
-      const tmrw = tomorrowUTC();
-      path += `&start_at=lte.${tmrw}T23:59:59Z&end_at=gte.${tmrw}T00:00:00Z`;
-    } else if (normalizedTimeline === 'this-week') {
-      const week = thisWeekUTC();
-      path += `&start_at=lte.${week.end}T23:59:59Z&end_at=gte.${week.start}T00:00:00Z`;
-    } else if (date) {
-      path += `&start_at=lte.${date}T23:59:59Z&end_at=gte.${date}T00:00:00Z`;
-    }
 
     path += `&limit=${limit}&offset=${offset}`;
 
@@ -756,6 +784,13 @@ function getInvalidationUrls(origin: string, tags: string[]): string[] {
     }
     if (tag === 'events') {
       urls.add(buildCacheKey(origin, '/api/public/events', { limit: '20', offset: '0' }));
+      urls.add(buildCacheKey(origin, '/api/public/events', { limit: '20', offset: '0', timeline: 'today' }));
+      urls.add(buildCacheKey(origin, '/api/public/events', { limit: '20', offset: '0', timeline: 'tomorrow' }));
+      urls.add(buildCacheKey(origin, '/api/public/events', { limit: '20', offset: '0', timeline: 'this_week' }));
+      urls.add(buildCacheKey(origin, '/api/public/events', { limit: '20', offset: '0', timeline: 'this-week' }));
+      urls.add(buildCacheKey(origin, '/api/public/events', { limit: '20', offset: '0', timeline: 'upcoming' }));
+      urls.add(buildCacheKey(origin, '/api/public/events', { limit: '20', offset: '0', pricing_type: 'FREE' }));
+      urls.add(buildCacheKey(origin, '/api/public/events', { limit: '20', offset: '0', pricing_type: 'PAID' }));
     }
     if (tag === 'categories' || tag === 'taxonomy') {
       urls.add(buildCacheKey(origin, '/api/public/categories', {}));
@@ -822,11 +857,15 @@ async function handleInvalidation(
     ]);
 
     const cache = (caches as any).default;
+    const staleCache = await caches.open(STALE_CACHE_NAME);
     const invalidated: string[] = [];
 
     for (const urlStr of targetUrls) {
       const req = new Request(urlStr, { method: 'GET' });
       await cache.delete(req);
+      try {
+        await staleCache.delete(req);
+      } catch { /* non-fatal */ }
       lastRefreshTimestamps.delete(urlStr);
       invalidated.push(urlStr);
     }

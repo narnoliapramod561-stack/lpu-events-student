@@ -130,6 +130,7 @@ export class LpuEventsClient {
     if (this._isEdgeEnvironment()) {
       const res = await fetch(`/api/public/${edgePath.replace(/^\//, '')}`, {
         headers: { 'Accept': 'application/json' },
+        cache: 'no-cache',
       });
 
       if (res.ok) {

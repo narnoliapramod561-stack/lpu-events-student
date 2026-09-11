@@ -515,8 +515,7 @@ export default function App() {
               evt.status !== 'CANCELLED' &&
               evt.status !== 'DELETED' &&
               !evt.deleted_at &&
-              isEventToday(evt.start_at, evt.end_at, now) &&
-              new Date(evt.end_at || evt.start_at) >= now
+              isEventToday(evt.start_at, evt.end_at, now)
           );
           setHappeningTodayEvents(validLive);
         }
