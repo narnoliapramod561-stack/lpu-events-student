@@ -155,7 +155,10 @@ export class LpuEventsClient {
   ): Promise<{ data: T | null; error: any }> {
     try {
       const cleanPath = edgePath.startsWith('/') ? edgePath : `/${edgePath}`;
-      const res = await fetch(`/api/public${cleanPath}`, {
+      // In browser, relative URL resolves to current origin (or dev server proxy).
+      // In Node/SSR/testing environment, fallback to production edge origin.
+      const baseOrigin = typeof window !== 'undefined' && window.location ? '' : 'https://lpuevents.live';
+      const res = await fetch(`${baseOrigin}/api/public${cleanPath}`, {
         headers: { 'Accept': 'application/json' },
         cache: 'no-cache',
       });
