@@ -18,10 +18,16 @@
  *   - Security: Reject auth/cookie headers on public endpoints
  *   - Authenticated cache invalidation with proactive warming
  *
+ * SEO Engine:
+ *   - Dynamic /robots.txt with Sitemap reference
+ *   - Dynamic /sitemap.xml querying published events from Supabase
+ *   - Edge HTMLRewriter for /events/:slug with structured data, meta tags, and semantic HTML pre-render
+ *   - Homepage/static page Schema.org injection (WebSite, EducationalOrganization)
+ *   - Proper SPA fallback for all non-API routes via env.ASSETS.fetch
+ *
  * Security & Isolation Invariants:
  *   - Caches ONLY public, non-personal, anonymous data
  *   - NEVER caches admin data, auth state, or private sessions
- *   - All non-API routes delegate to env.ASSETS.fetch() for SPA delivery
  */
 
 export interface Env {
@@ -50,6 +56,8 @@ const MAX_SEARCH_QUERY_LENGTH = 100;
 const MIN_SEARCH_QUERY_LENGTH = 2;
 const UUID_REGEX = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 const DATE_REGEX = /^\d{4}-\d{2}-\d{2}$/;
+const SITE_ORIGIN = 'https://lpuevents.live';
+const R2_IMAGE_CDN = 'https://images.lpuevents.live';
 
 // ─── Origin Refresh Gate ─────────────────────────────────────────────────────
 // Tracks the last time each canonical key was refreshed from Supabase.
@@ -105,6 +113,8 @@ const PROJECTIONS = {
   settings: 'key,value',
   eventFeed: 'id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)',
   eventDetail: 'id,name,description,start_at,end_at,venue_name,registration_mode,external_registration_url,pricing_type,price_amount,registration_format,capacity_limit,banner_media_id,category_id,subcategory_id,organization_id,status,created_at,updated_at,media_assets:banner_media_id(id,object_key),organizations(id,name),categories(id,name,key),subcategories(id,name,key),event_content_sections(id,section_type,title,content,sort_order)',
+  // SEO: Lightweight projection for sitemap generation (minimal fields)
+  sitemapEvents: 'id,name,updated_at,status,end_at,categories(key)',
 };
 
 // ─── Helper Functions ────────────────────────────────────────────────────────
@@ -184,6 +194,87 @@ function getISTDayBounds(dateStr: string): { startIso: string; endIso: string } 
   const start = new Date(`${dateStr}T00:00:00+05:30`);
   const end = new Date(`${dateStr}T23:59:59.999+05:30`);
   return { startIso: start.toISOString(), endIso: end.toISOString() };
+}
+
+// ─── SEO Utility Functions ───────────────────────────────────────────────────
+
+/**
+ * Convert event name to a URL-safe slug (mirrors client-side slugify).
+ */
+function slugify(text?: string | null): string {
+  if (!text || !text.trim()) return '';
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80)
+    .replace(/-+$/, '');
+}
+
+/**
+ * Escape special characters for safe XML output.
+ */
+function escapeXml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&apos;');
+}
+
+/**
+ * Escape special characters for safe HTML attribute/text output.
+ */
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+/**
+ * Build the image URL from an event's media_assets relation.
+ */
+function getEventImageUrl(event: any): string {
+  const objectKey = event?.media_assets?.object_key;
+  if (!objectKey) return `${SITE_ORIGIN}/logo.jpeg`;
+  if (objectKey.startsWith('http://') || objectKey.startsWith('https://')) return objectKey;
+  return `${R2_IMAGE_CDN}/${objectKey.replace(/^\/+/, '')}`;
+}
+
+/**
+ * Format a date to a human-readable string (e.g. "Sep 15, 2026, 6:00 PM IST").
+ */
+function formatDateIST(isoStr: string): string {
+  try {
+    const d = new Date(isoStr);
+    return new Intl.DateTimeFormat('en-IN', {
+      timeZone: 'Asia/Kolkata',
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+    }).format(d) + ' IST';
+  } catch {
+    return isoStr;
+  }
+}
+
+/**
+ * Format a date range for human display.
+ */
+function formatDateRangeIST(startAt: string, endAt?: string): string {
+  const start = formatDateIST(startAt);
+  if (!endAt) return start;
+  const end = formatDateIST(endAt);
+  return `${start} – ${end}`;
+}
+
+/**
+ * Truncate description for meta tags (max 160 chars).
+ */
+function truncateDescription(text: string, maxLen = 160): string {
+  if (!text) return '';
+  const clean = text.replace(/\s+/g, ' ').trim();
+  if (clean.length <= maxLen) return clean;
+  return clean.substring(0, maxLen - 3).trim() + '...';
 }
 
 // ─── Supabase Origin Fetcher ─────────────────────────────────────────────────
@@ -990,6 +1081,713 @@ async function handleCacheRebuild(
   }
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// ─── EDGE SEO ENGINE ─────────────────────────────────────────────────────────
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * Fetch the SPA index.html shell from static assets.
+ * Uses a fake root-path request so Cloudflare Pages always returns index.html.
+ */
+async function fetchIndexHtml(env: Env, origin: string): Promise<Response> {
+  const fakeRequest = new Request(`${origin}/`, { method: 'GET' });
+  return env.ASSETS.fetch(fakeRequest);
+}
+
+/**
+ * Resolve a slug or UUID to an event record from Supabase.
+ * Supports: UUID direct lookup, or slug-based search via event name matching.
+ */
+async function resolveEventForSeo(slugOrId: string, env: Env): Promise<any | null> {
+  const trimmed = slugOrId.trim();
+
+  // 1. UUID direct lookup
+  const uuidMatch = trimmed.match(/([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})/i);
+  if (uuidMatch) {
+    const id = uuidMatch[1].toLowerCase();
+    const res = await fetchFromSupabase(
+      `events?id=eq.${id}&status=eq.PUBLISHED&select=${encodeURIComponent(PROJECTIONS.eventDetail)}`,
+      'GET', undefined, env
+    );
+    if (res.ok && Array.isArray(res.data) && (res.data as any[]).length > 0) {
+      return (res.data as any[])[0];
+    }
+    return null;
+  }
+
+  // 2. Slug-based lookup: search by reconstructed name from slug
+  const searchTerms = trimmed.replace(/-/g, ' ').trim();
+  if (!searchTerms || searchTerms.length < 2) return null;
+
+  // Try RPC search first for best matching
+  const rpcRes = await fetchFromSupabase('rpc/search_events', 'POST', {
+    query_text: searchTerms,
+    limit_count: 10,
+    offset_count: 0,
+    p_show_past: false,
+  }, env);
+
+  if (rpcRes.ok && Array.isArray(rpcRes.data) && (rpcRes.data as any[]).length > 0) {
+    const events = rpcRes.data as any[];
+    // Find exact slug match
+    const exactMatch = events.find((e: any) => slugify(e.name) === trimmed);
+    const matchedEvent = exactMatch || events[0];
+
+    // Now fetch the full detail for this event
+    if (matchedEvent?.id) {
+      const detailRes = await fetchFromSupabase(
+        `events?id=eq.${matchedEvent.id}&status=eq.PUBLISHED&select=${encodeURIComponent(PROJECTIONS.eventDetail)}`,
+        'GET', undefined, env
+      );
+      if (detailRes.ok && Array.isArray(detailRes.data) && (detailRes.data as any[]).length > 0) {
+        return (detailRes.data as any[])[0];
+      }
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Build Schema.org Event JSON-LD structured data.
+ */
+function buildEventJsonLd(event: any, canonicalUrl: string): string {
+  const imageUrl = getEventImageUrl(event);
+  const organizerName = event.organizations?.name || 'LPU Events';
+  const categoryName = event.categories?.name || '';
+  const venueName = event.venue_name || 'Lovely Professional University';
+
+  const jsonLd: Record<string, any> = {
+    '@context': 'https://schema.org',
+    '@type': 'Event',
+    'name': event.name,
+    'description': truncateDescription(event.description || '', 300),
+    'startDate': event.start_at,
+    'endDate': event.end_at || event.start_at,
+    'eventStatus': 'https://schema.org/EventScheduled',
+    'eventAttendanceMode': 'https://schema.org/OfflineEventAttendanceMode',
+    'url': canonicalUrl,
+    'image': [imageUrl],
+    'location': {
+      '@type': 'Place',
+      'name': venueName,
+      'address': {
+        '@type': 'PostalAddress',
+        'streetAddress': venueName,
+        'addressLocality': 'Phagwara',
+        'addressRegion': 'Punjab',
+        'postalCode': '144411',
+        'addressCountry': 'IN',
+      },
+    },
+    'organizer': {
+      '@type': 'Organization',
+      'name': organizerName,
+      'url': SITE_ORIGIN,
+    },
+    'performer': {
+      '@type': 'Organization',
+      'name': organizerName,
+    },
+  };
+
+  // Pricing/Offers
+  if (event.pricing_type === 'FREE') {
+    jsonLd['isAccessibleForFree'] = true;
+    jsonLd['offers'] = {
+      '@type': 'Offer',
+      'price': '0',
+      'priceCurrency': 'INR',
+      'availability': 'https://schema.org/InStock',
+      'url': event.external_registration_url || canonicalUrl,
+    };
+  } else if (event.pricing_type === 'PAID' && event.price_amount) {
+    jsonLd['isAccessibleForFree'] = false;
+    jsonLd['offers'] = {
+      '@type': 'Offer',
+      'price': String(event.price_amount),
+      'priceCurrency': 'INR',
+      'availability': 'https://schema.org/InStock',
+      'url': event.external_registration_url || canonicalUrl,
+    };
+  }
+
+  if (categoryName) {
+    jsonLd['about'] = { '@type': 'Thing', 'name': categoryName };
+  }
+
+  return JSON.stringify(jsonLd);
+}
+
+/**
+ * Build Schema.org BreadcrumbList JSON-LD.
+ */
+function buildBreadcrumbJsonLd(event: any, canonicalUrl: string): string {
+  const categoryName = event.categories?.name || 'Events';
+  const items = [
+    { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': SITE_ORIGIN + '/' },
+    { '@type': 'ListItem', 'position': 2, 'name': categoryName, 'item': SITE_ORIGIN + '/' },
+    { '@type': 'ListItem', 'position': 3, 'name': event.name, 'item': canonicalUrl },
+  ];
+
+  return JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    'itemListElement': items,
+  });
+}
+
+/**
+ * Build crawler-accessible semantic HTML for event content sections.
+ * This is injected inside <div id="root"> so crawlers can index the content.
+ */
+function buildSemanticHtml(event: any, _canonicalUrl: string): string {
+  const imageUrl = escapeHtml(getEventImageUrl(event));
+  const organizerName = escapeHtml(event.organizations?.name || 'LPU Events');
+  const categoryName = escapeHtml(event.categories?.name || 'Events');
+  const venueName = escapeHtml(event.venue_name || 'Lovely Professional University');
+  const dateRange = escapeHtml(formatDateRangeIST(event.start_at, event.end_at));
+  const description = escapeHtml(event.description || '');
+
+  let html = `<article itemscope itemtype="https://schema.org/Event" style="padding:24px;max-width:800px;margin:auto;font-family:system-ui,sans-serif">`;
+
+  // Breadcrumb
+  html += `<nav aria-label="Breadcrumb" style="margin-bottom:16px;font-size:14px;color:#888">`;
+  html += `<a href="/" style="color:#6366f1;text-decoration:none">Home</a>`;
+  html += ` › <a href="/" style="color:#6366f1;text-decoration:none">${categoryName}</a>`;
+  html += ` › <span>${escapeHtml(event.name)}</span>`;
+  html += `</nav>`;
+
+  // Title
+  html += `<h1 itemprop="name" style="font-size:28px;font-weight:700;color:#f1f1f1;margin:0 0 16px">${escapeHtml(event.name)}</h1>`;
+
+  // Banner image
+  html += `<img itemprop="image" src="${imageUrl}" alt="${escapeHtml(event.name)} event banner — Lovely Professional University" style="width:100%;border-radius:12px;margin-bottom:16px" loading="eager" />`;
+
+  // Event metadata badges
+  html += `<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px;font-size:14px;color:#ccc">`;
+  html += `<span>📅 <time itemprop="startDate" datetime="${escapeHtml(event.start_at)}">${dateRange}</time></span>`;
+  html += `<span>📍 <span itemprop="location" itemscope itemtype="https://schema.org/Place"><span itemprop="name">${venueName}</span></span></span>`;
+  html += `<span>🏢 <span itemprop="organizer" itemscope itemtype="https://schema.org/Organization"><span itemprop="name">${organizerName}</span></span></span>`;
+  if (event.pricing_type === 'FREE') {
+    html += `<span>🎫 Free Entry</span>`;
+  } else if (event.pricing_type === 'PAID' && event.price_amount) {
+    html += `<span>🎫 ₹${escapeHtml(String(event.price_amount))}</span>`;
+  }
+  html += `</div>`;
+
+  // Description
+  if (description) {
+    html += `<section style="margin-bottom:24px"><h2 style="font-size:20px;font-weight:600;color:#e5e5e5;margin:0 0 8px">About</h2>`;
+    html += `<p itemprop="description" style="color:#aaa;line-height:1.7">${description}</p></section>`;
+  }
+
+  // Content sections (Overview, Timeline, Guidelines, FAQ)
+  const sections = event.event_content_sections;
+  if (Array.isArray(sections) && sections.length > 0) {
+    const sorted = [...sections].sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0));
+    for (const section of sorted) {
+      if (!section.title && !section.content) continue;
+      html += `<section style="margin-bottom:20px">`;
+      if (section.title) {
+        html += `<h2 style="font-size:18px;font-weight:600;color:#e5e5e5;margin:0 0 8px">${escapeHtml(section.title)}</h2>`;
+      }
+      if (section.content) {
+        // Content can be a JSON object or string
+        let textContent = '';
+        if (typeof section.content === 'string') {
+          textContent = section.content;
+        } else if (typeof section.content === 'object') {
+          // Extract text from various content structures
+          try {
+            textContent = JSON.stringify(section.content);
+            // Try to extract meaningful text from JSON structures
+            const extractText = (obj: any): string => {
+              if (typeof obj === 'string') return obj;
+              if (Array.isArray(obj)) return obj.map(extractText).join(' ');
+              if (typeof obj === 'object' && obj !== null) {
+                return Object.values(obj).map(extractText).join(' ');
+              }
+              return String(obj || '');
+            };
+            textContent = extractText(section.content);
+          } catch {
+            textContent = String(section.content);
+          }
+        }
+        if (textContent) {
+          html += `<div style="color:#aaa;line-height:1.7">${escapeHtml(truncateDescription(textContent, 1000))}</div>`;
+        }
+      }
+      html += `</section>`;
+    }
+  }
+
+  // Registration CTA
+  if (event.external_registration_url) {
+    html += `<a href="${escapeHtml(event.external_registration_url)}" itemprop="url" rel="noopener" style="display:inline-block;padding:12px 24px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;margin-top:16px">Register Now</a>`;
+  }
+
+  html += `</article>`;
+  return html;
+}
+
+/**
+ * Handle /robots.txt — Dynamic robots with proper Disallow and Sitemap reference.
+ */
+function handleRobotsTxt(): Response {
+  const robotsTxt = `# robots.txt for LPU Events Student Discovery Website
+# https://lpuevents.live
+
+User-agent: Googlebot
+Allow: /
+Disallow: /api/
+
+User-agent: Mediapartners-Google
+Allow: /
+
+User-agent: Bingbot
+Allow: /
+Disallow: /api/
+
+User-agent: *
+Allow: /
+Allow: /events/
+Allow: /about
+Allow: /contact
+Allow: /privacy
+Allow: /terms
+Allow: /ads.txt
+Disallow: /api/
+
+# Sitemap location
+Sitemap: ${SITE_ORIGIN}/sitemap.xml
+`;
+
+  return new Response(robotsTxt, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/plain; charset=utf-8',
+      'Cache-Control': 'public, s-maxage=3600, max-age=3600',
+      'X-Robots-Tag': 'noindex',
+    },
+  });
+}
+
+/**
+ * Handle /sitemap.xml — Dynamic sitemap with published events from Supabase.
+ */
+async function handleSitemapXml(env: Env): Promise<Response> {
+  const todayStr = getISTDateString();
+  const nowIso = new Date().toISOString();
+
+  // Fetch published events (lightweight projection for sitemap)
+  const res = await fetchFromSupabase(
+    `events?select=${encodeURIComponent(PROJECTIONS.sitemapEvents)}&status=eq.PUBLISHED&end_at=gte.${nowIso}&order=updated_at.desc&limit=500`,
+    'GET', undefined, env
+  );
+
+  let eventEntries = '';
+  if (res.ok && Array.isArray(res.data)) {
+    for (const event of (res.data as any[])) {
+      const slug = slugify(event.name) || event.id;
+      const lastmod = event.updated_at ? event.updated_at.substring(0, 10) : todayStr;
+      eventEntries += `  <url>
+    <loc>${escapeXml(`${SITE_ORIGIN}/events/${slug}`)}</loc>
+    <lastmod>${escapeXml(lastmod)}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.9</priority>
+  </url>\n`;
+    }
+  }
+
+  // Fetch categories for category pages
+  const catRes = await fetchFromSupabase(
+    `categories?select=key,name&is_active=eq.true&order=sort_order.asc`,
+    'GET', undefined, env
+  );
+
+  let categoryEntries = '';
+  if (catRes.ok && Array.isArray(catRes.data)) {
+    for (const cat of (catRes.data as any[])) {
+      if (cat.key) {
+        categoryEntries += `  <url>
+    <loc>${escapeXml(`${SITE_ORIGIN}/?category=${cat.key}`)}</loc>
+    <lastmod>${todayStr}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>\n`;
+      }
+    }
+  }
+
+  const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>${SITE_ORIGIN}/</loc>
+    <lastmod>${todayStr}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>${SITE_ORIGIN}/about</loc>
+    <lastmod>${todayStr}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>${SITE_ORIGIN}/contact</loc>
+    <lastmod>${todayStr}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>${SITE_ORIGIN}/privacy</loc>
+    <lastmod>${todayStr}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>${SITE_ORIGIN}/terms</loc>
+    <lastmod>${todayStr}</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
+  </url>
+${categoryEntries}${eventEntries}</urlset>
+`;
+
+  return new Response(sitemap, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/xml; charset=utf-8',
+      'Cache-Control': 'public, s-maxage=3600, max-age=300, stale-while-revalidate=86400',
+      'X-Content-Type-Options': 'nosniff',
+    },
+  });
+}
+
+/**
+ * Handle event page SEO: /events/:slugOrId
+ * Uses HTMLRewriter to inject dynamic metadata into the SPA shell.
+ */
+async function handleEventPageSeo(
+  slugOrId: string,
+  env: Env,
+  origin: string
+): Promise<Response> {
+  // Resolve event from slug or UUID
+  const event = await resolveEventForSeo(slugOrId, env);
+
+  if (!event) {
+    // Return 404 with noindex meta for crawlers
+    const indexHtml = await fetchIndexHtml(env, origin);
+    const rewriter = new HTMLRewriter()
+      .on('title', {
+        element(el: CFElement) {
+          el.setInnerContent('Event Not Found — LPU Events');
+        },
+      })
+      .on('meta[name="robots"]', {
+        element(el: CFElement) {
+          el.setAttribute('content', 'noindex, nofollow');
+        },
+      })
+      .on('meta[name="description"]', {
+        element(el: CFElement) {
+          el.setAttribute('content', 'This event was not found or is no longer available on LPU Events.');
+        },
+      })
+      .on('meta[property="og:title"]', {
+        element(el: CFElement) {
+          el.setAttribute('content', 'Event Not Found — LPU Events');
+        },
+      })
+      .on('link[rel="canonical"]', {
+        element(el: CFElement) {
+          el.setAttribute('href', `${SITE_ORIGIN}/`);
+        },
+      });
+
+    const rewritten = rewriter.transform(indexHtml);
+    return new Response(rewritten.body, {
+      status: 404,
+      headers: {
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, s-maxage=60, max-age=60',
+        'X-Robots-Tag': 'noindex, nofollow',
+      },
+    });
+  }
+
+  // Build SEO data
+  const eventSlug = slugify(event.name) || event.id;
+  const canonicalUrl = `${SITE_ORIGIN}/events/${eventSlug}`;
+  const imageUrl = getEventImageUrl(event);
+  const categoryName = event.categories?.name || 'Events';
+  const organizerName = event.organizations?.name || 'LPU Events';
+  const venueName = event.venue_name || 'Lovely Professional University';
+  const dateRange = formatDateRangeIST(event.start_at, event.end_at);
+
+  const pageTitle = `${event.name} | LPU Events — Lovely Professional University`;
+  const metaDescription = truncateDescription(
+    `${event.name} — ${categoryName} event at ${venueName}, LPU. ${dateRange}. Organized by ${organizerName}. ${event.description || ''}`,
+    160
+  );
+
+  // Build JSON-LD scripts
+  const eventJsonLd = buildEventJsonLd(event, canonicalUrl);
+  const breadcrumbJsonLd = buildBreadcrumbJsonLd(event, canonicalUrl);
+
+  // Build semantic HTML for crawlers
+  const semanticHtml = buildSemanticHtml(event, canonicalUrl);
+
+  // Fetch index.html and transform with HTMLRewriter
+  const indexHtml = await fetchIndexHtml(env, origin);
+
+  const rewriter = new HTMLRewriter()
+    // Title
+    .on('title', {
+      element(el: CFElement) {
+        el.setInnerContent(pageTitle);
+      },
+    })
+    // Meta description
+    .on('meta[name="description"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', metaDescription);
+      },
+    })
+    // Robots meta — allow indexing for published events
+    .on('meta[name="robots"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', 'index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1');
+      },
+    })
+    // Canonical URL
+    .on('link[rel="canonical"]', {
+      element(el: CFElement) {
+        el.setAttribute('href', canonicalUrl);
+      },
+    })
+    // OpenGraph tags
+    .on('meta[property="og:type"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', 'article');
+      },
+    })
+    .on('meta[property="og:url"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', canonicalUrl);
+      },
+    })
+    .on('meta[property="og:title"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', event.name);
+      },
+    })
+    .on('meta[property="og:description"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', metaDescription);
+      },
+    })
+    .on('meta[property="og:image"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', imageUrl);
+      },
+    })
+    // Twitter Card tags
+    .on('meta[name="twitter:title"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', event.name);
+      },
+    })
+    .on('meta[name="twitter:description"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', metaDescription);
+      },
+    })
+    .on('meta[name="twitter:image"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', imageUrl);
+      },
+    })
+    // Inject JSON-LD structured data and semantic HTML before </head> and into <div id="root">
+    .on('head', {
+      element(el: CFElement) {
+        el.append(`<script type="application/ld+json">${eventJsonLd}</script>`, { html: true });
+        el.append(`<script type="application/ld+json">${breadcrumbJsonLd}</script>`, { html: true });
+      },
+    })
+    // Inject semantic HTML into <div id="root"> for crawlers
+    .on('div#root', {
+      element(el: CFElement) {
+        el.setInnerContent(semanticHtml, { html: true });
+      },
+    });
+
+  const rewritten = rewriter.transform(indexHtml);
+  return new Response(rewritten.body, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, s-maxage=1800, max-age=0, stale-while-revalidate=86400',
+      'X-SEO-Engine': 'edge-rewriter',
+      'X-Event-Id': event.id,
+    },
+  });
+}
+
+/**
+ * Handle homepage SEO: Inject WebSite and EducationalOrganization schema.
+ */
+async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
+  const indexHtml = await fetchIndexHtml(env, origin);
+
+  const websiteJsonLd = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'WebSite',
+    'name': 'LPU Events',
+    'alternateName': 'Lovely Professional University Events',
+    'url': SITE_ORIGIN,
+    'potentialAction': {
+      '@type': 'SearchAction',
+      'target': {
+        '@type': 'EntryPoint',
+        'urlTemplate': `${SITE_ORIGIN}/?q={search_term_string}`,
+      },
+      'query-input': 'required name=search_term_string',
+    },
+  });
+
+  const orgJsonLd = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@type': 'EducationalOrganization',
+    'name': 'Lovely Professional University',
+    'alternateName': 'LPU',
+    'url': 'https://www.lpu.in',
+    'logo': `${SITE_ORIGIN}/logo.jpeg`,
+    'address': {
+      '@type': 'PostalAddress',
+      'streetAddress': 'Grand Trunk Road',
+      'addressLocality': 'Phagwara',
+      'addressRegion': 'Punjab',
+      'postalCode': '144411',
+      'addressCountry': 'IN',
+    },
+    'sameAs': [
+      'https://www.facebook.com/LPUUniversity',
+      'https://twitter.com/lpuuniversity',
+      'https://www.instagram.com/lpuuniversity',
+      'https://www.youtube.com/user/LovelyProfUniv',
+      'https://www.linkedin.com/school/lovely-professional-university/',
+    ],
+  });
+
+  const rewriter = new HTMLRewriter()
+    .on('head', {
+      element(el: CFElement) {
+        el.append(`<script type="application/ld+json">${websiteJsonLd}</script>`, { html: true });
+        el.append(`<script type="application/ld+json">${orgJsonLd}</script>`, { html: true });
+      },
+    });
+
+  const rewritten = rewriter.transform(indexHtml);
+  return new Response(rewritten.body, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, s-maxage=900, max-age=60, stale-while-revalidate=86400',
+      'X-SEO-Engine': 'edge-rewriter',
+    },
+  });
+}
+
+/**
+ * Handle static page SEO: /about, /contact, /privacy, /terms
+ * Inject appropriate title, description, and canonical for each static page.
+ */
+async function handleStaticPageSeo(pathname: string, env: Env, origin: string): Promise<Response> {
+  const pageConfig: Record<string, { title: string; description: string }> = {
+    '/about': {
+      title: 'About LPU Events — Discover Campus Life at Lovely Professional University',
+      description: 'Learn about LPU Events, the official student events discovery platform at Lovely Professional University. Discover workshops, hackathons, cultural fests, and more.',
+    },
+    '/contact': {
+      title: 'Contact LPU Events — Get in Touch',
+      description: 'Contact the LPU Events team for questions about campus events, collaborations, and student activities at Lovely Professional University.',
+    },
+    '/privacy': {
+      title: 'Privacy Policy — LPU Events',
+      description: 'Read the LPU Events privacy policy. Learn how we collect, use, and protect your data on the student events discovery platform.',
+    },
+    '/terms': {
+      title: 'Terms of Service — LPU Events',
+      description: 'Read the LPU Events terms of service for using the student events discovery platform at Lovely Professional University.',
+    },
+  };
+
+  const config = pageConfig[pathname];
+  if (!config) {
+    // Not a known static page, fall through to SPA
+    return env.ASSETS.fetch(new Request(`${origin}/`, { method: 'GET' }));
+  }
+
+  const canonicalUrl = `${SITE_ORIGIN}${pathname}`;
+  const indexHtml = await fetchIndexHtml(env, origin);
+
+  const rewriter = new HTMLRewriter()
+    .on('title', {
+      element(el: CFElement) {
+        el.setInnerContent(config.title);
+      },
+    })
+    .on('meta[name="description"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', config.description);
+      },
+    })
+    .on('link[rel="canonical"]', {
+      element(el: CFElement) {
+        el.setAttribute('href', canonicalUrl);
+      },
+    })
+    .on('meta[property="og:url"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', canonicalUrl);
+      },
+    })
+    .on('meta[property="og:title"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', config.title);
+      },
+    })
+    .on('meta[property="og:description"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', config.description);
+      },
+    })
+    .on('meta[name="twitter:title"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', config.title);
+      },
+    })
+    .on('meta[name="twitter:description"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', config.description);
+      },
+    });
+
+  const rewritten = rewriter.transform(indexHtml);
+  return new Response(rewritten.body, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, s-maxage=3600, max-age=60, stale-while-revalidate=86400',
+      'X-SEO-Engine': 'edge-rewriter',
+    },
+  });
+}
+
 // ─── Main Worker Entry Point ─────────────────────────────────────────────────
 
 export default {
@@ -1002,10 +1800,41 @@ export default {
       return new Response(null, { status: 204, headers: CORS_HEADERS });
     }
 
-    // 2. Non-API routes → static SPA assets
+    // ─── SEO & Web Routes (Non-API) ──────────────────────────────────────
     if (!url.pathname.startsWith('/api/')) {
+
+      // Dynamic /robots.txt
+      if (url.pathname === '/robots.txt') {
+        return handleRobotsTxt();
+      }
+
+      // Dynamic /sitemap.xml
+      if (url.pathname === '/sitemap.xml') {
+        return handleSitemapXml(env);
+      }
+
+      // Event detail pages: /events/:slugOrId — Edge SEO injection
+      const eventMatch = url.pathname.match(/^\/events\/([^/?#]+)$/);
+      if (eventMatch && eventMatch[1]) {
+        const slugOrId = decodeURIComponent(eventMatch[1]);
+        return handleEventPageSeo(slugOrId, env, origin);
+      }
+
+      // Static utility pages: /about, /contact, /privacy, /terms — Edge meta injection
+      if (['/about', '/contact', '/privacy', '/terms'].includes(url.pathname)) {
+        return handleStaticPageSeo(url.pathname, env, origin);
+      }
+
+      // Homepage: / — Inject WebSite & Organization schema
+      if (url.pathname === '/') {
+        return handleHomepageSeo(env, origin);
+      }
+
+      // All other non-API routes → SPA static assets (CSS, JS, images, fonts, etc.)
       return env.ASSETS.fetch(request);
     }
+
+    // ─── API Routes ──────────────────────────────────────────────────────
 
     // 3. Cache Version & Health Endpoint (always fresh)
     if (url.pathname === '/api/public/version') {

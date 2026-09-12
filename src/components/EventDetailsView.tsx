@@ -443,6 +443,32 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
   return (
     <div className={`w-full max-w-5xl mx-auto ${hasExternalRegistration ? "pb-28 sm:pb-32" : "pb-12"}`}>
       
+      {/* SEO Breadcrumb Navigation */}
+      <nav aria-label="Breadcrumb" className="mb-3 sm:mb-4 text-xs sm:text-sm text-gray-500 dark:text-gray-400 font-heading">
+        <ol className="flex items-center gap-1.5 flex-wrap" itemScope itemType="https://schema.org/BreadcrumbList">
+          <li itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem">
+            <a href="/" onClick={(e) => { e.preventDefault(); onBack(); }} itemProp="item" className="text-primary hover:text-primary/80 transition-colors cursor-pointer">
+              <span itemProp="name">Home</span>
+            </a>
+            <meta itemProp="position" content="1" />
+          </li>
+          <li className="text-gray-400 dark:text-gray-500" aria-hidden="true">›</li>
+          {(event as any)?.categories?.name && (
+            <>
+              <li itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem">
+                <span itemProp="name" className="text-gray-600 dark:text-gray-300">{(event as any).categories.name}</span>
+                <meta itemProp="position" content="2" />
+              </li>
+              <li className="text-gray-400 dark:text-gray-500" aria-hidden="true">›</li>
+            </>
+          )}
+          <li itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem" className="truncate max-w-[200px] sm:max-w-xs">
+            <span itemProp="name" className="text-gray-700 dark:text-gray-200 font-semibold">{event?.name}</span>
+            <meta itemProp="position" content={(event as any)?.categories?.name ? "3" : "2"} />
+          </li>
+        </ol>
+      </nav>
+
       {/* Top Inline Navigation Row */}
       <div className="flex items-center justify-between gap-3 mb-4 sm:mb-6">
         <button
@@ -472,7 +498,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
           className="w-full h-full object-cover object-center"
           containerClassName="w-full h-full"
           src={getEventImage(event, "event-banner", 1920)}
-          alt={event.name}
+          alt={`${event.name} event banner — Lovely Professional University`}
           fetchPriority="high"
         />
       </div>
