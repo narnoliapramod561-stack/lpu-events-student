@@ -332,7 +332,13 @@ export function getOptimizedImage(
     return getOptimizedImage(source.event_memories, context, options);
   }
 
-  // 5. Curated Mock / Fallback ID Map
+  // 5. Category / Subcategory Taxonomy Fallback (Official Default WebP Images)
+  const defaultImage = resolveDefaultEventImage(source);
+  if (defaultImage) {
+    return defaultImage;
+  }
+
+  // 6. Curated Mock / Fallback ID Map
   if (source.id && EVENT_MOCK_FALLBACK_IMAGES[source.id]) {
     return EVENT_MOCK_FALLBACK_IMAGES[source.id];
   }
@@ -340,15 +346,7 @@ export function getOptimizedImage(
     return EVENT_MOCK_FALLBACK_IMAGES[source.banner_media_id];
   }
 
-  // 6. Intelligent Keyword Matcher (Ultra-HD photography)
-  const nameOrDesc = source.name || source.title || source.description || '';
-  if (nameOrDesc) {
-    const keywordFallback = getKeywordFallbackImage(nameOrDesc);
-    if (keywordFallback) return keywordFallback;
-  }
-
-  // 7. Category / Subcategory Taxonomy Fallback
-  return resolveDefaultEventImage(source);
+  return '/defaults/events/general_default.webp';
 }
 
 /**

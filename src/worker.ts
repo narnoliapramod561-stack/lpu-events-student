@@ -98,7 +98,7 @@ const CACHE_CONFIGS: Record<string, CacheConfig> = {
 
 const PROJECTIONS = {
   categories: 'id,key,name,sort_order,subcategories(id,key,name,sort_order)',
-  carousel: 'id,item_type,event_id,advertisement_id,media_id,sort_order,is_active,start_at,end_at,display_duration_ms,custom_title,custom_subtitle,custom_cta_text,custom_cta_url,badge_text,events:event_id(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,banner_media_id,status,media_assets:banner_media_id(id,object_key),organizations(name),categories(name)),advertisements:advertisement_id(id,name,redirect_url,media_id,status),media_assets:media_id(id,object_key)',
+  carousel: 'id,item_type,event_id,advertisement_id,media_id,sort_order,is_active,start_at,end_at,display_duration_ms,custom_title,custom_subtitle,custom_cta_text,custom_cta_url,badge_text,events:event_id(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(name),categories(name,key),subcategories(name,key)),advertisements:advertisement_id(id,name,redirect_url,media_id,status),media_assets:media_id(id,object_key)',
   featured: 'event_id,sort_order,events(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(id,name))',
   trending: 'event_id,sort_order,events(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(id,name),categories(name,key),subcategories(name,key))',
   advertisements: 'id,name,media_id,redirect_url,start_at,end_at,status,media_assets:media_id(id,object_key)',
@@ -787,6 +787,7 @@ function getInvalidationUrls(origin: string, tags: string[]): string[] {
       urls.add(buildCacheKey(origin, '/api/public/homepage', {}));
     }
     if (tag === 'events') {
+      urls.add(buildCacheKey(origin, '/api/public/events', {}));
       urls.add(buildCacheKey(origin, '/api/public/events', { limit: '20', offset: '0' }));
       urls.add(buildCacheKey(origin, '/api/public/events', { limit: '20', offset: '0', timeline: 'today' }));
       urls.add(buildCacheKey(origin, '/api/public/events', { limit: '20', offset: '0', timeline: 'tomorrow' }));

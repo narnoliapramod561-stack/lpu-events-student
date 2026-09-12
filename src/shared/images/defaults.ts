@@ -159,22 +159,22 @@ export function resolveDefaultEventImage(eventOrMeta: any): string {
   }
 
   // 2. Direct subcategories relation key/name lookup
-  const subKey = eventOrMeta.subcategories?.key || eventOrMeta.subcategoryKey || eventOrMeta.subcategory;
-  let catKey = eventOrMeta.categories?.key || eventOrMeta.categoryKey || eventOrMeta.category;
+  const subKey = eventOrMeta.subcategories?.key || eventOrMeta.subcategories?.name || eventOrMeta.subcategoryKey || eventOrMeta.subcategory;
+  let catKey = eventOrMeta.categories?.key || eventOrMeta.categories?.name || eventOrMeta.categoryKey || eventOrMeta.category;
   
   if (eventOrMeta.category_id && CATEGORY_UUID_MAP[eventOrMeta.category_id]) {
     catKey = CATEGORY_UUID_MAP[eventOrMeta.category_id];
   }
 
   if (catKey && subKey && typeof subKey === 'string') {
-    const cleanSub = subKey.toLowerCase().trim().replace(/[\s_]+/g, '-');
-    const cleanCat = String(catKey).toLowerCase().trim().replace(/[\s_]+/g, '-');
+    const cleanSub = String(subKey).toLowerCase().trim().replace(/[\s_&]+/g, '-').replace(/-+/g, '-');
+    const cleanCat = String(catKey).toLowerCase().trim().replace(/[\s_&]+/g, '-').replace(/-+/g, '-');
     return `/defaults/events/${cleanCat}_${cleanSub}.webp`;
   }
 
   // 3. Category level fallback
   if (catKey && typeof catKey === 'string') {
-    const cleanCat = catKey.toLowerCase().trim().replace(/[\s_]+/g, '-');
+    const cleanCat = String(catKey).toLowerCase().trim().replace(/[\s_&]+/g, '-').replace(/-+/g, '-');
     return `/defaults/events/${cleanCat}_default.webp`;
   }
 

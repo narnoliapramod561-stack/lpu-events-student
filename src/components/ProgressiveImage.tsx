@@ -64,7 +64,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
 
     hdImage.onerror = () => {
       if (!isCancelled) {
-        // Fallback to whatever current source is
+        setCurrentSrc('/defaults/events/general_default.webp');
         setIsHdLoaded(true);
       }
     };
@@ -82,6 +82,12 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
           src={lowResSrc || getLowResPlaceholderUrl(src)}
           alt={alt}
           aria-hidden="true"
+          onError={(e) => {
+            const target = e.currentTarget;
+            if (!target.src.includes('general_default.webp')) {
+              target.src = '/defaults/events/general_default.webp';
+            }
+          }}
           className={`absolute inset-0 w-full h-full object-cover scale-105 filter blur-md transition-opacity duration-500 ease-out ${
             isHdLoaded ? "opacity-0 pointer-events-none" : "opacity-100"
           }`}
@@ -96,6 +102,12 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
         loading={loading}
         fetchPriority={fetchPriority}
         decoding="async"
+        onError={(e) => {
+          const target = e.currentTarget;
+          if (!target.src.includes('general_default.webp')) {
+            target.src = '/defaults/events/general_default.webp';
+          }
+        }}
         className={`${className} transition-all duration-500 ease-out ${
           isHdLoaded ? "opacity-100 filter-none" : "opacity-90 filter blur-[2px]"
         }`}
