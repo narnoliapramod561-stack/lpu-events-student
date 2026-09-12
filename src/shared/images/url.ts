@@ -332,7 +332,18 @@ export function getOptimizedImage(
     return getOptimizedImage(source.event_memories, context, options);
   }
 
-  // 5. Category / Subcategory Taxonomy Fallback (Official Default WebP Images)
+  // 5. Never fall back to event category images for advertisements
+  if (
+    context === 'advertisement' ||
+    Boolean(source.redirect_url) ||
+    source.item_type === 'advertisement' ||
+    source.item_type === 'ADVERTISEMENT' ||
+    Boolean(source.advertisements)
+  ) {
+    return '';
+  }
+
+  // 6. Category / Subcategory Taxonomy Fallback (Official Default WebP Images)
   const defaultImage = resolveDefaultEventImage(source);
   if (defaultImage) {
     return defaultImage;

@@ -39,6 +39,11 @@ export function injectAdsIntoSequence<T, A = any>(
     return items.map((item) => ({ type: 'item', data: item }));
   }
 
+  // If provider is direct ads, ensure there are active ads to show
+  if (placementConfig.provider === 'direct' && (!ads || ads.length === 0)) {
+    return items.map((item) => ({ type: 'item', data: item }));
+  }
+
   // Calculate effective maximum ads allowed
   const globalQuota =
     globalSettings?.remaining_global_quota !== undefined
@@ -50,6 +55,29 @@ export function injectAdsIntoSequence<T, A = any>(
     return items.map((item) => ({ type: 'item', data: item }));
   }
 
+  // Determine effective ads: if placementConfig has selected_ad_ids, filter and order ads by that exact list!
+  let effectiveAds = ads;
+  if (
+    placementConfig.provider === 'direct' &&
+    placementConfig.selected_ad_ids &&
+    Array.isArray(placementConfig.selected_ad_ids)
+  ) {
+    // If admin explicitly deselected all ads for this placement, show 0 ads
+    if (placementConfig.selected_ad_ids.length === 0) {
+      return items.map((item) => ({ type: 'item', data: item }));
+    }
+
+    const ordered = placementConfig.selected_ad_ids
+      .map((id) => (ads as any[]).find((a) => a.id === id))
+      .filter(Boolean);
+    if (ordered.length > 0) {
+      effectiveAds = ordered as A[];
+    } else {
+      // None of the selected ads are currently active/available
+      return items.map((item) => ({ type: 'item', data: item }));
+    }
+  }
+
   const frequency = Math.max(1, placementConfig.frequency || 1);
   const result: InjectedItem<T, A>[] = [];
   let adsInjected = 0;
@@ -59,7 +87,7 @@ export function injectAdsIntoSequence<T, A = any>(
 
     // Check if we should insert an ad after item i
     if ((i + 1) % frequency === 0 && adsInjected < effectiveMaxAds) {
-      const adData = ads && ads.length > 0 ? ads[adsInjected % ads.length] : null;
+      const adData = effectiveAds && effectiveAds.length > 0 ? effectiveAds[adsInjected % effectiveAds.length] : null;
       result.push({
         type: 'ad',
         adData,

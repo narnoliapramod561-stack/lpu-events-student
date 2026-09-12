@@ -408,6 +408,7 @@ export interface AdPlacementConfig {
   frequency: number; // e.g. 1 = after every 1 event, 2 = after every 2 events
   max_ads: number;   // Maximum ads permitted for this specific placement
   ad_unit_id?: string; // Optional AdSense slot identifier
+  selected_ad_ids?: string[]; // Specific chosen advertisements in exact display order
 }
 
 export interface AdSenseGlobalConfig {

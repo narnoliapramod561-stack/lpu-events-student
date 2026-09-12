@@ -167,14 +167,6 @@ export default function App() {
   const [showMoreIncrement, setShowMoreIncrement] = useState(5);
   const [adInterval, setAdInterval] = useState(6);
 
-  // Ad slot enabled/disabled flags from admin global settings
-  const [adSlots, setAdSlots] = useState({
-    hero_below: true,
-    happening_today_below: false,
-    between_hub_past: true,
-    event_details_top: false,
-    event_details_bottom: false,
-  });
 
   // Filter States initialized from URL query parameters
   const initialFilterState = useMemo(() => parseFilterStateFromUrl(), []);
@@ -474,20 +466,7 @@ export default function App() {
           if (incSetting) setShowMoreIncrement(Number(incSetting.value) || 5);
           const adSetting = allSettings.find((s: any) => s.key === "ad_placement_interval");
           if (adSetting) setAdInterval(Number(adSetting.value) || 6);
-          const slotsSetting = allSettings.find((s: any) => s.key === "ad_placement_slots");
-          if (slotsSetting) {
-            try {
-              const parsed = typeof slotsSetting.value === 'string'
-                ? JSON.parse(slotsSetting.value)
-                : slotsSetting.value;
-              setAdSlots(prev => ({
-                ...prev,
-                ...Object.fromEntries(
-                  Object.entries(parsed).map(([k, v]: any) => [k, Boolean(v?.enabled ?? v)])
-                )
-              }));
-            } catch {}
-          }
+
           const htSetting = allSettings.find((s: any) => s.key === "happening_today_config");
           if (htSetting) {
             try {
@@ -535,6 +514,19 @@ export default function App() {
     };
     
     loadAllData();
+
+    const handleSync = () => {
+      lpuClient.invalidateClientCache();
+      loadAllData();
+    };
+    window.addEventListener('storage', (e) => {
+      if (e.key === 'lpu_cache_bust') handleSync();
+    });
+    window.addEventListener('lpu:cache-invalidated', handleSync);
+
+    return () => {
+      window.removeEventListener('lpu:cache-invalidated', handleSync);
+    };
   }, []);
 
   // Fetch upcoming events dynamically when query/category/schedule states update
@@ -955,12 +947,19 @@ export default function App() {
                   {adSystemConfig?.global_enabled &&
                     adSystemConfig?.placements?.hero_carousel?.enabled &&
                     adSystemConfig?.placements?.hero_carousel?.provider !== 'disabled' &&
-                    adSlots.hero_below &&
-                    ads.length > 0 && (
+                    (adSystemConfig?.placements?.hero_carousel?.provider === 'adsense' || ads.length > 0) && (
                       <UnifiedAdSlot
                         placementKey="hero_carousel"
                         adSystemConfig={adSystemConfig}
-                        directAd={ads[0]}
+                        directAd={(() => {
+                          const cfg = adSystemConfig?.placements?.hero_carousel;
+                          if (cfg?.selected_ad_ids && Array.isArray(cfg.selected_ad_ids)) {
+                            if (cfg.selected_ad_ids.length === 0) return null;
+                            const found = ads.find((a) => a.id === cfg.selected_ad_ids?.[0]);
+                            if (found) return found;
+                          }
+                          return ads[0] || null;
+                        })()}
                         tag="Featured Partner Spotlight"
                       />
                   )}
@@ -978,13 +977,20 @@ export default function App() {
                   {adSystemConfig?.global_enabled &&
                     adSystemConfig?.placements?.happening_today?.enabled &&
                     adSystemConfig?.placements?.happening_today?.provider !== 'disabled' &&
-                    adSlots.happening_today_below &&
-                    ads.length > 0 &&
+                    (adSystemConfig?.placements?.happening_today?.provider === 'adsense' || ads.length > 0) &&
                     happeningTodayEvents.length > 0 && (
                       <UnifiedAdSlot
                         placementKey="happening_today"
                         adSystemConfig={adSystemConfig}
-                        directAd={ads.length > 1 ? ads[1] : ads[0]}
+                        directAd={(() => {
+                          const cfg = adSystemConfig?.placements?.happening_today;
+                          if (cfg?.selected_ad_ids && Array.isArray(cfg.selected_ad_ids)) {
+                            if (cfg.selected_ad_ids.length === 0) return null;
+                            const found = ads.find((a) => a.id === cfg.selected_ad_ids?.[0]);
+                            if (found) return found;
+                          }
+                          return ads.length > 1 ? ads[1] : (ads[0] || null);
+                        })()}
                         tag="Happening Today Sponsor"
                       />
                   )}

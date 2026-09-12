@@ -28,6 +28,7 @@ import { ProgressiveImage } from "./ProgressiveImage";
 import { AdSenseSlot } from "./AdSenseSlot";
 import { SponsorBanner } from "./SponsorBanner";
 import { ShareModal } from "./ShareModal";
+import { BookingDisclaimerModal } from "./BookingDisclaimerModal";
 
 interface EventDetailsViewProps {
   eventId: string;
@@ -64,6 +65,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
   const [activeTab, setActiveTab] = useState<string>("about");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [shareModalOpen, setShareModalOpen] = useState(false);
+  const [bookingDisclaimerOpen, setBookingDisclaimerOpen] = useState(false);
 
   // Synchronize browser address bar with human-readable SEO slug
   useEffect(() => {
@@ -179,6 +181,12 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
   const handleRegister = () => {
     if (event?.external_registration_url) {
+      setBookingDisclaimerOpen(true);
+    }
+  };
+
+  const handleConfirmRegistration = () => {
+    if (event?.external_registration_url) {
       trackRegistrationClick(
         event.id,
         event.name,
@@ -186,6 +194,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         event.pricing_type || 'FREE'
       );
       window.open(event.external_registration_url, "_blank", "noopener,noreferrer");
+      setBookingDisclaimerOpen(false);
     }
   };
 
@@ -412,8 +421,21 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
     );
   }
 
-  const spotlight1 = ads && ads[0] ? ads[0] : null;
-  const spotlight2 = (ads && ads[1]) ? ads[1] : (ads && ads[0] ? ads[0] : null);
+  const detailsConfig = adSystemConfig?.placements?.event_details;
+  const effectiveDetailsAds = useMemo(() => {
+    if (!ads || ads.length === 0) return [];
+    if (detailsConfig?.selected_ad_ids && Array.isArray(detailsConfig.selected_ad_ids)) {
+      if (detailsConfig.selected_ad_ids.length === 0) return [];
+      const ordered = detailsConfig.selected_ad_ids
+        .map((id) => ads.find((a) => a.id === id))
+        .filter(Boolean);
+      if (ordered.length > 0) return ordered;
+    }
+    return ads;
+  }, [ads, detailsConfig?.selected_ad_ids]);
+
+  const spotlight1 = effectiveDetailsAds[0] || null;
+  const spotlight2 = effectiveDetailsAds[1] || effectiveDetailsAds[0] || null;
 
   const hasExternalRegistration = Boolean(event?.external_registration_url);
   const isPaid = (event?.pricing_type === "PAID" || (typeof event?.price_amount === "number" && event.price_amount > 0)) && event?.pricing_type !== "FREE";
@@ -689,6 +711,14 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
       <ShareModal
         isOpen={shareModalOpen}
         onClose={() => setShareModalOpen(false)}
+        event={event}
+      />
+
+      {/* External Booking Disclaimer Modal */}
+      <BookingDisclaimerModal
+        isOpen={bookingDisclaimerOpen}
+        onClose={() => setBookingDisclaimerOpen(false)}
+        onConfirm={handleConfirmRegistration}
         event={event}
       />
 

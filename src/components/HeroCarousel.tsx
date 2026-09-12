@@ -114,7 +114,8 @@ export const HeroCarouselComponent = ({
         if (!item.is_active) continue;
 
         if (item.item_type === "EVENT" && item.events) {
-          const evt = item.events;
+          const matchedEvt = featuredEvents?.find(f => f.id === item.event_id || f.id === item.events?.id);
+          const evt = matchedEvt ? { ...item.events, ...matchedEvt } : item.events;
           baseSlides.push({
             id: item.id,
             eventId: evt.id,
@@ -184,7 +185,7 @@ export const HeroCarouselComponent = ({
       provider: 'direct',
       frequency: 2,
       max_ads: 3,
-      ad_unit_id: '1000000001',
+      ad_unit_id: '8059587837',
     };
 
     const injected = injectAdsIntoSequence(baseSlides, ads, heroAdConfig, {
@@ -208,46 +209,33 @@ export const HeroCarouselComponent = ({
           ctaText: "Explore",
           isSponsored: true,
           duration: 6000,
-          adUnitId: item.adUnitId || heroAdConfig.ad_unit_id || "1000000001",
+          adUnitId: item.adUnitId || heroAdConfig.ad_unit_id || "8059587837",
         };
       }
 
-      const ad = item.adData || (ads.length > 0 ? ads[0] : null);
-      if (ad) {
+      if (item.adProvider === "direct") {
+        const ad = item.adData;
+        if (!ad) return null;
         return {
           id: `hero-direct-ad-${ad.id}-${idx}`,
           type: "ad",
           isSponsored: true,
           title: ad.name,
-          description: "Featured university partner session and promotion. Explore opportunities and register.",
-          image: getEventImage(ad, "hero", 1920),
-          category: "Sponsored Promotion",
-          date: "Partner",
-          time: "Session",
-          venue: "Virtual & On-Campus",
-          organizer: "Corporate Partner",
+          description: "Featured university partner promotion. Explore exclusive student opportunities and offers.",
+          image: getEventImage(ad, "advertisement", 1920),
+          category: "Sponsored Partner",
+          date: "",
+          time: "",
+          venue: "",
+          organizer: "Official Campus Partner",
           ctaText: "Explore More",
           ctaUrl: ad.redirect_url,
           duration: 5000,
         };
       }
 
-      return {
-        id: `hero-ad-fallback-${idx}`,
-        type: "ad",
-        isSponsored: true,
-        title: "Campus Partner Spotlight",
-        description: "Official university partner session and promotion.",
-        image: "https://images.unsplash.com/photo-1524178232363-1fb2b075b655?q=80&w=1200&auto=format&fit=crop",
-        category: "Partner Spotlight",
-        date: "Partner",
-        time: "Spotlight",
-        venue: "LPU Campus",
-        organizer: "University Partner",
-        ctaText: "Learn More",
-        duration: 5000,
-      };
-    });
+      return null;
+    }).filter(Boolean) as HeroSlideModel[];
   }, [carouselItems, featuredEvents, ads, adSystemConfig]);
 
   useEffect(() => {
@@ -385,14 +373,18 @@ export const HeroCarouselComponent = ({
                   className="sm:hidden relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex flex-col justify-between p-3.5 pb-7 min-[400px]:p-4.5 min-[400px]:pb-8"
                 >
                   {/* HD Hero Background Image with Instant LQIP -> Full HD Auto-Upgrade */}
-                  <ProgressiveImage
-                    src={currentSlide.image}
-                    alt={currentSlide.title}
-                    loading={currentIndex === 0 ? "eager" : "lazy"}
-                    fetchPriority={currentIndex === 0 ? "high" : "auto"}
-                    containerClassName="absolute inset-0 w-full h-full"
-                    className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out"
-                  />
+                  {currentSlide.image ? (
+                    <ProgressiveImage
+                      src={currentSlide.image}
+                      alt={currentSlide.title}
+                      loading={currentIndex === 0 ? "eager" : "lazy"}
+                      fetchPriority={currentIndex === 0 ? "high" : "auto"}
+                      containerClassName="absolute inset-0 w-full h-full"
+                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950" />
+                  )}
 
                   {/* Smooth Multi-layered Gradient Scrim */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 via-40% to-transparent pointer-events-none" />
@@ -657,12 +649,16 @@ export const HeroCarouselComponent = ({
                     onClick={handleAction}
                     className="hidden sm:flex relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex-col justify-end p-8 md:p-12 lg:p-16 pb-20"
                   >
-                    <ProgressiveImage
-                      src={currentSlide.image}
-                      alt={currentSlide.title}
-                      containerClassName="absolute inset-0 w-full h-full"
-                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
-                    />
+                    {currentSlide.image ? (
+                      <ProgressiveImage
+                        src={currentSlide.image}
+                        alt={currentSlide.title}
+                        containerClassName="absolute inset-0 w-full h-full"
+                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950" />
+                    )}
 
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30 pointer-events-none" />
                     <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/30 via-purple-600/15 to-transparent mix-blend-screen pointer-events-none" />

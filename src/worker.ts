@@ -833,6 +833,16 @@ function getInvalidationUrls(origin: string, tags: string[]): string[] {
   return Array.from(urls);
 }
 
+function extractAuthSecret(request: Request): string | null {
+  const customHeader = request.headers.get('X-Invalidation-Secret');
+  if (customHeader && customHeader.trim()) return customHeader.trim();
+  const authHeader = request.headers.get('Authorization');
+  if (authHeader && authHeader.trim()) {
+    return authHeader.replace(/^Bearer\s+/i, '').trim();
+  }
+  return null;
+}
+
 async function handleInvalidation(
   request: Request,
   origin: string,
@@ -844,11 +854,9 @@ async function handleInvalidation(
   }
 
   const secret = env.CACHE_INVALIDATION_SECRET;
-  if (secret) {
-    const authHeader = request.headers.get('X-Invalidation-Secret');
-    if (authHeader !== secret) {
-      return errorResponse('Unauthorized invalidation request', 401);
-    }
+  const authSecret = extractAuthSecret(request);
+  if (!secret || !authSecret || authSecret !== secret) {
+    return errorResponse('Unauthorized invalidation request', 401);
   }
 
   try {
@@ -1014,11 +1022,9 @@ export default {
     // 4. Cache Rebuild Endpoint
     if (url.pathname === '/api/cache/rebuild') {
       const secret = env.CACHE_INVALIDATION_SECRET;
-      if (secret) {
-        const authHeader = request.headers.get('X-Invalidation-Secret');
-        if (authHeader && authHeader !== secret) {
-          return errorResponse('Unauthorized cache rebuild request', 401);
-        }
+      const authSecret = extractAuthSecret(request);
+      if (!secret || !authSecret || authSecret !== secret) {
+        return errorResponse('Unauthorized cache rebuild request', 401);
       }
       return handleCacheRebuild(origin, env, ctx);
     }

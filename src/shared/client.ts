@@ -424,7 +424,7 @@ export class LpuEventsClient {
 
         let secret = '';
         try {
-          secret = (import.meta as any).env?.VITE_CACHE_INVALIDATION_SECRET || 'lpu-events-cache-invalidation-2026';
+          secret = (import.meta as any).env?.VITE_CACHE_INVALIDATION_SECRET || '';
         } catch { /* env unavailable */ }
 
         const studentSiteUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
@@ -438,15 +438,26 @@ export class LpuEventsClient {
           headers['X-Invalidation-Secret'] = secret;
         }
 
-        // 1. Invalidate tags
-        fetch(`${studentSiteUrl}/api/cache/invalidate`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ tags }),
-        }).catch(() => {});
+        // 1. Invalidate tags across all potential paths to guarantee fresh edge responses
+        const invalidationTargets = [
+          '/api/cache/invalidate',
+          'https://lpuevents.live/api/cache/invalidate',
+          `${studentSiteUrl}/api/cache/invalidate`,
+        ];
+        invalidationTargets.forEach(endpoint => {
+          fetch(endpoint, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ tags }),
+          }).catch(() => {});
+        });
 
         // 2. Trigger active rebuild & pre-warm
         fetch(`${studentSiteUrl}/api/cache/rebuild`, {
+          method: 'POST',
+          headers,
+        }).catch(() => {});
+        fetch('https://lpuevents.live/api/cache/rebuild', {
           method: 'POST',
           headers,
         }).catch(() => {});
@@ -616,13 +627,48 @@ export class LpuEventsClient {
     return res;
   }
 
-  async manageGlobalSetting(key: string, value: any): Promise<{ data: any; error: any }> {
-    const res = await this.supabase.rpc('manage_global_setting', {
-      p_key: key,
-      p_value: value
+  async manageGlobalSetting(keyOrAction: string, valueOrPayload?: any, description?: string): Promise<{ data: any; error: any }> {
+    let p_action = 'upsert';
+    let p_key = keyOrAction;
+    let p_value = valueOrPayload;
+    let p_description = description;
+
+    if (keyOrAction === 'upsert' || keyOrAction === 'delete') {
+      p_action = keyOrAction;
+      if (valueOrPayload && typeof valueOrPayload === 'object' && 'key' in valueOrPayload) {
+        p_key = valueOrPayload.key;
+        p_value = valueOrPayload.value;
+        p_description = valueOrPayload.description || description;
+      }
+    }
+
+    let res = await this.supabase.rpc('manage_global_setting', {
+      p_action,
+      p_key,
+      p_value,
+      p_description
     });
+
+    // Robust Fallback: direct table upsert if RPC had permission or transient error
+    if (res.error && p_action === 'upsert') {
+      const { data: directData, error: directErr } = await this.supabase
+        .from('global_settings')
+        .upsert({
+          key: (p_key || '').trim(),
+          value: p_value,
+          description: p_description,
+          updated_at: new Date().toISOString()
+        }, { onConflict: 'key' })
+        .select()
+        .maybeSingle();
+
+      if (!directErr) {
+        res = { data: directData, error: null } as any;
+      }
+    }
+
     if (!res.error) {
-      this._dispatchTargetedEdgeInvalidation(['settings', 'homepage']);
+      this._dispatchTargetedEdgeInvalidation(['settings', 'homepage', 'advertisements']);
     }
     return res;
   }

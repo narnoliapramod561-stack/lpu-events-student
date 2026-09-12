@@ -148,7 +148,7 @@ export const HappeningTodaySliderComponent = ({
       provider: 'direct',
       frequency: 2,
       max_ads: 2,
-      ad_unit_id: '1000000002',
+      ad_unit_id: '8059587837',
     };
 
     const injected = injectAdsIntoSequence(eventSlides, ads, placementConfig, {
@@ -171,36 +171,31 @@ export const HappeningTodaySliderComponent = ({
           badge: "Sponsored",
           category: "AdSense",
           ctaText: "Explore",
-          adUnitId: item.adUnitId || placementConfig.ad_unit_id || "1000000002",
+          adUnitId: item.adUnitId || placementConfig.ad_unit_id || "8059587837",
         };
       }
 
-      const ad = item.adData || (ads.length > 0 ? ads[idx % ads.length] : null);
-      if (ad) {
+      if (item.adProvider === "direct") {
+        const ad = item.adData;
+        if (!ad) return null;
         return {
           type: "ad",
           id: `ht-ad-${ad.id}-${idx}`,
           title: ad.name,
           description: "Exclusive university partner opportunity & promotion.",
-          image: getEventImage(ad, "hero", 1920),
-          badge: "Sponsored",
-          category: "Partner",
+          image: getEventImage(ad, "advertisement", 1920),
+          badge: "Sponsored Partner",
+          category: "Official Partner",
           ctaText: "Learn More",
           ctaUrl: ad.redirect_url,
+          date: "",
+          time: "",
+          venue: "",
         };
       }
 
-      return {
-        type: "ad",
-        id: `ht-ad-fallback-${idx}`,
-        title: "Campus Partner Spotlight",
-        description: "Official university partner session and promotion.",
-        image: "",
-        badge: "Sponsored",
-        category: "Partner",
-        ctaText: "Learn More",
-      };
-    });
+      return null;
+    }).filter(Boolean) as HappeningTodaySlideItem[];
   }, [events, ads, adSystemConfig]);
 
   useEffect(() => {
@@ -360,13 +355,17 @@ export const HappeningTodaySliderComponent = ({
                   className="md:hidden relative w-full h-full flex flex-col justify-between p-4 pb-4.5 overflow-hidden cursor-pointer group"
                 >
                   {/* Cinematic Background Image (Instant LQIP -> Full HD Auto-Upgrade) */}
-                  <ProgressiveImage
-                    src={currentSlide.image}
-                    alt={currentSlide.title}
-                    loading="lazy"
-                    containerClassName="absolute inset-0 w-full h-full"
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                  />
+                  {currentSlide.image ? (
+                    <ProgressiveImage
+                      src={currentSlide.image}
+                      alt={currentSlide.title}
+                      loading="lazy"
+                      containerClassName="absolute inset-0 w-full h-full"
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950" />
+                  )}
 
                   {/* Clean Multi-layered Gradient Scrim */}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/55 via-50% to-black/20 pointer-events-none" />
@@ -410,22 +409,31 @@ export const HappeningTodaySliderComponent = ({
 
                     {/* Bottom Action Row: Time & Place on Left, Compact View Details on Right */}
                     <motion.div variants={contentItem} className="flex items-center justify-between gap-2.5 pt-0.5">
-                      {/* Left: Time & Place Meta */}
+                      {/* Left: Time & Place Meta or Partner Meta */}
                       <div className="flex items-center gap-1.5 text-xs text-gray-200/95 font-medium truncate min-w-0 flex-1">
-                        {currentSlide.time && (
-                          <span className="inline-flex items-center gap-1 text-orange-300 font-bold shrink-0">
-                            <Clock className="w-3.5 h-3.5 text-orange-400" />
-                            <span>{currentSlide.time}</span>
+                        {currentSlide.type === "ad" ? (
+                          <span className="inline-flex items-center gap-1 text-indigo-300 font-bold truncate">
+                            <Megaphone className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
+                            <span className="truncate">Featured University Partner</span>
                           </span>
-                        )}
-                        {currentSlide.time && currentSlide.venue && (
-                          <span className="text-white/40 shrink-0">•</span>
-                        )}
-                        {currentSlide.venue && (
-                          <span className="inline-flex items-center gap-1 truncate text-gray-200">
-                            <MapPin className="w-3.5 h-3.5 text-[#fc721e] shrink-0" />
-                            <span className="truncate">{currentSlide.venue}</span>
-                          </span>
+                        ) : (
+                          <>
+                            {currentSlide.time && (
+                              <span className="inline-flex items-center gap-1 text-orange-300 font-bold shrink-0">
+                                <Clock className="w-3.5 h-3.5 text-orange-400" />
+                                <span>{currentSlide.time}</span>
+                              </span>
+                            )}
+                            {currentSlide.time && currentSlide.venue && (
+                              <span className="text-white/40 shrink-0">•</span>
+                            )}
+                            {currentSlide.venue && (
+                              <span className="inline-flex items-center gap-1 truncate text-gray-200">
+                                <MapPin className="w-3.5 h-3.5 text-[#fc721e] shrink-0" />
+                                <span className="truncate">{currentSlide.venue}</span>
+                              </span>
+                            )}
+                          </>
                         )}
                       </div>
 
@@ -458,22 +466,38 @@ export const HappeningTodaySliderComponent = ({
                     onClick={handleAction}
                     className="relative w-1/2 h-full overflow-hidden cursor-pointer group shrink-0"
                   >
-                    <ProgressiveImage
-                      src={currentSlide.image}
-                      alt={currentSlide.title}
-                      loading="lazy"
-                      containerClassName="w-full h-full"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                    />
+                    {currentSlide.image ? (
+                      <ProgressiveImage
+                        src={currentSlide.image}
+                        alt={currentSlide.title}
+                        loading="lazy"
+                        containerClassName="w-full h-full"
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 p-6 flex flex-col items-center justify-center relative">
+                        <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-transparent to-purple-500/10 pointer-events-none" />
+                        <Megaphone className="w-16 h-16 text-indigo-400/50 mb-3" />
+                        <span className="text-xs font-black uppercase tracking-wider text-indigo-300 font-heading">
+                          Official Campus Partner
+                        </span>
+                      </div>
+                    )}
 
                     {/* Blending Gradients */}
                     <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-white/35 dark:from-[#0b0d16]/80 via-white/10 dark:via-[#0b0d16]/30 to-transparent pointer-events-none" />
 
                     {/* Badge Overlay */}
                     <div className="absolute top-5 left-5 right-5 z-20 flex items-center justify-between pointer-events-none">
-                      <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 bg-red-600/90 text-white rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-lg backdrop-blur-md border border-white/20 pointer-events-auto">
-                        <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                        {currentSlide.badge}
+                      <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 ${
+                        currentSlide.type === "ad"
+                          ? "bg-indigo-950/90 text-indigo-200 border-indigo-500/40"
+                          : "bg-red-600/90 text-white border-white/20"
+                      } rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-lg backdrop-blur-md border pointer-events-auto`}>
+                        <span className={`w-1.5 h-1.5 rounded-full ${
+                          currentSlide.type === "ad" ? "bg-indigo-400" : "bg-white"
+                        } animate-pulse`} />
+                        {currentSlide.type === "ad" ? "Sponsored Partner" : currentSlide.badge}
                       </span>
                       {currentSlide.category && (
                         <span className="inline-flex px-3 py-1 bg-black/60 backdrop-blur-md text-white/90 rounded-full font-heading text-xs font-bold uppercase tracking-wider border border-white/20 pointer-events-auto">

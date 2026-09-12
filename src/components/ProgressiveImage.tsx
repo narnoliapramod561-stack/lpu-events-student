@@ -7,6 +7,7 @@ const loadedHdImageCache = new Set<string>();
 export interface ProgressiveImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
   lowResSrc?: string;
+  fallbackSrc?: string;
   alt?: string;
   className?: string;
   containerClassName?: string;
@@ -17,6 +18,7 @@ export interface ProgressiveImageProps extends React.ImgHTMLAttributes<HTMLImage
 export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
   src,
   lowResSrc,
+  fallbackSrc,
   alt = "",
   className = "w-full h-full object-cover",
   containerClassName = "relative w-full h-full overflow-hidden",
@@ -27,6 +29,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
   style,
   ...rest
 }) => {
+  const defaultFallback = fallbackSrc !== undefined ? fallbackSrc : '/defaults/events/general_default.webp';
   const isCached = loadedHdImageCache.has(src);
   const [isHdLoaded, setIsHdLoaded] = useState<boolean>(isCached);
   const [currentSrc, setCurrentSrc] = useState<string>(
@@ -64,7 +67,9 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
 
     hdImage.onerror = () => {
       if (!isCancelled) {
-        setCurrentSrc('/defaults/events/general_default.webp');
+        if (defaultFallback) {
+          setCurrentSrc(defaultFallback);
+        }
         setIsHdLoaded(true);
       }
     };
@@ -72,7 +77,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [src, lowResSrc, onLoadComplete]);
+  }, [src, lowResSrc, defaultFallback, onLoadComplete]);
 
   return (
     <div className={`${containerClassName} ${aspectRatioClass} bg-slate-900/40`}>
@@ -84,8 +89,8 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
           aria-hidden="true"
           onError={(e) => {
             const target = e.currentTarget;
-            if (!target.src.includes('general_default.webp')) {
-              target.src = '/defaults/events/general_default.webp';
+            if (defaultFallback && target.src !== defaultFallback) {
+              target.src = defaultFallback;
             }
           }}
           className={`absolute inset-0 w-full h-full object-cover scale-105 filter blur-md transition-opacity duration-500 ease-out ${
@@ -104,8 +109,8 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
         decoding="async"
         onError={(e) => {
           const target = e.currentTarget;
-          if (!target.src.includes('general_default.webp')) {
-            target.src = '/defaults/events/general_default.webp';
+          if (defaultFallback && target.src !== defaultFallback) {
+            target.src = defaultFallback;
           }
         }}
         className={`${className} transition-all duration-500 ease-out ${

@@ -4,6 +4,7 @@ import { lpuClient } from "../supabase";
 import { Event, formatEventDateRange } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
+import { BookingDisclaimerModal } from "./BookingDisclaimerModal";
 
 export const EventDetailsModal = ({ eventId, onClose }: {
   eventId: string;
@@ -12,6 +13,7 @@ export const EventDetailsModal = ({ eventId, onClose }: {
   const [event, setEvent] = useState<Event | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [disclaimerOpen, setDisclaimerOpen] = useState(false);
 
   useEffect(() => {
     if (!eventId) return;
@@ -41,7 +43,14 @@ export const EventDetailsModal = ({ eventId, onClose }: {
 
   const handleRegisterRedirect = () => {
     if (event?.external_registration_url) {
+      setDisclaimerOpen(true);
+    }
+  };
+
+  const handleConfirmRedirect = () => {
+    if (event?.external_registration_url) {
       window.open(event.external_registration_url, "_blank", "noopener,noreferrer");
+      setDisclaimerOpen(false);
     }
   };
 
@@ -208,6 +217,14 @@ export const EventDetailsModal = ({ eventId, onClose }: {
           </>
         )}
       </div>
+
+      {/* External Booking Disclaimer Modal */}
+      <BookingDisclaimerModal
+        isOpen={disclaimerOpen}
+        onClose={() => setDisclaimerOpen(false)}
+        onConfirm={handleConfirmRedirect}
+        event={event}
+      />
     </div>
   );
 };

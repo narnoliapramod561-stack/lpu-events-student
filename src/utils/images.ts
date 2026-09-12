@@ -24,6 +24,16 @@ export function getResponsiveImageUrl(url: string, targetWidth: number = 1080): 
     return url;
   }
 
+  if (url.startsWith('/defaults/events/') && url.endsWith('.webp') && !url.includes('_tablet') && !url.includes('_mobile')) {
+    if (effectiveWidth <= 640) {
+      return url.replace('.webp', '_mobile.webp');
+    }
+    if (effectiveWidth <= 1200) {
+      return url.replace('.webp', '_tablet.webp');
+    }
+    return url.replace('.webp', '_desktop.webp');
+  }
+
   // 2. Unsplash HD Auto-Upscale & Clarity Tuning
   if (url.includes('images.unsplash.com')) {
     const cleanUrl = url.split('?')[0];
@@ -41,6 +51,10 @@ export function getLowResPlaceholderUrl(url: string): string {
 
   if (url.includes('_desktop.webp')) {
     return url.replace('_desktop.webp', '_mobile.webp');
+  }
+
+  if (url.startsWith('/defaults/events/') && url.endsWith('.webp')) {
+    return url.replace(/(_desktop|_tablet)?\.webp$/, '_mobile.webp');
   }
 
   if (url.includes('images.unsplash.com')) {
