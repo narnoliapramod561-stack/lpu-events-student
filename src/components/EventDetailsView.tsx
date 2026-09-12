@@ -456,7 +456,13 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
           {(event as any)?.categories?.name && (
             <>
               <li itemProp="itemListElement" itemScope itemType="https://schema.org/ListItem">
-                <span itemProp="name" className="text-gray-600 dark:text-gray-300">{(event as any).categories.name}</span>
+                <a
+                  href={`/?category=${(event as any)?.categories?.key || ''}`}
+                  itemProp="item"
+                  className="text-gray-600 dark:text-gray-300 hover:text-primary transition-colors cursor-pointer"
+                >
+                  <span itemProp="name">{(event as any).categories.name}</span>
+                </a>
                 <meta itemProp="position" content="2" />
               </li>
               <li className="text-gray-400 dark:text-gray-500" aria-hidden="true">›</li>

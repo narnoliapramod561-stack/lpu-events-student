@@ -114,7 +114,7 @@ const PROJECTIONS = {
   eventFeed: 'id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)',
   eventDetail: 'id,name,description,start_at,end_at,venue_name,registration_mode,external_registration_url,pricing_type,price_amount,registration_format,capacity_limit,banner_media_id,category_id,subcategory_id,organization_id,status,created_at,updated_at,media_assets:banner_media_id(id,object_key),organizations(id,name),categories(id,name,key),subcategories(id,name,key),event_content_sections(id,section_type,title,content,sort_order)',
   // SEO: Lightweight projection for sitemap generation (minimal fields)
-  sitemapEvents: 'id,name,updated_at,status,end_at,categories(key)',
+  sitemapEvents: 'id,name,updated_at,created_at,status,end_at,category_id,categories(key)',
 };
 
 // ─── Helper Functions ────────────────────────────────────────────────────────
@@ -1149,88 +1149,218 @@ async function resolveEventForSeo(slugOrId: string, env: Env): Promise<any | nul
 }
 
 /**
- * Build Schema.org Event JSON-LD structured data.
+ * Safely serialize JSON-LD object to string, escaping '<', '>', '&' to unicode
+ * escape sequences (\u003c, \u003e, \u0026) to prevent script injection / XSS.
+ */
+function safeJsonLd(obj: any): string {
+  return JSON.stringify(obj)
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .replace(/&/g, '\\u0026');
+}
+
+/**
+ * Detect online / virtual venue keywords.
+ */
+function isOnlineVenue(venueName?: string): boolean {
+  if (!venueName) return false;
+  const lower = venueName.toLowerCase();
+  return (
+    lower.includes('online') ||
+    lower.includes('virtual') ||
+    lower.includes('zoom') ||
+    lower.includes('google meet') ||
+    lower.includes('teams') ||
+    lower.includes('webinar') ||
+    lower.includes('discord') ||
+    lower.includes('youtube live')
+  );
+}
+
+/**
+ * Detect hybrid venue keywords.
+ */
+function isHybridVenue(venueName?: string): boolean {
+  if (!venueName) return false;
+  const lower = venueName.toLowerCase();
+  return lower.includes('hybrid') || lower.includes('both online and offline');
+}
+
+/**
+ * Determine if a venue is located on the Lovely Professional University campus.
+ */
+function isLpuCampusVenue(venueName?: string): boolean {
+  if (!venueName) return false;
+  const lower = venueName.toLowerCase();
+  if (lower.includes('new delhi') || lower.includes('bangalore') || lower.includes('mumbai')) {
+    return false;
+  }
+  return (
+    lower.includes('lpu') ||
+    lower.includes('block') ||
+    lower.includes('auditorium') ||
+    lower.includes('unipolis') ||
+    lower.includes('uni-hospital') ||
+    lower.includes('mittal') ||
+    lower.includes('campus') ||
+    lower.includes('lawn') ||
+    lower.includes('hall') ||
+    lower.includes('lab') ||
+    lower.includes('studio') ||
+    lower.includes('arena') ||
+    lower.includes('incubation') ||
+    lower.includes('garden')
+  );
+}
+
+/**
+ * Build Schema.org Event JSON-LD structured data adhering strictly to actual event data.
+ * Zero fabricated fields.
  */
 function buildEventJsonLd(event: any, canonicalUrl: string): string {
-  const imageUrl = getEventImageUrl(event);
-  const organizerName = event.organizations?.name || 'LPU Events';
-  const categoryName = event.categories?.name || '';
-  const venueName = event.venue_name || 'Lovely Professional University';
-
   const jsonLd: Record<string, any> = {
     '@context': 'https://schema.org',
     '@type': 'Event',
     'name': event.name,
-    'description': truncateDescription(event.description || '', 300),
-    'startDate': event.start_at,
-    'endDate': event.end_at || event.start_at,
-    'eventStatus': 'https://schema.org/EventScheduled',
-    'eventAttendanceMode': 'https://schema.org/OfflineEventAttendanceMode',
     'url': canonicalUrl,
-    'image': [imageUrl],
-    'location': {
+    'startDate': event.start_at,
+  };
+
+  // 1. Description
+  if (event.description) {
+    jsonLd['description'] = truncateDescription(event.description, 300);
+  }
+
+  // 2. End date (only if present in event record)
+  if (event.end_at) {
+    jsonLd['endDate'] = event.end_at;
+  }
+
+  // 3. Event Status
+  const isPast = event.status === 'COMPLETED' || (event.end_at && new Date(event.end_at).getTime() < Date.now());
+  if (event.status === 'CANCELLED') {
+    jsonLd['eventStatus'] = 'https://schema.org/EventCancelled';
+  } else if (isPast) {
+    jsonLd['eventStatus'] = 'https://schema.org/EventCompleted';
+  } else {
+    jsonLd['eventStatus'] = 'https://schema.org/EventScheduled';
+  }
+
+  // 4. Attendance Mode & Location
+  const venue = event.venue_name?.trim();
+  const regUrl = event.external_registration_url || canonicalUrl;
+
+  if (isHybridVenue(venue)) {
+    jsonLd['eventAttendanceMode'] = 'https://schema.org/MixedEventAttendanceMode';
+    const placeLocation: Record<string, any> = {
       '@type': 'Place',
-      'name': venueName,
-      'address': {
+      'name': venue,
+    };
+    if (isLpuCampusVenue(venue)) {
+      placeLocation['address'] = {
         '@type': 'PostalAddress',
-        'streetAddress': venueName,
+        'streetAddress': 'Lovely Professional University, Jalandhar - Delhi G.T. Road',
         'addressLocality': 'Phagwara',
         'addressRegion': 'Punjab',
         'postalCode': '144411',
         'addressCountry': 'IN',
-      },
-    },
-    'organizer': {
-      '@type': 'Organization',
-      'name': organizerName,
-      'url': SITE_ORIGIN,
-    },
-    'performer': {
-      '@type': 'Organization',
-      'name': organizerName,
-    },
-  };
-
-  // Pricing/Offers
-  if (event.pricing_type === 'FREE') {
-    jsonLd['isAccessibleForFree'] = true;
-    jsonLd['offers'] = {
-      '@type': 'Offer',
-      'price': '0',
-      'priceCurrency': 'INR',
-      'availability': 'https://schema.org/InStock',
-      'url': event.external_registration_url || canonicalUrl,
+      };
+    }
+    jsonLd['location'] = [
+      { '@type': 'VirtualLocation', 'url': regUrl },
+      placeLocation,
+    ];
+  } else if (isOnlineVenue(venue)) {
+    jsonLd['eventAttendanceMode'] = 'https://schema.org/OnlineEventAttendanceMode';
+    jsonLd['location'] = {
+      '@type': 'VirtualLocation',
+      'url': regUrl,
     };
-  } else if (event.pricing_type === 'PAID' && event.price_amount) {
+  } else if (venue) {
+    jsonLd['eventAttendanceMode'] = 'https://schema.org/OfflineEventAttendanceMode';
+    const placeLocation: Record<string, any> = {
+      '@type': 'Place',
+      'name': venue,
+    };
+    if (isLpuCampusVenue(venue)) {
+      placeLocation['address'] = {
+        '@type': 'PostalAddress',
+        'streetAddress': 'Lovely Professional University, Jalandhar - Delhi G.T. Road',
+        'addressLocality': 'Phagwara',
+        'addressRegion': 'Punjab',
+        'postalCode': '144411',
+        'addressCountry': 'IN',
+      };
+    }
+    jsonLd['location'] = placeLocation;
+  }
+  // If no venue name exists, location is omitted (no fabrication)
+
+  // 5. Image (Only if event has an actual banner media asset)
+  if (event?.media_assets?.object_key) {
+    const imageUrl = getEventImageUrl(event);
+    jsonLd['image'] = [imageUrl];
+  }
+
+  // 6. Organizer (Only if actual organization exists)
+  if (event.organizations?.name) {
+    jsonLd['organizer'] = {
+      '@type': 'Organization',
+      'name': event.organizations.name,
+      'url': SITE_ORIGIN,
+    };
+  }
+
+  // 7. Performer: Omitted (no distinct performer entity in database)
+
+  // 8. Offers & Pricing (Only if real registration link / tickets exist)
+  if (event.pricing_type === 'PAID' && event.price_amount !== null && event.price_amount !== undefined) {
     jsonLd['isAccessibleForFree'] = false;
     jsonLd['offers'] = {
       '@type': 'Offer',
       'price': String(event.price_amount),
       'priceCurrency': 'INR',
       'availability': 'https://schema.org/InStock',
-      'url': event.external_registration_url || canonicalUrl,
+      'url': regUrl,
     };
+  } else if (event.pricing_type === 'FREE') {
+    jsonLd['isAccessibleForFree'] = true;
+    if (event.registration_mode === 'EXTERNAL' && event.external_registration_url) {
+      jsonLd['offers'] = {
+        '@type': 'Offer',
+        'price': '0',
+        'priceCurrency': 'INR',
+        'availability': 'https://schema.org/InStock',
+        'url': event.external_registration_url,
+      };
+    }
+    // Unticketed walk-in events (NONE) omit offers
   }
 
+  // 9. About / Category
+  const categoryName = event.categories?.name;
   if (categoryName) {
     jsonLd['about'] = { '@type': 'Thing', 'name': categoryName };
   }
 
-  return JSON.stringify(jsonLd);
+  return safeJsonLd(jsonLd);
 }
 
 /**
- * Build Schema.org BreadcrumbList JSON-LD.
+ * Build Schema.org BreadcrumbList JSON-LD with valid category URLs.
  */
 function buildBreadcrumbJsonLd(event: any, canonicalUrl: string): string {
   const categoryName = event.categories?.name || 'Events';
+  const categoryKey = event.categories?.key || '';
+  const categoryUrl = categoryKey ? `${SITE_ORIGIN}/?category=${encodeURIComponent(categoryKey)}` : `${SITE_ORIGIN}/`;
+
   const items = [
-    { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': SITE_ORIGIN + '/' },
-    { '@type': 'ListItem', 'position': 2, 'name': categoryName, 'item': SITE_ORIGIN + '/' },
+    { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': `${SITE_ORIGIN}/` },
+    { '@type': 'ListItem', 'position': 2, 'name': categoryName, 'item': categoryUrl },
     { '@type': 'ListItem', 'position': 3, 'name': event.name, 'item': canonicalUrl },
   ];
 
-  return JSON.stringify({
+  return safeJsonLd({
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
     'itemListElement': items,
@@ -1243,9 +1373,12 @@ function buildBreadcrumbJsonLd(event: any, canonicalUrl: string): string {
  */
 function buildSemanticHtml(event: any, _canonicalUrl: string): string {
   const imageUrl = escapeHtml(getEventImageUrl(event));
+  const hasBannerImage = Boolean(event?.media_assets?.object_key);
   const organizerName = escapeHtml(event.organizations?.name || 'LPU Events');
   const categoryName = escapeHtml(event.categories?.name || 'Events');
-  const venueName = escapeHtml(event.venue_name || 'Lovely Professional University');
+  const categoryKey = event.categories?.key || '';
+  const categoryUrl = categoryKey ? `/?category=${encodeURIComponent(categoryKey)}` : '/';
+  const venueName = escapeHtml(event.venue_name || '');
   const dateRange = escapeHtml(formatDateRangeIST(event.start_at, event.end_at));
   const description = escapeHtml(event.description || '');
 
@@ -1254,24 +1387,35 @@ function buildSemanticHtml(event: any, _canonicalUrl: string): string {
   // Breadcrumb
   html += `<nav aria-label="Breadcrumb" style="margin-bottom:16px;font-size:14px;color:#888">`;
   html += `<a href="/" style="color:#6366f1;text-decoration:none">Home</a>`;
-  html += ` › <a href="/" style="color:#6366f1;text-decoration:none">${categoryName}</a>`;
+  html += ` › <a href="${escapeHtml(categoryUrl)}" style="color:#6366f1;text-decoration:none">${categoryName}</a>`;
   html += ` › <span>${escapeHtml(event.name)}</span>`;
   html += `</nav>`;
 
   // Title
   html += `<h1 itemprop="name" style="font-size:28px;font-weight:700;color:#f1f1f1;margin:0 0 16px">${escapeHtml(event.name)}</h1>`;
 
-  // Banner image
-  html += `<img itemprop="image" src="${imageUrl}" alt="${escapeHtml(event.name)} event banner — Lovely Professional University" style="width:100%;border-radius:12px;margin-bottom:16px" loading="eager" />`;
+  // Banner image (only apply itemprop="image" if actual banner media exists)
+  if (hasBannerImage) {
+    html += `<img itemprop="image" src="${imageUrl}" alt="${escapeHtml(event.name)} event banner — Lovely Professional University" style="width:100%;border-radius:12px;margin-bottom:16px" loading="eager" />`;
+  }
 
   // Event metadata badges
   html += `<div style="display:flex;flex-wrap:wrap;gap:12px;margin-bottom:16px;font-size:14px;color:#ccc">`;
   html += `<span>📅 <time itemprop="startDate" datetime="${escapeHtml(event.start_at)}">${dateRange}</time></span>`;
-  html += `<span>📍 <span itemprop="location" itemscope itemtype="https://schema.org/Place"><span itemprop="name">${venueName}</span></span></span>`;
-  html += `<span>🏢 <span itemprop="organizer" itemscope itemtype="https://schema.org/Organization"><span itemprop="name">${organizerName}</span></span></span>`;
+
+  if (isOnlineVenue(event.venue_name)) {
+    html += `<span>🌐 <span itemprop="location" itemscope itemtype="https://schema.org/VirtualLocation">Online Event</span></span>`;
+  } else if (venueName) {
+    html += `<span>📍 <span itemprop="location" itemscope itemtype="https://schema.org/Place"><span itemprop="name">${venueName}</span></span></span>`;
+  }
+
+  if (event.organizations?.name) {
+    html += `<span>🏢 <span itemprop="organizer" itemscope itemtype="https://schema.org/Organization"><span itemprop="name">${organizerName}</span></span></span>`;
+  }
+
   if (event.pricing_type === 'FREE') {
     html += `<span>🎫 Free Entry</span>`;
-  } else if (event.pricing_type === 'PAID' && event.price_amount) {
+  } else if (event.pricing_type === 'PAID' && event.price_amount !== null && event.price_amount !== undefined) {
     html += `<span>🎫 ₹${escapeHtml(String(event.price_amount))}</span>`;
   }
   html += `</div>`;
@@ -1293,15 +1437,11 @@ function buildSemanticHtml(event: any, _canonicalUrl: string): string {
         html += `<h2 style="font-size:18px;font-weight:600;color:#e5e5e5;margin:0 0 8px">${escapeHtml(section.title)}</h2>`;
       }
       if (section.content) {
-        // Content can be a JSON object or string
         let textContent = '';
         if (typeof section.content === 'string') {
           textContent = section.content;
         } else if (typeof section.content === 'object') {
-          // Extract text from various content structures
           try {
-            textContent = JSON.stringify(section.content);
-            // Try to extract meaningful text from JSON structures
             const extractText = (obj: any): string => {
               if (typeof obj === 'string') return obj;
               if (Array.isArray(obj)) return obj.map(extractText).join(' ');
@@ -1369,16 +1509,15 @@ Sitemap: ${SITE_ORIGIN}/sitemap.xml
     headers: {
       'Content-Type': 'text/plain; charset=utf-8',
       'Cache-Control': 'public, s-maxage=3600, max-age=3600',
-      'X-Robots-Tag': 'noindex',
     },
   });
 }
 
 /**
  * Handle /sitemap.xml — Dynamic sitemap with published events from Supabase.
+ * Uses authentic modification timestamps and omits obsolete ranking signals (changefreq, priority).
  */
 async function handleSitemapXml(env: Env): Promise<Response> {
-  const todayStr = getISTDateString();
   const nowIso = new Date().toISOString();
 
   // Fetch published events (lightweight projection for sitemap)
@@ -1387,17 +1526,33 @@ async function handleSitemapXml(env: Env): Promise<Response> {
     'GET', undefined, env
   );
 
+  let latestEventUpdated = '2026-09-01';
   let eventEntries = '';
+  const categoryLatestMap = new Map<string, string>();
+
   if (res.ok && Array.isArray(res.data)) {
     for (const event of (res.data as any[])) {
       const slug = slugify(event.name) || event.id;
-      const lastmod = event.updated_at ? event.updated_at.substring(0, 10) : todayStr;
-      eventEntries += `  <url>
-    <loc>${escapeXml(`${SITE_ORIGIN}/events/${slug}`)}</loc>
-    <lastmod>${escapeXml(lastmod)}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.9</priority>
-  </url>\n`;
+      const rawDate = event.updated_at || event.created_at;
+      const lastmod = rawDate ? rawDate.substring(0, 10) : '';
+
+      if (lastmod && lastmod > latestEventUpdated) {
+        latestEventUpdated = lastmod;
+      }
+
+      const catKey = (event.categories as any)?.key || event.category_id;
+      if (catKey && lastmod) {
+        const existing = categoryLatestMap.get(catKey);
+        if (!existing || lastmod > existing) {
+          categoryLatestMap.set(catKey, lastmod);
+        }
+      }
+
+      eventEntries += `  <url>\n    <loc>${escapeXml(`${SITE_ORIGIN}/events/${slug}`)}</loc>\n`;
+      if (lastmod) {
+        eventEntries += `    <lastmod>${escapeXml(lastmod)}</lastmod>\n`;
+      }
+      eventEntries += `  </url>\n`;
     }
   }
 
@@ -1411,47 +1566,40 @@ async function handleSitemapXml(env: Env): Promise<Response> {
   if (catRes.ok && Array.isArray(catRes.data)) {
     for (const cat of (catRes.data as any[])) {
       if (cat.key) {
-        categoryEntries += `  <url>
-    <loc>${escapeXml(`${SITE_ORIGIN}/?category=${cat.key}`)}</loc>
-    <lastmod>${todayStr}</lastmod>
-    <changefreq>weekly</changefreq>
-    <priority>0.8</priority>
-  </url>\n`;
+        const catLastmod = categoryLatestMap.get(cat.key) || latestEventUpdated;
+        categoryEntries += `  <url>\n    <loc>${escapeXml(`${SITE_ORIGIN}/?category=${encodeURIComponent(cat.key)}`)}</loc>\n`;
+        if (catLastmod) {
+          categoryEntries += `    <lastmod>${escapeXml(catLastmod)}</lastmod>\n`;
+        }
+        categoryEntries += `  </url>\n`;
       }
     }
   }
+
+  // Static pages have authentic release / update dates (not fake today dates)
+  const staticLaunchDate = '2026-09-01';
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>${SITE_ORIGIN}/</loc>
-    <lastmod>${todayStr}</lastmod>
-    <changefreq>daily</changefreq>
-    <priority>1.0</priority>
+    <lastmod>${latestEventUpdated}</lastmod>
   </url>
   <url>
     <loc>${SITE_ORIGIN}/about</loc>
-    <lastmod>${todayStr}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <lastmod>${staticLaunchDate}</lastmod>
   </url>
   <url>
     <loc>${SITE_ORIGIN}/contact</loc>
-    <lastmod>${todayStr}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.7</priority>
+    <lastmod>${staticLaunchDate}</lastmod>
   </url>
   <url>
     <loc>${SITE_ORIGIN}/privacy</loc>
-    <lastmod>${todayStr}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
+    <lastmod>${staticLaunchDate}</lastmod>
   </url>
   <url>
     <loc>${SITE_ORIGIN}/terms</loc>
-    <lastmod>${todayStr}</lastmod>
-    <changefreq>monthly</changefreq>
-    <priority>0.5</priority>
+    <lastmod>${staticLaunchDate}</lastmod>
   </url>
 ${categoryEntries}${eventEntries}</urlset>
 `;
@@ -1643,23 +1791,15 @@ async function handleEventPageSeo(
 async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
   const indexHtml = await fetchIndexHtml(env, origin);
 
-  const websiteJsonLd = JSON.stringify({
+  const websiteJsonLd = safeJsonLd({
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     'name': 'LPU Events',
     'alternateName': 'Lovely Professional University Events',
     'url': SITE_ORIGIN,
-    'potentialAction': {
-      '@type': 'SearchAction',
-      'target': {
-        '@type': 'EntryPoint',
-        'urlTemplate': `${SITE_ORIGIN}/?q={search_term_string}`,
-      },
-      'query-input': 'required name=search_term_string',
-    },
   });
 
-  const orgJsonLd = JSON.stringify({
+  const orgJsonLd = safeJsonLd({
     '@context': 'https://schema.org',
     '@type': 'EducationalOrganization',
     'name': 'Lovely Professional University',
