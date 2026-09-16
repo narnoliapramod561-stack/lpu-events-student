@@ -82,16 +82,27 @@ export const EventDetailsModal = ({ eventId, onClose }: {
           </div>
         ) : (
           <>
-            {/* Banner Image (Instant LQIP -> Full HD Auto-Upgrade) */}
-            <div className="h-[200px] xs:h-[240px] sm:h-[300px] md:h-[340px] w-full relative overflow-hidden bg-surface-2 border-b border-white/80 dark:border-white/10 shrink-0">
+            {/* Banner Image Stage (Zero Zoom, All Poster Details Preserved, Ambient Color Extension) */}
+            <div className="w-full h-[260px] xs:h-[290px] sm:h-[340px] md:h-[380px] relative overflow-hidden border-b border-white/80 dark:border-white/10 shrink-0">
+              {/* Ambient Extended Backdrop: Fills entire stage with image's own colors (Zero Grey Space) */}
+              <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                <img
+                  src={getEventImage(event, 'event-banner', 1440)}
+                  alt=""
+                  aria-hidden="true"
+                  className="w-full h-full object-cover blur-3xl scale-150 opacity-100"
+                />
+                <div className="absolute inset-0 bg-black/10 dark:bg-black/20 pointer-events-none" />
+              </div>
+
               <ProgressiveImage
                 src={getEventImage(event, 'event-banner', 1440)}
                 alt={event.name}
-                containerClassName="w-full h-full"
-                className="w-full h-full object-cover"
+                containerClassName="absolute inset-0 w-full h-full flex items-center justify-center"
+                className="w-full h-full object-contain object-center relative z-10"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/30 to-transparent pointer-events-none" />
-              <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 pr-4 sm:pr-6">
+              <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none z-20" />
+              <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 pr-4 sm:pr-6 z-20">
                 <span className="px-3 py-1 glass-badge text-orange-400 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider border border-orange-400/40 font-heading shadow-md">
                   {event.pricing_type}
                 </span>

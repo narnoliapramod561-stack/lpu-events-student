@@ -35,31 +35,26 @@ const slideVariants: Variants = {
   enter: (direction: number) => ({
     x: direction > 0 ? "100%" : "-100%",
     opacity: 0,
-    scale: 0.94,
-    filter: "blur(6px)",
+    filter: "blur(4px)",
   }),
   center: {
     x: 0,
     opacity: 1,
-    scale: 1,
     filter: "blur(0px)",
     transition: {
       x: { type: "spring" as const, stiffness: 280, damping: 30, mass: 0.8 },
       opacity: { duration: 0.35, ease: "easeOut" },
-      scale: { duration: 0.45, ease: [0.25, 1, 0.5, 1] },
-      filter: { duration: 0.3 },
+      filter: { duration: 0.25 },
     },
   },
   exit: (direction: number) => ({
     x: direction > 0 ? "-100%" : "100%",
     opacity: 0,
-    scale: 0.94,
-    filter: "blur(6px)",
+    filter: "blur(4px)",
     transition: {
       x: { type: "spring" as const, stiffness: 280, damping: 30, mass: 0.8 },
       opacity: { duration: 0.3, ease: "easeIn" },
-      scale: { duration: 0.35, ease: "easeIn" },
-      filter: { duration: 0.25 },
+      filter: { duration: 0.2 },
     },
   }),
 };
@@ -87,6 +82,35 @@ const contentItem: Variants = {
 const swipeConfidenceThreshold = 10000;
 const swipePower = (offset: number, velocity: number) => {
   return Math.abs(offset) * velocity;
+};
+
+const formatHeroDate = (dateStr?: string | null) => {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+    const day = d.getDate();
+    const month = d.toLocaleDateString("en-US", { month: "short" });
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  } catch {
+    return "";
+  }
+};
+
+const formatHeroTime = (dateStr?: string | null) => {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+    return d.toLocaleTimeString("en-US", {
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true,
+    });
+  } catch {
+    return "";
+  }
 };
 
 export const HeroCarouselComponent = ({
@@ -124,12 +148,8 @@ export const HeroCarouselComponent = ({
             description: item.custom_subtitle?.trim() || evt.description,
             image: getEventImage(evt, "hero", 1920),
             category: item.badge_text?.trim() || evt.categories?.name || "Featured Event",
-            date: new Date(evt.start_at).toLocaleDateString(undefined, {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-            }),
-            time: new Date(evt.start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+            date: formatHeroDate(evt.start_at),
+            time: formatHeroTime(evt.start_at),
             venue: evt.venue_name,
             organizer: evt.organizations?.name || "LPU Club",
             ctaText: item.custom_cta_text?.trim() || "View Details",
@@ -166,12 +186,8 @@ export const HeroCarouselComponent = ({
         description: fe.description,
         image: getEventImage(fe, "hero", 1920),
         category: fe.categories?.name || "Featured Event",
-        date: new Date(fe.start_at).toLocaleDateString(undefined, {
-          weekday: "short",
-          month: "short",
-          day: "numeric",
-        }),
-        time: new Date(fe.start_at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+        date: formatHeroDate(fe.start_at),
+        time: formatHeroTime(fe.start_at),
         venue: fe.venue_name,
         organizer: fe.organizations?.name || "LPU Club",
         ctaText: "View Details",
@@ -304,8 +320,8 @@ export const HeroCarouselComponent = ({
         <AnimatePresence mode="wait">
           <motion.div
             key={`ambient-glow-${currentIndex}`}
-            initial={{ opacity: 0, scale: 0.95 }}
-            animate={{ opacity: 1, scale: 1 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.6 }}
             className="w-full h-full relative"
@@ -325,7 +341,7 @@ export const HeroCarouselComponent = ({
       </div>
 
       {/* 2. Main Carousel Viewport Frame */}
-      <div className="relative z-10 w-full h-[360px] min-[390px]:h-[390px] min-[430px]:h-[410px] sm:h-auto sm:min-h-[520px] lg:h-[560px] xl:h-[580px] overflow-hidden rounded-[20px] sm:rounded-[34px] md:rounded-[40px] glass-panel shadow-[0_24px_60px_rgba(15,23,42,0.12)] flex flex-col">
+      <div className="relative z-10 w-full h-[250px] min-[390px]:h-[275px] min-[430px]:h-[295px] sm:h-auto sm:min-h-[520px] lg:h-[560px] xl:h-[580px] overflow-hidden rounded-[20px] sm:rounded-[34px] md:rounded-[40px] glass-panel shadow-[0_24px_60px_rgba(15,23,42,0.12)] flex flex-col">
         
         {/* Subtle Decorative Ambient Flares */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-orange-500/25 via-amber-500/15 to-transparent rounded-full blur-3xl pointer-events-none z-20 hidden sm:block" />
@@ -356,7 +372,7 @@ export const HeroCarouselComponent = ({
           >
             {/* Google AdSense Isolated Slot */}
             {currentSlide.type === "adsense" ? (
-              <div className="w-full p-4 sm:p-8 flex flex-col flex-1 min-h-[360px] md:min-h-[500px]">
+              <div className="w-full p-3 sm:p-8 flex flex-col flex-1 h-full min-h-[250px] md:min-h-[500px]">
                 <AdSenseSlot
                   format="carousel_slide"
                   slotId={currentSlide.adUnitId}
@@ -366,123 +382,78 @@ export const HeroCarouselComponent = ({
             ) : (
               <>
                 {/* =========================================================
-                    MOBILE SLIDE LAYOUT (< sm): Compact Editorial Billboard
+                    MOBILE SLIDE LAYOUT (< sm): Full-Bleed Tile with Zero Grey Space
                    ========================================================= */}
                 <div
                   onClick={handleAction}
-                  className="sm:hidden relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex flex-col justify-between p-3.5 pb-7 min-[400px]:p-4.5 min-[400px]:pb-8"
+                  className="sm:hidden relative w-full h-full flex-1 overflow-hidden cursor-pointer group"
                 >
-                  {/* HD Hero Background Image with Instant LQIP -> Full HD Auto-Upgrade */}
+                  {/* Ambient Extended Canvas: Fills 100% of the tile with the image's own colors & lighting (Zero Grey) */}
+                  {currentSlide.image && (
+                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                      <img
+                        src={currentSlide.image}
+                        alt=""
+                        aria-hidden="true"
+                        className="w-full h-full object-cover blur-3xl scale-150 opacity-100"
+                      />
+                      <div className="absolute inset-0 bg-black/10 dark:bg-black/20 pointer-events-none" />
+                    </div>
+                  )}
+
+                  {/* Crisp Uncropped Poster Image (All Details Preserved, Zero Zoom) */}
                   {currentSlide.image ? (
                     <ProgressiveImage
                       src={currentSlide.image}
                       alt={currentSlide.title}
                       loading={currentIndex === 0 ? "eager" : "lazy"}
                       fetchPriority={currentIndex === 0 ? "high" : "auto"}
-                      containerClassName="absolute inset-0 w-full h-full"
-                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700 ease-out"
+                      containerClassName="absolute inset-0 w-full h-full flex items-center justify-center"
+                      className="w-full h-full object-contain object-center relative z-10"
                     />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950" />
                   )}
 
-                  {/* Smooth Multi-layered Gradient Scrim */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/45 via-40% to-transparent pointer-events-none" />
-                  <div className="absolute inset-0 bg-gradient-to-b from-black/65 via-transparent to-transparent h-24 pointer-events-none" />
-                  <div className="absolute inset-0 bg-gradient-to-tr from-orange-950/25 via-transparent to-amber-500/10 mix-blend-screen pointer-events-none" />
+                  {/* Subtle bottom gradient only behind the floating pill */}
+                  <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/75 via-black/30 to-transparent pointer-events-none z-10" />
 
-                  {/* Top Floating Badge & Category Row */}
-                  <div className="relative z-20 flex items-center justify-between w-full">
-                    {/* Left Badge: Featured / Sponsored / Memory */}
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-black/75 dark:bg-black/85 border border-white/20 text-white font-heading text-[10px] font-black uppercase tracking-wider shadow-md">
-                      {currentSlide.type === "event" ? (
-                        <>
-                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse shadow-[0_0_6px_rgba(255,107,0,1)]" />
-                          <span className="text-amber-300 font-extrabold">Featured</span>
-                        </>
-                      ) : currentSlide.type === "memory" ? (
-                        <>
-                          <Sparkles className="w-3 h-3 text-amber-300" />
-                          <span className="text-amber-300 font-extrabold">Memory</span>
-                        </>
-                      ) : (
-                        <>
-                          <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_6px_rgba(99,102,241,1)]" />
-                          <span className="text-indigo-300 font-extrabold">Sponsored</span>
-                        </>
-                      )}
-                    </span>
-
-                    {/* Right Badge: Category */}
-                    {currentSlide.category && (
-                      <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-black/75 dark:bg-black/85 border border-white/20 text-[10px] text-white/95 font-bold uppercase tracking-wider font-heading truncate max-w-[150px] shadow-md">
-                        {currentSlide.category}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Bottom Editorial Content Deck */}
-                  <motion.div
-                    variants={contentStagger}
-                    initial="hidden"
-                    animate="visible"
-                    className="relative z-20 flex flex-col justify-end w-full"
-                  >
-                    {/* Eyebrow / Schedule Tag */}
-                    {currentSlide.type === "event" && (currentSlide.date || currentSlide.time) && (
-                      <motion.div variants={contentItem} className="flex items-center gap-2 mb-1">
-                        <span className="text-orange-400 font-black text-[11px] min-[400px]:text-xs uppercase tracking-wider font-heading flex items-center gap-1.5">
-                          <Calendar className="w-3 h-3 shrink-0" />
-                          <span>{currentSlide.date}{currentSlide.time ? ` • ${currentSlide.time}` : ""}</span>
+                  {/* Floating In-Line Metadata Pill (Date • Time | Location) */}
+                  <div className="absolute inset-x-0 bottom-2.5 min-[390px]:bottom-3 z-20 px-2 flex items-center justify-center pointer-events-none">
+                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 min-[390px]:py-2 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white shadow-xl max-w-[96%] overflow-hidden">
+                      {/* Event Date & Time */}
+                      {currentSlide.type === "event" && (currentSlide.date || currentSlide.time) && (
+                        <span className="inline-flex items-center gap-1.5 text-xs min-[390px]:text-[13px] font-bold text-white shrink-0 font-heading">
+                          <Calendar className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                          <span className="whitespace-nowrap">{currentSlide.date}</span>
+                          {currentSlide.time && (
+                            <span className="text-orange-300 whitespace-nowrap">• {currentSlide.time}</span>
+                          )}
                         </span>
-                      </motion.div>
-                    )}
+                      )}
 
-                    {/* Clean Title */}
-                    <motion.h1
-                      variants={contentItem}
-                      className="text-lg min-[380px]:text-xl min-[420px]:text-[22px] font-black text-white font-heading leading-tight tracking-tight mb-2 drop-shadow-md line-clamp-2 break-safe"
-                    >
-                      {currentSlide.title}
-                    </motion.h1>
+                      {/* Divider */}
+                      {currentSlide.type === "event" && (currentSlide.date || currentSlide.time) && currentSlide.venue && (
+                        <span className="text-white/40 text-xs shrink-0 font-light">|</span>
+                      )}
 
-                    {/* Bottom Action & Venue Row */}
-                    <motion.div variants={contentItem} className="flex items-center justify-between gap-2.5 pt-0.5">
-                      {/* Left Meta Info */}
-                      <div className="flex items-center gap-1.5 text-xs text-gray-200/90 font-medium truncate flex-1 min-w-0">
-                        {currentSlide.type === "event" && currentSlide.venue ? (
-                          <span className="inline-flex items-center gap-1 truncate">
-                            <MapPin className="w-3 h-3 text-amber-300 shrink-0" />
-                            <span className="truncate">{currentSlide.venue}</span>
-                          </span>
-                        ) : (
-                          <span className="truncate text-gray-300 text-xs">
-                            {currentSlide.description || "Discover campus events & student opportunities."}
-                          </span>
-                        )}
-                      </div>
+                      {/* Location */}
+                      {currentSlide.type === "event" && currentSlide.venue && (
+                        <span className="inline-flex items-center gap-1.5 text-xs min-[390px]:text-[13px] font-medium text-white/90 truncate min-w-0">
+                          <MapPin className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                          <span className="truncate">{currentSlide.venue}</span>
+                        </span>
+                      )}
 
-                      {/* CTA Pill */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAction();
-                        }}
-                        className={`shrink-0 inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full ${
-                          currentSlide.type === "ad"
-                            ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white"
-                            : "bg-gradient-to-r from-amber-400 via-orange-500 to-orange-600 text-black"
-                        } font-black text-xs font-heading shadow-md active:scale-95 transition-transform cursor-pointer touch-target`}
-                      >
-                        <span>{currentSlide.ctaText || "View Details"}</span>
-                        <ArrowRight className="h-3 w-3 stroke-[2.5]" />
-                      </button>
-                    </motion.div>
-                  </motion.div>
-                </div>
-
-                {/* =========================================================
+                      {/* Non-event slide fallback */}
+                      {currentSlide.type !== "event" && currentSlide.description && (
+                        <span className="text-xs min-[390px]:text-[13px] font-semibold text-white/90 truncate">
+                          {currentSlide.description}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>                {/* =========================================================
                     DESKTOP SLIDE LAYOUT (sm+): Two-Zone Showcase Card
                    ========================================================= */}
                 {currentSlide.type === "event" ? (
@@ -492,88 +463,105 @@ export const HeroCarouselComponent = ({
                       variants={contentStagger}
                       initial="hidden"
                       animate="visible"
-                      className="flex flex-col justify-between p-6 md:p-8 lg:p-12 xl:p-14 lg:w-1/2 flex-1 bg-gradient-to-r from-white/35 via-white/12 to-transparent dark:bg-gradient-to-br dark:from-[#0b0d16]/80 dark:via-[#0e111d]/60 dark:to-transparent relative z-10"
+                      className="flex flex-col justify-center p-5 md:p-6 lg:px-7 lg:py-4 xl:px-8 xl:py-5 lg:w-[42%] xl:w-[40%] flex-1 bg-gradient-to-r from-white/40 via-white/15 to-transparent dark:bg-gradient-to-br dark:from-[#0b0d16]/85 dark:via-[#0e111d]/65 dark:to-transparent relative z-10 gap-3 sm:gap-3.5 lg:gap-4 my-auto"
                     >
-                      <div className="flex flex-col">
-                        {/* Badge & Category Pill */}
-                        <motion.div variants={contentItem} className="flex items-center gap-2 mb-3.5 flex-wrap">
-                          <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-orange-500/20 to-amber-500/15 text-orange-600 dark:text-orange-300 border border-orange-500/35 rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-[0_0_12px_rgba(255,107,0,0.2)] backdrop-blur-md">
-                            <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                            Featured Event
+                      {/* Badge & Category Pill */}
+                      <motion.div variants={contentItem} className="flex items-center gap-2 flex-wrap">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-orange-500/20 to-amber-500/15 text-orange-600 dark:text-orange-300 border border-orange-500/35 rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-[0_0_12px_rgba(255,107,0,0.2)] backdrop-blur-md">
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                          Featured Event
+                        </span>
+                        {currentSlide.category && (
+                          <span className="text-gray-700 dark:text-on-surface-muted text-xs font-black uppercase tracking-wide font-heading">
+                            • {currentSlide.category}
                           </span>
-                          {currentSlide.category && (
-                            <span className="text-gray-700 dark:text-on-surface-muted text-xs font-black uppercase tracking-wide font-heading">
-                              • {currentSlide.category}
-                            </span>
-                          )}
-                        </motion.div>
+                        )}
+                      </motion.div>
 
-                        {/* Headline */}
-                        <motion.h1
-                          variants={contentItem}
-                          onClick={handleAction}
-                          className="text-2xl md:text-3xl lg:text-[38px] xl:text-[42px] font-black tracking-tight text-gray-900 dark:text-white font-heading leading-[1.15] line-clamp-2 cursor-pointer hover:text-primary transition-colors mb-3 drop-shadow-sm break-safe"
-                        >
-                          {currentSlide.title}
-                        </motion.h1>
+                      {/* Headline */}
+                      <motion.h1
+                        variants={contentItem}
+                        onClick={handleAction}
+                        className="font-black tracking-tight text-gray-900 dark:text-white font-heading cursor-pointer hover:text-primary transition-colors drop-shadow-sm break-safe text-2xl md:text-3xl lg:text-[32px] xl:text-[38px] leading-[1.15] line-clamp-2"
+                      >
+                        {currentSlide.title}
+                      </motion.h1>
 
-                        {/* Short Description */}
+                      {/* Description */}
+                      {currentSlide.description && (
                         <motion.p
                           variants={contentItem}
-                          className="text-gray-700 dark:text-gray-300 text-sm lg:text-base font-normal leading-relaxed line-clamp-3 mb-5 max-w-xl break-safe"
+                          className="text-gray-600 dark:text-gray-300 leading-relaxed break-safe text-xs md:text-sm lg:text-[14.5px] font-medium line-clamp-2 xl:line-clamp-3 max-w-xl"
                         >
                           {currentSlide.description}
                         </motion.p>
+                      )}
 
-                        {/* Schedule & Venue Card */}
-                        {(currentSlide.date || currentSlide.venue || currentSlide.organizer) && (
-                          <motion.div
-                            variants={contentItem}
-                            className="flex flex-col gap-2.5 p-4 rounded-[24px] glass-card mb-6 text-sm text-gray-900 dark:text-white"
-                          >
-                            {/* Date & Time */}
-                            {(currentSlide.date || currentSlide.time) && (
-                              <div className="flex items-center gap-3 font-black font-heading text-sm md:text-base text-gray-900 dark:text-white">
-                                <div className="glass-icon-circle text-orange-600 dark:text-orange-400">
-                                  <Calendar className="h-4 w-4 text-primary" />
-                                </div>
-                                <span className="tracking-wide truncate">
+                      {/* Schedule & Venue Card */}
+                      {(currentSlide.date || currentSlide.venue || currentSlide.organizer) && (
+                        <motion.div
+                          variants={contentItem}
+                          className="flex flex-col rounded-[22px] sm:rounded-[26px] bg-white/65 dark:bg-white/[0.06] backdrop-blur-md border border-white/80 dark:border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-4 sm:p-5 lg:p-5.5 gap-3.5 sm:gap-4"
+                        >
+                          {/* Date & Time */}
+                          {(currentSlide.date || currentSlide.time) && (
+                            <div className="flex items-center gap-3 sm:gap-3.5">
+                              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 bg-orange-500/15 dark:bg-orange-500/25 text-orange-600 dark:text-orange-400 border border-orange-500/25 shadow-xs">
+                                <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400 stroke-[2.2]" />
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[10.5px] sm:text-[11px] uppercase font-black tracking-wider text-orange-600 dark:text-orange-400 font-heading">
+                                  Date & Time
+                                </span>
+                                <span className="font-black font-heading text-gray-900 dark:text-white tracking-tight text-sm sm:text-base xl:text-lg truncate">
                                   {currentSlide.date}
                                   {currentSlide.time ? ` • ${currentSlide.time}` : ""}
                                 </span>
                               </div>
-                            )}
+                            </div>
+                          )}
 
-                            {/* Venue */}
-                            {currentSlide.venue && (
-                              <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300 font-semibold text-sm">
-                                <div className="glass-icon-circle text-orange-600 dark:text-orange-400">
-                                  <MapPin className="h-4 w-4 text-primary/90" />
-                                </div>
-                                <span className="truncate">{currentSlide.venue}</span>
+                          {/* Venue */}
+                          {currentSlide.venue && (
+                            <div className="flex items-center gap-3 sm:gap-3.5">
+                              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 bg-amber-500/15 dark:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/25 shadow-xs">
+                                <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600 dark:text-amber-400 stroke-[2.2]" />
                               </div>
-                            )}
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[10.5px] sm:text-[11px] uppercase font-black tracking-wider text-amber-600 dark:text-amber-400 font-heading">
+                                  Location / Venue
+                                </span>
+                                <span className="text-xs sm:text-sm xl:text-base font-bold text-gray-800 dark:text-gray-100 truncate">
+                                  {currentSlide.venue}
+                                </span>
+                              </div>
+                            </div>
+                          )}
 
-                            {/* Organizer */}
-                            {currentSlide.organizer && (
-                              <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300 font-semibold text-sm">
-                                <div className="glass-icon-circle text-orange-600 dark:text-orange-400">
-                                  <Users className="h-4 w-4 text-primary/90" />
-                                </div>
-                                <span className="truncate">
+                          {/* Organizer */}
+                          {currentSlide.organizer && (
+                            <div className="flex items-center gap-3 sm:gap-3.5">
+                              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 bg-blue-500/15 dark:bg-blue-500/25 text-blue-600 dark:text-blue-400 border border-blue-500/25 shadow-xs">
+                                <Users className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 stroke-[2.2]" />
+                              </div>
+                              <div className="flex flex-col min-w-0">
+                                <span className="text-[10px] uppercase font-black tracking-wider text-blue-600 dark:text-blue-400 font-heading">
+                                  Organized By
+                                </span>
+                                <span className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 truncate">
                                   By <span className="text-gray-900 dark:text-white font-black">{currentSlide.organizer}</span>
                                 </span>
                               </div>
-                            )}
-                          </motion.div>
-                        )}
-                      </div>
+                            </div>
+                          )}
+                        </motion.div>
+                      )}
 
                       {/* Primary Action Button */}
-                      <motion.div variants={contentItem} className="flex items-center gap-3 pt-1">
+                      <motion.div variants={contentItem} className="flex items-center gap-3">
                         <button
                           onClick={handleAction}
-                          className="relative group overflow-hidden flex items-center gap-2 px-9 py-3.5 rounded-full glass-btn-primary font-black text-sm md:text-base cursor-pointer touch-target font-heading"
+                          className="relative group overflow-hidden flex items-center gap-2.5 px-8 sm:px-9 py-3 sm:py-3.5 rounded-full glass-btn-primary font-black cursor-pointer touch-target font-heading text-sm md:text-base transition-all shadow-md hover:shadow-xl"
                         >
                           <span className="relative z-10">{currentSlide.ctaText || "View Details"}</span>
                           <ArrowRight className="relative z-10 h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
@@ -581,19 +569,31 @@ export const HeroCarouselComponent = ({
                       </motion.div>
                     </motion.div>
 
-                    {/* Hero Banner Image (Right on Desktop) */}
+                    {/* Hero Banner Image (Right on Desktop) - Expanded High-Impact Stage */}
                     <div
                       onClick={handleAction}
-                      className="relative w-full lg:w-1/2 p-4 lg:p-5 flex items-center justify-center shrink-0 cursor-pointer group/img"
+                      className="relative w-full lg:w-[58%] xl:w-[60%] p-2.5 sm:p-3.5 lg:p-4 xl:p-5 flex items-center justify-center shrink-0 cursor-pointer group/img"
                     >
-                      <div className="relative w-full sm:h-[260px] lg:h-full rounded-[26px] lg:rounded-[32px] overflow-hidden shadow-2xl border border-white/80 dark:border-white/10 bg-slate-900/30">
+                      <div className="relative w-full max-w-[760px] lg:max-w-none xl:max-w-[880px] 2xl:max-w-[940px] aspect-[16/9] rounded-[22px] lg:rounded-[30px] overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 group-hover/img:scale-[1.015] transition-transform duration-300">
+                        {/* Ambient Extended Canvas for Desktop Hero (Zero Grey, Zero Crop) */}
+                        {currentSlide.image && (
+                          <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                            <img
+                              src={currentSlide.image}
+                              alt=""
+                              aria-hidden="true"
+                              className="w-full h-full object-cover blur-3xl scale-150 opacity-100"
+                            />
+                            <div className="absolute inset-0 bg-black/15 dark:bg-black/25 pointer-events-none" />
+                          </div>
+                        )}
                         <ProgressiveImage
                           src={currentSlide.image}
                           alt={currentSlide.title}
-                          containerClassName="w-full h-full"
-                          className="w-full h-full object-cover group-hover/img:scale-106 transition-transform duration-700 ease-out"
+                          containerClassName="w-full h-full flex items-center justify-center relative z-10"
+                          className="w-full h-full object-contain object-center"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/15 pointer-events-none" />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/5 pointer-events-none z-20" />
                       </div>
                     </div>
                   </div>
@@ -607,7 +607,7 @@ export const HeroCarouselComponent = ({
                       src={currentSlide.image}
                       alt={currentSlide.title}
                       containerClassName="absolute inset-0 w-full h-full"
-                      className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
+                      className="w-full h-full object-cover"
                     />
 
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/20 pointer-events-none" />
@@ -654,7 +654,7 @@ export const HeroCarouselComponent = ({
                         src={currentSlide.image}
                         alt={currentSlide.title}
                         containerClassName="absolute inset-0 w-full h-full"
-                        className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-700"
+                        className="w-full h-full object-cover"
                       />
                     ) : (
                       <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950" />
@@ -720,14 +720,14 @@ export const HeroCarouselComponent = ({
         </AnimatePresence>
       </div>
 
-      {/* 3. Progress Dots Capsule */}
-      <div className="absolute bottom-2 sm:bottom-5 left-1/2 -translate-x-1/2 z-30 inline-flex items-center gap-1 sm:gap-2 px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full glass-pill shadow-lg border border-white/80 dark:border-white/15 pointer-events-auto max-w-fit w-auto">
+      {/* 3. Progress Dots — Below card on mobile, inside card on desktop */}
+      <div className="hidden sm:flex absolute bottom-5 left-1/2 -translate-x-1/2 z-30 items-center gap-2 px-3.5 py-1.5 rounded-full glass-pill shadow-lg border border-white/80 dark:border-white/15 pointer-events-auto max-w-fit w-auto">
         {slides.map((_, idx) => (
           <button
             key={idx}
             onClick={() => goToSlide(idx)}
             aria-label={`Go to slide ${idx + 1}`}
-            className="group relative h-1 sm:h-2 rounded-full overflow-hidden cursor-pointer bg-gray-400/40 dark:bg-white/20 transition-all duration-300 hover:scale-110"
+            className="group relative h-2 rounded-full overflow-hidden cursor-pointer bg-gray-400/40 dark:bg-white/20 transition-all duration-300 hover:scale-110"
             style={{ width: idx === currentIndex ? "20px" : "5px" }}
           >
             {idx === currentIndex && (
@@ -745,20 +745,37 @@ export const HeroCarouselComponent = ({
           </button>
         ))}
       </div>
+      {/* Mobile Dots — Below the card */}
+      {slides.length > 1 && (
+        <div className="flex sm:hidden items-center justify-center gap-1.5 mt-2">
+          {slides.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => goToSlide(idx)}
+              aria-label={`Go to slide ${idx + 1}`}
+              className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+                idx === currentIndex
+                  ? "w-5 bg-gradient-to-r from-amber-400 to-orange-500"
+                  : "w-2 bg-gray-400/40 dark:bg-white/25"
+              }`}
+            />
+          ))}
+        </div>
+      )}
 
-      {/* 4. Side Navigation Arrows (Visible on sm+ screens) */}
+      {/* 4. Side Navigation Arrows (Desktop Only - hidden on mobile for clean touch UX) */}
       {slides.length > 1 && (
         <>
           <button
             onClick={() => paginate(-1)}
-            className="hidden sm:flex absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full glass-pill items-center justify-center transition-all duration-300 cursor-pointer shadow-xl hover:scale-110 active:scale-95 group border border-white/95 dark:border-white/15 bg-white/85 dark:bg-black/75 backdrop-blur-2xl touch-target"
+            className="hidden sm:flex absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-30 w-10 sm:w-11 md:w-12 h-10 sm:h-11 md:h-12 rounded-full items-center justify-center transition-all duration-300 cursor-pointer shadow-xl hover:scale-110 active:scale-95 group bg-white/85 dark:bg-black/75 backdrop-blur-xl border border-white/95 dark:border-white/15 touch-target outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0"
             aria-label="Previous slide"
           >
             <ChevronLeft className="h-5 w-5 md:h-6 md:w-6 text-gray-800 dark:text-white group-hover:-translate-x-0.5 group-hover:text-primary transition-transform duration-200" />
           </button>
           <button
             onClick={() => paginate(1)}
-            className="hidden sm:flex absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-30 w-10 h-10 md:w-12 md:h-12 rounded-full glass-pill items-center justify-center transition-all duration-300 cursor-pointer shadow-xl hover:scale-110 active:scale-95 group border border-white/95 dark:border-white/15 bg-white/85 dark:bg-black/75 backdrop-blur-2xl touch-target"
+            className="hidden sm:flex absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-30 w-10 sm:w-11 md:w-12 h-10 sm:h-11 md:h-12 rounded-full items-center justify-center transition-all duration-300 cursor-pointer shadow-xl hover:scale-110 active:scale-95 group bg-white/85 dark:bg-black/75 backdrop-blur-xl border border-white/95 dark:border-white/15 touch-target outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0"
             aria-label="Next slide"
           >
             <ChevronRight className="h-5 w-5 md:h-6 md:w-6 text-gray-800 dark:text-white group-hover:translate-x-0.5 group-hover:text-primary transition-transform duration-200" />

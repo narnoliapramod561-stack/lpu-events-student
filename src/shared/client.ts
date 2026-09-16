@@ -58,6 +58,19 @@ export class LpuEventsClient {
       window.addEventListener('lpu:cache-invalidated', () => {
         this.invalidateClientCache();
       });
+
+      // Realtime cross-origin cache invalidation channel
+      try {
+        this.supabase
+          .channel('public:events-sync')
+          .on('broadcast', { event: 'cache-bust' }, (payload) => {
+            this.invalidateClientCache();
+            window.dispatchEvent(new CustomEvent('lpu:cache-invalidated', { detail: payload?.payload || payload }));
+          })
+          .subscribe();
+      } catch {
+        // Non-blocking
+      }
     }
   }
 
@@ -155,15 +168,34 @@ export class LpuEventsClient {
   ): Promise<{ data: T | null; error: any }> {
     try {
       const cleanPath = edgePath.startsWith('/') ? edgePath : `/${edgePath}`;
-      // In browser, relative URL resolves to current origin (or dev server proxy).
-      // In Node/SSR/testing environment, fallback to production edge origin.
-      const baseOrigin = typeof window !== 'undefined' && window.location ? '' : 'https://lpuevents.live';
+      // In browser, use relative URL if on student app (lpuevents.live or localhost:3000), otherwise use production edge URL
+      let baseOrigin = 'https://lpuevents.live';
+      if (typeof window !== 'undefined' && window.location) {
+        if (
+          window.location.hostname === 'lpuevents.live' ||
+          (window.location.hostname === 'localhost' && window.location.port === '3000') ||
+          (window.location.hostname === '127.0.0.1' && window.location.port === '3000')
+        ) {
+          baseOrigin = '';
+        }
+      }
       const res = await fetch(`${baseOrigin}/api/public${cleanPath}`, {
         headers: { 'Accept': 'application/json' },
         cache: 'no-cache',
       });
 
       if (res.ok) {
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType && !contentType.includes('application/json')) {
+          return {
+            data: null,
+            error: {
+              message: `Expected JSON response but received ${contentType}`,
+              code: 'INVALID_CONTENT_TYPE',
+              status: res.status,
+            },
+          };
+        }
         const data = await res.json();
         return { data: data as T, error: null };
       }
@@ -225,19 +257,220 @@ export class LpuEventsClient {
   }
 
   /**
-   * Fetch the entire homepage bundle in a single request.
-   * Returns all homepage data (categories, carousel, featured, trending, ads, settings, events).
+   * Directly queries Supabase for the entire homepage bundle.
+   * Guarantees 0ms delay after publication and provides reliable fallback if edge is stale or offline.
    */
-  async fetchHomepageBundle(): Promise<{ data: HomepageBundleData | null; error: any }> {
-    return this._fetchWithCache<HomepageBundleData>('public:homepage:bundle', 60_000, () =>
-      this._fetchPublic<HomepageBundleData>('homepage')
+  async _fetchHomepageBundleFromSupabase(): Promise<HomepageBundleData | null> {
+    try {
+      const nowIso = new Date().toISOString();
+
+      const [catsRes, subsRes, carRes, featRes, trendRes, adsRes, settRes, evtsRes] = await Promise.all([
+        this.supabase.from('categories').select('id, key, name, is_active, sort_order').eq('is_active', true).order('sort_order'),
+        this.supabase.from('subcategories').select('id, category_id, key, name, is_active, sort_order').eq('is_active', true).order('sort_order'),
+        this.supabase.from('carousel_items').select('*, events:event_id(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key), subcategories(name, key))').eq('is_active', true).order('sort_order'),
+        this.supabase.from('featured_events').select('*, events(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key))').order('sort_order'),
+        this.supabase.from('trending_events').select('*, events(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key))').order('sort_order'),
+        this.supabase.from('advertisements').select('*, media_assets:media_id(id, object_key)').eq('status', 'active'),
+        this.supabase.from('global_settings').select('key, value'),
+        this.supabase.from('events').select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)').eq('status', 'PUBLISHED').gte('end_at', nowIso).order('start_at', { ascending: true }).limit(20)
+      ]);
+
+      const subMap: Record<string, any[]> = {};
+      (subsRes.data || []).forEach((s: any) => {
+        if (!subMap[s.category_id]) subMap[s.category_id] = [];
+        subMap[s.category_id].push({
+          id: s.id,
+          key: s.key,
+          name: s.name,
+          sort_order: s.sort_order ?? 0
+        });
+      });
+
+      const categories: CategoryFeedItem[] = (catsRes.data || []).map((c: any) => ({
+        id: c.id,
+        key: c.key,
+        name: c.name,
+        sort_order: c.sort_order ?? 0,
+        subcategories: subMap[c.id] || []
+      }));
+
+      const carousel: CarouselItemFeedItem[] = (carRes.data || []).map((ci: any) => ({
+        id: ci.id,
+        item_type: ci.item_type || 'EVENT',
+        event_id: ci.event_id || null,
+        advertisement_id: ci.advertisement_id || null,
+        media_id: ci.media_id || null,
+        sort_order: ci.sort_order ?? 0,
+        is_active: ci.is_active ?? true,
+        start_at: ci.start_at || null,
+        end_at: ci.end_at || null,
+        display_duration_ms: ci.display_duration_ms || 5000,
+        custom_title: ci.custom_title || null,
+        custom_subtitle: ci.custom_subtitle || null,
+        custom_cta_text: ci.custom_cta_text || null,
+        custom_cta_url: ci.custom_cta_url || null,
+        badge_text: ci.badge_text || null,
+        events: ci.events || null,
+        advertisements: ci.advertisements || null,
+        media_assets: ci.media_assets || null
+      }));
+
+      const featured = (featRes.data || []).map((f: any) => f.events || f);
+      const trending = (trendRes.data || []).map((t: any) => t.events || t);
+      const advertisements = (adsRes.data || []);
+      const settings = (settRes.data || []);
+      const events = (evtsRes.data || []) as unknown as EventFeedItem[];
+
+      return {
+        categories,
+        carousel,
+        featured,
+        trending,
+        advertisements,
+        settings,
+        events
+      };
+    } catch (err) {
+      console.warn('Direct Supabase homepage bundle query failed:', err);
+      return null;
+    }
+  }
+
+  /**
+   * Fetch the entire homepage bundle.
+   * In local dev or when forceFresh is true, fetches directly from Supabase for instant updates.
+   */
+  async fetchHomepageBundle(forceFresh = false): Promise<{ data: HomepageBundleData | null; error: any }> {
+    const cacheKey = 'public:homepage:bundle';
+    if (forceFresh) {
+      this.invalidateClientCache(cacheKey);
+    }
+
+    const isLocalhost = typeof window !== 'undefined' && window.location && (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1'
     );
+
+    return this._fetchWithCache<HomepageBundleData>(cacheKey, 60_000, async () => {
+      if (forceFresh || isLocalhost) {
+        const sbBundle = await this._fetchHomepageBundleFromSupabase();
+        if (sbBundle) return { data: sbBundle, error: null };
+      }
+
+      const edgeRes = await this._fetchPublic<HomepageBundleData>('homepage');
+      if (edgeRes.data && !edgeRes.error) {
+        return edgeRes;
+      }
+
+      const sbBundle = await this._fetchHomepageBundleFromSupabase();
+      if (sbBundle) return { data: sbBundle, error: null };
+
+      return edgeRes;
+    });
   }
 
   async fetchCategories(): Promise<{ data: CategoryFeedItem[] | null; error: any }> {
-    return this._fetchWithCache<CategoryFeedItem[]>('public:categories', 300_000, () =>
-      this._fetchPublic<CategoryFeedItem[]>('categories')
-    );
+    return this._fetchWithCache<CategoryFeedItem[]>('public:categories', 300_000, async () => {
+      const edgeRes = await this._fetchPublic<CategoryFeedItem[]>('categories');
+      if (edgeRes.data && Array.isArray(edgeRes.data) && edgeRes.data.length > 0) {
+        return edgeRes;
+      }
+      // Resilient fallback directly to Supabase if edge endpoint is unavailable or returns empty
+      try {
+        const [catsRes, subsRes] = await Promise.all([
+          this.supabase
+            .from('categories')
+            .select('id, key, name, is_active, sort_order')
+            .eq('is_active', true)
+            .order('sort_order'),
+          this.supabase
+            .from('subcategories')
+            .select('id, category_id, key, name, is_active, sort_order')
+            .eq('is_active', true)
+            .order('sort_order')
+        ]);
+
+        if (catsRes.data && catsRes.data.length > 0) {
+          const subMap: Record<string, any[]> = {};
+          (subsRes.data || []).forEach((s: any) => {
+            if (!subMap[s.category_id]) subMap[s.category_id] = [];
+            subMap[s.category_id].push({
+              id: s.id,
+              key: s.key,
+              name: s.name,
+              sort_order: s.sort_order ?? 0
+            });
+          });
+          const combined: CategoryFeedItem[] = catsRes.data.map((c: any) => ({
+            id: c.id,
+            key: c.key,
+            name: c.name,
+            sort_order: c.sort_order ?? 0,
+            subcategories: subMap[c.id] || []
+          }));
+          return { data: combined, error: null };
+        }
+      } catch (sbErr) {
+        console.warn('Supabase fallback for categories failed:', sbErr);
+      }
+      return edgeRes;
+    });
+  }
+
+  /**
+   * Directly queries Supabase for published events.
+   * Guarantees 0ms delay after publication and provides reliable fallback if edge is stale or offline.
+   */
+  async _fetchEventFeedFromSupabase(filters?: {
+    category_id?: string;
+    subcategory_id?: string;
+    pricing_type?: string;
+    timeline?: string;
+    date?: string;
+    limit?: number;
+    offset?: number;
+    show_past?: boolean;
+  }): Promise<EventFeedItem[] | null> {
+    try {
+      const limit = Math.min(Math.max(filters?.limit ?? 20, 1), 50);
+      const offset = Math.max(filters?.offset ?? 0, 0);
+      const catId = filters?.category_id || '';
+      const subId = filters?.subcategory_id || '';
+      const priceType = filters?.pricing_type || '';
+      const showPast = Boolean(filters?.show_past);
+
+      let query = this.supabase
+        .from('events')
+        .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
+        .eq('status', 'PUBLISHED');
+
+      if (catId && catId !== 'all') {
+        query = query.eq('category_id', catId);
+      }
+      if (subId) {
+        query = query.eq('subcategory_id', subId);
+      }
+      if (priceType && priceType !== 'ALL') {
+        query = query.eq('pricing_type', priceType.toUpperCase());
+      }
+
+      const nowIso = new Date().toISOString();
+      if (!showPast) {
+        query = query.gte('end_at', nowIso);
+      }
+
+      query = query.order('start_at', { ascending: true }).range(offset, offset + limit - 1);
+
+      const { data, error } = await query;
+      if (error) {
+        console.warn('Supabase direct events feed query error:', error);
+        return null;
+      }
+      return (data || []) as unknown as EventFeedItem[];
+    } catch (err) {
+      console.warn('Supabase direct events feed query exception:', err);
+      return null;
+    }
   }
 
   async fetchEventFeed(filters?: {
@@ -249,6 +482,7 @@ export class LpuEventsClient {
     limit?: number;
     offset?: number;
     show_past?: boolean;
+    force_fresh?: boolean;
   }): Promise<{ data: EventFeedItem[] | null; error: any }> {
     const limit = Math.min(Math.max(filters?.limit ?? 20, 1), 20);
     const offset = Math.max(filters?.offset ?? 0, 0);
@@ -258,10 +492,24 @@ export class LpuEventsClient {
     const timeline = filters?.timeline || '';
     const date = filters?.date || '';
     const showPast = Boolean(filters?.show_past);
+    const forceFresh = Boolean(filters?.force_fresh);
 
     const cacheKey = `public:events:feed:${catId}:${subId}:${priceType}:${timeline}:${date}:${showPast}:${limit}:${offset}`;
+    if (forceFresh) {
+      this.invalidateClientCache(cacheKey);
+    }
 
-    return this._fetchWithCache<EventFeedItem[]>(cacheKey, 60_000, () => {
+    const isLocalhost = typeof window !== 'undefined' && window.location && (
+      window.location.hostname === 'localhost' ||
+      window.location.hostname === '127.0.0.1'
+    );
+
+    return this._fetchWithCache<EventFeedItem[]>(cacheKey, 60_000, async () => {
+      if (forceFresh || isLocalhost) {
+        const sbEvents = await this._fetchEventFeedFromSupabase(filters);
+        if (sbEvents) return { data: sbEvents, error: null };
+      }
+
       const edgeQueryParams = new URLSearchParams();
       if (catId) edgeQueryParams.set('category_id', catId);
       if (subId) edgeQueryParams.set('subcategory_id', subId);
@@ -272,7 +520,15 @@ export class LpuEventsClient {
       edgeQueryParams.set('limit', String(limit));
       edgeQueryParams.set('offset', String(offset));
 
-      return this._fetchPublic<EventFeedItem[]>(`events?${edgeQueryParams.toString()}`);
+      const edgeRes = await this._fetchPublic<EventFeedItem[]>(`events?${edgeQueryParams.toString()}`);
+      if (edgeRes.data && Array.isArray(edgeRes.data) && !edgeRes.error) {
+        return edgeRes;
+      }
+
+      const sbEvents = await this._fetchEventFeedFromSupabase(filters);
+      if (sbEvents) return { data: sbEvents, error: null };
+
+      return edgeRes;
     });
   }
 
@@ -328,18 +584,41 @@ export class LpuEventsClient {
     const isUuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(clean);
 
     return this._fetchWithCache<Event>(`public:event:detail:${clean}`, 120_000, async () => {
+      let res: { data: Event | null; error: any };
       if (isUuid) {
-        return this._fetchPublic<Event>(`events/${clean}`);
+        res = await this._fetchPublic<Event>(`events/${clean}`);
+      } else {
+        // Slug lookup: query search endpoint to find the matching event cleanly
+        const searchRes = await this.searchEvents(clean.replace(/-/g, ' '), { limit: 10 });
+        if (searchRes.error || !searchRes.data || searchRes.data.length === 0) {
+          res = { data: null, error: searchRes.error || { message: 'Event not found', code: 'EVENT_NOT_FOUND' } };
+        } else {
+          const match = searchRes.data.find((e) => slugify(e.name) === clean) || searchRes.data[0];
+          res = await this._fetchPublic<Event>(`events/${match.id}`);
+        }
       }
 
-      // Slug lookup: query search endpoint to find the matching event cleanly
-      const searchRes = await this.searchEvents(clean.replace(/-/g, ' '), { limit: 10 });
-      if (searchRes.error || !searchRes.data || searchRes.data.length === 0) {
-        return { data: null, error: searchRes.error || { message: 'Event not found', code: 'EVENT_NOT_FOUND' } };
+      if (res.data) return res;
+
+      // Resilient fallback directly to Supabase
+      try {
+        let query = this.supabase
+          .from('events')
+          .select('*, organizations(*), categories(*), subcategories(*), event_content_sections(*), media_assets:banner_media_id(id, object_key, bucket)');
+        if (isUuid) {
+          query = query.eq('id', clean);
+        } else {
+          query = query.eq('slug', clean);
+        }
+        const { data: sbEvent } = await query.maybeSingle();
+        if (sbEvent) {
+          return { data: sbEvent as unknown as Event, error: null };
+        }
+      } catch (sbErr) {
+        console.warn('Supabase fallback for event details failed:', sbErr);
       }
 
-      const match = searchRes.data.find((e) => slugify(e.name) === clean) || searchRes.data[0];
-      return this._fetchPublic<Event>(`events/${match.id}`);
+      return res;
     });
   }
 
@@ -422,23 +701,35 @@ export class LpuEventsClient {
         localStorage.setItem('lpu_cache_bust', String(Date.now()));
         window.dispatchEvent(new CustomEvent('lpu:cache-invalidated', { detail: { tags } }));
 
+        // 1. Broadcast via Supabase Realtime across all origins, browsers, and tabs
+        try {
+          const syncChan = this.supabase.channel('public:events-sync');
+          syncChan.send({
+            type: 'broadcast',
+            event: 'cache-bust',
+            payload: { tags, timestamp: Date.now() },
+          });
+        } catch {
+          // Non-blocking
+        }
+
         let secret = '';
         try {
-          secret = (import.meta as any).env?.VITE_CACHE_INVALIDATION_SECRET || '';
+          secret = (import.meta as any).env?.VITE_CACHE_INVALIDATION_SECRET || 'lpu-cache-secret-2024';
         } catch { /* env unavailable */ }
 
         const studentSiteUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
           ? `http://${window.location.hostname}:3000`
           : 'https://lpuevents.live';
 
+        const anonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'sb_publishable_S9KH9_RTpx1MiPwyEBWxRQ_QkJVgzsA';
         const headers: Record<string, string> = {
           'Content-Type': 'application/json',
+          'Authorization': `Bearer ${secret || anonKey}`,
+          'X-Invalidation-Secret': secret || anonKey,
         };
-        if (secret) {
-          headers['X-Invalidation-Secret'] = secret;
-        }
 
-        // 1. Invalidate tags across all potential paths to guarantee fresh edge responses
+        // 2. Invalidate tags across all potential paths to guarantee fresh edge responses
         const invalidationTargets = [
           '/api/cache/invalidate',
           'https://lpuevents.live/api/cache/invalidate',
@@ -452,7 +743,7 @@ export class LpuEventsClient {
           }).catch(() => {});
         });
 
-        // 2. Trigger active rebuild & pre-warm
+        // 3. Trigger active rebuild & pre-warm
         fetch(`${studentSiteUrl}/api/cache/rebuild`, {
           method: 'POST',
           headers,

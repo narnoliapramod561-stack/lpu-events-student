@@ -1,32 +1,54 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HXC7S26FSN"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-
-      gtag('config', 'G-HXC7S26FSN');
-    </script>
-    <!-- Google Tag Manager -->
-    <script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-    })(window,document,'script','dataLayer','GTM-5XHHNRKM');</script>
-    <!-- End Google Tag Manager -->
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="apple-touch-icon" href="/logo.jpeg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#06070a" />
     
-    <!-- Preconnect & High-Performance Fonts -->
+    <!-- Preconnect & High-Performance Media/Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Outfit:wght@500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+    <link rel="preconnect" href="https://images.lpuevents.live" crossorigin />
+    
+    <!-- Non-Render-Blocking Google Fonts -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" media="print" onload="this.media='all'" />
+    <noscript>
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" />
+    </noscript>
+
+    <!-- Deferred High-Performance Analytics (Non-blocking) -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      
+      function loadAnalytics() {
+        // Load GTM
+        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+        })(window,document,'script','dataLayer','GTM-5XHHNRKM');
+
+        // Load gtag.js
+        var gtScript = document.createElement('script');
+        gtScript.async = true;
+        gtScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-HXC7S26FSN';
+        document.head.appendChild(gtScript);
+        gtag('js', new Date());
+        gtag('config', 'G-HXC7S26FSN');
+      }
+
+      if (document.readyState === 'complete') {
+        setTimeout(loadAnalytics, 100);
+      } else {
+        window.addEventListener('load', function() {
+          setTimeout(loadAnalytics, 100);
+        });
+      }
+    </script>
 
     <!-- Primary SEO Metadata -->
     <title>LPU Events — Discover Campus Events, Clubs & Festivities</title>
@@ -56,13 +78,6 @@
 
     <!-- Google AdSense Account Verification -->
     <meta name="google-adsense-account" content="ca-pub-5513043165999517">
-
-    <!-- Google AdSense Library (Async & Sandboxed) -->
-    <script
-      async
-      src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-5513043165999517"
-      crossorigin="anonymous"
-    ></script>
   </head>
 
   <body>

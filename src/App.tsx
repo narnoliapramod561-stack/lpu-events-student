@@ -1,18 +1,19 @@
-import { useState, useEffect, useMemo, useRef, useCallback } from "react";
+import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import { Navbar } from "./components/Navbar";
 import { HeroCarousel } from "./components/HeroCarousel";
 import { HappeningTodaySlider } from "./components/HappeningTodaySlider";
 import { CategoryFilter } from "./components/CategoryFilter";
 import { EventGrid } from "./components/EventGrid";
-import { EventDetailsView } from "./components/EventDetailsView";
-import { AboutUsView } from "./components/AboutUsView";
-import { PrivacyPolicyView } from "./components/PrivacyPolicyView";
-import { TermsOfServiceView } from "./components/TermsOfServiceView";
-import { ContactUsView } from "./components/ContactUsView";
-import { CookieConsentBanner } from "./components/CookieConsentBanner";
 import { Footer } from "./components/Footer";
 import { UnifiedAdSlot } from "./components/UnifiedAdSlot";
 import { MaintenanceView } from "./components/MaintenanceView";
+
+const EventDetailsView = lazy(() => import("./components/EventDetailsView").then(m => ({ default: m.EventDetailsView })));
+const AboutUsView = lazy(() => import("./components/AboutUsView").then(m => ({ default: m.AboutUsView })));
+const PrivacyPolicyView = lazy(() => import("./components/PrivacyPolicyView").then(m => ({ default: m.PrivacyPolicyView })));
+const TermsOfServiceView = lazy(() => import("./components/TermsOfServiceView").then(m => ({ default: m.TermsOfServiceView })));
+const ContactUsView = lazy(() => import("./components/ContactUsView").then(m => ({ default: m.ContactUsView })));
+const CookieConsentBanner = lazy(() => import("./components/CookieConsentBanner").then(m => ({ default: m.CookieConsentBanner })));
 import { OFFICIAL_PLATFORM_CATEGORIES } from "./utils/categories";
 import { lpuClient } from "./supabase";
 import { 
@@ -388,32 +389,14 @@ export default function App() {
     searchQuery
   ]);
 
-  // Initialize Theme, dynamic settings, and initial pageview on mount
-  useEffect(() => {
-    const { route } = parseCurrentRoute();
-    const titles: Record<string, string> = {
-      home: 'LPU Events — Student Website',
-      about: 'About Us — LPU Events',
-      privacy: 'Privacy Policy — LPU Events',
-      terms: 'Terms of Service — LPU Events',
-      'event-details': 'Event Details — LPU Events',
-    };
-    document.title = titles[route] || 'LPU Events — Student Website';
-    trackPageView(route === 'home' ? 'Home Discovery' : `${route.toUpperCase()} Page`);
-
-    const storedTheme = localStorage.getItem("theme") || "light";
-    setTheme(storedTheme);
-    if (storedTheme === "dark") {
-      document.documentElement.classList.add("dark");
-    } else {
-      document.documentElement.classList.remove("dark");
-    }
-
-    // Load all homepage data in a single bundled request.
-    // In production, this produces ONE Cloudflare edge request instead of 7 individual Supabase calls.
-    const loadAllData = async () => {
+  // Load all homepage data (categories, carousel, featured, trending, ads, settings, live events).
+  // Supports forceFresh to bypass client caches and query Supabase directly on publication events.
+  const loadAllData = useCallback(async (forceFresh = false) => {
       try {
-        const { data: bundle, error } = await lpuClient.fetchHomepageBundle();
+        if (forceFresh) {
+          lpuClient.invalidateClientCache('public:');
+        }
+        const { data: bundle, error } = await lpuClient.fetchHomepageBundle(forceFresh);
         if (error || !bundle) {
           if (error?.code === 'MAINTENANCE_WARMING' || error?.status === 503) {
             setIsMaintenanceWarming(true);
@@ -424,8 +407,6 @@ export default function App() {
         }
 
         setIsMaintenanceWarming(false);
-
-        // Distribute bundled data to component state
 
         // Categories
         if (bundle.categories) setCategories(bundle.categories);
@@ -511,32 +492,19 @@ export default function App() {
       } finally {
         setAppLoading(false);
       }
-    };
-    
-    loadAllData();
+    }, []);
 
-    const handleSync = () => {
-      lpuClient.invalidateClientCache();
-      loadAllData();
-    };
-    window.addEventListener('storage', (e) => {
-      if (e.key === 'lpu_cache_bust') handleSync();
-    });
-    window.addEventListener('lpu:cache-invalidated', handleSync);
+    // Fetch upcoming events feed dynamically based on filter states
+    const fetchUpcomingEvents = useCallback(async (forceFresh = false) => {
+      const currentReqId = ++searchReqIdRef.current;
+      const isSearching = searchQuery.trim().length >= 2;
 
-    return () => {
-      window.removeEventListener('lpu:cache-invalidated', handleSync);
-    };
-  }, []);
-
-  // Fetch upcoming events dynamically when query/category/schedule states update
-  useEffect(() => {
-    const currentReqId = ++searchReqIdRef.current;
-    const isSearching = searchQuery.trim().length >= 2;
-
-    const fetchUpcomingEvents = async () => {
       setEventsLoading(true);
       try {
+        if (forceFresh) {
+          lpuClient.invalidateClientCache('public:events');
+        }
+
         if (isSearching) {
           const searchOpts: any = {
             show_past: true,
@@ -563,6 +531,15 @@ export default function App() {
           if (selectedPricingType !== 'ALL') {
             filters.pricing_type = selectedPricingType;
           }
+          if (activeScheduleFilter && activeScheduleFilter !== 'all') {
+            filters.timeline = activeScheduleFilter;
+          }
+          if (selectedDate) {
+            filters.date = selectedDate;
+          }
+          if (forceFresh) {
+            filters.force_fresh = true;
+          }
 
           const { data, error } = await lpuClient.fetchEventFeed(filters);
           if (!error && data && currentReqId === searchReqIdRef.current) {
@@ -579,10 +556,111 @@ export default function App() {
           setEventsLoading(false);
         }
       }
-    };
+    }, [searchQuery, selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
 
-    fetchUpcomingEvents();
-  }, [selectedCategory, selectedSubcategory, searchQuery, activeScheduleFilter, selectedDate, selectedPricingType]);
+    // Initial mount: load theme and initial homepage snapshot
+    useEffect(() => {
+      const { route } = parseCurrentRoute();
+      const titles: Record<string, string> = {
+        home: 'LPU Events — Student Website',
+        about: 'About Us — LPU Events',
+        privacy: 'Privacy Policy — LPU Events',
+        terms: 'Terms of Service — LPU Events',
+        'event-details': 'Event Details — LPU Events',
+      };
+      document.title = titles[route] || 'LPU Events — Student Website';
+      trackPageView(route === 'home' ? 'Home Discovery' : `${route.toUpperCase()} Page`);
+
+      const storedTheme = localStorage.getItem("theme") || "light";
+      setTheme(storedTheme);
+      if (storedTheme === "dark") {
+        document.documentElement.classList.add("dark");
+      } else {
+        document.documentElement.classList.remove("dark");
+      }
+
+      loadAllData(false);
+    }, [loadAllData]);
+
+    // Realtime synchronization across Supabase Postgres CDC, Realtime Broadcast, and Storage events
+    useEffect(() => {
+      const handleSync = () => {
+        lpuClient.invalidateClientCache('public:');
+        loadAllData(true);
+        fetchUpcomingEvents(true);
+      };
+
+      // 1. Cross-tab storage sync (same origin)
+      const handleStorage = (e: StorageEvent) => {
+        if (e.key === 'lpu_cache_bust') handleSync();
+      };
+      window.addEventListener('storage', handleStorage);
+      window.addEventListener('lpu:cache-invalidated', handleSync);
+
+      // 2. Supabase Realtime channel: cross-origin broadcasts and direct Postgres CDC events
+      const syncChannel = lpuClient.supabase
+        .channel('public:student-live-sync')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
+          handleSync();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'carousel_items' }, () => {
+          handleSync();
+        })
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'advertisements' }, () => {
+          handleSync();
+        })
+        .on('broadcast', { event: 'cache-bust' }, () => {
+          handleSync();
+        })
+        .subscribe();
+
+      return () => {
+        window.removeEventListener('storage', handleStorage);
+        window.removeEventListener('lpu:cache-invalidated', handleSync);
+        try {
+          lpuClient.supabase.removeChannel(syncChannel);
+        } catch {}
+      };
+    }, [loadAllData, fetchUpcomingEvents]);
+
+    // Dynamically enable/disable Google AdSense script based on global ad toggle.
+    // The AdSense script in index.html runs Google Auto Ads independently of our React ad system,
+    // so we must remove it from the DOM when ads are globally disabled.
+    useEffect(() => {
+      const publisherId = adSystemConfig?.adsense?.publisher_id || 'ca-pub-5513043165999517';
+      const adsenseScriptSrc = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${publisherId}`;
+
+      if (!adSystemConfig.global_enabled) {
+        // Remove the AdSense script tag to stop new auto-ads from loading
+        const existingScripts = document.querySelectorAll(`script[src*="pagead2.googlesyndication.com"]`);
+        existingScripts.forEach(script => script.remove());
+
+        // Remove any auto-injected AdSense iframes and containers
+        const autoAdElements = document.querySelectorAll(
+          'ins.adsbygoogle, iframe[src*="googleads"], iframe[src*="doubleclick"], div[id^="google_ads"], .adsbygoogle'
+        );
+        autoAdElements.forEach(el => {
+          // Don't remove elements inside our React root that are managed by React
+          if (el.closest('#root')) return;
+          el.remove();
+        });
+      } else {
+        // Re-inject AdSense script if it's not already present
+        const hasScript = document.querySelector(`script[src*="pagead2.googlesyndication.com"]`);
+        if (!hasScript) {
+          const script = document.createElement('script');
+          script.async = true;
+          script.src = adsenseScriptSrc;
+          script.crossOrigin = 'anonymous';
+          document.head.appendChild(script);
+        }
+      }
+    }, [adSystemConfig.global_enabled, adSystemConfig?.adsense?.publisher_id]);
+
+    // Fetch upcoming events dynamically when filter states update
+    useEffect(() => {
+      fetchUpcomingEvents(false);
+    }, [fetchUpcomingEvents]);
 
   const toggleTheme = useCallback(() => {
     setTheme((prevTheme) => {
@@ -741,7 +819,39 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#faf8f5] dark:bg-[#060709] text-gray-900 dark:text-gray-100 transition-colors duration-300 relative selection:bg-primary/20 selection:text-primary overflow-x-hidden font-sans">
-      {appLoading && currentView === 'home' && (
+      {/* Light Mode High-Performance Fixed Ambient Light Canvas (Zero Lag, Sub-pixel Soft Blurred Blobs) */}
+      <div 
+        style={{ contain: 'strict' }}
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none hidden sm:block"
+      >
+        {/* 1. Golden Amber Sun Burst (Top Center-Right) */}
+        <div className="animate-blob-1 absolute -top-24 right-1/4 w-[500px] sm:w-[680px] h-[500px] sm:h-[680px] rounded-full bg-gradient-to-br from-[#ff6b00]/45 via-[#ff9500]/25 to-transparent dark:from-[#ea580c]/12 dark:via-transparent blur-[70px] sm:blur-[100px]" />
+
+        {/* 2. Sunset Crimson Bloom (Top Left) */}
+        <div className="animate-blob-2 absolute -top-16 -left-20 w-[420px] sm:w-[560px] h-[420px] sm:h-[560px] rounded-full bg-gradient-to-br from-[#ff3d00]/30 via-[#ff6b00]/18 to-transparent dark:from-[#ea580c]/08 dark:via-transparent blur-[60px] sm:blur-[90px]" />
+
+        {/* 3. Violet Cyan Contrast Sky (Mid-Left Horizon) */}
+        <div className="animate-blob-3 absolute top-[32%] -left-24 -translate-y-1/2 w-[460px] sm:w-[600px] h-[460px] sm:h-[600px] rounded-full bg-gradient-to-tr from-[#3b82f6]/28 via-[#6366f1]/20 to-transparent dark:from-[#ea580c]/08 dark:via-transparent blur-[65px] sm:blur-[90px]" />
+
+        {/* 4. Golden Sun Ribbon */}
+        <div className="animate-blob-1 absolute top-[56%] -right-20 -translate-y-1/2 w-[440px] sm:w-[580px] h-[440px] sm:h-[580px] rounded-full bg-gradient-to-l from-[#ffb800]/35 via-[#ff7700]/22 to-transparent dark:from-[#d97706]/08 dark:via-transparent blur-[60px] sm:blur-[85px]" />
+
+        {/* 5. Horizon Soft Glow */}
+        <div className="animate-blob-2 absolute -bottom-24 left-1/3 -translate-x-1/2 w-[650px] sm:w-[850px] h-[420px] sm:h-[500px] rounded-full bg-gradient-to-t from-[#ff6b00]/38 via-[#ff9500]/20 to-transparent dark:from-[#ea580c]/10 dark:via-transparent blur-[65px] sm:blur-[90px]" />
+      </div>
+
+      {/* Mobile Optical Depth Canvas (GPU-Optimized Soft Radial Gradients, Zero Filter Overhead) */}
+      <div 
+        style={{ contain: 'strict' }}
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none sm:hidden"
+      >
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_100%_40%_at_50%_-5%,rgba(255,107,0,0.18),transparent_70%),radial-gradient(circle_300px_at_90%_25%,rgba(255,107,0,0.12),transparent_60%),radial-gradient(circle_300px_at_10%_45%,rgba(59,130,246,0.08),transparent_60%),radial-gradient(circle_280px_at_90%_65%,rgba(245,158,11,0.09),transparent_60%),radial-gradient(ellipse_100%_35%_at_50%_105%,rgba(255,107,0,0.14),transparent_70%)] dark:bg-[radial-gradient(ellipse_100%_40%_at_50%_-5%,rgba(255,107,0,0.15),transparent_70%),radial-gradient(circle_300px_at_90%_25%,rgba(255,107,0,0.08),transparent_60%),radial-gradient(circle_300px_at_10%_45%,rgba(234,88,12,0.06),transparent_60%),radial-gradient(circle_280px_at_90%_65%,rgba(217,119,6,0.06),transparent_60%),radial-gradient(ellipse_100%_35%_at_50%_105%,rgba(234,88,12,0.10),transparent_70%)]" />
+      </div>
+
+      {/* Scroll Top Reference Anchor */}
+      <div id="top" className="absolute top-0 left-0 h-0 w-0 pointer-events-none" />
+
+      {appLoading && currentView === 'home' ? (
         <div className="relative z-20">
           {/* Navbar Skeleton */}
           <div className="sticky top-0 z-50 w-full backdrop-blur-lg bg-white/80 dark:bg-black/60 border-b border-white/20 dark:border-white/10">
@@ -813,7 +923,7 @@ export default function App() {
               <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
                 {Array.from({ length: 10 }).map((_, i) => (
                   <div key={i} className="flex flex-col h-full rounded-[20px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md">
-                    <div className="h-[155px] xs:h-[175px] sm:h-[230px] w-full bg-gray-200/70 dark:bg-white/5 skeleton-base" />
+                    <div className="w-full aspect-[16/9] bg-gray-200/70 dark:bg-white/5 skeleton-base" />
                     <div className="p-3.5 sm:p-5 flex flex-col flex-1 space-y-3">
                       <div className="h-3.5 sm:h-4 w-20 rounded-md skeleton-base" />
                       <div className="h-5 sm:h-6 w-3/4 rounded-md skeleton-base" />
@@ -865,40 +975,8 @@ export default function App() {
             </div>
           </div>
         </div>
-      )}
-      {/* Light Mode High-Performance Fixed Ambient Light Canvas (Zero Lag, Sub-pixel Soft Blurred Blobs) */}
-      <div 
-        style={{ contain: 'strict' }}
-        className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none hidden sm:block"
-      >
-        {/* 1. Golden Amber Sun Burst (Top Center-Right) */}
-        <div className="animate-blob-1 absolute -top-24 right-1/4 w-[500px] sm:w-[680px] h-[500px] sm:h-[680px] rounded-full bg-gradient-to-br from-[#ff6b00]/45 via-[#ff9500]/25 to-transparent dark:from-[#ea580c]/12 dark:via-transparent blur-[70px] sm:blur-[100px]" />
-
-        {/* 2. Sunset Crimson Bloom (Top Left) */}
-        <div className="animate-blob-2 absolute -top-16 -left-20 w-[420px] sm:w-[560px] h-[420px] sm:h-[560px] rounded-full bg-gradient-to-br from-[#ff3d00]/30 via-[#ff6b00]/18 to-transparent dark:from-[#ea580c]/08 dark:via-transparent blur-[60px] sm:blur-[90px]" />
-
-        {/* 3. Violet Cyan Contrast Sky (Mid-Left Horizon) */}
-        <div className="animate-blob-3 absolute top-[32%] -left-24 -translate-y-1/2 w-[460px] sm:w-[600px] h-[460px] sm:h-[600px] rounded-full bg-gradient-to-tr from-[#3b82f6]/28 via-[#6366f1]/20 to-transparent dark:from-[#ea580c]/08 dark:via-transparent blur-[65px] sm:blur-[90px]" />
-
-        {/* 4. Golden Sun Ribbon */}
-        <div className="animate-blob-1 absolute top-[56%] -right-20 -translate-y-1/2 w-[440px] sm:w-[580px] h-[440px] sm:h-[580px] rounded-full bg-gradient-to-l from-[#ffb800]/35 via-[#ff7700]/22 to-transparent dark:from-[#d97706]/08 dark:via-transparent blur-[60px] sm:blur-[85px]" />
-
-        {/* 5. Horizon Soft Glow */}
-        <div className="animate-blob-2 absolute -bottom-24 left-1/3 -translate-x-1/2 w-[650px] sm:w-[850px] h-[420px] sm:h-[500px] rounded-full bg-gradient-to-t from-[#ff6b00]/38 via-[#ff9500]/20 to-transparent dark:from-[#ea580c]/10 dark:via-transparent blur-[65px] sm:blur-[90px]" />
-      </div>
-
-      {/* Mobile Optical Depth Canvas (GPU-Optimized Soft Radial Gradients, Zero Filter Overhead) */}
-      <div 
-        style={{ contain: 'strict' }}
-        className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none sm:hidden"
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_100%_40%_at_50%_-5%,rgba(255,107,0,0.18),transparent_70%),radial-gradient(circle_300px_at_90%_25%,rgba(255,140,0,0.12),transparent_60%),radial-gradient(circle_300px_at_10%_45%,rgba(59,130,246,0.08),transparent_60%),radial-gradient(circle_280px_at_90%_65%,rgba(245,158,11,0.09),transparent_60%),radial-gradient(ellipse_100%_35%_at_50%_105%,rgba(255,107,0,0.14),transparent_70%)] dark:bg-[radial-gradient(ellipse_100%_40%_at_50%_-5%,rgba(255,107,0,0.15),transparent_70%),radial-gradient(circle_300px_at_90%_25%,rgba(255,107,0,0.08),transparent_60%),radial-gradient(circle_300px_at_10%_45%,rgba(234,88,12,0.06),transparent_60%),radial-gradient(circle_280px_at_90%_65%,rgba(217,119,6,0.06),transparent_60%),radial-gradient(ellipse_100%_35%_at_50%_105%,rgba(234,88,12,0.10),transparent_70%)]" />
-      </div>
-
-      {/* Scroll Top Reference Anchor */}
-      <div id="top" className="absolute top-0 left-0 h-0 w-0 pointer-events-none" />
-
-      <div className="relative z-10">
+      ) : (
+        <div className="relative z-10">
         <Navbar
           searchQuery={searchQuery}
           onSearch={handleSearch}
@@ -911,7 +989,12 @@ export default function App() {
           onSelectCategories={handleGoToCategories}
         />
 
-        <main className="w-full max-w-[98%] mx-auto px-2.5 sm:px-4 md:px-6 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6 overflow-hidden">
+        <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-1 sm:px-4 md:px-6 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6 overflow-hidden">
+          <Suspense fallback={
+            <div className="min-h-[40vh] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+            </div>
+          }>
           {currentView === 'about' ? (
             <AboutUsView onBack={() => handleNavigate('home')} />
           ) : currentView === 'contact' ? (
@@ -1073,6 +1156,7 @@ export default function App() {
               )}
             </>
           )}
+          </Suspense>
         </main>
 
         <Footer
@@ -1081,8 +1165,11 @@ export default function App() {
         />
 
         {/* GDPR, CCPA & Google AdSense Cookie Consent Notification */}
-        <CookieConsentBanner onNavigatePrivacy={() => handleNavigate('privacy')} />
+        <Suspense fallback={null}>
+          <CookieConsentBanner onNavigatePrivacy={() => handleNavigate('privacy')} />
+        </Suspense>
       </div>
+      )}
     </div>
   );
 }

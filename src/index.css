@@ -607,38 +607,26 @@ body {
   hyphens: none;
 }
 
-/* Lightweight Skeleton Loading */
-@keyframes skeleton-wave {
-  0% {
-    background-position: 200% 0%;
+/* Lightweight GPU-Composited Skeleton Loading (Zero Repaint / Zero CLS Overhead) */
+@keyframes skeleton-pulse {
+  0%, 100% {
+    opacity: 1;
   }
-  100% {
-    background-position: -200% 0%;
+  50% {
+    opacity: 0.45;
   }
 }
 
 .skeleton-base {
   background-color: rgba(220, 228, 238, 0.7);
-  background-image: linear-gradient(
-    90deg,
-    rgba(220, 228, 238, 0.6) 0%,
-    rgba(245, 248, 252, 0.95) 50%,
-    rgba(220, 228, 238, 0.6) 100%
-  );
-  background-size: 200% 100%;
-  animation: skeleton-wave 1.8s infinite ease-in-out;
+  animation: skeleton-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: opacity;
 }
 
 .dark .skeleton-base {
-  background-color: rgba(255, 255, 255, 0.05);
-  background-image: linear-gradient(
-    90deg,
-    rgba(255, 255, 255, 0.04) 0%,
-    rgba(255, 255, 255, 0.10) 50%,
-    rgba(255, 255, 255, 0.04) 100%
-  );
-  background-size: 200% 100%;
-  animation: skeleton-wave 1.8s infinite ease-in-out;
+  background-color: rgba(255, 255, 255, 0.07);
+  animation: skeleton-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  will-change: opacity;
 }
 
 /* Mobile CSS Containment for Event Cards */

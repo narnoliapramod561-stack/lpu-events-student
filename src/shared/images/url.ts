@@ -285,19 +285,14 @@ export function getOptimizedImage(
     return `${getStorageBaseUrl()}/${str.replace(/^\/+/, '')}`;
   }
 
-  // 3. Media asset relation from database
-  if (source.media_assets?.object_key) {
-    const key = source.media_assets.object_key;
-    const bucket = source.media_assets.bucket;
-    if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
-      return key;
-    }
-    return `${getStorageBaseUrl(bucket)}/${key.replace(/^\/+/, '')}`;
-  }
+  // 3. Media asset relation from database (handles both object and array shapes)
+  const mediaAsset = Array.isArray(source.media_assets)
+    ? source.media_assets[0]
+    : (source.media_assets || (Array.isArray(source.media_asset) ? source.media_asset[0] : source.media_asset));
 
-  if (source.media_asset?.object_key) {
-    const key = source.media_asset.object_key;
-    const bucket = source.media_asset.bucket;
+  if (mediaAsset?.object_key) {
+    const key = mediaAsset.object_key;
+    const bucket = mediaAsset.bucket;
     if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
       return key;
     }

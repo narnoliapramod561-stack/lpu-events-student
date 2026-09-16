@@ -13,28 +13,22 @@ export function getResponsiveImageUrl(url: string, targetWidth: number = 1080): 
   const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 2, 3) : 2;
   const effectiveWidth = Math.round(targetWidth * (dpr >= 1.5 ? 1.5 : 1.0));
 
-  // 1. Cloudflare R2 Responsive WebP Variant Selection (Zero Egress, Free CDN)
-  if (url.includes('_desktop.webp')) {
+  // 1. Local default event images have mobile/tablet/desktop variants
+  if (url.startsWith('/defaults/events/')) {
+    const base = url.replace(/(_desktop|_tablet|_mobile)\.webp$/, '.webp');
     if (effectiveWidth <= 640) {
-      return url.replace('_desktop.webp', '_mobile.webp');
+      return base.replace('.webp', '_mobile.webp');
     }
     if (effectiveWidth <= 1200) {
-      return url.replace('_desktop.webp', '_tablet.webp');
+      return base.replace('.webp', '_tablet.webp');
     }
-    return url;
+    return base.replace('.webp', '_desktop.webp');
   }
 
-  if (url.startsWith('/defaults/events/') && url.endsWith('.webp') && !url.includes('_tablet') && !url.includes('_mobile')) {
-    if (effectiveWidth <= 640) {
-      return url.replace('.webp', '_mobile.webp');
-    }
-    if (effectiveWidth <= 1200) {
-      return url.replace('.webp', '_tablet.webp');
-    }
-    return url.replace('.webp', '_desktop.webp');
-  }
+  // 2. Cloudflare R2 uploaded images only have canonical _desktop.webp files in storage.
+  // We keep the URL as-is so it does not 404.
 
-  // 2. Unsplash HD Auto-Upscale & Clarity Tuning
+  // 3. Unsplash HD Auto-Upscale & Clarity Tuning
   if (url.includes('images.unsplash.com')) {
     const cleanUrl = url.split('?')[0];
     return `${cleanUrl}?auto=format&fit=crop&w=${Math.max(effectiveWidth, 960)}&q=88&dpr=${dpr >= 2 ? '2' : '1'}`;
@@ -49,12 +43,8 @@ export function getResponsiveImageUrl(url: string, targetWidth: number = 1080): 
 export function getLowResPlaceholderUrl(url: string): string {
   if (!url || typeof url !== 'string') return url;
 
-  if (url.includes('_desktop.webp')) {
-    return url.replace('_desktop.webp', '_mobile.webp');
-  }
-
-  if (url.startsWith('/defaults/events/') && url.endsWith('.webp')) {
-    return url.replace(/(_desktop|_tablet)?\.webp$/, '_mobile.webp');
+  if (url.startsWith('/defaults/events/')) {
+    return url.replace(/(_desktop|_tablet|_mobile)?\.webp$/, '_mobile.webp');
   }
 
   if (url.includes('images.unsplash.com')) {

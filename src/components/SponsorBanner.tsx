@@ -7,16 +7,22 @@ export interface SponsorBannerProps {
   ad: AdvertisementFeedItem;
   className?: string;
   tag?: string;
+  loading?: "lazy" | "eager";
+  fetchPriority?: "auto" | "high" | "low";
 }
 
 export const SponsorBannerComponent: React.FC<SponsorBannerProps> = ({ 
   ad,
   className = "",
-  tag = "Sponsored"
+  tag = "Sponsored",
+  loading = "eager",
+  fetchPriority = "high"
 }) => {
   if (!ad) return null;
 
-  const imageUrl = getEventImage(ad, 'advertisement', 1600);
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 640;
+  const targetWidth = isMobile ? 720 : 1280;
+  const imageUrl = getEventImage(ad, 'advertisement', targetWidth);
 
   const handleClick = () => {
     if (ad.redirect_url) {
@@ -51,7 +57,8 @@ export const SponsorBannerComponent: React.FC<SponsorBannerProps> = ({
         <ProgressiveImage
           src={imageUrl}
           alt={ad.name || "Advertisement"}
-          loading="lazy"
+          loading={loading}
+          fetchPriority={fetchPriority}
           containerClassName="w-full h-full"
           className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
         />

@@ -25,8 +25,9 @@ dist-ssr
 
 # Environment variables
 .env
+.env.*
 .env.local
-.env.*.local
+.env.production
 !.env.example
 
 # Supabase temp

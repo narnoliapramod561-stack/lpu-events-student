@@ -30,7 +30,8 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
   ...rest
 }) => {
   const defaultFallback = fallbackSrc !== undefined ? fallbackSrc : '/defaults/events/general_default.webp';
-  const isCached = loadedHdImageCache.has(src);
+  const isEager = loading === "eager";
+  const isCached = loadedHdImageCache.has(src) || isEager;
   const [isHdLoaded, setIsHdLoaded] = useState<boolean>(isCached);
   const [currentSrc, setCurrentSrc] = useState<string>(
     isCached ? src : (lowResSrc || getLowResPlaceholderUrl(src))
@@ -40,7 +41,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
   useEffect(() => {
     if (!src) return;
 
-    if (loadedHdImageCache.has(src)) {
+    if (isEager || loadedHdImageCache.has(src)) {
       setIsHdLoaded(true);
       setCurrentSrc(src);
       return;
@@ -77,36 +78,37 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
     return () => {
       isCancelled = true;
     };
-  }, [src, lowResSrc, defaultFallback, onLoadComplete]);
+  }, [src, lowResSrc, defaultFallback, onLoadComplete, isEager]);
+
+  const bgClass = containerClassName.includes("bg-") ? "" : "bg-slate-900/40";
+  const isContain = className.includes("object-contain");
 
   return (
-    <div className={`${containerClassName} ${aspectRatioClass} bg-slate-900/40`}>
-      {/* 1. Low-Res Blurred Placeholder (Visible instantly until HD arrives) */}
-      {!isHdLoaded && (
+    <div className={`${containerClassName} ${aspectRatioClass} ${bgClass}`}>
+      {/* 1. Low-Res Blurred Placeholder (Visible instantly until HD arrives, skipped for eager LCP) */}
+      {!isHdLoaded && !isEager && (
         <img
           src={lowResSrc || getLowResPlaceholderUrl(src)}
           alt={alt}
           aria-hidden="true"
           onError={(e) => {
-            const target = e.currentTarget;
-            if (defaultFallback && target.src !== defaultFallback) {
-              target.src = defaultFallback;
-            }
+            // Silently suppress placeholder errors without triggering heavy asset downloads
+            e.currentTarget.style.display = "none";
           }}
-          className={`absolute inset-0 w-full h-full object-cover scale-105 filter blur-md transition-opacity duration-500 ease-out ${
-            isHdLoaded ? "opacity-0 pointer-events-none" : "opacity-100"
-          }`}
+          className={`absolute inset-0 w-full h-full ${
+            isContain ? "object-contain" : "object-cover"
+          } filter blur-md transition-opacity duration-500 ease-out opacity-100`}
         />
       )}
 
-      {/* 2. Full HD Image (Crossfades seamlessly in place) */}
+      {/* 2. Full HD Image (Direct paint for eager, crossfades seamlessly for lazy) */}
       <img
         ref={imgRef}
         src={currentSrc}
         alt={alt}
         loading={loading}
         fetchPriority={fetchPriority}
-        decoding="async"
+        decoding={isEager ? "sync" : "async"}
         onError={(e) => {
           const target = e.currentTarget;
           if (defaultFallback && target.src !== defaultFallback) {

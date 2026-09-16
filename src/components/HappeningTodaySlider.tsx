@@ -217,12 +217,6 @@ export const HappeningTodaySliderComponent = ({
     [slides.length]
   );
 
-  const goToSlide = (targetIndex: number) => {
-    if (targetIndex === activeIndex) return;
-    const newDir = targetIndex > activeIndex ? 1 : -1;
-    setPage([targetIndex, newDir]);
-  };
-
   useEffect(() => {
     const isAutoAdvance = config?.auto_advance !== false;
     if (slides.length <= 1 || isHovered || !isAutoAdvance) return;
@@ -282,34 +276,46 @@ export const HappeningTodaySliderComponent = ({
           </div>
         </div>
 
-        {/* Header Navigation & Slide Counter (Visible on both mobile & desktop) */}
-        {slides.length > 1 && (
-          <div className="flex items-center gap-1.5 sm:gap-2">
-            <span className="text-[11px] sm:text-xs font-mono font-bold text-gray-600 dark:text-gray-300 px-2 sm:px-2.5 py-0.5 sm:py-1 rounded-full bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 inline-block">
-              {activeIndex + 1}/{slides.length}
-            </span>
-            <button
-              type="button"
-              onClick={() => paginate(-1)}
-              className="w-7.5 h-7.5 sm:w-10 sm:h-10 rounded-full glass-pill flex items-center justify-center cursor-pointer hover:text-primary transition-colors border border-white/95 dark:border-white/10 shadow-sm"
-              aria-label="Previous event"
-            >
-              <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-            </button>
-            <button
-              type="button"
-              onClick={() => paginate(1)}
-              className="w-7.5 h-7.5 sm:w-10 sm:h-10 rounded-full glass-pill flex items-center justify-center cursor-pointer hover:text-primary transition-colors border border-white/95 dark:border-white/10 shadow-sm"
-              aria-label="Next event"
-            >
-              <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5" />
-            </button>
-          </div>
-        )}
+        {/* Header: "View All" on mobile, navigation arrows on desktop */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Mobile: View All link */}
+          <button
+            type="button"
+            className="sm:hidden inline-flex items-center gap-1 text-orange-600 dark:text-orange-400 font-heading font-black text-sm hover:text-orange-700 transition-colors cursor-pointer"
+          >
+            View All
+            <ArrowRight className="h-4 w-4" />
+          </button>
+
+          {/* Desktop: Navigation Controls */}
+          {slides.length > 1 && (
+            <div className="hidden sm:flex items-center gap-2">
+              <span className="text-xs font-mono font-bold text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 inline-block">
+                {activeIndex + 1}/{slides.length}
+              </span>
+              <button
+                type="button"
+                onClick={() => paginate(-1)}
+                className="w-10 h-10 rounded-full glass-pill flex items-center justify-center cursor-pointer hover:text-primary transition-colors border border-white/95 dark:border-white/10 shadow-sm"
+                aria-label="Previous event"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                type="button"
+                onClick={() => paginate(1)}
+                className="w-10 h-10 rounded-full glass-pill flex items-center justify-center cursor-pointer hover:text-primary transition-colors border border-white/95 dark:border-white/10 shadow-sm"
+                aria-label="Next event"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
-      {/* Main Viewport Container: 260px-300px on mobile, 420px-460px on desktop */}
-      <div className="relative z-10 w-full h-[260px] min-[390px]:h-[280px] min-[430px]:h-[300px] md:min-h-[420px] lg:h-[440px] xl:h-[460px] overflow-hidden rounded-[22px] sm:rounded-[30px] md:rounded-[40px] glass-panel shadow-[0_16px_50px_rgba(0,0,0,0.18)] border border-white/80 dark:border-white/10 bg-white/40 dark:bg-[#07090e]/85 backdrop-blur-2xl flex flex-col">
+      {/* Main Viewport Container: 250-280px on mobile (16:9 cards), 420px-460px on desktop */}
+      <div className="relative z-10 w-full h-[250px] min-[390px]:h-[265px] min-[430px]:h-[280px] md:min-h-[420px] lg:h-[440px] xl:h-[460px] overflow-hidden rounded-none sm:rounded-[30px] md:rounded-[40px] sm:glass-panel sm:shadow-[0_16px_50px_rgba(0,0,0,0.18)] sm:border sm:border-white/80 sm:dark:border-white/10 sm:bg-white/40 sm:dark:bg-[#07090e]/85 sm:backdrop-blur-2xl flex flex-col">
         
         {/* Atmospheric Ambient Glow */}
         <div className="hidden dark:block absolute top-0 right-0 w-80 h-80 bg-gradient-to-br from-orange-500/15 via-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none z-0" />
@@ -348,113 +354,140 @@ export const HappeningTodaySliderComponent = ({
             ) : (
               <>
                 {/* =========================================================
-                    1. MOBILE SHOWCASE CARD (< md) - Red Dot Beacon, Time/Venue on Left, Compact CTA on Right
+                    1. MOBILE HORIZONTAL SCROLL CARDS (< md) - Uncropped 16:9 Banner Cards
                    ========================================================= */}
-                <div
-                  onClick={handleAction}
-                  className="md:hidden relative w-full h-full flex flex-col justify-between p-4 pb-4.5 overflow-hidden cursor-pointer group"
-                >
-                  {/* Cinematic Background Image (Instant LQIP -> Full HD Auto-Upgrade) */}
-                  {currentSlide.image ? (
-                    <ProgressiveImage
-                      src={currentSlide.image}
-                      alt={currentSlide.title}
-                      loading="lazy"
-                      containerClassName="absolute inset-0 w-full h-full"
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                    />
-                  ) : (
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950" />
-                  )}
+                <div className="md:hidden w-full h-full overflow-x-auto overflow-y-hidden hide-scrollbar snap-x snap-mandatory flex gap-3 px-1 py-1">
+                  {slides.map((slide, idx) => {
+                    const handleCardClick = () => {
+                      if (slide.type === "adsense") return;
+                      if (slide.type === "ad" && slide.ctaUrl) {
+                        if (slide.ctaUrl.startsWith("http")) {
+                          window.open(slide.ctaUrl, "_blank", "noopener,noreferrer");
+                        } else {
+                          window.location.href = slide.ctaUrl;
+                        }
+                      } else if (slide.eventId) {
+                        onSelectEvent(slide.eventId, slide.title);
+                      }
+                    };
 
-                  {/* Clean Multi-layered Gradient Scrim */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/55 via-50% to-black/20 pointer-events-none" />
+                    return (
+                      <div
+                        key={slide.id}
+                        onClick={handleCardClick}
+                        className="relative flex-shrink-0 w-[78vw] min-[390px]:w-[82vw] max-w-[340px] h-full rounded-[18px] min-[400px]:rounded-[22px] overflow-hidden cursor-pointer group snap-start shadow-md border border-white/70 dark:border-white/10 bg-white/75 dark:bg-[#0c0f1d]/90 backdrop-blur-xl flex flex-col"
+                      >
+                        {/* 16:9 Uncropped Banner Stage */}
+                        <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0">
+                          {/* Ambient Blurred Backdrop */}
+                          {slide.image && (
+                            <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                              <img
+                                src={slide.image}
+                                alt=""
+                                aria-hidden="true"
+                                className="w-full h-full object-cover blur-3xl scale-150 opacity-100"
+                              />
+                              <div className="absolute inset-0 bg-black/10 dark:bg-black/20 pointer-events-none" />
+                            </div>
+                          )}
 
-                  {/* Top Row: Discreet Red Beacon Dot on Left, Category on Right */}
-                  <div className="relative z-20 flex items-center justify-between w-full">
-                    {/* Pulsing Dot Indicator */}
-                    <div className="inline-flex items-center justify-center p-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/20 shadow-md">
-                      <span className="relative flex h-2.5 w-2.5">
-                        <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${
-                          currentSlide.type === "ad" ? "bg-indigo-400" : "bg-red-500"
-                        } opacity-75`} />
-                        <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${
-                          currentSlide.type === "ad" ? "bg-indigo-400" : "bg-red-600"
-                        }`} />
+                          {/* Full Crisp Poster Banner (Zero Zoom, Uncropped) */}
+                          {slide.image ? (
+                            <ProgressiveImage
+                              src={slide.image}
+                              alt={slide.title}
+                              loading={idx < 3 ? "eager" : "lazy"}
+                              containerClassName="absolute inset-0 w-full h-full flex items-center justify-center"
+                              className="w-full h-full object-contain object-center relative z-10"
+                            />
+                          ) : (
+                            <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 flex flex-col items-center justify-center p-4">
+                              <Megaphone className="w-8 h-8 text-indigo-400 mb-1" />
+                              <span className="text-[10px] font-black uppercase tracking-wider text-indigo-300 font-heading">
+                                Official Campus Partner
+                              </span>
+                            </div>
+                          )}
+
+                          {/* Top Badges: Category + LIVE TODAY */}
+                          <div className="absolute top-2 left-2 right-2 z-20 flex items-center justify-between pointer-events-none">
+                            <div className="flex items-center gap-1.5 flex-wrap">
+                              {slide.type === "event" && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-red-600/90 text-white font-heading text-[8.5px] min-[400px]:text-[9px] font-black uppercase tracking-wider shadow-sm backdrop-blur-md">
+                                  <span className="relative flex h-1.5 w-1.5">
+                                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                                    <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                                  </span>
+                                  LIVE TODAY
+                                </span>
+                              )}
+                              {slide.type === "ad" && (
+                                <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-indigo-600/90 text-white font-heading text-[8.5px] min-[400px]:text-[9px] font-black uppercase tracking-wider shadow-sm backdrop-blur-md">
+                                  Sponsored
+                                </span>
+                              )}
+                            </div>
+                            {slide.category && (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full bg-black/65 backdrop-blur-md text-white/95 font-heading text-[8.5px] min-[400px]:text-[9px] font-bold uppercase tracking-wider border border-white/20 shadow-sm">
+                                {slide.category}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+
+                        {/* Bottom Information Deck: Title + Time & Venue */}
+                        <div className="p-2.5 min-[400px]:p-3 flex flex-col justify-between flex-1 gap-1.5 bg-white/40 dark:bg-black/30">
+                          {/* Event Title */}
+                          <h3 className="text-gray-900 dark:text-white font-heading font-black text-xs min-[400px]:text-sm leading-snug line-clamp-1 group-hover:text-primary transition-colors">
+                            {slide.title}
+                          </h3>
+
+                          {/* Time & Venue Row */}
+                          <div className="flex items-center gap-2 text-[10.5px] min-[400px]:text-[11px] text-gray-600 dark:text-gray-300 font-medium">
+                            {slide.type === "event" && slide.time && (
+                              <span className="inline-flex items-center gap-1 font-bold text-orange-600 dark:text-orange-400 shrink-0">
+                                <Clock className="w-3 h-3 text-orange-500 shrink-0" />
+                                <span>{slide.time}</span>
+                              </span>
+                            )}
+                            {slide.type === "event" && slide.time && slide.venue && (
+                              <span className="text-gray-300 dark:text-gray-600 text-xs">|</span>
+                            )}
+                            {slide.type === "event" && slide.venue && (
+                              <span className="inline-flex items-center gap-1 truncate min-w-0">
+                                <MapPin className="w-3 h-3 text-amber-500 shrink-0" />
+                                <span className="truncate">{slide.venue}</span>
+                              </span>
+                            )}
+                            {slide.type === "ad" && slide.description && (
+                              <span className="text-[10.5px] text-gray-500 dark:text-gray-400 line-clamp-1">
+                                {slide.description}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* "View All" trailing card */}
+                  {slides.length > 2 && (
+                    <div
+                      onClick={() => {
+                        const el = document.getElementById("events");
+                        if (el) el.scrollIntoView({ behavior: "smooth" });
+                      }}
+                      className="relative flex-shrink-0 w-[36vw] max-w-[160px] h-full rounded-[18px] min-[400px]:rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-md border border-orange-500/25 bg-gradient-to-br from-orange-500/10 via-amber-500/5 to-transparent dark:from-orange-500/15 dark:to-transparent flex flex-col items-center justify-center p-3 group hover:border-primary transition-all"
+                    >
+                      <div className="w-10 h-10 rounded-full bg-orange-500/15 border border-orange-500/30 flex items-center justify-center mb-1.5 group-hover:scale-110 transition-transform">
+                        <ArrowRight className="w-4 h-4 text-orange-600 dark:text-orange-400" />
+                      </div>
+                      <span className="text-[11px] font-heading font-black text-orange-600 dark:text-orange-400 uppercase tracking-wider text-center">
+                        View All
                       </span>
                     </div>
-
-                    {/* Category Tag */}
-                    {currentSlide.category && (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-black/60 backdrop-blur-md text-white/90 font-heading text-[10px] font-bold uppercase tracking-wider border border-white/15 truncate max-w-[140px]">
-                        {currentSlide.category}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Bottom Content Area */}
-                  <motion.div
-                    variants={contentStagger}
-                    initial="hidden"
-                    animate="visible"
-                    className="relative z-20 flex flex-col justify-end w-full"
-                  >
-                    {/* Prominent High-Contrast Event Title */}
-                    <motion.h3
-                      variants={contentItem}
-                      className="text-lg min-[390px]:text-xl font-black font-heading text-white tracking-tight leading-snug line-clamp-2 drop-shadow-md mb-2.5 break-safe"
-                    >
-                      {currentSlide.title}
-                    </motion.h3>
-
-                    {/* Bottom Action Row: Time & Place on Left, Compact View Details on Right */}
-                    <motion.div variants={contentItem} className="flex items-center justify-between gap-2.5 pt-0.5">
-                      {/* Left: Time & Place Meta or Partner Meta */}
-                      <div className="flex items-center gap-1.5 text-xs text-gray-200/95 font-medium truncate min-w-0 flex-1">
-                        {currentSlide.type === "ad" ? (
-                          <span className="inline-flex items-center gap-1 text-indigo-300 font-bold truncate">
-                            <Megaphone className="w-3.5 h-3.5 text-indigo-400 shrink-0" />
-                            <span className="truncate">Featured University Partner</span>
-                          </span>
-                        ) : (
-                          <>
-                            {currentSlide.time && (
-                              <span className="inline-flex items-center gap-1 text-orange-300 font-bold shrink-0">
-                                <Clock className="w-3.5 h-3.5 text-orange-400" />
-                                <span>{currentSlide.time}</span>
-                              </span>
-                            )}
-                            {currentSlide.time && currentSlide.venue && (
-                              <span className="text-white/40 shrink-0">•</span>
-                            )}
-                            {currentSlide.venue && (
-                              <span className="inline-flex items-center gap-1 truncate text-gray-200">
-                                <MapPin className="w-3.5 h-3.5 text-[#fc721e] shrink-0" />
-                                <span className="truncate">{currentSlide.venue}</span>
-                              </span>
-                            )}
-                          </>
-                        )}
-                      </div>
-
-                      {/* Right: Sleek Compact Pill CTA Button */}
-                      <button
-                        type="button"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleAction();
-                        }}
-                        className={`shrink-0 inline-flex items-center gap-1 py-1.5 px-3.5 rounded-full ${
-                          currentSlide.type === "ad"
-                            ? "bg-gradient-to-r from-indigo-500 to-purple-600 text-white shadow-[0_3px_12px_rgba(99,102,241,0.35)]"
-                            : "bg-gradient-to-r from-[#fc721e] to-[#ff8c42] text-white shadow-[0_3px_12px_rgba(252,114,30,0.35)]"
-                        } font-heading font-black text-xs transition-transform active:scale-95 cursor-pointer touch-target`}
-                      >
-                        <span>{currentSlide.type === "ad" ? "Learn More" : "View Details"}</span>
-                        <ArrowRight className="h-3 w-3" />
-                      </button>
-                    </motion.div>
-                  </motion.div>
+                  )}
                 </div>
 
                 {/* =========================================================
@@ -467,13 +500,24 @@ export const HappeningTodaySliderComponent = ({
                     className="relative w-1/2 h-full overflow-hidden cursor-pointer group shrink-0"
                   >
                     {currentSlide.image ? (
-                      <ProgressiveImage
-                        src={currentSlide.image}
-                        alt={currentSlide.title}
-                        loading="lazy"
-                        containerClassName="w-full h-full"
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                      />
+                      <div className="relative w-full h-full overflow-hidden">
+                        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+                          <img
+                            src={currentSlide.image}
+                            alt=""
+                            aria-hidden="true"
+                            className="w-full h-full object-cover blur-3xl scale-150 opacity-100"
+                          />
+                          <div className="absolute inset-0 bg-black/10 dark:bg-black/20 pointer-events-none" />
+                        </div>
+                        <ProgressiveImage
+                          src={currentSlide.image}
+                          alt={currentSlide.title}
+                          loading="lazy"
+                          containerClassName="w-full h-full flex items-center justify-center relative z-10"
+                          className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                        />
+                      </div>
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 p-6 flex flex-col items-center justify-center relative">
                         <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-transparent to-purple-500/10 pointer-events-none" />
@@ -653,23 +697,6 @@ export const HappeningTodaySliderComponent = ({
           </>
         )}
       </div>
-
-      {/* Mini Dot Indicators Below Card on Mobile */}
-      {slides.length > 1 && (
-        <div className="flex sm:hidden items-center justify-center gap-1.5 mt-2.5">
-          {slides.map((_, idx) => (
-            <button
-              key={idx}
-              type="button"
-              onClick={() => goToSlide(idx)}
-              aria-label={`Go to happening today slide ${idx + 1}`}
-              className={`h-1.5 rounded-full transition-all duration-300 cursor-pointer ${
-                idx === activeIndex ? "w-5 bg-primary" : "w-1.5 bg-gray-400/40 dark:bg-white/25"
-              }`}
-            />
-          ))}
-        </div>
-      )}
     </section>
   );
 };

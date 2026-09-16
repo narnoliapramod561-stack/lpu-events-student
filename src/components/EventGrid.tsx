@@ -44,15 +44,27 @@ export const EventCardComponent = ({
       onClick={() => onSelect(event.id, event.name)}
       className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-[20px] sm:rounded-[28px] shadow-md hover:shadow-2xl transition-all duration-300 border border-white/80 dark:border-white/10 hover:border-primary/50 relative hover:scale-[1.01] active:scale-[0.99]"
     >
-      {/* Event Cover Image (Progressive Instant Preview -> Full HD Auto-Upgrade) */}
-      <div className="h-[155px] xs:h-[175px] sm:h-[230px] w-full relative overflow-hidden bg-slate-900/40 shrink-0">
+      {/* Event Cover Image (Zero Zoom, Uncropped 16:9 Banner Stage with Ambient Extended Canvas) */}
+      <div className="w-full aspect-[16/9] relative overflow-hidden shrink-0">
+        {/* Ambient Extended Backdrop: Fills sides with image colors for vertical/portrait posters (Zero Grey Space) */}
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <img
+            src={imageUrl}
+            alt=""
+            aria-hidden="true"
+            className="w-full h-full object-cover blur-3xl scale-150 opacity-100"
+          />
+          <div className="absolute inset-0 bg-black/10 dark:bg-black/20 pointer-events-none" />
+        </div>
+
         <ProgressiveImage
           src={imageUrl}
           alt={event.name}
           loading="lazy"
-          className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
+          containerClassName="absolute inset-0 w-full h-full flex items-center justify-center"
+          className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-500 ease-out relative z-10"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none z-10" />
 
         {event.is_trending && (
           <div className="absolute top-2.5 left-2.5 sm:top-4 sm:left-4">
@@ -62,17 +74,21 @@ export const EventCardComponent = ({
             </span>
           </div>
         )}
+
+        {/* Category Pill on Image (Bottom-Left) */}
+        {categoryName && (
+          <div className="absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3.5 z-10 pointer-events-none">
+            <span className="inline-flex items-center px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-black/65 dark:bg-black/75 backdrop-blur-md text-white/95 font-heading text-[9px] sm:text-[10px] font-black uppercase tracking-wider border border-white/20 shadow-md">
+              {categoryName}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Event Body */}
       <div className="p-3.5 sm:p-5 flex flex-col flex-1">
-        {/* Category Tag */}
-        <span className="text-[10px] sm:text-xs font-black uppercase text-orange-500 dark:text-orange-400 tracking-wider font-heading mb-1 sm:mb-1.5">
-          {categoryName}
-        </span>
-
         {/* Event Title */}
-        <h3 className="text-sm sm:text-lg font-black font-heading text-gray-900 dark:text-white mb-2.5 sm:mb-4 tracking-tight line-clamp-2 group-hover:text-primary transition-colors leading-snug break-safe">
+        <h3 className="text-base sm:text-xl lg:text-[22px] font-black font-heading text-orange-600 dark:text-orange-400 group-hover:text-orange-500 dark:group-hover:text-orange-300 transition-colors mb-2.5 sm:mb-4 tracking-tight line-clamp-2 leading-snug break-safe">
           {event.name}
         </h3>
 
@@ -258,15 +274,14 @@ export const SkeletonCard = React.memo(() => {
   return (
     <div className="flex flex-col h-full rounded-[20px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md">
       {/* Event Cover Image Skeleton */}
-      <div className="h-[155px] xs:h-[175px] sm:h-[230px] w-full bg-gray-200/70 dark:bg-white/5 skeleton-base" />
+      <div className="w-full aspect-[16/9] bg-gray-200/70 dark:bg-white/5 skeleton-base relative">
+        <div className="absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3.5 h-4 w-16 rounded-full bg-gray-300/60 dark:bg-white/10" />
+      </div>
       
       {/* Event Body Skeleton */}
       <div className="p-3.5 sm:p-5 flex flex-col flex-1">
-        {/* Category Tag Skeleton */}
-        <div className="h-3.5 sm:h-4 w-20 rounded-md skeleton-base mb-1 sm:mb-1.5" />
-        
         {/* Event Title Skeleton */}
-        <div className="h-5 sm:h-6 w-3/4 rounded-md skeleton-base mb-2.5 sm:mb-4" />
+        <div className="h-6 sm:h-7 w-4/5 rounded-md skeleton-base mb-2.5 sm:mb-4" />
         
         {/* Metadata Stack Skeleton */}
         <div className="space-y-2 sm:space-y-3 mb-0 sm:mb-5 mt-auto">
