@@ -752,7 +752,7 @@ async function handleSearch(
 
   const cacheKeyUrl = buildCacheKey(origin, '/api/public/search', params);
 
-  return handleCachedEndpoint(cacheKeyUrl, 'search', () => {
+  return handleCachedEndpoint(cacheKeyUrl, 'search', async () => {
     const rpcPayload: Record<string, unknown> = {
       query_text: normalizedQuery,
       limit_count: limit,
@@ -765,7 +765,31 @@ async function handleSearch(
     if (timeline) rpcPayload.p_timeline = timeline;
     if (date && DATE_REGEX.test(date)) rpcPayload.p_target_date = date;
 
-    return fetchFromSupabase('rpc/search_events', 'POST', rpcPayload, env);
+    const rpcRes = await fetchFromSupabase('rpc/search_events', 'POST', rpcPayload, env);
+    if (!rpcRes.ok || !Array.isArray(rpcRes.data)) {
+      return rpcRes;
+    }
+
+    const events = rpcRes.data as any[];
+    const bannerIds = [...new Set(events.map((e: any) => e.banner_media_id).filter(Boolean))];
+    if (bannerIds.length > 0) {
+      const mediaRes = await fetchFromSupabase(
+        `media_assets?id=in.(${bannerIds.join(',')})&select=id,object_key`,
+        'GET',
+        undefined,
+        env
+      );
+      if (mediaRes.ok && Array.isArray(mediaRes.data)) {
+        const mediaMap = new Map((mediaRes.data as any[]).map((m: any) => [m.id, m]));
+        for (const evt of events) {
+          if (evt.banner_media_id && mediaMap.has(evt.banner_media_id)) {
+            evt.media_assets = mediaMap.get(evt.banner_media_id);
+          }
+        }
+      }
+    }
+
+    return { ok: true, status: 200, data: events };
   }, ctx);
 }
 

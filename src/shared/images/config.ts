@@ -22,6 +22,66 @@ export type ImageContext =
 
 export type ImageFitMode = 'cover' | 'contain' | 'inside';
 
+export type EventSlotKey = 'card' | 'card_mobile' | 'banner' | 'banner_mobile' | 'thumb';
+
+export interface EventSlotConfig {
+  key: EventSlotKey;
+  label: string;
+  targetWidth: number;
+  targetHeight: number;
+  aspectRatio: number;
+  quality: number;
+  objectSuffix: string;
+}
+
+export const EVENT_SLOT_CONFIGS: Record<EventSlotKey, EventSlotConfig> = {
+  card: {
+    key: 'card',
+    label: 'Event Card (16:9)',
+    targetWidth: 1200,
+    targetHeight: 675,
+    aspectRatio: 16 / 9,
+    quality: 88,
+    objectSuffix: '_card.webp'
+  },
+  card_mobile: {
+    key: 'card_mobile',
+    label: 'Event Card Mobile (16:9)',
+    targetWidth: 800,
+    targetHeight: 450,
+    aspectRatio: 16 / 9,
+    quality: 85,
+    objectSuffix: '_card_mobile.webp'
+  },
+  banner: {
+    key: 'banner',
+    label: 'Event Details Banner (2.4:1 / 16:9)',
+    targetWidth: 1920,
+    targetHeight: 800,
+    aspectRatio: 2.4,
+    quality: 90,
+    objectSuffix: '_banner.webp'
+  },
+  banner_mobile: {
+    key: 'banner_mobile',
+    label: 'Event Details Banner Mobile',
+    targetWidth: 960,
+    targetHeight: 540,
+    aspectRatio: 16 / 9,
+    quality: 85,
+    objectSuffix: '_banner_mobile.webp'
+  },
+  thumb: {
+    key: 'thumb',
+    label: 'Square Micro-Thumbnail (1:1)',
+    targetWidth: 400,
+    targetHeight: 400,
+    aspectRatio: 1.0,
+    quality: 88,
+    objectSuffix: '_thumb.webp'
+  }
+};
+
 export interface ResponsiveVariantConfig {
   name: 'desktop' | 'tablet' | 'mobile';
   width: number;

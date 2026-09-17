@@ -18,12 +18,27 @@ import {
   ImageContext,
   IMAGE_CONTEXT_CONFIGS,
   ImageContextConfig,
-  IMAGE_PIPELINE_VERSION
+  IMAGE_PIPELINE_VERSION,
+  EventSlotKey,
+  EVENT_SLOT_CONFIGS,
+  EventSlotConfig
 } from './config';
 import { enhanceImageData } from './enhancer';
 
 export interface ProcessedVariantResult {
   name: 'desktop' | 'tablet' | 'mobile';
+  width: number;
+  height: number;
+  blob: Blob;
+  dataUrl: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  objectKey: string;
+}
+
+export interface ProcessedSlotResult {
+  slot: EventSlotKey;
+  label: string;
   width: number;
   height: number;
   blob: Blob;
@@ -48,6 +63,7 @@ export interface ImageProcessingResult {
   primaryObjectKey: string;
   mimeType: string;
   variants: ProcessedVariantResult[];
+  slots?: Record<EventSlotKey, ProcessedSlotResult>;
   compressionRatio: number;
   savingsPercentage: number;
 }
@@ -261,6 +277,42 @@ function renderDownscaledCanvas(
 }
 
 /**
+ * Synthesizes a native aspect-ratio slot canvas with full-cover stretch (Paper Mâché feel).
+ * Stretches the source flyer/artwork cleanly across 100% of target dimensions,
+ * eliminating all ambient blurred sidebars/wings while preserving all text and details.
+ */
+export function synthesizeSlotCanvas(
+  img: HTMLImageElement,
+  targetWidth: number,
+  targetHeight: number,
+  enhancementConfig?: any
+): HTMLCanvasElement {
+  const canvas = document.createElement('canvas');
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('Could not create slot 2D canvas context.');
+
+  const srcW = img.naturalWidth || img.width;
+  const srcH = img.naturalHeight || img.height;
+
+  // Stretched Full-Cover Canvas: Fills 100% of target slot dimensions edge-to-edge
+  const stretched = renderDownscaledCanvas(img, 0, 0, srcW, srcH, targetWidth, targetHeight);
+
+  if (enhancementConfig?.enabled) {
+    const pCtx = stretched.getContext('2d', { willReadFrequently: true });
+    if (pCtx) {
+      const pData = pCtx.getImageData(0, 0, targetWidth, targetHeight);
+      const enhanced = enhanceImageData(pData, enhancementConfig);
+      pCtx.putImageData(enhanced, 0, 0);
+    }
+  }
+
+  ctx.drawImage(stretched, 0, 0, targetWidth, targetHeight);
+  return canvas;
+}
+
+/**
  * Main Centralized Image Processing Function
  *
  * Processes any input image file into optimized, enhanced WebP derivatives
@@ -387,6 +439,44 @@ export async function processImageForContext(
     });
   }
 
+  // 7. Automated Multi-Slot Responsive Synthesis (for event images)
+  const slotResults: Partial<Record<EventSlotKey, ProcessedSlotResult>> = {};
+  if (context === 'event-banner' || context === 'event-card') {
+    for (const [slotKey, slotConfig] of Object.entries(EVENT_SLOT_CONFIGS) as [EventSlotKey, EventSlotConfig][]) {
+      const slotCanvas = synthesizeSlotCanvas(
+        img,
+        slotConfig.targetWidth,
+        slotConfig.targetHeight,
+        config.enhancement
+      );
+
+      const { blob: slotBlob, dataUrl: slotDataUrl } = await canvasToBlob(
+        slotCanvas,
+        config.outputFormat,
+        slotConfig.quality
+      );
+
+      const slotContext = slotKey.startsWith('card')
+        ? 'event-card'
+        : slotKey.startsWith('banner')
+        ? 'event-banner'
+        : 'thumbnail';
+      const slotObjectKey = `optimized/${slotContext}/${vTag}/${hashPrefix}/${checksum}${slotConfig.objectSuffix}`;
+
+      slotResults[slotKey] = {
+        slot: slotKey,
+        label: slotConfig.label,
+        width: slotConfig.targetWidth,
+        height: slotConfig.targetHeight,
+        blob: slotBlob,
+        dataUrl: slotDataUrl,
+        fileSizeBytes: slotBlob.size,
+        mimeType: config.outputFormat,
+        objectKey: slotObjectKey
+      };
+    }
+  }
+
   const originalSize = fileOrBlob.size;
   const primarySize = primaryBlob.size;
   const ratio = primarySize / Math.max(1, originalSize);
@@ -407,6 +497,7 @@ export async function processImageForContext(
     primaryObjectKey,
     mimeType: config.outputFormat,
     variants: variantResults,
+    slots: Object.keys(slotResults).length > 0 ? (slotResults as Record<EventSlotKey, ProcessedSlotResult>) : undefined,
     compressionRatio: Number(ratio.toFixed(3)),
     savingsPercentage: savingsPct
   };

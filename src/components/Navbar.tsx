@@ -18,49 +18,58 @@ export const SearchAutocompleteComponent = ({
   if (!show || !suggestions || suggestions.length === 0) return null;
 
   return (
-    <div className="absolute top-12 left-0 right-0 w-full rounded-2xl glass-panel shadow-[0_24px_50px_rgba(15,23,42,0.14)] p-2.5 z-50 animate-in fade-in slide-in-from-top-1 duration-200 border border-white/95 dark:border-white/10 max-h-72 overflow-y-auto hide-scrollbar">
-      <div className="text-[10px] font-black text-primary uppercase px-3 py-1.5 tracking-wider border-b border-gray-200/70 dark:border-white/10 mb-1.5 font-heading flex justify-between items-center">
+    <div className="absolute top-full left-0 right-0 w-full mt-2 rounded-2xl bg-white dark:bg-[#0c0f17] shadow-[0_20px_50px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_70px_rgba(0,0,0,0.85)] p-2.5 z-[100] border border-slate-200 dark:border-white/[0.14] overflow-hidden">
+      <div className="text-[10px] font-black text-slate-800 dark:text-white uppercase px-3 py-1.5 tracking-wider border-b border-slate-200/80 dark:border-white/10 mb-1.5 font-heading flex justify-between items-center shrink-0">
         <span className="flex items-center gap-1.5">
-          <span className="w-1.5 h-1.5 rounded-full bg-primary animate-pulse" />
+          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           Suggested Matches
-        </span>
-        <span className="text-[9px] font-bold lowercase tracking-normal text-gray-500 dark:text-gray-400">by relevance</span>
-      </div>
-      {suggestions.map((item) => (
-        <div
-          key={item.id}
-          onClick={() => {
-            if (onSelectEvent) {
-              onSelectEvent(item.id, item.name);
-            } else {
-              onSelect(item.name);
-            }
-          }}
-          className="flex items-center justify-between w-full text-left px-3 py-2.5 text-sm text-gray-900 dark:text-white hover:bg-orange-500/12 dark:hover:bg-orange-500/20 rounded-xl transition-all cursor-pointer min-h-[44px] group border border-transparent hover:border-orange-500/30"
-        >
-          <div className="flex flex-col min-w-0 max-w-[75%]">
-            <span className="truncate font-bold text-gray-900 dark:text-white group-hover:text-primary transition-colors">{item.name}</span>
-            <span className="text-[11px] text-gray-600 dark:text-gray-400 truncate font-medium">
-              {item.categories?.name || "Event"}
-              {item.organizations?.name ? ` • ${item.organizations.name}` : ""}
+          {suggestions.length > 2 && (
+            <span className="text-[9px] font-bold text-slate-400 dark:text-slate-500 lowercase font-sans ml-1">
+              ({suggestions.length} found • scroll down)
             </span>
-          </div>
-          <button
-            type="button"
-            onClick={(e) => {
-              e.stopPropagation();
+          )}
+        </span>
+        <span className="text-[9px] font-bold lowercase tracking-normal text-slate-500 dark:text-slate-400">by relevance</span>
+      </div>
+      <div className="max-h-[114px] overflow-y-auto space-y-1 pr-1 sleek-scrollbar overscroll-contain">
+        {suggestions.map((item) => (
+          <div
+            key={item.id}
+            onClick={() => {
               if (onSelectEvent) {
                 onSelectEvent(item.id, item.name);
               } else {
                 onSelect(item.name);
               }
             }}
-            className="text-xs text-primary font-black bg-primary/15 group-hover:bg-primary group-hover:text-white px-3 py-1 rounded-full whitespace-nowrap border border-primary/30 shrink-0 ml-2 transition-all cursor-pointer shadow-sm"
+            className="flex items-center justify-between w-full text-left px-3 py-2 text-sm text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08] rounded-xl transition-all cursor-pointer h-[52px] shrink-0 group border border-transparent hover:border-slate-200 dark:hover:border-white/10"
           >
-            View
-          </button>
-        </div>
-      ))}
+            <div className="flex flex-col min-w-0 max-w-[75%]">
+              <span className="truncate font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors text-xs sm:text-sm leading-tight">
+                {item.name}
+              </span>
+              <span className="text-[11px] text-slate-500 dark:text-slate-400 truncate font-medium mt-0.5 leading-tight">
+                {item.categories?.name || "Event"}
+                {item.organizations?.name ? ` • ${item.organizations.name}` : ""}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                if (onSelectEvent) {
+                  onSelectEvent(item.id, item.name);
+                } else {
+                  onSelect(item.name);
+                }
+              }}
+              className="text-xs font-black bg-slate-900 text-white dark:bg-white dark:text-slate-950 px-3.5 py-1.5 rounded-full whitespace-nowrap shrink-0 ml-2 transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95"
+            >
+              View
+            </button>
+          </div>
+        ))}
+      </div>
     </div>
   );
 };
@@ -96,6 +105,7 @@ export const NavbarComponent = ({
   const debounceTimer = useRef<any>(null);
   const suggestionReqIdRef = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
+  const mobileContainerRef = useRef<HTMLDivElement>(null);
   const mobileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -111,7 +121,9 @@ export const NavbarComponent = ({
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+      const isOutsideDesktop = !containerRef.current || !containerRef.current.contains(event.target as Node);
+      const isOutsideMobile = !mobileContainerRef.current || !mobileContainerRef.current.contains(event.target as Node);
+      if (isOutsideDesktop && isOutsideMobile) {
         setShowSuggestions(false);
       }
     };
@@ -143,7 +155,7 @@ export const NavbarComponent = ({
       onSearch(trimmed);
       const reqId = ++suggestionReqIdRef.current;
       try {
-        const { data, error } = await lpuClient.searchEvents(trimmed, { limit: 5 });
+        const { data, error } = await lpuClient.searchEvents(trimmed, { limit: 10 });
         if (!error && data && reqId === suggestionReqIdRef.current) {
           setSuggestions(data);
         }
@@ -236,7 +248,7 @@ export const NavbarComponent = ({
         {/* Desktop Centered Search Bar (Hidden on mobile/tablet < md) */}
         <div ref={containerRef} className="hidden md:block relative flex-1 max-w-md mx-4 lg:mx-8">
           <div className="relative w-full">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">
+            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none">
               <Search className="h-4.5 w-4.5" />
             </span>
             <input
@@ -246,25 +258,25 @@ export const NavbarComponent = ({
               onKeyDown={handleKeyDown}
               onFocus={() => setShowSuggestions(true)}
               placeholder="Search events, clubs, venues..."
-              className="h-11 w-full rounded-2xl glass-well pl-10 pr-9 text-sm text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:border-primary focus:ring-2 focus:ring-primary/30 focus:outline-none transition-all duration-200"
+              className="h-11 w-full rounded-2xl bg-white dark:bg-[#121622] pl-10 pr-9 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:bg-white dark:focus:bg-[#161a28] focus:border-slate-900 dark:focus:border-white focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:outline-none transition-all duration-200 shadow-xs"
             />
             {localSearch && (
               <button
                 onClick={handleClearSearch}
                 aria-label="Clear search"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 dark:hover:text-white text-xs bg-gray-200/70 dark:bg-white/10 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer"
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs bg-slate-100 dark:bg-white/10 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer transition-colors"
               >
                 ✕
               </button>
             )}
-          </div>
 
-          <SearchAutocomplete
-            suggestions={suggestions}
-            onSelect={handleSelectSuggestion}
-            onSelectEvent={onSelectEvent}
-            show={showSuggestions}
-          />
+            <SearchAutocomplete
+              suggestions={suggestions}
+              onSelect={handleSelectSuggestion}
+              onSelectEvent={onSelectEvent}
+              show={showSuggestions}
+            />
+          </div>
         </div>
 
         {/* Right Action Icons & Navigation */}
@@ -362,10 +374,11 @@ export const NavbarComponent = ({
             animate={{ opacity: 1, height: "auto" }}
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
-            className="md:hidden border-t border-gray-200/70 dark:border-white/10 px-3 py-2.5 bg-white/95 dark:bg-black/95 shadow-md"
+            ref={mobileContainerRef}
+            className="md:hidden border-t border-slate-200/80 dark:border-white/10 px-3 py-2.5 bg-white dark:bg-[#0c0f17] shadow-lg relative z-50"
           >
             <div className="relative w-full">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-500 dark:text-gray-400 pointer-events-none">
+              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none">
                 <Search className="h-4 w-4" />
               </span>
               <input
@@ -376,26 +389,26 @@ export const NavbarComponent = ({
                 onKeyDown={handleKeyDown}
                 onFocus={() => setShowSuggestions(true)}
                 placeholder="Search events, clubs, venues..."
-                className="h-10 w-full rounded-xl glass-well pl-10 pr-9 text-xs sm:text-sm text-gray-900 dark:text-white placeholder:text-gray-500 dark:placeholder:text-gray-400 focus:border-primary focus:ring-2 focus:ring-primary/25 focus:outline-none transition-all duration-200"
+                className="h-10 w-full rounded-xl bg-slate-100 dark:bg-[#121622] pl-10 pr-9 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:bg-white dark:focus:bg-[#161a28] focus:border-slate-900 dark:focus:border-white focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:outline-none transition-all duration-200"
               />
               {localSearch && (
                 <button
                   onClick={handleClearSearch}
                   aria-label="Clear search"
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-800 dark:hover:text-white text-xs bg-gray-200/70 dark:bg-white/10 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs bg-slate-200/70 dark:bg-white/10 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer transition-colors"
                 >
                   ✕
                 </button>
               )}
-            </div>
 
-            {/* Mobile Autocomplete Suggestions */}
-            <SearchAutocomplete
-              suggestions={suggestions}
-              onSelect={handleSelectSuggestion}
-              onSelectEvent={onSelectEvent}
-              show={showSuggestions}
-            />
+              {/* Mobile Autocomplete Suggestions placed directly inside relative wrapper */}
+              <SearchAutocomplete
+                suggestions={suggestions}
+                onSelect={handleSelectSuggestion}
+                onSelectEvent={onSelectEvent}
+                show={showSuggestions}
+              />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>

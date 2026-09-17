@@ -315,8 +315,8 @@ export const HeroCarouselComponent = ({
       onMouseLeave={() => setIsHovered(false)}
       className="w-full relative rounded-[16px] sm:rounded-[34px] md:rounded-[40px] select-none group/carousel"
     >
-      {/* 1. Atmospheric Ambient Edge Glow */}
-      <div className="hidden sm:block absolute -inset-1 sm:-inset-2 z-0 overflow-hidden pointer-events-none rounded-[18px] sm:rounded-[36px] md:rounded-[42px] opacity-0 dark:opacity-80 transition-opacity duration-700">
+      {/* 1. Atmospheric Ambient Edge Glow (Vivid in both Light & Dark Mode) */}
+      <div className="hidden sm:block absolute -inset-4 sm:-inset-6 md:-inset-8 z-0 pointer-events-none opacity-90 dark:opacity-85 transition-opacity duration-700">
         <AnimatePresence mode="wait">
           <motion.div
             key={`ambient-glow-${currentIndex}`}
@@ -332,20 +332,20 @@ export const HeroCarouselComponent = ({
                 alt=""
                 loading="lazy"
                 decoding="async"
-                className="w-full h-full object-cover blur-[80px] brightness-125 dark:brightness-100 saturate-150"
+                className="w-full h-full object-cover blur-[60px] sm:blur-[80px] scale-105 sm:scale-110 brightness-110 dark:brightness-85 saturate-200 opacity-90 dark:opacity-90"
               />
             )}
-            <div className="absolute inset-0 bg-gradient-to-tr from-orange-600/30 via-amber-500/15 to-transparent mix-blend-screen" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/40 via-amber-500/25 to-rose-500/20 dark:from-orange-600/25 dark:via-amber-500/15 dark:to-transparent blur-xl" />
           </motion.div>
         </AnimatePresence>
       </div>
 
       {/* 2. Main Carousel Viewport Frame */}
-      <div className="relative z-10 w-full h-[250px] min-[390px]:h-[275px] min-[430px]:h-[295px] sm:h-auto sm:min-h-[520px] lg:h-[560px] xl:h-[580px] overflow-hidden rounded-[20px] sm:rounded-[34px] md:rounded-[40px] glass-panel shadow-[0_24px_60px_rgba(15,23,42,0.12)] flex flex-col">
+      <div className="relative z-10 w-full h-[250px] min-[390px]:h-[275px] min-[430px]:h-[295px] sm:h-auto sm:min-h-[520px] lg:h-[560px] xl:h-[580px] overflow-hidden rounded-[20px] sm:rounded-[34px] md:rounded-[40px] glass-panel shadow-[0_20px_60px_-10px_rgba(255,107,0,0.25),0_8px_25px_-5px_rgba(15,23,42,0.08)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.85)] flex flex-col">
         
-        {/* Subtle Decorative Ambient Flares */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-orange-500/25 via-amber-500/15 to-transparent rounded-full blur-3xl pointer-events-none z-20 hidden sm:block" />
-        <div className="absolute bottom-0 left-0 w-96 h-96 bg-gradient-to-tr from-rose-500/20 via-orange-500/15 to-transparent rounded-full blur-3xl pointer-events-none z-20 hidden sm:block" />
+        {/* Subtle Decorative Ambient Flares (Behind Content at z-0) */}
+        <div className="absolute top-0 right-0 w-[420px] h-[420px] bg-gradient-to-br from-orange-500/35 via-amber-500/20 to-transparent dark:from-orange-500/35 dark:via-amber-500/20 rounded-full blur-3xl pointer-events-none z-0 hidden sm:block" />
+        <div className="absolute -bottom-10 -left-10 w-96 h-96 bg-gradient-to-tr from-orange-500/25 via-amber-500/15 to-transparent dark:from-orange-600/30 dark:via-amber-500/18 rounded-full blur-3xl pointer-events-none z-0 hidden sm:block" />
 
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
@@ -388,28 +388,16 @@ export const HeroCarouselComponent = ({
                   onClick={handleAction}
                   className="sm:hidden relative w-full h-full flex-1 overflow-hidden cursor-pointer group"
                 >
-                  {/* Ambient Extended Canvas: Fills 100% of the tile with the image's own colors & lighting (Zero Grey) */}
-                  {currentSlide.image && (
-                    <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                      <img
-                        src={currentSlide.image}
-                        alt=""
-                        aria-hidden="true"
-                        className="w-full h-full object-cover blur-3xl scale-150 opacity-100"
-                      />
-                      <div className="absolute inset-0 bg-black/10 dark:bg-black/20 pointer-events-none" />
-                    </div>
-                  )}
-
-                  {/* Crisp Uncropped Poster Image (All Details Preserved, Zero Zoom) */}
+                  {/* Full Cover Stretched Slide Visual (Zero Blurred Wings, Paper Mâché Edge-to-Edge Feel) */}
                   {currentSlide.image ? (
                     <ProgressiveImage
                       src={currentSlide.image}
                       alt={currentSlide.title}
                       loading={currentIndex === 0 ? "eager" : "lazy"}
                       fetchPriority={currentIndex === 0 ? "high" : "auto"}
-                      containerClassName="absolute inset-0 w-full h-full flex items-center justify-center"
-                      className="w-full h-full object-contain object-center relative z-10"
+                      containerClassName="absolute inset-0 w-full h-full"
+                      className="w-full h-full object-fill object-center relative z-10"
+                      style={{ objectFit: "fill" }}
                     />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950" />
@@ -457,13 +445,16 @@ export const HeroCarouselComponent = ({
                     DESKTOP SLIDE LAYOUT (sm+): Two-Zone Showcase Card
                    ========================================================= */}
                 {currentSlide.type === "event" ? (
-                  <div className="hidden sm:flex flex-col-reverse lg:flex-row h-full w-full flex-1">
+                  <div className="hidden sm:flex flex-col-reverse lg:flex-row h-full w-full flex-1 relative">
+                    {/* Seamless Full-Bleed Edge Vignette (Softened to allow subtle ambient glow through) */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/70 to-transparent dark:from-[#060810]/72 dark:via-[#060810]/45 lg:dark:via-[#060810]/25 dark:to-transparent pointer-events-none z-0" />
+
                     {/* Content Panel (Left on Desktop) */}
                     <motion.div
                       variants={contentStagger}
                       initial="hidden"
                       animate="visible"
-                      className="flex flex-col justify-center p-5 md:p-6 lg:px-7 lg:py-4 xl:px-8 xl:py-5 lg:w-[42%] xl:w-[40%] flex-1 bg-gradient-to-r from-white/40 via-white/15 to-transparent dark:bg-gradient-to-br dark:from-[#0b0d16]/85 dark:via-[#0e111d]/65 dark:to-transparent relative z-10 gap-3 sm:gap-3.5 lg:gap-4 my-auto"
+                      className="flex flex-col justify-center p-5 sm:pl-16 sm:pr-6 md:pl-20 md:pr-8 lg:px-7 lg:py-6 xl:px-8 xl:py-8 lg:w-[42%] xl:w-[40%] flex-1 relative z-10 gap-3 sm:gap-3.5 lg:gap-4 h-full"
                     >
                       {/* Badge & Category Pill */}
                       <motion.div variants={contentItem} className="flex items-center gap-2 flex-wrap">
@@ -482,7 +473,7 @@ export const HeroCarouselComponent = ({
                       <motion.h1
                         variants={contentItem}
                         onClick={handleAction}
-                        className="font-black tracking-tight text-gray-900 dark:text-white font-heading cursor-pointer hover:text-primary transition-colors drop-shadow-sm break-safe text-2xl md:text-3xl lg:text-[32px] xl:text-[38px] leading-[1.15] line-clamp-2"
+                        className="font-black tracking-tight text-gray-900 dark:text-white font-heading cursor-pointer hover:text-primary transition-colors drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] break-safe text-2xl md:text-3xl lg:text-[32px] xl:text-[38px] leading-[1.15] line-clamp-2"
                       >
                         {currentSlide.title}
                       </motion.h1>
@@ -491,7 +482,7 @@ export const HeroCarouselComponent = ({
                       {currentSlide.description && (
                         <motion.p
                           variants={contentItem}
-                          className="text-gray-600 dark:text-gray-300 leading-relaxed break-safe text-xs md:text-sm lg:text-[14.5px] font-medium line-clamp-2 xl:line-clamp-3 max-w-xl"
+                          className="text-gray-600 dark:text-gray-200 leading-relaxed break-safe text-xs md:text-sm lg:text-[14.5px] font-medium line-clamp-2 xl:line-clamp-3 max-w-xl drop-shadow-[0_1px_8px_rgba(0,0,0,0.7)]"
                         >
                           {currentSlide.description}
                         </motion.p>
@@ -574,24 +565,13 @@ export const HeroCarouselComponent = ({
                       onClick={handleAction}
                       className="relative w-full lg:w-[58%] xl:w-[60%] p-2.5 sm:p-3.5 lg:p-4 xl:p-5 flex items-center justify-center shrink-0 cursor-pointer group/img"
                     >
-                      <div className="relative w-full max-w-[760px] lg:max-w-none xl:max-w-[880px] 2xl:max-w-[940px] aspect-[16/9] rounded-[22px] lg:rounded-[30px] overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 group-hover/img:scale-[1.015] transition-transform duration-300">
-                        {/* Ambient Extended Canvas for Desktop Hero (Zero Grey, Zero Crop) */}
-                        {currentSlide.image && (
-                          <div className="absolute inset-0 overflow-hidden pointer-events-none">
-                            <img
-                              src={currentSlide.image}
-                              alt=""
-                              aria-hidden="true"
-                              className="w-full h-full object-cover blur-3xl scale-150 opacity-100"
-                            />
-                            <div className="absolute inset-0 bg-black/15 dark:bg-black/25 pointer-events-none" />
-                          </div>
-                        )}
+                      <div className="relative w-full max-w-[760px] lg:max-w-none xl:max-w-[880px] 2xl:max-w-[940px] aspect-[16/9] rounded-[22px] lg:rounded-[30px] overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 group-hover/img:scale-[1.015] transition-transform duration-300 bg-slate-950">
                         <ProgressiveImage
                           src={currentSlide.image}
                           alt={currentSlide.title}
-                          containerClassName="w-full h-full flex items-center justify-center relative z-10"
-                          className="w-full h-full object-contain object-center"
+                          containerClassName="absolute inset-0 w-full h-full"
+                          className="w-full h-full object-fill object-center relative z-10"
+                          style={{ objectFit: "fill" }}
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/5 pointer-events-none z-20" />
                       </div>
@@ -718,6 +698,35 @@ export const HeroCarouselComponent = ({
             )}
           </motion.div>
         </AnimatePresence>
+
+        {/* Mobile Edge Navigation Buttons (Back & Front, Small, Glassmorphic, Edge-Aligned) */}
+        {slides.length > 1 && (
+          <>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                paginate(-1);
+              }}
+              className="sm:hidden absolute left-0.5 min-[390px]:left-1 top-1/2 -translate-y-1/2 z-30 w-7.5 h-7.5 min-[390px]:w-8 min-[390px]:h-8 rounded-full flex items-center justify-center bg-black/60 hover:bg-black/75 active:bg-black/90 backdrop-blur-md border border-white/35 dark:border-white/25 text-white shadow-[0_4px_14px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.4)] active:scale-90 transition-all duration-200 cursor-pointer touch-manipulation outline-none group select-none"
+              aria-label="Previous slide"
+            >
+              <ChevronLeft className="h-4 w-4 text-white drop-shadow stroke-[2.6] group-active:-translate-x-0.5 transition-transform" />
+            </button>
+
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                paginate(1);
+              }}
+              className="sm:hidden absolute right-0.5 min-[390px]:right-1 top-1/2 -translate-y-1/2 z-30 w-7.5 h-7.5 min-[390px]:w-8 min-[390px]:h-8 rounded-full flex items-center justify-center bg-black/60 hover:bg-black/75 active:bg-black/90 backdrop-blur-md border border-white/35 dark:border-white/25 text-white shadow-[0_4px_14px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.4)] active:scale-90 transition-all duration-200 cursor-pointer touch-manipulation outline-none group select-none"
+              aria-label="Next slide"
+            >
+              <ChevronRight className="h-4 w-4 text-white drop-shadow stroke-[2.6] group-active:translate-x-0.5 transition-transform" />
+            </button>
+          </>
+        )}
       </div>
 
       {/* 3. Progress Dots — Below card on mobile, inside card on desktop */}
@@ -763,22 +772,22 @@ export const HeroCarouselComponent = ({
         </div>
       )}
 
-      {/* 4. Side Navigation Arrows (Desktop Only - hidden on mobile for clean touch UX) */}
+      {/* 4. Side Navigation Arrows (Positioned Directly on Outer Edges with Full Glassmorphism) */}
       {slides.length > 1 && (
         <>
           <button
             onClick={() => paginate(-1)}
-            className="hidden sm:flex absolute left-3 md:left-6 top-1/2 -translate-y-1/2 z-30 w-10 sm:w-11 md:w-12 h-10 sm:h-11 md:h-12 rounded-full items-center justify-center transition-all duration-300 cursor-pointer shadow-xl hover:scale-110 active:scale-95 group bg-white/85 dark:bg-black/75 backdrop-blur-xl border border-white/95 dark:border-white/15 touch-target outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0"
+            className="hidden sm:flex absolute -left-3 sm:-left-4 md:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-30 w-11 sm:w-12 md:w-13 h-11 sm:h-12 md:h-13 rounded-full items-center justify-center transition-all duration-300 cursor-pointer hover:scale-110 active:scale-95 group bg-white/75 dark:bg-white/[0.14] hover:bg-white/90 dark:hover:bg-white/[0.25] backdrop-blur-2xl border border-white/90 dark:border-white/30 shadow-[0_10px_35px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.8)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_1.5px_rgba(255,255,255,0.4)] hover:border-white dark:hover:border-white/50 touch-target outline-none focus:outline-none focus-visible:outline-none ring-0"
             aria-label="Previous slide"
           >
-            <ChevronLeft className="h-5 w-5 md:h-6 md:w-6 text-gray-800 dark:text-white group-hover:-translate-x-0.5 group-hover:text-primary transition-transform duration-200" />
+            <ChevronLeft className="h-5 w-5 md:h-6 md:w-6 text-gray-900 dark:text-white drop-shadow-sm group-hover:-translate-x-0.5 group-hover:text-primary transition-all duration-200 stroke-[2.4]" />
           </button>
           <button
             onClick={() => paginate(1)}
-            className="hidden sm:flex absolute right-3 md:right-6 top-1/2 -translate-y-1/2 z-30 w-10 sm:w-11 md:w-12 h-10 sm:h-11 md:h-12 rounded-full items-center justify-center transition-all duration-300 cursor-pointer shadow-xl hover:scale-110 active:scale-95 group bg-white/85 dark:bg-black/75 backdrop-blur-xl border border-white/95 dark:border-white/15 touch-target outline-none focus:outline-none focus-visible:outline-none ring-0 focus:ring-0"
+            className="hidden sm:flex absolute -right-3 sm:-right-4 md:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-30 w-11 sm:w-12 md:w-13 h-11 sm:h-12 md:h-13 rounded-full items-center justify-center transition-all duration-300 cursor-pointer hover:scale-110 active:scale-95 group bg-white/75 dark:bg-white/[0.14] hover:bg-white/90 dark:hover:bg-white/[0.25] backdrop-blur-2xl border border-white/90 dark:border-white/30 shadow-[0_10px_35px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.8)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_1.5px_rgba(255,255,255,0.4)] hover:border-white dark:hover:border-white/50 touch-target outline-none focus:outline-none focus-visible:outline-none ring-0"
             aria-label="Next slide"
           >
-            <ChevronRight className="h-5 w-5 md:h-6 md:w-6 text-gray-800 dark:text-white group-hover:translate-x-0.5 group-hover:text-primary transition-transform duration-200" />
+            <ChevronRight className="h-5 w-5 md:h-6 md:w-6 text-gray-900 dark:text-white drop-shadow-sm group-hover:translate-x-0.5 group-hover:text-primary transition-all duration-200 stroke-[2.4]" />
           </button>
         </>
       )}

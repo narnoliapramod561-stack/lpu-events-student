@@ -36,6 +36,15 @@ export interface UploadedMediaResult {
     height: number;
     fileSizeBytes: number;
   }[];
+  slots?: Record<string, {
+    slot: string;
+    objectKey: string;
+    publicUrl: string;
+    dataUrl?: string;
+    width: number;
+    height: number;
+    fileSizeBytes: number;
+  }>;
 }
 
 export interface ImageUploadOptions {
@@ -115,6 +124,27 @@ export async function uploadAndOptimizeImage(
       formData.append('context', context);
       formData.append('checksum', processed.checksum);
       if (entityId) formData.append('entity_id', entityId);
+
+      // Append multi-slot synthesized derivatives
+      if (processed.slots) {
+        for (const [slotKey, slotItem] of Object.entries(processed.slots)) {
+          formData.append(`slot_${slotKey}`, slotItem.blob, `${processed.checksum}_${slotKey}.webp`);
+        }
+      }
+
+      const slotMeta = processed.slots ? Object.fromEntries(
+        Object.entries(processed.slots).map(([k, v]) => [
+          k,
+          {
+            name: k,
+            object_key: v.objectKey,
+            width: v.width,
+            height: v.height,
+            file_size_bytes: v.fileSizeBytes
+          }
+        ])
+      ) : undefined;
+
       formData.append(
         'metadata',
         JSON.stringify({
@@ -128,7 +158,8 @@ export async function uploadAndOptimizeImage(
             width: v.width,
             height: v.height,
             file_size_bytes: v.fileSizeBytes
-          }))
+          })),
+          slots: slotMeta
         })
       );
 
@@ -144,6 +175,22 @@ export async function uploadAndOptimizeImage(
         const edgeData = await edgeRes.json();
         if (edgeData?.media_id) {
           if (onProgress) onProgress('completed');
+
+          const returnedSlots = processed.slots ? Object.fromEntries(
+            Object.entries(processed.slots).map(([k, v]) => [
+              k,
+              {
+                slot: k,
+                objectKey: v.objectKey,
+                publicUrl: `${getStorageBaseUrl()}/${v.objectKey}`,
+                dataUrl: v.dataUrl,
+                width: v.width,
+                height: v.height,
+                fileSizeBytes: v.fileSizeBytes
+              }
+            ])
+          ) : undefined;
+
           return {
             mediaId: edgeData.media_id,
             objectKey: edgeData.object_key || processed.primaryObjectKey,
@@ -165,7 +212,8 @@ export async function uploadAndOptimizeImage(
               width: v.width,
               height: v.height,
               fileSizeBytes: v.fileSizeBytes
-            }))
+            })),
+            slots: returnedSlots
           };
         }
       }
@@ -183,6 +231,19 @@ export async function uploadAndOptimizeImage(
         cacheControl: 'public, max-age=31536000, immutable',
         upsert: true
       });
+
+    if (processed.slots) {
+      for (const slotItem of Object.values(processed.slots)) {
+        await supabase.storage
+          .from('media')
+          .upload(slotItem.objectKey, slotItem.blob, {
+            contentType: slotItem.mimeType,
+            cacheControl: 'public, max-age=31536000, immutable',
+            upsert: true
+          })
+          .catch(() => {});
+      }
+    }
   } catch {
     // Storage fallback suppression
   }
@@ -211,6 +272,34 @@ export async function uploadAndOptimizeImage(
   const finalObjectKey = processed.primaryObjectKey;
   primaryPublicUrl = `${getStorageBaseUrl()}/${finalObjectKey}`;
 
+  const returnedSlots = processed.slots ? Object.fromEntries(
+    Object.entries(processed.slots).map(([k, v]) => [
+      k,
+      {
+        slot: k,
+        objectKey: v.objectKey,
+        publicUrl: `${getStorageBaseUrl()}/${v.objectKey}`,
+        dataUrl: v.dataUrl,
+        width: v.width,
+        height: v.height,
+        fileSizeBytes: v.fileSizeBytes
+      }
+    ])
+  ) : undefined;
+
+  const slotMetaPayload = processed.slots ? Object.fromEntries(
+    Object.entries(processed.slots).map(([k, v]) => [
+      k,
+      {
+        name: k,
+        object_key: v.objectKey,
+        width: v.width,
+        height: v.height,
+        file_size_bytes: v.fileSizeBytes
+      }
+    ])
+  ) : undefined;
+
   const metadataPayload = {
     pipeline_version: IMAGE_PIPELINE_VERSION,
     context,
@@ -224,7 +313,8 @@ export async function uploadAndOptimizeImage(
       width: v.width,
       height: v.height,
       file_size_bytes: v.fileSizeBytes
-    }))
+    })),
+    slots: slotMetaPayload
   };
 
   const { data: mediaAsset, error: mediaErr } = await supabase
@@ -278,7 +368,8 @@ export async function uploadAndOptimizeImage(
           width: v.width,
           height: v.height,
           fileSizeBytes: v.fileSizeBytes
-        }))
+        })),
+        slots: returnedSlots
       };
     }
 
@@ -308,7 +399,8 @@ export async function uploadAndOptimizeImage(
       width: v.width,
       height: v.height,
       fileSizeBytes: v.fileSizeBytes
-    }))
+    })),
+    slots: returnedSlots
   };
 }
 

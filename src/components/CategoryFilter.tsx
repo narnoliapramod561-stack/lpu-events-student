@@ -188,24 +188,24 @@ export const CategoryFilterComponent = ({
     <div id="categories" className="w-full flex flex-col gap-3.5 sm:gap-8">
       
       {/* ======================================================== */}
-      {/* 📱 MOBILE DISCOVERY SUITE (< sm) — DO NOT TOUCH DESKTOP   */}
+      {/* 📱 MOBILE DISCOVERY SUITE (< sm) — ULTRA-PREMIUM UNIFIED  */}
       {/* ======================================================== */}
-      <div className="flex flex-col gap-2.5 sm:hidden">
+      <div className="relative sm:hidden rounded-[28px] overflow-hidden border border-slate-200/90 dark:border-white/[0.12] bg-white/95 dark:bg-[#0a0d14]/95 backdrop-blur-3xl shadow-[0_18px_50px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)] dark:shadow-[0_24px_65px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)]">
+        
+        {/* Atmospheric Ambient Glow Mesh — Minimalist Monochrome */}
+        <div className="absolute top-0 right-0 w-80 h-44 bg-gradient-to-bl from-slate-400/[0.06] dark:from-white/[0.04] to-transparent rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-80 h-44 bg-gradient-to-tr from-slate-300/[0.06] dark:from-white/[0.03] to-transparent rounded-full blur-3xl pointer-events-none" />
 
-        {/* ─── SECTION 1: SCHEDULE ─── Calendar Schedule Strip ─── */}
-        <div className="relative overflow-hidden rounded-2xl">
-          {/* Frosted glass background with cool slate/teal tone */}
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-cyan-950/60 to-slate-900/80 backdrop-blur-xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(6,182,212,0.08),transparent_60%)]" />
+        <div className="relative flex flex-col">
           
-          <div className="relative flex flex-col gap-2 p-3">
-            {/* Header row */}
+          {/* ─── TIER 1: SCHEDULE ─── */}
+          <div className="p-3.5 min-[400px]:p-4 flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-cyan-500/15 border border-cyan-400/25 flex items-center justify-center">
-                  <Clock className="h-3.5 w-3.5 text-cyan-400" />
+                <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-white/[0.08] border border-slate-200/80 dark:border-white/[0.12] flex items-center justify-center text-slate-800 dark:text-white shadow-2xs">
+                  <Clock className="h-3.5 w-3.5" />
                 </div>
-                <span className="text-[13px] font-black text-white font-heading">
+                <span className="text-[11px] min-[400px]:text-xs font-black text-slate-900 dark:text-white font-heading tracking-widest uppercase">
                   Schedule
                 </span>
               </div>
@@ -217,7 +217,7 @@ export const CategoryFilterComponent = ({
                     onSelectScheduleFilter("all");
                     onSelectDate("");
                   }}
-                  className="text-[10px] font-bold text-cyan-300 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-cyan-500/10 border border-cyan-500/20 active:scale-95 transition-transform"
+                  className="text-[10.5px] font-heading font-black text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/[0.08] border border-slate-200/80 dark:border-white/[0.12] active:scale-95 transition-transform"
                 >
                   <X className="h-3 w-3" />
                   <span>Clear</span>
@@ -225,7 +225,7 @@ export const CategoryFilterComponent = ({
               )}
             </div>
 
-            {/* Timeline pills — horizontal scroll in one line */}
+            {/* Timeline Pills */}
             <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 -mx-0.5 px-0.5 select-none items-center touch-pan-x">
               {[
                 { id: "all", label: "All", icon: null },
@@ -243,16 +243,16 @@ export const CategoryFilterComponent = ({
                       onSelectDate("");
                       onSelectScheduleFilter(item.id);
                     }}
-                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
+                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                       isActive
-                        ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-300/30"
-                        : "bg-white/[0.05] text-slate-300 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
+                        ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_4px_16px_rgba(255,255,255,0.18)] ring-1 ring-black/10 dark:ring-white"
+                        : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
                     }`}
                   >
                     {item.icon === "live" && (
                       <span className="relative flex h-2 w-2">
                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400" />
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.9)]" />
                       </span>
                     )}
                     {item.label}
@@ -265,13 +265,13 @@ export const CategoryFilterComponent = ({
                 <button
                   type="button"
                   onClick={() => openDatePicker(mobileDateInputRef)}
-                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap active:scale-[0.96] transition-all duration-200 cursor-pointer ${
+                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap active:scale-[0.96] transition-all duration-200 cursor-pointer ${
                     selectedDate
-                      ? "bg-gradient-to-r from-cyan-500 to-teal-500 text-white shadow-lg shadow-cyan-500/25 ring-1 ring-cyan-300/30"
-                      : "bg-white/[0.05] text-slate-300 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
+                      ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_4px_16px_rgba(255,255,255,0.18)] ring-1 ring-black/10 dark:ring-white"
+                      : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
                   }`}
                 >
-                  <CalendarDays className={`h-3.5 w-3.5 ${selectedDate ? "text-white" : "text-cyan-400"}`} />
+                  <CalendarDays className={`h-3.5 w-3.5 ${selectedDate ? "text-white dark:text-slate-950" : "text-slate-500 dark:text-slate-400"}`} />
                   <span>{formatDisplayDate(selectedDate)}</span>
                   {selectedDate && (
                     <span
@@ -279,7 +279,7 @@ export const CategoryFilterComponent = ({
                       tabIndex={0}
                       onClick={handleClearDate}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleClearDate(e as any); }}
-                      className="ml-0.5 p-0.5 rounded-full hover:bg-white/20 text-white/80 hover:text-white transition-colors cursor-pointer"
+                      className="ml-0.5 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-black/20 text-white/80 dark:text-slate-700 hover:text-white dark:hover:text-slate-950 transition-colors cursor-pointer"
                       title="Clear date filter"
                     >
                       <X className="h-3 w-3" />
@@ -299,22 +299,18 @@ export const CategoryFilterComponent = ({
               </div>
             </div>
           </div>
-        </div>
 
-        {/* ─── SECTION 2: EVENT TYPE ─── Pricing & Trending Strip ─── */}
-        <div className="relative overflow-hidden rounded-2xl">
-          {/* Frosted glass background with indigo/slate tone */}
-          <div className="absolute inset-0 bg-gradient-to-br from-slate-900/80 via-indigo-950/60 to-slate-900/80 backdrop-blur-xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,rgba(168,85,247,0.08),transparent_60%)]" />
-          
-          <div className="relative flex flex-col gap-2 p-3">
-            {/* Header row */}
+          {/* Luxury Hairline Divider */}
+          <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200/80 dark:via-white/[0.08] to-transparent" />
+
+          {/* ─── TIER 2: EVENT TYPE ─── */}
+          <div className="p-3.5 min-[400px]:p-4 flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-indigo-500/15 border border-indigo-400/25 flex items-center justify-center">
-                  <Ticket className="h-3.5 w-3.5 text-indigo-400" />
+                <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-white/[0.08] border border-slate-200/80 dark:border-white/[0.12] flex items-center justify-center text-slate-800 dark:text-white shadow-2xs">
+                  <Ticket className="h-3.5 w-3.5" />
                 </div>
-                <span className="text-[13px] font-black text-white font-heading">
+                <span className="text-[11px] min-[400px]:text-xs font-black text-slate-900 dark:text-white font-heading tracking-widest uppercase">
                   Event Type
                 </span>
               </div>
@@ -325,7 +321,7 @@ export const CategoryFilterComponent = ({
                   onClick={() => {
                     if (onSelectPricingType) onSelectPricingType("ALL");
                   }}
-                  className="text-[10px] font-bold text-indigo-300 flex items-center gap-1 px-2.5 py-1 rounded-lg bg-indigo-500/10 border border-indigo-500/20 active:scale-95 transition-transform"
+                  className="text-[10.5px] font-heading font-black text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/[0.08] border border-slate-200/80 dark:border-white/[0.12] active:scale-95 transition-transform"
                 >
                   <X className="h-3 w-3" />
                   <span>Clear</span>
@@ -333,7 +329,7 @@ export const CategoryFilterComponent = ({
               )}
             </div>
 
-            {/* Event Type pills */}
+            {/* Event Type Pills */}
             <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 -mx-0.5 px-0.5 select-none items-center touch-pan-x">
               {[
                 { id: "ALL", label: "All" },
@@ -355,10 +351,10 @@ export const CategoryFilterComponent = ({
                         if (onSelectPricingType) onSelectPricingType(item.id as 'ALL' | 'FREE' | 'PAID');
                       }
                     }}
-                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
+                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                       isSelected
-                        ? "bg-gradient-to-r from-orange-500 to-amber-500 text-white shadow-lg shadow-orange-500/25 ring-1 ring-orange-300/30"
-                        : "bg-white/[0.05] text-slate-300 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
+                        ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_4px_16px_rgba(255,255,255,0.18)] ring-1 ring-black/10 dark:ring-white"
+                        : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
                     }`}
                   >
                     {item.emoji && <span>{item.emoji}</span>}
@@ -368,41 +364,37 @@ export const CategoryFilterComponent = ({
               })}
             </div>
           </div>
-        </div>
 
-        {/* ─── SECTION 3: CATEGORIES ─── Event Categories Explorer ─── */}
-        <div className="relative overflow-hidden rounded-2xl">
-          {/* Warm amber/rose glass background */}
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-950/70 via-orange-950/50 to-rose-950/60 backdrop-blur-xl" />
-          <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_bottom_left,rgba(251,146,60,0.07),transparent_60%)]" />
+          {/* Luxury Hairline Divider */}
+          <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200/80 dark:via-white/[0.08] to-transparent" />
 
-          <div className="relative flex flex-col gap-2 p-3">
-            {/* Header row */}
+          {/* ─── TIER 3: CATEGORIES ─── */}
+          <div className="p-3.5 min-[400px]:p-4 flex flex-col gap-2.5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 shrink-0">
-                <div className="w-6 h-6 rounded-lg bg-amber-500/15 border border-amber-400/25 flex items-center justify-center">
-                  <Sparkles className="h-3.5 w-3.5 text-amber-400" />
+                <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-white/[0.08] border border-slate-200/80 dark:border-white/[0.12] flex items-center justify-center text-slate-800 dark:text-white shadow-2xs">
+                  <Sparkles className="h-3.5 w-3.5" />
                 </div>
-                <span className="text-[13px] font-black text-white font-heading">
+                <span className="text-[11px] min-[400px]:text-xs font-black text-slate-900 dark:text-white font-heading tracking-widest uppercase">
                   Categories
                 </span>
               </div>
 
-              {/* Inline search */}
-              <div className="relative flex-1 max-w-[180px]">
-                <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-amber-400/50 pointer-events-none" />
+              {/* Elevated Glass Search Input */}
+              <div className="relative flex-1 max-w-[185px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400 dark:text-slate-500 pointer-events-none" />
                 <input
                   type="text"
                   value={categorySearch}
                   onChange={(e) => setCategorySearch(e.target.value)}
-                  placeholder="Search..."
-                  className="w-full pl-7 pr-7 py-1.5 rounded-lg bg-white/[0.06] border border-amber-500/15 text-[11px] font-medium text-white placeholder:text-white/30 focus:outline-none focus:border-amber-500/40 focus:bg-white/[0.08] transition-all"
+                  placeholder="Search categories..."
+                  className="w-full pl-8.5 pr-7 py-1.5 rounded-full bg-slate-100/90 dark:bg-white/[0.06] border border-slate-200/80 dark:border-white/[0.1] text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-slate-400 dark:focus:border-white/40 focus:ring-2 focus:ring-slate-400/20 dark:focus:ring-white/15 transition-all shadow-inner"
                 />
                 {categorySearch && (
                   <button
                     type="button"
                     onClick={() => setCategorySearch("")}
-                    className="absolute right-2 top-1/2 -translate-y-1/2 text-white/40 hover:text-white"
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-white p-0.5 rounded-full"
                   >
                     <X className="h-3 w-3" />
                   </button>
@@ -410,11 +402,11 @@ export const CategoryFilterComponent = ({
               </div>
             </div>
 
-            {/* Search direct-match subcategory jump */}
+            {/* Direct match shelf */}
             {cleanQuery && directMatchingSubcategories.length > 0 && (
-              <div className="flex flex-col gap-1.5 p-2 rounded-xl bg-amber-500/8 border border-amber-500/20">
-                <span className="text-[10px] font-black uppercase text-amber-400/80 tracking-wider flex items-center gap-1 px-0.5">
-                  <Sparkles className="h-2.5 w-2.5" /> Matches ({directMatchingSubcategories.length})
+              <div className="flex flex-col gap-1.5 p-2.5 rounded-2xl bg-slate-100/70 dark:bg-white/[0.04] border border-slate-200/80 dark:border-white/[0.08]">
+                <span className="text-[10px] font-black uppercase text-slate-700 dark:text-slate-300 tracking-wider flex items-center gap-1 px-0.5">
+                  <Sparkles className="h-2.5 w-2.5 text-slate-500 dark:text-slate-400" /> Matches ({directMatchingSubcategories.length})
                 </span>
                 <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5">
                   {directMatchingSubcategories.map(({ category, subcategory }) => {
@@ -428,10 +420,10 @@ export const CategoryFilterComponent = ({
                           onSelectCategory(category.id);
                           onSelectSubcategory(subcategory.id);
                         }}
-                        className={`flex items-center gap-1 px-2.5 py-1 rounded-lg text-[11px] font-bold whitespace-nowrap shrink-0 active:scale-95 transition-all ${
+                        className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-heading font-bold whitespace-nowrap shrink-0 active:scale-95 transition-all ${
                           isSubSelected
-                            ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-sm"
-                            : "bg-white/[0.06] text-white/70 border border-white/[0.08]"
+                            ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-sm ring-1 ring-black/10 dark:ring-white"
+                            : "bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/[0.08]"
                         }`}
                       >
                         <SubIcon className="h-3 w-3" />
@@ -444,7 +436,7 @@ export const CategoryFilterComponent = ({
               </div>
             )}
 
-            {/* Category chips — in one single line (horizontal scroll like schedule) */}
+            {/* Category chips row */}
             {filteredCategories.length > 0 ? (
               <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 -mx-0.5 px-0.5 select-none items-center touch-pan-x">
                 {!cleanQuery && (
@@ -454,14 +446,14 @@ export const CategoryFilterComponent = ({
                       onSelectCategory("all");
                       onSelectSubcategory("");
                     }}
-                    className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
+                    className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                       selectedCategory === "all"
-                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 ring-1 ring-amber-300/30"
-                        : "bg-white/[0.05] text-amber-200/70 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
+                        ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_4px_16px_rgba(255,255,255,0.18)] ring-1 ring-black/10 dark:ring-white"
+                        : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
                     }`}
                   >
-                    <div className={`w-4.5 h-4.5 rounded-md flex items-center justify-center ${selectedCategory === "all" ? "text-white" : "text-amber-400"}`}>
-                      <LayoutGrid className="h-3 w-3" />
+                    <div className={`w-4 h-4 rounded-md flex items-center justify-center ${selectedCategory === "all" ? "text-white dark:text-slate-950" : "text-slate-500 dark:text-slate-400"}`}>
+                      <LayoutGrid className="h-3.5 w-3.5" />
                     </div>
                     All
                   </button>
@@ -480,17 +472,17 @@ export const CategoryFilterComponent = ({
                         onSelectCategory(isSelected ? "all" : cat.id);
                         onSelectSubcategory("");
                       }}
-                      className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
+                      className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                         isSelected
-                          ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 ring-1 ring-amber-300/30"
-                          : "bg-white/[0.05] text-amber-200/70 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
+                          ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_4px_16px_rgba(255,255,255,0.18)] ring-1 ring-black/10 dark:ring-white"
+                          : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
                       }`}
                     >
-                      <CatIcon className={`h-3.5 w-3.5 ${isSelected ? "text-white" : "text-amber-400/80"}`} />
+                      <CatIcon className={`h-3.5 w-3.5 ${isSelected ? "text-white dark:text-slate-950" : "text-slate-500 dark:text-slate-400"}`} />
                       <span>{cat.name}</span>
                       {subCount > 0 && (
-                        <span className={`text-[9px] min-w-[16px] text-center px-1 py-px rounded-full font-black leading-none ${
-                          isSelected ? "bg-white/20 text-white" : "bg-amber-500/15 text-amber-400/80"
+                        <span className={`text-[9.5px] min-w-[17px] text-center px-1.5 py-0.5 rounded-full font-mono font-black leading-none ${
+                          isSelected ? "bg-white/20 dark:bg-black/15 text-white dark:text-slate-950" : "bg-black/[0.06] dark:bg-white/12 text-slate-600 dark:text-slate-300"
                         }`}>
                           {subCount}
                         </span>
@@ -500,23 +492,25 @@ export const CategoryFilterComponent = ({
                 })}
               </div>
             ) : (
-              <div className="py-3 px-4 rounded-xl bg-white/[0.03] border border-white/[0.06] text-center text-[11px] text-white/40">
+              <div className="py-3 px-4 rounded-xl bg-slate-50 dark:bg-white/[0.03] border border-slate-200/70 dark:border-white/[0.06] text-center text-xs text-slate-500 dark:text-slate-400">
                 No categories matching &ldquo;{categorySearch}&rdquo;
               </div>
             )}
 
-            {/* Subcategories expansion (horizontal scroll in one line) */}
+            {/* Subcategories expansion drawer */}
             {selectedCategory !== "all" && activeCategoryData && subcategories.length > 0 && (
-              <div className="flex flex-col gap-2 p-3 rounded-2xl bg-white/[0.04] border border-amber-500/20 mt-1">
+              <div className="flex flex-col gap-2 p-3 rounded-2xl bg-slate-100/60 dark:bg-white/[0.03] border border-slate-200/80 dark:border-white/[0.08] shadow-inner mt-1">
                 <div className="flex items-center justify-between px-0.5">
-                  <span className="text-[11px] font-black uppercase tracking-wider text-amber-300 font-heading">
-                    {activeCategoryData.name} › Subcategories
+                  <span className="text-[11px] font-heading font-black uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5">
+                    <span>{activeCategoryData.name}</span>
+                    <span className="text-slate-400 dark:text-slate-500 font-mono">›</span>
+                    <span className="text-slate-500 dark:text-slate-400 font-bold lowercase">subcategories</span>
                   </span>
                   {selectedSubcategory && (
                     <button
                       type="button"
                       onClick={() => onSelectSubcategory("")}
-                      className="text-amber-400 text-[10px] font-bold flex items-center gap-0.5 active:scale-95"
+                      className="text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white text-[10.5px] font-heading font-black flex items-center gap-0.5 active:scale-95 cursor-pointer"
                     >
                       Clear <X className="h-2.5 w-2.5" />
                     </button>
@@ -526,14 +520,14 @@ export const CategoryFilterComponent = ({
                   <button
                     type="button"
                     onClick={() => onSelectSubcategory("")}
-                    className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
+                    className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                       !selectedSubcategory
-                        ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 ring-1 ring-amber-300/30"
-                        : "bg-white/[0.05] text-amber-200/70 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
+                        ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-sm ring-1 ring-black/10 dark:ring-white"
+                        : "bg-slate-100/90 dark:bg-white/[0.06] text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.08]"
                     }`}
                   >
-                    <div className={`w-4.5 h-4.5 rounded-md flex items-center justify-center ${!selectedSubcategory ? "text-white" : "text-amber-400"}`}>
-                      <LayoutGrid className="h-3 w-3" />
+                    <div className={`w-3.5 h-3.5 rounded-md flex items-center justify-center ${!selectedSubcategory ? "text-white dark:text-slate-950" : "text-slate-500 dark:text-slate-400"}`}>
+                      <LayoutGrid className="h-2.5 w-2.5" />
                     </div>
                     All
                   </button>
@@ -545,13 +539,13 @@ export const CategoryFilterComponent = ({
                         key={`m-sub-${sub.id}`}
                         type="button"
                         onClick={() => onSelectSubcategory(isSelected ? "" : sub.id)}
-                        className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11px] font-extrabold whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
+                        className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                           isSelected
-                            ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/20 ring-1 ring-amber-300/30"
-                            : "bg-white/[0.05] text-amber-200/70 border border-white/[0.08] hover:bg-white/[0.08] hover:text-white"
+                            ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-sm ring-1 ring-black/10 dark:ring-white"
+                            : "bg-slate-100/90 dark:bg-white/[0.06] text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.08]"
                         }`}
                       >
-                        <SubIcon className={`h-3.5 w-3.5 ${isSelected ? "text-white" : "text-amber-400/80"}`} />
+                        <SubIcon className={`h-3 w-3 ${isSelected ? "text-white dark:text-slate-950" : "text-slate-500 dark:text-slate-400"}`} />
                         <span>{sub.name}</span>
                       </button>
                     );
@@ -560,6 +554,7 @@ export const CategoryFilterComponent = ({
               </div>
             )}
           </div>
+
         </div>
       </div>
 
@@ -730,7 +725,7 @@ export const CategoryFilterComponent = ({
                   value={categorySearch}
                   onChange={(e) => setCategorySearch(e.target.value)}
                   placeholder="Search categories & subcategories..."
-                  className="w-full pl-9 pr-9 py-2.5 rounded-2xl glass-well text-sm font-medium text-gray-900 dark:text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-primary/40 border border-white/80 dark:border-white/10 shadow-sm transition-all"
+                  className="w-full pl-9 pr-9 py-2.5 rounded-2xl bg-white dark:bg-[#121622] text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:border-slate-900 dark:focus:border-white shadow-xs transition-all"
                 />
                 {categorySearch && (
                   <button
@@ -748,9 +743,9 @@ export const CategoryFilterComponent = ({
 
           {/* Direct Matching Subcategory Instant Jump Bar */}
           {cleanQuery && directMatchingSubcategories.length > 0 && (
-            <div className="flex flex-col gap-2 p-3.5 rounded-2xl glass-panel border border-primary/30 bg-primary/10 shadow-sm">
+            <div className="flex flex-col gap-2 p-3.5 rounded-2xl bg-white dark:bg-[#0e121d] border border-slate-200/90 dark:border-white/15 shadow-sm">
               <div className="flex items-center justify-between">
-                <span className="text-[11px] font-extrabold uppercase tracking-wider text-primary flex items-center gap-1.5 font-heading">
+                <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5 font-heading">
                   <Sparkles className="h-3.5 w-3.5" />
                   Matching Subcategories ({directMatchingSubcategories.length}):
                 </span>
@@ -770,7 +765,7 @@ export const CategoryFilterComponent = ({
                       }}
                       className={`group flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-heading font-black text-xs whitespace-nowrap cursor-pointer active:scale-[0.97] transition-transform shrink-0 touch-target ${
                         isSubSelected
-                          ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white shadow-sm border border-orange-500"
+                          ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-sm border border-black/10 dark:border-white/20"
                           : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary hover:border-primary/50 shadow-sm"
                       }`}
                     >

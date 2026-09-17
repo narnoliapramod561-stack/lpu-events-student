@@ -5,7 +5,30 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <link rel="apple-touch-icon" href="/logo.jpeg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <meta name="theme-color" content="#06070a" />
+    <meta name="theme-color" content="#f7f9fc" />
+
+    <!-- Default Theme Initialization (Light Mode Default) -->
+    <script>
+      (function() {
+        try {
+          var initialized = localStorage.getItem('theme_initialized_v2');
+          if (!initialized) {
+            localStorage.setItem('theme_initialized_v2', 'true');
+            localStorage.setItem('theme', 'light');
+            document.documentElement.classList.remove('dark');
+            return;
+          }
+          var t = localStorage.getItem('theme');
+          if (t === 'dark') {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (e) {
+          document.documentElement.classList.remove('dark');
+        }
+      })();
+    </script>
     
     <!-- Preconnect & High-Performance Media/Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />

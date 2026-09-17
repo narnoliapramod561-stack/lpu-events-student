@@ -498,36 +498,23 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         </div>
       </div>
 
-      {/* Hero Banner Stage (Zero Zoom, All Poster Details Preserved, Ambient Color Extension) */}
-      <div className="w-full h-[280px] xs:h-[320px] sm:h-[420px] md:h-[480px] lg:h-[520px] overflow-hidden rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 relative glass-panel shadow-xl">
-        {/* Ambient Extended Backdrop: Fills entire stage with image's own colors (Zero Grey Space) */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <img
-            src={getEventImage(event, "event-banner", 1920)}
-            alt=""
-            aria-hidden="true"
-            className="w-full h-full object-cover blur-3xl scale-150 opacity-100"
-          />
-          <div className="absolute inset-0 bg-black/10 dark:bg-black/20 pointer-events-none" />
-        </div>
-
+      {/* Hero Banner Stage (Full Cover Stretched to fill the space like Paper Mâché) */}
+      <div className="w-full h-[280px] xs:h-[320px] sm:h-[420px] md:h-[480px] lg:h-[520px] overflow-hidden rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 relative glass-panel shadow-xl bg-slate-950">
         <ProgressiveImage
-          className="w-full h-full object-contain object-center relative z-10"
-          containerClassName="absolute inset-0 w-full h-full flex items-center justify-center"
+          className="w-full h-full object-fill object-center relative z-10"
+          containerClassName="absolute inset-0 w-full h-full"
           src={getEventImage(event, "event-banner", 1920)}
           alt={`${event.name} event banner — Lovely Professional University`}
           fetchPriority="high"
+          style={{ objectFit: "fill" }}
         />
       </div>
 
-      {/* Event Title & Organizer */}
-      <div className="mb-6 sm:mb-8">
-        <h1 className="font-heading font-black text-xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight text-gray-900 dark:text-white mb-2 break-safe">
+      {/* Event Title */}
+      <div className="mb-5 sm:mb-7">
+        <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight text-gray-900 dark:text-white break-safe">
           {event.name}
         </h1>
-        <p className="text-primary dark:text-[#ffb693] font-bold text-xs sm:text-base font-heading">
-          Organized by {event.organizations?.name || "LPU Organization"}
-        </p>
       </div>
 
       {/* Sponsored Spotlight 1 / AdSense */}
@@ -558,7 +545,14 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
       })()}
 
       {/* Event Schedule Details & QR Info Box */}
-      <div className="flex flex-col gap-4 mb-6 sm:mb-10">
+      <div className="flex flex-col gap-2.5 sm:gap-3 mb-6 sm:mb-10">
+        {/* Organizer Name directly above Date Box */}
+        <div className="px-1 flex items-center gap-2">
+          <p className="text-primary dark:text-[#ffb693] font-bold text-xs sm:text-sm md:text-base font-heading">
+            Organized by {event.organizations?.name || "LPU Organization"}
+          </p>
+        </div>
+
         <div className="relative glass-panel rounded-[16px] sm:rounded-[30px] hover:border-primary/40 transition-all duration-300 shadow-xl overflow-hidden">
           
           {/* Ambient Glow */}

@@ -25,8 +25,13 @@ export function getResponsiveImageUrl(url: string, targetWidth: number = 1080): 
     return base.replace('.webp', '_desktop.webp');
   }
 
-  // 2. Cloudflare R2 uploaded images only have canonical _desktop.webp files in storage.
-  // We keep the URL as-is so it does not 404.
+  // 2. Multi-slot responsive derivatives for Cloudflare R2
+  if (url.includes('_card.webp') && effectiveWidth <= 800) {
+    return url.replace('_card.webp', '_card_mobile.webp');
+  }
+  if (url.includes('_banner.webp') && effectiveWidth <= 960) {
+    return url.replace('_banner.webp', '_banner_mobile.webp');
+  }
 
   // 3. Unsplash HD Auto-Upscale & Clarity Tuning
   if (url.includes('images.unsplash.com')) {
@@ -45,6 +50,14 @@ export function getLowResPlaceholderUrl(url: string): string {
 
   if (url.startsWith('/defaults/events/')) {
     return url.replace(/(_desktop|_tablet|_mobile)?\.webp$/, '_mobile.webp');
+  }
+
+  if (url.includes('_card.webp')) {
+    return url.replace('_card.webp', '_card_mobile.webp');
+  }
+
+  if (url.includes('_banner.webp')) {
+    return url.replace('_banner.webp', '_banner_mobile.webp');
   }
 
   if (url.includes('images.unsplash.com')) {
@@ -91,4 +104,4 @@ export function getEventImageLowRes(
   return getLowResPlaceholderUrl(raw);
 }
 
-export { getOptimizedImage, getOptimizedImageSrcSet } from '@lpu-events/shared';
+export { getOptimizedImage, getOptimizedImageSrcSet, registerMediaAssets } from '@lpu-events/shared';

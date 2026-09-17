@@ -228,6 +228,71 @@ export function getStorageBaseUrl(_bucket?: string): string {
   return 'https://images.lpuevents.live';
 }
 
+// In-memory cache mapping media asset IDs or event IDs to their storage object_keys
+const MEDIA_KEY_CACHE = new Map<string, string>();
+const EVENT_MEDIA_KEY_CACHE = new Map<string, string>();
+const MEDIA_SLOT_CACHE = new Map<string, Record<string, string>>();
+
+/**
+ * Resolves a tailored slot derivative key (card, banner, thumb) from a media asset's metadata.
+ */
+export function resolveSlotFromMediaAsset(mediaAsset: any, context: ImageContext): string | null {
+  if (!mediaAsset) return null;
+  const slots = mediaAsset.metadata?.slots;
+  if (!slots || typeof slots !== 'object') return null;
+
+  if (context === 'event-card') {
+    return slots.card?.object_key || slots.card_mobile?.object_key || null;
+  }
+  if (context === 'event-banner' || context === 'hero') {
+    return slots.banner?.object_key || slots.banner_mobile?.object_key || null;
+  }
+  if (context === 'thumbnail') {
+    return slots.thumb?.object_key || null;
+  }
+  return null;
+}
+
+/**
+ * Register known media assets or event media into memory cache
+ * so subsequent lookups (like search results or partial records) resolve immediately.
+ */
+export function registerMediaAssets(
+  items: Array<{ id?: string; banner_media_id?: string; object_key?: string; media_assets?: any } | any>
+): void {
+  if (!Array.isArray(items)) return;
+  for (const item of items) {
+    if (!item) continue;
+    const mediaAsset = Array.isArray(item.media_assets)
+      ? item.media_assets[0]
+      : (item.media_assets || item.media_asset);
+    const objKey = item.object_key || mediaAsset?.object_key || item.banner_object_key;
+    if (objKey && typeof objKey === 'string') {
+      if (item.banner_media_id) {
+        MEDIA_KEY_CACHE.set(item.banner_media_id, objKey);
+      }
+      if (mediaAsset?.id) {
+        MEDIA_KEY_CACHE.set(mediaAsset.id, objKey);
+      }
+      if (item.id) {
+        MEDIA_KEY_CACHE.set(item.id, objKey);
+        EVENT_MEDIA_KEY_CACHE.set(item.id, objKey);
+      }
+    }
+
+    const slots = mediaAsset?.metadata?.slots;
+    if (slots && typeof slots === 'object') {
+      const slotMap: Record<string, string> = {};
+      for (const [k, v] of Object.entries(slots)) {
+        if ((v as any)?.object_key) slotMap[k] = (v as any).object_key;
+      }
+      if (item.banner_media_id) MEDIA_SLOT_CACHE.set(item.banner_media_id, slotMap);
+      if (mediaAsset?.id) MEDIA_SLOT_CACHE.set(mediaAsset.id, slotMap);
+      if (item.id) MEDIA_SLOT_CACHE.set(item.id, slotMap);
+    }
+  }
+}
+
 /**
  * Primary Centralized Image URL Resolver
  * Directly maps uploaded media assets from Cloudflare R2 CDN or Supabase Storage.
@@ -291,8 +356,12 @@ export function getOptimizedImage(
     : (source.media_assets || (Array.isArray(source.media_asset) ? source.media_asset[0] : source.media_asset));
 
   if (mediaAsset?.object_key) {
-    const key = mediaAsset.object_key;
+    const slotKey = resolveSlotFromMediaAsset(mediaAsset, context);
+    const key = slotKey || mediaAsset.object_key;
     const bucket = mediaAsset.bucket;
+    if (source.banner_media_id) MEDIA_KEY_CACHE.set(source.banner_media_id, mediaAsset.object_key);
+    if (source.id) EVENT_MEDIA_KEY_CACHE.set(source.id, mediaAsset.object_key);
+    if (mediaAsset.id) MEDIA_KEY_CACHE.set(mediaAsset.id, mediaAsset.object_key);
     if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
       return key;
     }
@@ -314,6 +383,39 @@ export function getOptimizedImage(
       return key;
     }
     return `${getStorageBaseUrl(bucket)}/${key.replace(/^\/+/, '')}`;
+  }
+
+  // 3b. Check registered slot & media key caches (e.g. for search results that omit full media_assets join)
+  if (source.banner_media_id && MEDIA_SLOT_CACHE.has(source.banner_media_id)) {
+    const slots = MEDIA_SLOT_CACHE.get(source.banner_media_id)!;
+    const slotKey = context === 'event-card' ? (slots.card || slots.card_mobile) : (context === 'event-banner' || context === 'hero') ? (slots.banner || slots.banner_mobile) : context === 'thumbnail' ? slots.thumb : null;
+    if (slotKey) {
+      return `${getStorageBaseUrl()}/${slotKey.replace(/^\/+/, '')}`;
+    }
+  }
+
+  if (source.id && MEDIA_SLOT_CACHE.has(source.id)) {
+    const slots = MEDIA_SLOT_CACHE.get(source.id)!;
+    const slotKey = context === 'event-card' ? (slots.card || slots.card_mobile) : (context === 'event-banner' || context === 'hero') ? (slots.banner || slots.banner_mobile) : context === 'thumbnail' ? slots.thumb : null;
+    if (slotKey) {
+      return `${getStorageBaseUrl()}/${slotKey.replace(/^\/+/, '')}`;
+    }
+  }
+
+  if (source.banner_media_id && MEDIA_KEY_CACHE.has(source.banner_media_id)) {
+    const key = MEDIA_KEY_CACHE.get(source.banner_media_id)!;
+    if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
+      return key;
+    }
+    return `${getStorageBaseUrl()}/${key.replace(/^\/+/, '')}`;
+  }
+
+  if (source.id && EVENT_MEDIA_KEY_CACHE.has(source.id)) {
+    const key = EVENT_MEDIA_KEY_CACHE.get(source.id)!;
+    if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
+      return key;
+    }
+    return `${getStorageBaseUrl()}/${key.replace(/^\/+/, '')}`;
   }
 
   // 4. Nested relation sources (Carousel Slide / Item)
@@ -368,7 +470,15 @@ export function getOptimizedImageSrcSet(
   let srcSet: string | undefined = undefined;
   let sizes: string | undefined = undefined;
 
-  if (baseSrc.includes('_desktop.webp')) {
+  if (baseSrc.includes('_card.webp')) {
+    const mobileSrc = baseSrc.replace('_card.webp', '_card_mobile.webp');
+    srcSet = `${mobileSrc} 800w, ${baseSrc} 1200w`;
+    sizes = `(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 1200px`;
+  } else if (baseSrc.includes('_banner.webp')) {
+    const mobileSrc = baseSrc.replace('_banner.webp', '_banner_mobile.webp');
+    srcSet = `${mobileSrc} 960w, ${baseSrc} 1920w`;
+    sizes = `(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 1920px`;
+  } else if (baseSrc.includes('_desktop.webp')) {
     const mobileSrc = baseSrc.replace('_desktop.webp', '_mobile.webp');
     const tabletSrc = baseSrc.replace('_desktop.webp', '_tablet.webp');
     srcSet = `${mobileSrc} 640w, ${tabletSrc} 1024w, ${baseSrc} ${config.maxWidth}w`;

@@ -44,25 +44,15 @@ export const EventCardComponent = ({
       onClick={() => onSelect(event.id, event.name)}
       className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-[20px] sm:rounded-[28px] shadow-md hover:shadow-2xl transition-all duration-300 border border-white/80 dark:border-white/10 hover:border-primary/50 relative hover:scale-[1.01] active:scale-[0.99]"
     >
-      {/* Event Cover Image (Zero Zoom, Uncropped 16:9 Banner Stage with Ambient Extended Canvas) */}
-      <div className="w-full aspect-[16/9] relative overflow-hidden shrink-0">
-        {/* Ambient Extended Backdrop: Fills sides with image colors for vertical/portrait posters (Zero Grey Space) */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <img
-            src={imageUrl}
-            alt=""
-            aria-hidden="true"
-            className="w-full h-full object-cover blur-3xl scale-150 opacity-100"
-          />
-          <div className="absolute inset-0 bg-black/10 dark:bg-black/20 pointer-events-none" />
-        </div>
-
+      {/* Event Cover Image (Native 16:9 Slot Presentation - Stretched Full Cover) */}
+      <div className="w-full aspect-[16/9] relative overflow-hidden shrink-0 bg-slate-950">
         <ProgressiveImage
           src={imageUrl}
           alt={event.name}
           loading="lazy"
-          containerClassName="absolute inset-0 w-full h-full flex items-center justify-center"
-          className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-500 ease-out relative z-10"
+          containerClassName="absolute inset-0 w-full h-full"
+          className="w-full h-full object-fill object-center group-hover:scale-105 transition-transform duration-500 ease-out relative z-10"
+          style={{ objectFit: "fill" }}
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none z-10" />
 

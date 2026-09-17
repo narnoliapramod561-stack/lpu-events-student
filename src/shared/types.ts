@@ -263,6 +263,11 @@ export interface EventFeedItem {
   external_registration_url?: string | null;
   registration_format?: 'INDIVIDUAL' | 'TEAM' | null;
   banner_media_id: string | null;
+  media_assets?: {
+    id: string;
+    object_key: string;
+    bucket?: string;
+  } | null;
   status?: EventStatus;
   deleted_at?: string | null;
   organizations: {

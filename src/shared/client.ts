@@ -19,6 +19,7 @@ import {
 } from './types';
 import { slugify } from './slug';
 import { persistentCache } from './persistentCache';
+import { registerMediaAssets } from './images/url';
 
 interface MemoryCacheEntry<T> {
   data: T;
@@ -354,16 +355,39 @@ export class LpuEventsClient {
     return this._fetchWithCache<HomepageBundleData>(cacheKey, 60_000, async () => {
       if (forceFresh || isLocalhost) {
         const sbBundle = await this._fetchHomepageBundleFromSupabase();
-        if (sbBundle) return { data: sbBundle, error: null };
+        if (sbBundle) {
+          registerMediaAssets([
+            ...(sbBundle.events || []),
+            ...(sbBundle.featured || []).map((f: any) => f.events || f),
+            ...(sbBundle.trending || []),
+            ...(sbBundle.carousel || []).map((c: any) => c.events || c),
+          ]);
+          return { data: sbBundle, error: null };
+        }
       }
 
       const edgeRes = await this._fetchPublic<HomepageBundleData>('homepage');
       if (edgeRes.data && !edgeRes.error) {
+        const b = edgeRes.data;
+        registerMediaAssets([
+          ...(b.events || []),
+          ...(b.featured || []).map((f: any) => f.events || f),
+          ...(b.trending || []),
+          ...(b.carousel || []).map((c: any) => c.events || c),
+        ]);
         return edgeRes;
       }
 
       const sbBundle = await this._fetchHomepageBundleFromSupabase();
-      if (sbBundle) return { data: sbBundle, error: null };
+      if (sbBundle) {
+        registerMediaAssets([
+          ...(sbBundle.events || []),
+          ...(sbBundle.featured || []).map((f: any) => f.events || f),
+          ...(sbBundle.trending || []),
+          ...(sbBundle.carousel || []).map((c: any) => c.events || c),
+        ]);
+        return { data: sbBundle, error: null };
+      }
 
       return edgeRes;
     });
@@ -522,11 +546,15 @@ export class LpuEventsClient {
 
       const edgeRes = await this._fetchPublic<EventFeedItem[]>(`events?${edgeQueryParams.toString()}`);
       if (edgeRes.data && Array.isArray(edgeRes.data) && !edgeRes.error) {
+        registerMediaAssets(edgeRes.data);
         return edgeRes;
       }
 
       const sbEvents = await this._fetchEventFeedFromSupabase(filters);
-      if (sbEvents) return { data: sbEvents, error: null };
+      if (sbEvents) {
+        registerMediaAssets(sbEvents);
+        return { data: sbEvents, error: null };
+      }
 
       return edgeRes;
     });
@@ -563,7 +591,7 @@ export class LpuEventsClient {
 
     const cacheKey = `public:search:${cleanQuery}:${categoryId || ''}:${subcategoryId || ''}:${pricingType || ''}:${limit}:${offset}:${eventNameOnly}`;
 
-    return this._fetchWithCache<EventFeedItem[]>(cacheKey, 60_000, () => {
+    return this._fetchWithCache<EventFeedItem[]>(cacheKey, 60_000, async () => {
       const edgeQueryParams = new URLSearchParams();
       edgeQueryParams.set('q', cleanQuery);
       if (categoryId) edgeQueryParams.set('category_id', categoryId);
@@ -573,7 +601,39 @@ export class LpuEventsClient {
       edgeQueryParams.set('offset', String(offset));
       if (eventNameOnly) edgeQueryParams.set('event_name_only', 'true');
 
-      return this._fetchPublic<EventFeedItem[]>(`search?${edgeQueryParams.toString()}`);
+      const res = await this._fetchPublic<EventFeedItem[]>(`search?${edgeQueryParams.toString()}`);
+      if (res.data && Array.isArray(res.data) && res.data.length > 0) {
+        const events = res.data;
+        const missingMediaIds = [...new Set(
+          events
+            .filter((e: any) => e.banner_media_id && (!e.media_assets || !e.media_assets.object_key))
+            .map((e: any) => e.banner_media_id)
+        )];
+
+        if (missingMediaIds.length > 0) {
+          try {
+            const { data: mediaRows } = await this.supabase
+              .from('media_assets')
+              .select('id, object_key')
+              .in('id', missingMediaIds);
+
+            if (mediaRows && Array.isArray(mediaRows)) {
+              const mediaMap = new Map((mediaRows as any[]).map(m => [m.id, m]));
+              for (const evt of events as any[]) {
+                if (evt.banner_media_id && (!evt.media_assets || !evt.media_assets.object_key) && mediaMap.has(evt.banner_media_id)) {
+                  evt.media_assets = mediaMap.get(evt.banner_media_id);
+                }
+              }
+              registerMediaAssets(mediaRows);
+            }
+          } catch (mErr) {
+            console.warn('Failed to hydrate search media assets:', mErr);
+          }
+        }
+        registerMediaAssets(events);
+      }
+
+      return res;
     });
   }
 

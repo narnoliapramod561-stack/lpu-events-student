@@ -82,6 +82,8 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
 
   const bgClass = containerClassName.includes("bg-") ? "" : "bg-slate-900/40";
   const isContain = className.includes("object-contain");
+  const isFill = className.includes("object-fill") || Boolean(style && (style as any).objectFit === "fill");
+  const placeholderFit = isFill ? "object-fill" : isContain ? "object-contain" : "object-cover";
 
   return (
     <div className={`${containerClassName} ${aspectRatioClass} ${bgClass}`}>
@@ -95,9 +97,8 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
             // Silently suppress placeholder errors without triggering heavy asset downloads
             e.currentTarget.style.display = "none";
           }}
-          className={`absolute inset-0 w-full h-full ${
-            isContain ? "object-contain" : "object-cover"
-          } filter blur-md transition-opacity duration-500 ease-out opacity-100`}
+          className={`absolute inset-0 w-full h-full ${placeholderFit} filter blur-md transition-opacity duration-500 ease-out opacity-100`}
+          style={isFill ? { objectFit: "fill" } : undefined}
         />
       )}
 
@@ -120,6 +121,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
         }`}
         style={{
           imageRendering: "-webkit-optimize-contrast",
+          ...(isFill ? { objectFit: "fill" } : {}),
           ...style,
         }}
         {...rest}
