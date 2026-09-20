@@ -76,14 +76,6 @@
       interactionEvents.forEach(function(e) {
         window.addEventListener(e, loadAnalytics, { passive: true, once: true });
       });
-
-      if ('requestIdleCallback' in window) {
-        window.requestIdleCallback(function() {
-          setTimeout(loadAnalytics, 3500);
-        });
-      } else {
-        setTimeout(loadAnalytics, 3500);
-      }
     </script>
 
     <!-- Primary SEO Metadata -->

@@ -59,19 +59,6 @@ export class LpuEventsClient {
       window.addEventListener('lpu:cache-invalidated', () => {
         this.invalidateClientCache();
       });
-
-      // Realtime cross-origin cache invalidation channel
-      try {
-        this.supabase
-          .channel('public:events-sync')
-          .on('broadcast', { event: 'cache-bust' }, (payload) => {
-            this.invalidateClientCache();
-            window.dispatchEvent(new CustomEvent('lpu:cache-invalidated', { detail: payload?.payload || payload }));
-          })
-          .subscribe();
-      } catch {
-        // Non-blocking
-      }
     }
   }
 
@@ -760,18 +747,6 @@ export class LpuEventsClient {
       try {
         localStorage.setItem('lpu_cache_bust', String(Date.now()));
         window.dispatchEvent(new CustomEvent('lpu:cache-invalidated', { detail: { tags } }));
-
-        // 1. Broadcast via Supabase Realtime across all origins, browsers, and tabs
-        try {
-          const syncChan = this.supabase.channel('public:events-sync');
-          syncChan.send({
-            type: 'broadcast',
-            event: 'cache-bust',
-            payload: { tags, timestamp: Date.now() },
-          });
-        } catch {
-          // Non-blocking
-        }
 
         let secret = '';
         try {

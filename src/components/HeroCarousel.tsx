@@ -195,6 +195,23 @@ export const HeroCarouselComponent = ({
       }));
     }
 
+    if (baseSlides.length === 0) {
+      baseSlides = [{
+        id: "lpu-hero-default",
+        type: "event",
+        title: "Discover Campus Events, Clubs & Festivities",
+        description: "Explore tech hackathons, cultural nights, conferences, workshops, and student community gatherings happening across Lovely Professional University.",
+        image: "",
+        category: "Campus Life",
+        date: "Upcoming",
+        time: "All Semesters",
+        venue: "Lovely Professional University",
+        organizer: "LPU Student Affairs",
+        ctaText: "Explore Events",
+        duration: 5000,
+      }];
+    }
+
     // Configurable Ad Injection
     const heroAdConfig = adSystemConfig?.placements?.hero_carousel || {
       enabled: true,
@@ -400,7 +417,14 @@ export const HeroCarouselComponent = ({
                       style={{ objectFit: "fill" }}
                     />
                   ) : (
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950" />
+                    <div className="absolute inset-0 bg-gradient-to-br from-orange-950/80 via-slate-900 to-indigo-950 flex flex-col justify-center items-center px-4 text-center pb-12">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-full font-heading text-[10px] font-black uppercase tracking-wider mb-2">
+                        Campus Events &amp; Festivities
+                      </span>
+                      <h1 className="text-xl min-[390px]:text-2xl font-black text-white font-heading leading-tight tracking-tight max-w-xs drop-shadow-md">
+                        {currentSlide.title}
+                      </h1>
+                    </div>
                   )}
 
                   {/* Subtle bottom gradient only behind the floating pill */}

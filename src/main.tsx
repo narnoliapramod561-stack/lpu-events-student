@@ -2,36 +2,56 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
-import { initPostHog, initClarity, initSentry } from '@lpu-events/shared';
 import './index.css';
 
-// Non-blocking telemetry (Sentry, PostHog, Clarity) deferred to idle thread after initial interactive paint
-const initDeferredTelemetry = () => {
-  initSentry({
-    dsn: import.meta.env.VITE_SENTRY_DSN,
-    environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || 'development',
-    release: import.meta.env.VITE_SENTRY_RELEASE || '1.0.0',
-    app: 'student'
-  });
+// Non-blocking telemetry (Sentry, PostHog, Clarity) loaded dynamically on first user interaction
+let telemetryLoaded = false;
+const initDeferredTelemetry = async () => {
+  if (telemetryLoaded) return;
+  telemetryLoaded = true;
 
-  initPostHog({
-    apiKey: import.meta.env.VITE_POSTHOG_KEY,
-    apiHost: import.meta.env.VITE_POSTHOG_HOST,
-    app: 'student',
-    environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || 'development'
-  });
+  try {
+    const { initSentry, initPostHog, initClarity } = await import('./shared/telemetry');
+    initSentry({
+      dsn: import.meta.env.VITE_SENTRY_DSN,
+      environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || 'development',
+      release: import.meta.env.VITE_SENTRY_RELEASE || '1.0.0',
+      app: 'student'
+    });
 
-  initClarity({
-    projectId: import.meta.env.VITE_CLARITY_PROJECT_ID
-  });
+    initPostHog({
+      apiKey: import.meta.env.VITE_POSTHOG_KEY,
+      apiHost: import.meta.env.VITE_POSTHOG_HOST,
+      app: 'student',
+      environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || 'development'
+    });
+
+    initClarity({
+      projectId: import.meta.env.VITE_CLARITY_PROJECT_ID
+    });
+  } catch {
+    // Non-blocking telemetry failure
+  }
 };
 
 if (typeof window !== 'undefined') {
-  if ('requestIdleCallback' in window) {
-    (window as any).requestIdleCallback(initDeferredTelemetry, { timeout: 3500 });
-  } else {
-    setTimeout(initDeferredTelemetry, 3000);
-  }
+  const triggerTelemetry = () => {
+    ['pointerdown', 'touchstart', 'scroll', 'keydown'].forEach((e) => {
+      window.removeEventListener(e, triggerTelemetry);
+    });
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(initDeferredTelemetry);
+    } else {
+      setTimeout(initDeferredTelemetry, 100);
+    }
+  };
+
+  ['pointerdown', 'touchstart', 'scroll', 'keydown'].forEach((e) => {
+    window.addEventListener(e, triggerTelemetry, { once: true, passive: true });
+  });
+
+  window.addEventListener('error', initDeferredTelemetry, { once: true });
+  window.addEventListener('unhandledrejection', initDeferredTelemetry, { once: true });
 }
 
 // Configure Google Search Console verification token if provided in environment

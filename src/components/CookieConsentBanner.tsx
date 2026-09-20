@@ -13,13 +13,12 @@ export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({ onNavi
     try {
       const consent = localStorage.getItem("lpu_cookie_consent_v1");
       if (!consent) {
-        // Show after user scroll or after an idle 3.5s delay so it doesn't steal LCP from hero content
+        // Show after user interaction (scroll, click, touch) so it never blocks or hijacks initial render/LCP
         const show = () => setIsVisible(true);
-        const timer = setTimeout(show, 3500);
-        window.addEventListener('scroll', show, { once: true, passive: true });
+        const events = ['scroll', 'pointerdown', 'touchstart'];
+        events.forEach(e => window.addEventListener(e, show, { once: true, passive: true }));
         return () => {
-          clearTimeout(timer);
-          window.removeEventListener('scroll', show);
+          events.forEach(e => window.removeEventListener(e, show));
         };
       }
     } catch {

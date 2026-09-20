@@ -655,15 +655,27 @@ export default function App() {
           el.remove();
         });
       } else {
-        // Re-inject AdSense script if it's not already present
-        const hasScript = document.querySelector(`script[src*="pagead2.googlesyndication.com"]`);
-        if (!hasScript) {
-          const script = document.createElement('script');
-          script.async = true;
-          script.src = adsenseScriptSrc;
-          script.crossOrigin = 'anonymous';
-          document.head.appendChild(script);
-        }
+        // Re-inject AdSense script on user interaction if enabled
+        const injectScript = () => {
+          const hasScript = document.querySelector(`script[src*="pagead2.googlesyndication.com"]`);
+          if (!hasScript) {
+            const script = document.createElement('script');
+            script.async = true;
+            script.src = adsenseScriptSrc;
+            script.crossOrigin = 'anonymous';
+            document.head.appendChild(script);
+          }
+        };
+
+        const events = ['scroll', 'pointerdown', 'touchstart', 'keydown'];
+        const onInteract = () => {
+          events.forEach(e => window.removeEventListener(e, onInteract));
+          injectScript();
+        };
+        events.forEach(e => window.addEventListener(e, onInteract, { once: true, passive: true }));
+        return () => {
+          events.forEach(e => window.removeEventListener(e, onInteract));
+        };
       }
     }, [adSystemConfig.global_enabled, adSystemConfig?.adsense?.publisher_id]);
 
