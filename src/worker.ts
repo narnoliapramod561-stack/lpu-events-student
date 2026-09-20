@@ -1839,6 +1839,26 @@ async function handleEventPageSeo(
 async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
   const indexHtml = await fetchIndexHtml(env, origin);
 
+  // Dynamic edge discovery of top hero image to eliminate client render delay on Desktop & Mobile
+  let heroImageUrl = '';
+  let heroTitle = '';
+  try {
+    const carouselRes = await fetchFromSupabase(
+      `carousel_items?select=${encodeURIComponent(PROJECTIONS.carousel)}&is_active=eq.true&order=sort_order.asc&limit=1`,
+      'GET', undefined, env
+    );
+    if (carouselRes.ok && Array.isArray(carouselRes.data) && carouselRes.data[0]) {
+      const item = carouselRes.data[0];
+      if (item.item_type === 'EVENT' && item.events) {
+        heroImageUrl = getEventImageUrl(item.events);
+        heroTitle = item.custom_title?.trim() || item.events.name || '';
+      } else if (item.item_type === 'MEDIA' && item.media_assets) {
+        heroImageUrl = getEventImageUrl(item);
+        heroTitle = item.custom_title?.trim() || '';
+      }
+    }
+  } catch {}
+
   const websiteJsonLd = safeJsonLd({
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -1876,8 +1896,27 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
       element(el: CFElement) {
         el.append(`<script type="application/ld+json">${websiteJsonLd}</script>`, { html: true });
         el.append(`<script type="application/ld+json">${orgJsonLd}</script>`, { html: true });
+        if (heroImageUrl) {
+          el.append(`<link rel="preload" as="image" href="${escapeHtml(heroImageUrl)}" fetchpriority="high" />`, { html: true });
+        }
       },
     });
+
+  if (heroImageUrl) {
+    rewriter.on('picture source[srcset*="general_default"]', {
+      element(el: CFElement) {
+        el.setAttribute('srcset', heroImageUrl);
+      }
+    });
+    rewriter.on('picture img[src*="general_default"]', {
+      element(el: CFElement) {
+        el.setAttribute('src', heroImageUrl);
+        if (heroTitle) {
+          el.setAttribute('alt', heroTitle);
+        }
+      }
+    });
+  }
 
   const rewritten = rewriter.transform(indexHtml);
   return new Response(rewritten.body, {
