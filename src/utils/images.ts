@@ -31,26 +31,7 @@ export function getResponsiveImageUrl(url: string, targetWidth?: number): string
     return base.replace('.webp', '_desktop.webp');
   }
 
-  // 2. Cloudflare R2 responsive derivatives (_desktop.webp -> _mobile.webp / _tablet.webp)
-  if (url.includes('_desktop.webp')) {
-    if (effectiveWidth <= 640 || (isClient && screenWidth <= 640)) {
-      return url.replace('_desktop.webp', '_mobile.webp');
-    }
-    if (effectiveWidth <= 1100 || (isClient && screenWidth <= 1024)) {
-      return url.replace('_desktop.webp', '_tablet.webp');
-    }
-    return url;
-  }
-
-  // Multi-slot responsive derivatives for Cloudflare R2 legacy naming
-  if (url.includes('_card.webp') && (effectiveWidth <= 800 || (isClient && screenWidth <= 640))) {
-    return url.replace('_card.webp', '_card_mobile.webp');
-  }
-  if (url.includes('_banner.webp') && (effectiveWidth <= 960 || (isClient && screenWidth <= 640))) {
-    return url.replace('_banner.webp', '_banner_mobile.webp');
-  }
-
-  // 3. Unsplash HD Auto-Upscale & Clarity Tuning
+  // 2. Unsplash HD Auto-Upscale & Clarity Tuning
   if (url.includes('images.unsplash.com')) {
     const cleanUrl = url.split('?')[0];
     return `${cleanUrl}?auto=format&fit=crop&w=${Math.max(effectiveWidth, 640)}&q=88&dpr=${dpr >= 2 ? '2' : '1'}`;
@@ -67,18 +48,6 @@ export function getLowResPlaceholderUrl(url: string): string {
 
   if (url.startsWith('/defaults/events/')) {
     return url.replace(/(_desktop|_tablet|_mobile)?\.webp$/, '_mobile.webp');
-  }
-
-  if (url.includes('_desktop.webp')) {
-    return url.replace('_desktop.webp', '_mobile.webp');
-  }
-
-  if (url.includes('_card.webp')) {
-    return url.replace('_card.webp', '_card_mobile.webp');
-  }
-
-  if (url.includes('_banner.webp')) {
-    return url.replace('_banner.webp', '_banner_mobile.webp');
   }
 
   if (url.includes('images.unsplash.com')) {

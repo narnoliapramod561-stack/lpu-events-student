@@ -29,7 +29,10 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
   style,
   ...rest
 }) => {
-  const defaultFallback = fallbackSrc !== undefined ? fallbackSrc : '/defaults/events/general_default_tablet.webp';
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 640;
+  const defaultFallback = fallbackSrc !== undefined 
+    ? fallbackSrc 
+    : (isMobile ? '/defaults/events/general_default_mobile.webp' : '/defaults/events/general_default_tablet.webp');
   const isEager = loading === "eager";
   const isCached = loadedHdImageCache.has(src) || isEager;
   const [isHdLoaded, setIsHdLoaded] = useState<boolean>(isCached);
