@@ -6,37 +6,54 @@ export const EVENT_MOCK_IMAGES: Record<string, string> = EVENT_MOCK_FALLBACK_IMA
  * Free-Tier Cloudflare CDN & High-DPI Image Optimization Pipeline
  * Delivers razor-sharp Retina/4K clarity with zero bandwidth bloat.
  */
-export function getResponsiveImageUrl(url: string, targetWidth: number = 1080): string {
+export function getResponsiveImageUrl(url: string, targetWidth?: number): string {
   if (!url || typeof url !== 'string') return url;
 
-  // Detect Retina / High-DPI screens for crystal crispness
-  const dpr = typeof window !== 'undefined' ? Math.min(window.devicePixelRatio || 2, 3) : 2;
-  const effectiveWidth = Math.round(targetWidth * (dpr >= 1.5 ? 1.5 : 1.0));
+  // Detect Retina / High-DPI screens and client screen width
+  const isClient = typeof window !== 'undefined';
+  const screenWidth = isClient ? window.innerWidth : 1200;
+  const dpr = isClient ? Math.min(window.devicePixelRatio || 2, 3) : 2;
+
+  // Constrain target width by actual device screen width on client to avoid over-fetching
+  const baseTarget = targetWidth ?? (isClient ? Math.min(screenWidth, 1200) : 1080);
+  const effectiveScreenTarget = isClient && screenWidth <= 640 ? Math.min(baseTarget, screenWidth) : baseTarget;
+  const effectiveWidth = Math.round(effectiveScreenTarget * (dpr >= 1.5 ? 1.5 : 1.0));
 
   // 1. Local default event images have mobile/tablet/desktop variants
   if (url.startsWith('/defaults/events/')) {
     const base = url.replace(/(_desktop|_tablet|_mobile)\.webp$/, '.webp');
-    if (effectiveWidth <= 640) {
+    if (effectiveWidth <= 640 || (isClient && screenWidth <= 640)) {
       return base.replace('.webp', '_mobile.webp');
     }
-    if (effectiveWidth <= 1200) {
+    if (effectiveWidth <= 1200 || (isClient && screenWidth <= 1024)) {
       return base.replace('.webp', '_tablet.webp');
     }
     return base.replace('.webp', '_desktop.webp');
   }
 
-  // 2. Multi-slot responsive derivatives for Cloudflare R2
-  if (url.includes('_card.webp') && effectiveWidth <= 800) {
+  // 2. Cloudflare R2 responsive derivatives (_desktop.webp -> _mobile.webp / _tablet.webp)
+  if (url.includes('_desktop.webp')) {
+    if (effectiveWidth <= 640 || (isClient && screenWidth <= 640)) {
+      return url.replace('_desktop.webp', '_mobile.webp');
+    }
+    if (effectiveWidth <= 1100 || (isClient && screenWidth <= 1024)) {
+      return url.replace('_desktop.webp', '_tablet.webp');
+    }
+    return url;
+  }
+
+  // Multi-slot responsive derivatives for Cloudflare R2 legacy naming
+  if (url.includes('_card.webp') && (effectiveWidth <= 800 || (isClient && screenWidth <= 640))) {
     return url.replace('_card.webp', '_card_mobile.webp');
   }
-  if (url.includes('_banner.webp') && effectiveWidth <= 960) {
+  if (url.includes('_banner.webp') && (effectiveWidth <= 960 || (isClient && screenWidth <= 640))) {
     return url.replace('_banner.webp', '_banner_mobile.webp');
   }
 
   // 3. Unsplash HD Auto-Upscale & Clarity Tuning
   if (url.includes('images.unsplash.com')) {
     const cleanUrl = url.split('?')[0];
-    return `${cleanUrl}?auto=format&fit=crop&w=${Math.max(effectiveWidth, 960)}&q=88&dpr=${dpr >= 2 ? '2' : '1'}`;
+    return `${cleanUrl}?auto=format&fit=crop&w=${Math.max(effectiveWidth, 640)}&q=88&dpr=${dpr >= 2 ? '2' : '1'}`;
   }
 
   return url;
@@ -50,6 +67,10 @@ export function getLowResPlaceholderUrl(url: string): string {
 
   if (url.startsWith('/defaults/events/')) {
     return url.replace(/(_desktop|_tablet|_mobile)?\.webp$/, '_mobile.webp');
+  }
+
+  if (url.includes('_desktop.webp')) {
+    return url.replace('_desktop.webp', '_mobile.webp');
   }
 
   if (url.includes('_card.webp')) {
@@ -79,14 +100,14 @@ export function getEventImage(
   const raw = sharedGetOptimizedImage(event, context);
   
   const defaultWidths: Record<ImageContext, number> = {
-    hero: 1920,
-    'event-banner': 1440,
-    'event-card': 960,
-    advertisement: 1280,
-    memory: 1440,
+    hero: 1440,
+    'event-banner': 1200,
+    'event-card': 640,
+    advertisement: 1080,
+    memory: 1200,
     thumbnail: 400,
     'sponsor-logo': 600,
-    'admin-preview': 1280,
+    'admin-preview': 1080,
   };
 
   const targetWidth = maxWidth ?? (defaultWidths[context] || 1080);

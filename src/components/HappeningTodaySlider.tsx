@@ -306,7 +306,7 @@ export const HappeningTodaySliderComponent = ({
           <button
             type="button"
             onClick={() => setIsAllTodayModalOpen(true)}
-            className="md:hidden inline-flex items-center gap-1.5 text-orange-600 dark:text-orange-400 font-heading font-black text-xs hover:text-orange-700 dark:hover:text-orange-300 transition-colors cursor-pointer px-3 py-1.5 rounded-full bg-orange-500/10 hover:bg-orange-500/20 active:scale-95 border border-orange-500/20"
+            className="md:hidden inline-flex items-center gap-1.5 text-orange-700 dark:text-orange-300 font-heading font-black text-xs hover:text-orange-800 dark:hover:text-orange-200 transition-colors cursor-pointer px-3 py-1.5 rounded-full bg-orange-500/10 hover:bg-orange-500/20 active:scale-95 border border-orange-500/20"
           >
             <span>View All</span>
             <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-orange-500/20 text-orange-700 dark:text-orange-300">
@@ -320,7 +320,7 @@ export const HappeningTodaySliderComponent = ({
             <button
               type="button"
               onClick={() => setIsAllTodayModalOpen(true)}
-              className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-orange-500/10 hover:bg-orange-500/20 text-orange-600 dark:text-orange-400 font-heading font-bold text-xs border border-orange-500/25 transition-all cursor-pointer mr-1 active:scale-95"
+              className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-orange-500/10 hover:bg-orange-500/20 text-orange-700 dark:text-orange-300 font-heading font-bold text-xs border border-orange-500/25 transition-all cursor-pointer mr-1 active:scale-95"
             >
               <span>View All Today</span>
               <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-orange-500/20">
@@ -398,15 +398,14 @@ export const HappeningTodaySliderComponent = ({
             >
               {/* Uniform Crisp Banner Stage (Zero Zoom, Full Visibility) */}
               <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 bg-slate-900">
-                {/* Full Cover Stretched Banner (Paper Mâché Edge-to-Edge Feel) */}
+                {/* Full Cover Slide Banner */}
                 {slide.image ? (
                   <ProgressiveImage
                     src={slide.image}
                     alt={slide.title}
                     loading={idx < 3 ? "eager" : "lazy"}
                     containerClassName="absolute inset-0 w-full h-full"
-                    className="w-full h-full object-fill object-center relative z-10"
-                    style={{ objectFit: "fill" }}
+                    className="w-full h-full object-cover object-center relative z-10"
                   />
                 ) : (
                   <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 flex flex-col items-center justify-center p-4">
@@ -478,7 +477,7 @@ export const HappeningTodaySliderComponent = ({
                   </div>
 
                   {/* Tactile View Action */}
-                  <span className="inline-flex items-center gap-1 font-heading font-black text-xs text-orange-600 dark:text-orange-400 group-hover:translate-x-0.5 transition-transform shrink-0 ml-auto">
+                  <span className="inline-flex items-center gap-1 font-heading font-black text-xs text-orange-700 dark:text-orange-300 group-hover:translate-x-0.5 transition-transform shrink-0 ml-auto">
                     <span>{slide.type === "ad" ? "Learn More" : "View"}</span>
                     <ArrowRight className="w-3.5 h-3.5" />
                   </span>
@@ -496,10 +495,10 @@ export const HappeningTodaySliderComponent = ({
           >
             {/* Visual Header matching 16:9 banner */}
             <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 flex flex-col items-center justify-center bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-orange-600/20">
-              <div className="w-14 h-14 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center mb-2 group-hover:scale-110 group-active:scale-95 transition-transform shadow-inner text-orange-600 dark:text-orange-400">
+              <div className="w-14 h-14 rounded-full bg-orange-500/20 border border-orange-500/40 flex items-center justify-center mb-2 group-hover:scale-110 group-active:scale-95 transition-transform shadow-inner text-orange-700 dark:text-orange-300">
                 <ArrowRight className="w-6 h-6" />
               </div>
-              <span className="text-sm font-heading font-black text-orange-600 dark:text-orange-400 uppercase tracking-wider">
+              <span className="text-sm font-heading font-black text-orange-700 dark:text-orange-300 uppercase tracking-wider">
                 Explore All Today
               </span>
               <span className="text-xs text-gray-600 dark:text-gray-300 font-semibold mt-0.5">
@@ -517,7 +516,7 @@ export const HappeningTodaySliderComponent = ({
                   Tap to view complete list
                 </p>
               </div>
-              <span className="inline-flex items-center gap-1 font-heading font-black text-xs text-orange-600 dark:text-orange-400 group-hover:translate-x-1 transition-transform">
+              <span className="inline-flex items-center gap-1 font-heading font-black text-xs text-orange-700 dark:text-orange-300 group-hover:translate-x-1 transition-transform">
                 <span>View All</span>
                 <ArrowRight className="w-3.5 h-3.5" />
               </span>
@@ -580,8 +579,7 @@ export const HappeningTodaySliderComponent = ({
                         alt={currentSlide.title}
                         loading="lazy"
                         containerClassName="absolute inset-0 w-full h-full"
-                        className="w-full h-full object-fill object-center group-hover:scale-105 transition-transform duration-700 ease-out relative z-10"
-                        style={{ objectFit: "fill" }}
+                        className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out relative z-10"
                       />
                     </div>
                   ) : (
@@ -638,7 +636,7 @@ export const HappeningTodaySliderComponent = ({
                         {/* Date */}
                         {currentSlide.date && (
                           <div className="flex items-center gap-3.5 text-gray-900 dark:text-white font-heading font-black text-base md:text-lg">
-                            <div className="w-8 h-8 rounded-full bg-orange-500/15 border border-orange-300/40 dark:border-transparent flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-orange-500/15 border border-orange-300/40 dark:border-transparent flex items-center justify-center text-orange-700 dark:text-orange-300 shrink-0">
                               <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
                             </div>
                             <span className="tracking-wide truncate">{currentSlide.date}</span>
@@ -648,7 +646,7 @@ export const HappeningTodaySliderComponent = ({
                         {/* Time */}
                         {currentSlide.time && (
                           <div className="flex items-center gap-3.5 text-gray-900 dark:text-white font-heading font-black text-base md:text-lg">
-                            <div className="w-8 h-8 rounded-full bg-orange-500/15 border border-orange-300/40 dark:border-transparent flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-orange-500/15 border border-orange-300/40 dark:border-transparent flex items-center justify-center text-orange-700 dark:text-orange-300 shrink-0">
                               <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
                             </div>
                             <span className="tracking-wide truncate">{currentSlide.time}</span>
@@ -658,7 +656,7 @@ export const HappeningTodaySliderComponent = ({
                         {/* Venue */}
                         {currentSlide.venue && (
                           <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300 font-semibold text-sm md:text-base">
-                            <div className="w-8 h-8 rounded-full bg-orange-500/15 border border-orange-300/40 dark:border-transparent flex items-center justify-center text-orange-600 dark:text-orange-400 shrink-0">
+                            <div className="w-8 h-8 rounded-full bg-orange-500/15 border border-orange-300/40 dark:border-transparent flex items-center justify-center text-orange-700 dark:text-orange-300 shrink-0">
                               <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-primary shrink-0" />
                             </div>
                             <span className="truncate">{currentSlide.venue}</span>
@@ -798,7 +796,7 @@ export const HappeningTodaySliderComponent = ({
               {/* Header */}
               <div className="flex items-center justify-between px-5 sm:px-6 pt-4 pb-3.5 border-b border-black/[0.06] dark:border-white/10 shrink-0">
                 <div className="flex items-center gap-3">
-                  <div className="p-2 sm:p-2.5 rounded-xl bg-orange-500/15 text-orange-600 dark:text-orange-400 border border-orange-500/25 shadow-xs">
+                  <div className="p-2 sm:p-2.5 rounded-xl bg-orange-500/15 text-orange-700 dark:text-orange-300 border border-orange-500/25 shadow-xs">
                     <CalendarDays className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
                   <div>
@@ -806,7 +804,7 @@ export const HappeningTodaySliderComponent = ({
                       <h3 id="today-modal-title" className="font-heading font-black text-lg sm:text-xl text-gray-950 dark:text-white tracking-tight">
                         Today's Events Schedule
                       </h3>
-                      <span className="px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-600 dark:text-orange-400 font-mono font-bold text-xs border border-orange-500/20">
+                      <span className="px-2 py-0.5 rounded-full bg-orange-500/15 text-orange-700 dark:text-orange-300 font-mono font-bold text-xs border border-orange-500/20">
                         {events.length} {events.length === 1 ? "Event" : "Events"}
                       </span>
                     </div>
@@ -877,7 +875,7 @@ export const HappeningTodaySliderComponent = ({
                         <div className="flex-1 min-w-0 flex flex-col justify-center gap-1">
                           <div className="flex items-center gap-2 flex-wrap">
                             {evt.categories?.name && (
-                              <span className="text-[9.5px] font-bold font-heading uppercase tracking-wider text-orange-600 dark:text-orange-400">
+                              <span className="text-[9.5px] font-bold font-heading uppercase tracking-wider text-orange-700 dark:text-orange-300">
                                 {evt.categories.name}
                               </span>
                             )}
@@ -914,7 +912,7 @@ export const HappeningTodaySliderComponent = ({
                         </div>
 
                         {/* Arrow CTA */}
-                        <div className="shrink-0 w-8 h-8 rounded-full bg-orange-500/10 group-hover:bg-orange-500 text-orange-600 group-hover:text-white dark:text-orange-400 flex items-center justify-center transition-all shadow-xs">
+                        <div className="shrink-0 w-8 h-8 rounded-full bg-orange-500/10 group-hover:bg-orange-500 text-orange-700 group-hover:text-white dark:text-orange-300 flex items-center justify-center transition-all shadow-xs">
                           <ArrowRight className="w-4 h-4 group-hover:translate-x-0.5 transition-transform" />
                         </div>
                       </div>

@@ -8,7 +8,7 @@ import {
   AdSystemConfig,
   injectAdsIntoSequence 
 } from "@lpu-events/shared";
-import { getEventImage } from "../utils/images";
+import { getEventImage, getResponsiveImageUrl } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
 import { AdSenseSlot } from "./AdSenseSlot";
 
@@ -133,6 +133,9 @@ export const HeroCarouselComponent = ({
   const slides = React.useMemo<HeroSlideModel[]>(() => {
     let baseSlides: HeroSlideModel[] = [];
 
+    const isMobileViewport = typeof window !== 'undefined' && window.innerWidth <= 640;
+    const heroImageTargetWidth = isMobileViewport ? 640 : 1440;
+
     if (carouselItems && carouselItems.length > 0) {
       for (const item of carouselItems) {
         if (!item.is_active) continue;
@@ -146,7 +149,7 @@ export const HeroCarouselComponent = ({
             type: "event",
             title: item.custom_title?.trim() || evt.name,
             description: item.custom_subtitle?.trim() || evt.description,
-            image: getEventImage(evt, "hero", 1920),
+            image: getEventImage(evt, "hero", heroImageTargetWidth),
             category: item.badge_text?.trim() || evt.categories?.name || "Featured Event",
             date: formatHeroDate(evt.start_at),
             time: formatHeroTime(evt.start_at),
@@ -163,7 +166,7 @@ export const HeroCarouselComponent = ({
             type: "media",
             title: item.custom_title?.trim() || "Campus Spotlight",
             description: item.custom_subtitle?.trim() || "Featured university stories and announcements.",
-            image: getEventImage(media, "hero", 1920),
+            image: getEventImage(media, "hero", heroImageTargetWidth),
             category: item.badge_text?.trim() || "Spotlight",
             date: "Special",
             time: "Announcements",
@@ -184,7 +187,7 @@ export const HeroCarouselComponent = ({
         eventId: fe.id,
         title: fe.name,
         description: fe.description,
-        image: getEventImage(fe, "hero", 1920),
+        image: getEventImage(fe, "hero", heroImageTargetWidth),
         category: fe.categories?.name || "Featured Event",
         date: formatHeroDate(fe.start_at),
         time: formatHeroTime(fe.start_at),
@@ -201,7 +204,7 @@ export const HeroCarouselComponent = ({
         type: "event",
         title: "Discover Campus Events, Clubs & Festivities",
         description: "Explore tech hackathons, cultural nights, conferences, workshops, and student community gatherings happening across Lovely Professional University.",
-        image: "/defaults/events/general_default_tablet.webp",
+        image: "/defaults/events/general_default.webp",
         category: "Campus Life",
         date: "Upcoming",
         time: "All Semesters",
@@ -343,16 +346,7 @@ export const HeroCarouselComponent = ({
             transition={{ duration: 0.6 }}
             className="w-full h-full relative"
           >
-            {currentSlide.image && (
-              <img
-                src={currentSlide.image}
-                alt=""
-                loading="lazy"
-                decoding="async"
-                className="w-full h-full object-cover blur-[60px] sm:blur-[80px] scale-105 sm:scale-110 brightness-110 dark:brightness-85 saturate-200 opacity-90 dark:opacity-90"
-              />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/40 via-amber-500/25 to-rose-500/20 dark:from-orange-600/25 dark:via-amber-500/15 dark:to-transparent blur-xl" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/40 via-amber-500/25 to-rose-500/20 dark:from-orange-600/25 dark:via-amber-500/15 dark:to-transparent blur-2xl rounded-[44px]" />
           </motion.div>
         </AnimatePresence>
       </div>
@@ -408,7 +402,7 @@ export const HeroCarouselComponent = ({
                   {/* Full Cover Stretched Slide Visual (Zero Blurred Wings, Paper Mâché Edge-to-Edge Feel) */}
                   {currentSlide.image ? (
                     <ProgressiveImage
-                      src={currentSlide.image}
+                      src={getResponsiveImageUrl(currentSlide.image, 640)}
                       alt={currentSlide.title}
                       loading={currentIndex === 0 ? "eager" : "lazy"}
                       fetchPriority={currentIndex === 0 ? "high" : "auto"}
@@ -481,7 +475,7 @@ export const HeroCarouselComponent = ({
                     >
                       {/* Badge & Category Pill */}
                       <motion.div variants={contentItem} className="flex items-center gap-2 flex-wrap">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-orange-500/20 to-amber-500/15 text-orange-600 dark:text-orange-300 border border-orange-500/35 rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-[0_0_12px_rgba(255,107,0,0.2)] backdrop-blur-md">
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-orange-500/20 to-amber-500/15 text-orange-700 dark:text-orange-300 border border-orange-500/35 rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-[0_0_12px_rgba(255,107,0,0.2)] backdrop-blur-md">
                           <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
                           Featured Event
                         </span>
@@ -520,11 +514,11 @@ export const HeroCarouselComponent = ({
                           {/* Date & Time */}
                           {(currentSlide.date || currentSlide.time) && (
                             <div className="flex items-center gap-3 sm:gap-3.5">
-                              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 bg-orange-500/15 dark:bg-orange-500/25 text-orange-600 dark:text-orange-400 border border-orange-500/25 shadow-xs">
-                                <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-orange-600 dark:text-orange-400 stroke-[2.2]" />
+                              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 bg-orange-500/15 dark:bg-orange-500/25 text-orange-700 dark:text-orange-300 border border-orange-500/25 shadow-xs">
+                                <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-orange-700 dark:text-orange-300 stroke-[2.2]" />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-[10.5px] sm:text-[11px] uppercase font-black tracking-wider text-orange-600 dark:text-orange-400 font-heading">
+                                <span className="text-[10.5px] sm:text-[11px] uppercase font-black tracking-wider text-orange-700 dark:text-orange-300 font-heading">
                                   Date & Time
                                 </span>
                                 <span className="font-black font-heading text-gray-900 dark:text-white tracking-tight text-sm sm:text-base xl:text-lg truncate">

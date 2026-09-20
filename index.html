@@ -30,12 +30,15 @@
       })();
     </script>
     
-    <!-- Preconnect & High-Performance Fonts -->
+    <!-- Preconnect to Image CDN and Fonts for Lowest LCP Latency -->
+    <link rel="preconnect" href="https://images.lpuevents.live" crossorigin />
+    <link rel="dns-prefetch" href="https://images.lpuevents.live" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     
-    <!-- Preload Critical LCP Hero Image -->
-    <link rel="preload" as="image" href="/defaults/events/general_default_tablet.webp" type="image/webp" fetchpriority="high" />
+    <!-- Preload Critical LCP Hero Image (Device-aware) -->
+    <link rel="preload" as="image" href="/defaults/events/general_default_mobile.webp" type="image/webp" media="(max-width: 640px)" fetchpriority="high" />
+    <link rel="preload" as="image" href="/defaults/events/general_default_tablet.webp" type="image/webp" media="(min-width: 641px)" fetchpriority="high" />
     
     <!-- Non-Render-Blocking Google Fonts -->
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" />

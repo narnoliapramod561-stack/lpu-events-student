@@ -243,7 +243,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-[9px] sm:text-[10px] font-black uppercase text-orange-600 dark:text-orange-400 font-heading tracking-wider">
+                <span className="text-[9px] sm:text-[10px] font-black uppercase text-orange-700 dark:text-orange-300 font-heading tracking-wider">
                   {event?.categories?.name || "Campus Event"}
                 </span>
                 <h4 className="font-heading font-bold text-sm sm:text-base text-gray-900 dark:text-white truncate">

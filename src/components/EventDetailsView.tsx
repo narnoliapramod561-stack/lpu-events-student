@@ -278,7 +278,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
               const match = trimmed.match(/^(\d+[\.\)])\s*(.*)$/);
               return (
                 <div key={i} className="flex items-start gap-3 sm:gap-3.5 pl-0.5">
-                  <span className="inline-flex items-center justify-center min-w-[24px] h-[24px] px-1 rounded-lg bg-orange-500/10 dark:bg-orange-500/15 border border-orange-500/25 text-orange-600 dark:text-orange-400 font-heading font-bold text-xs shrink-0 mt-0.5 shadow-xs">
+                  <span className="inline-flex items-center justify-center min-w-[24px] h-[24px] px-1 rounded-lg bg-orange-500/10 dark:bg-orange-500/15 border border-orange-500/25 text-orange-700 dark:text-orange-300 font-heading font-bold text-xs shrink-0 mt-0.5 shadow-xs">
                     {match ? match[1].replace(/[\.\)]/, '') : i + 1}
                   </span>
                   <span className="text-gray-700 dark:text-zinc-200 leading-[1.8]">{match ? match[2] : trimmed}</span>
@@ -498,15 +498,14 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         </div>
       </div>
 
-      {/* Hero Banner Stage (Full Cover Stretched to fill the space like Paper Mâché) */}
+      {/* Hero Banner Stage */}
       <div className="w-full h-[280px] xs:h-[320px] sm:h-[420px] md:h-[480px] lg:h-[520px] overflow-hidden rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 relative glass-panel shadow-xl bg-slate-950">
         <ProgressiveImage
-          className="w-full h-full object-fill object-center relative z-10"
+          className="w-full h-full object-cover object-center relative z-10"
           containerClassName="absolute inset-0 w-full h-full"
-          src={getEventImage(event, "event-banner", 1920)}
+          src={getEventImage(event, "event-banner", 1440)}
           alt={`${event.name} event banner — Lovely Professional University`}
           fetchPriority="high"
-          style={{ objectFit: "fill" }}
         />
       </div>
 

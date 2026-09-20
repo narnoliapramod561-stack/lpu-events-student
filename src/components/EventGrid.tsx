@@ -44,15 +44,14 @@ export const EventCardComponent = ({
       onClick={() => onSelect(event.id, event.name)}
       className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-[20px] sm:rounded-[28px] shadow-md hover:shadow-2xl transition-all duration-300 border border-white/80 dark:border-white/10 hover:border-primary/50 relative hover:scale-[1.01] active:scale-[0.99]"
     >
-      {/* Event Cover Image (Native 16:9 Slot Presentation - Stretched Full Cover) */}
+      {/* Event Cover Image (Native 16:9 Slot Presentation) */}
       <div className="w-full aspect-[16/9] relative overflow-hidden shrink-0 bg-slate-950">
         <ProgressiveImage
           src={imageUrl}
           alt={event.name}
           loading="lazy"
           containerClassName="absolute inset-0 w-full h-full"
-          className="w-full h-full object-fill object-center group-hover:scale-105 transition-transform duration-500 ease-out relative z-10"
-          style={{ objectFit: "fill" }}
+          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out relative z-10"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none z-10" />
 
@@ -78,7 +77,7 @@ export const EventCardComponent = ({
       {/* Event Body */}
       <div className="p-3.5 sm:p-5 flex flex-col flex-1">
         {/* Event Title */}
-        <h3 className="text-base sm:text-xl lg:text-[22px] font-black font-heading text-orange-600 dark:text-orange-400 group-hover:text-orange-500 dark:group-hover:text-orange-300 transition-colors mb-2.5 sm:mb-4 tracking-tight line-clamp-2 leading-snug break-safe">
+        <h3 className="text-base sm:text-xl lg:text-[22px] font-black font-heading text-orange-700 dark:text-orange-300 group-hover:text-orange-600 dark:group-hover:text-orange-200 transition-colors mb-2.5 sm:mb-4 tracking-tight line-clamp-2 leading-snug break-safe">
           {event.name}
         </h3>
 
