@@ -133,7 +133,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 600,
     modulePreload: {
       resolveDependencies(_filename, deps) {
-        return deps.filter((dep) => !dep.includes('sentry') && !dep.includes('posthog'));
+        return deps.filter((dep) => !dep.includes('sentry') && !dep.includes('posthog') && !dep.includes('supabase'));
       }
     },
     rollupOptions: {

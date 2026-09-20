@@ -3,7 +3,7 @@
 // All public reads strictly route through /api/public/* with zero direct Supabase hits.
 // Integrated with persistentCache (localStorage/IndexedDB) + Edge SWR + Maintenance Shield.
 
-import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import type { SupabaseClient } from '@supabase/supabase-js';
 import {
   CategoryFeedItem,
   EventFeedItem,
@@ -41,13 +41,44 @@ export interface HomepageBundleData {
 
 export class LpuEventsClient {
   public supabase: SupabaseClient;
+  private _supabaseInstance: SupabaseClient | null = null;
+  private _supabasePromise: Promise<SupabaseClient> | null = null;
+  private _supabaseUrl: string;
+  private _supabaseAnonKey: string;
+  private _options?: any;
 
   // In-memory fast tier cache
   private _cache = new Map<string, MemoryCacheEntry<any>>();
   private _inFlight = new Map<string, Promise<any>>();
 
   constructor(supabaseUrl: string, supabaseAnonKey: string, options?: any) {
-    this.supabase = createClient(supabaseUrl, supabaseAnonKey, options);
+    this._supabaseUrl = supabaseUrl;
+    this._supabaseAnonKey = supabaseAnonKey;
+    this._options = options;
+
+    this.supabase = new Proxy({} as SupabaseClient, {
+      get: (target: any, prop: string | symbol) => {
+        if (this._supabaseInstance) {
+          const val = (this._supabaseInstance as any)[prop];
+          return typeof val === 'function' ? val.bind(this._supabaseInstance) : val;
+        }
+        if (target[prop] !== undefined) {
+          return target[prop];
+        }
+        return (...args: any[]) => {
+          return this.getSupabaseClient().then((sb: any) => {
+            return sb[prop](...args);
+          });
+        };
+      },
+      set: (target: any, prop: string | symbol, value: any) => {
+        target[prop] = value;
+        if (this._supabaseInstance) {
+          (this._supabaseInstance as any)[prop] = value;
+        }
+        return true;
+      }
+    });
 
     // Cross-tab & multi-window instant cache synchronization
     if (typeof window !== 'undefined') {
@@ -60,6 +91,17 @@ export class LpuEventsClient {
         this.invalidateClientCache();
       });
     }
+  }
+
+  public async getSupabaseClient(): Promise<SupabaseClient> {
+    if (this._supabaseInstance) return this._supabaseInstance;
+    if (!this._supabasePromise) {
+      this._supabasePromise = import('@supabase/supabase-js').then(({ createClient }) => {
+        this._supabaseInstance = createClient(this._supabaseUrl, this._supabaseAnonKey, this._options);
+        return this._supabaseInstance;
+      });
+    }
+    return this._supabasePromise;
   }
 
   /**
@@ -251,16 +293,17 @@ export class LpuEventsClient {
   async _fetchHomepageBundleFromSupabase(): Promise<HomepageBundleData | null> {
     try {
       const nowIso = new Date().toISOString();
+      const sb = await this.getSupabaseClient();
 
       const [catsRes, subsRes, carRes, featRes, trendRes, adsRes, settRes, evtsRes] = await Promise.all([
-        this.supabase.from('categories').select('id, key, name, is_active, sort_order').eq('is_active', true).order('sort_order'),
-        this.supabase.from('subcategories').select('id, category_id, key, name, is_active, sort_order').eq('is_active', true).order('sort_order'),
-        this.supabase.from('carousel_items').select('*, events:event_id(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key), subcategories(name, key))').eq('is_active', true).order('sort_order'),
-        this.supabase.from('featured_events').select('*, events(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key))').order('sort_order'),
-        this.supabase.from('trending_events').select('*, events(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key))').order('sort_order'),
-        this.supabase.from('advertisements').select('*, media_assets:media_id(id, object_key)').eq('status', 'active'),
-        this.supabase.from('global_settings').select('key, value'),
-        this.supabase.from('events').select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)').eq('status', 'PUBLISHED').gte('end_at', nowIso).order('start_at', { ascending: true }).limit(20)
+        sb.from('categories').select('id, key, name, is_active, sort_order').eq('is_active', true).order('sort_order'),
+        sb.from('subcategories').select('id, category_id, key, name, is_active, sort_order').eq('is_active', true).order('sort_order'),
+        sb.from('carousel_items').select('*, events:event_id(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key), subcategories(name, key))').eq('is_active', true).order('sort_order'),
+        sb.from('featured_events').select('*, events(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key))').order('sort_order'),
+        sb.from('trending_events').select('*, events(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key))').order('sort_order'),
+        sb.from('advertisements').select('*, media_assets:media_id(id, object_key)').eq('status', 'active'),
+        sb.from('global_settings').select('key, value'),
+        sb.from('events').select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)').eq('status', 'PUBLISHED').gte('end_at', nowIso).order('start_at', { ascending: true }).limit(20)
       ]);
 
       const subMap: Record<string, any[]> = {};
@@ -388,13 +431,14 @@ export class LpuEventsClient {
       }
       // Resilient fallback directly to Supabase if edge endpoint is unavailable or returns empty
       try {
+        const sb = await this.getSupabaseClient();
         const [catsRes, subsRes] = await Promise.all([
-          this.supabase
+          sb
             .from('categories')
             .select('id, key, name, is_active, sort_order')
             .eq('is_active', true)
             .order('sort_order'),
-          this.supabase
+          sb
             .from('subcategories')
             .select('id, category_id, key, name, is_active, sort_order')
             .eq('is_active', true)
@@ -450,7 +494,8 @@ export class LpuEventsClient {
       const priceType = filters?.pricing_type || '';
       const showPast = Boolean(filters?.show_past);
 
-      let query = this.supabase
+      const sb = await this.getSupabaseClient();
+      let query = sb
         .from('events')
         .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
         .eq('status', 'PUBLISHED');
@@ -599,7 +644,8 @@ export class LpuEventsClient {
 
         if (missingMediaIds.length > 0) {
           try {
-            const { data: mediaRows } = await this.supabase
+            const sb = await this.getSupabaseClient();
+            const { data: mediaRows } = await sb
               .from('media_assets')
               .select('id, object_key')
               .in('id', missingMediaIds);
@@ -649,7 +695,8 @@ export class LpuEventsClient {
 
       // Resilient fallback directly to Supabase
       try {
-        let query = this.supabase
+        const sb = await this.getSupabaseClient();
+        let query = sb
           .from('events')
           .select('*, organizations(*), categories(*), subcategories(*), event_content_sections(*), media_assets:banner_media_id(id, object_key, bucket)');
         if (isUuid) {

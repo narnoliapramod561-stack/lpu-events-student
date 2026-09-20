@@ -1834,6 +1834,61 @@ async function handleEventPageSeo(
 }
 
 /**
+ * Same-Origin Cloudflare Edge Image Proxy
+ * Proxies and caches images from images.lpuevents.live with 1-year immutable edge caching.
+ * Reuses the existing HTTP/2 or HTTP/3 TCP connection for zero-latency instant LCP.
+ */
+async function handleImageProxy(request: Request, ctx: ExecutionContext): Promise<Response> {
+  const url = new URL(request.url);
+  const targetUrl = url.searchParams.get('url');
+  if (!targetUrl) {
+    return new Response('Missing url parameter', { status: 400 });
+  }
+
+  // Strict whitelist: only images from our trusted CDN are proxied
+  if (!targetUrl.startsWith('https://images.lpuevents.live/')) {
+    return new Response('Forbidden target URL', { status: 403 });
+  }
+
+  const cache = (caches as any).default;
+  const cacheKey = new Request(url.toString(), { method: 'GET' });
+  const cachedRes = await cache.match(cacheKey);
+  if (cachedRes) {
+    return cachedRes;
+  }
+
+  try {
+    const upstreamRes = await (fetch as any)(targetUrl, {
+      cf: {
+        cacheEverything: true,
+        cacheTtl: 31536000,
+      },
+    });
+
+    if (!upstreamRes.ok) {
+      return new Response('Image not found or upstream error', { status: upstreamRes.status });
+    }
+
+    const contentType = upstreamRes.headers.get('content-type') || 'image/webp';
+    const res = new Response(upstreamRes.body, {
+      status: 200,
+      headers: {
+        'Content-Type': contentType,
+        'Cache-Control': 'public, max-age=31536000, immutable',
+        'Access-Control-Allow-Origin': '*',
+        'Timing-Allow-Origin': '*',
+        'X-Image-Proxy': 'edge-cached',
+      },
+    });
+
+    ctx.waitUntil(cache.put(cacheKey, res.clone()));
+    return res;
+  } catch {
+    return new Response('Image proxy fetch failed', { status: 502 });
+  }
+}
+
+/**
  * Handle homepage SEO: Inject WebSite and EducationalOrganization schema.
  */
 async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
@@ -1858,6 +1913,8 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
       }
     }
   } catch {}
+
+  const heroProxyUrl = heroImageUrl ? `/api/public/image-proxy?url=${encodeURIComponent(heroImageUrl)}` : '';
 
   const websiteJsonLd = safeJsonLd({
     '@context': 'https://schema.org',
@@ -1896,21 +1953,27 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
       element(el: CFElement) {
         el.append(`<script type="application/ld+json">${websiteJsonLd}</script>`, { html: true });
         el.append(`<script type="application/ld+json">${orgJsonLd}</script>`, { html: true });
-        if (heroImageUrl) {
-          el.append(`<link rel="preload" as="image" href="${escapeHtml(heroImageUrl)}" fetchpriority="high" />`, { html: true });
+        if (heroProxyUrl) {
+          el.append(`<link rel="preload" as="image" href="${escapeHtml(heroProxyUrl)}" fetchpriority="high" />`, { html: true });
         }
       },
     });
 
-  if (heroImageUrl) {
+  if (heroProxyUrl) {
+    // Remove the static default preload tags since the hero proxy image replaces them
+    rewriter.on('link[rel="preload"][as="image"][href*="general_default"]', {
+      element(el: CFElement) {
+        el.remove();
+      }
+    });
     rewriter.on('picture source[srcset*="general_default"]', {
       element(el: CFElement) {
-        el.setAttribute('srcset', heroImageUrl);
+        el.setAttribute('srcset', heroProxyUrl);
       }
     });
     rewriter.on('picture img[src*="general_default"]', {
       element(el: CFElement) {
-        el.setAttribute('src', heroImageUrl);
+        el.setAttribute('src', heroProxyUrl);
         if (heroTitle) {
           el.setAttribute('alt', heroTitle);
         }
@@ -1919,12 +1982,24 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
   }
 
   const rewritten = rewriter.transform(indexHtml);
+
+  // Build HTTP Link headers for preconnect and LCP image preload
+  // Browsers process Link headers BEFORE parsing HTML, giving ~200ms LCP head start
+  const linkHeaders: string[] = [
+    '<https://fonts.googleapis.com>; rel=preconnect',
+    '<https://fonts.gstatic.com>; rel=preconnect; crossorigin',
+  ];
+  if (heroProxyUrl) {
+    linkHeaders.push(`<${heroProxyUrl}>; rel=preload; as=image; fetchpriority=high`);
+  }
+
   return new Response(rewritten.body, {
     status: 200,
     headers: {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'public, s-maxage=900, max-age=60, stale-while-revalidate=86400',
       'X-SEO-Engine': 'edge-rewriter',
+      'Link': linkHeaders.join(', '),
       ...SECURITY_HEADERS,
     },
   });
@@ -2121,6 +2196,10 @@ export default {
     }
 
     // ─── Public API Routes ─────────────────────────────────────────────
+
+    if (url.pathname === '/api/public/image-proxy') {
+      return handleImageProxy(request, ctx);
+    }
 
     if (url.pathname === '/api/public/homepage') {
       return handleHomepage(origin, env, ctx);
