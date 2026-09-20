@@ -78,13 +78,27 @@ function securityHeadersPlugin(): Plugin {
   };
 }
 
+function asyncCssPlugin(): Plugin {
+  return {
+    name: 'async-css',
+    enforce: 'post',
+    transformIndexHtml(html) {
+      return html.replace(
+        /<link rel="stylesheet" crossorigin href="(\/assets\/index-[^"]+\.css)">/,
+        '<link rel="preload" as="style" href="$1" />\n    <link rel="stylesheet" href="$1" media="print" onload="this.media=\'all\'" />\n    <noscript><link rel="stylesheet" href="$1" /></noscript>'
+      );
+    }
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     lanInfoPlugin(),
-    securityHeadersPlugin()
+    securityHeadersPlugin(),
+    asyncCssPlugin()
   ],
   resolve: {
     alias: {

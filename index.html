@@ -29,6 +29,42 @@
         }
       })();
     </script>
+
+    <!-- Critical Above-the-Fold Pre-paint Styles (Zero FOUC, Sub-300ms FCP & LCP) -->
+    <style>
+      body {
+        margin: 0;
+        background-color: #f2f5f9;
+        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        color: #0f172a;
+        overflow-x: hidden;
+      }
+      .dark body, html.dark body {
+        background-color: #08090f;
+        color: #f8fafc;
+      }
+      .glass-nav {
+        background: rgba(255, 255, 255, 0.88);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+      }
+      .dark .glass-nav, html.dark .glass-nav {
+        background: rgba(10, 13, 20, 0.92);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+      }
+      .glass-panel {
+        background: rgba(255, 255, 255, 0.65);
+        backdrop-filter: blur(24px);
+        -webkit-backdrop-filter: blur(24px);
+        border: 1px solid rgba(255, 255, 255, 0.8);
+      }
+      .dark .glass-panel, html.dark .glass-panel {
+        background: rgba(15, 20, 32, 0.75);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+      }
+      .text-primary { color: #ff6b00; }
+    </style>
     
     <!-- Preconnect to Image CDN and Fonts for Lowest LCP Latency -->
     <link rel="preconnect" href="https://images.lpuevents.live" crossorigin />
