@@ -584,7 +584,7 @@ export const HeroCarouselComponent = ({
                     >
                       <div className="relative w-full max-w-[760px] lg:max-w-none xl:max-w-[880px] 2xl:max-w-[940px] aspect-[16/9] rounded-[22px] lg:rounded-[30px] overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 group-hover/img:scale-[1.015] transition-transform duration-300 bg-slate-950">
                         <ProgressiveImage
-                          src={currentSlide.image || "/defaults/events/general_default_tablet.webp"}
+                          src={getResponsiveImageUrl(currentSlide.image || "/defaults/events/general_default_tablet.webp", 1200)}
                           alt={currentSlide.title}
                           loading={currentIndex === 0 ? "eager" : "lazy"}
                           fetchPriority={currentIndex === 0 ? "high" : "auto"}

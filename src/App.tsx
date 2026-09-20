@@ -879,132 +879,7 @@ export default function App() {
       {/* Scroll Top Reference Anchor */}
       <div id="top" className="absolute top-0 left-0 h-0 w-0 pointer-events-none" />
 
-      {appLoading && currentView === 'home' ? (
-        <div className="relative z-20">
-          {/* Navbar Skeleton */}
-          <div className="sticky top-0 z-50 w-full backdrop-blur-lg bg-white/80 dark:bg-black/60 border-b border-white/20 dark:border-white/10">
-            <div className="max-w-[98%] mx-auto px-2.5 sm:px-4 md:px-6">
-              <div className="flex items-center justify-between h-16">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full skeleton-base" />
-                  <div className="h-6 w-24 rounded-md skeleton-base" />
-                </div>
-                <div className="hidden md:flex flex-1 max-w-md">
-                  <div className="h-10 w-full rounded-full skeleton-base" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="h-10 w-10 rounded-full skeleton-base" />
-                  <div className="h-10 w-10 rounded-full skeleton-base" />
-                </div>
-              </div>
-            </div>
-          </div>
-          
-          {/* Main Content Skeleton */}
-          <main className="w-full max-w-[98%] mx-auto px-2.5 sm:px-4 md:px-6 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6 overflow-hidden">
-            {/* Hero Carousel Skeleton */}
-            <div className="relative h-[300px] sm:h-[450px] md:h-[550px] w-full rounded-[32px] sm:rounded-[40px] overflow-hidden skeleton-base" />
-            
-            {/* Ad Banner Skeleton */}
-            <div className="h-16 w-full rounded-xl skeleton-base" />
-            
-            {/* Happening Today Skeleton */}
-            <div className="w-full">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-6 w-32 rounded-md skeleton-base" />
-                <div className="h-8 w-20 rounded-full skeleton-base" />
-              </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {Array.from({ length: 4 }).map((_, i) => (
-                  <div key={i} className="h-[180px] rounded-[20px] skeleton-base" />
-                ))}
-              </div>
-            </div>
-            
-            {/* Categories Skeleton */}
-            <div className="w-full">
-              <div className="flex items-center justify-between mb-4">
-                <div className="h-6 w-24 rounded-md skeleton-base" />
-                <div className="h-8 w-20 rounded-full skeleton-base" />
-              </div>
-              <div className="flex gap-2 overflow-x-auto pb-2">
-                {Array.from({ length: 8 }).map((_, i) => (
-                  <div key={i} className="h-8 w-20 rounded-full skeleton-base flex-shrink-0" />
-                ))}
-              </div>
-            </div>
-            
-            {/* Event Grid Skeleton */}
-            <div className="w-full">
-              <div className="w-full flex items-center justify-center gap-2.5 sm:gap-4 mb-6 sm:mb-8">
-                <div className="flex-1 flex items-center">
-                  <div className="flex-1 h-px bg-gradient-to-r from-transparent via-gray-300 dark:via-white/20 to-primary/50" />
-                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rotate-45 bg-primary/20 border border-primary/60 dark:border-primary/80 rounded-[1px] shrink-0 ml-1.5 sm:ml-2 shadow-xs" />
-                </div>
-                <div className="h-8 w-32 rounded-md skeleton-base px-1" />
-                <div className="flex-1 flex items-center">
-                  <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rotate-45 bg-primary/20 border border-primary/60 dark:border-primary/80 rounded-[1px] shrink-0 mr-1.5 sm:mr-2 shadow-xs" />
-                  <div className="flex-1 h-px bg-gradient-to-l from-transparent via-gray-300 dark:via-white/20 to-primary/50" />
-                </div>
-              </div>
-              
-              <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-                {Array.from({ length: 10 }).map((_, i) => (
-                  <div key={i} className="flex flex-col h-full rounded-[20px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md">
-                    <div className="w-full aspect-[16/9] bg-gray-200/70 dark:bg-white/5 skeleton-base" />
-                    <div className="p-3.5 sm:p-5 flex flex-col flex-1 space-y-3">
-                      <div className="h-3.5 sm:h-4 w-20 rounded-md skeleton-base" />
-                      <div className="h-5 sm:h-6 w-3/4 rounded-md skeleton-base" />
-                      <div className="space-y-2">
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 shrink-0 rounded-full skeleton-base" />
-                          <div className="space-y-1 flex-1">
-                            <div className="h-2.5 w-12 rounded-md skeleton-base" />
-                            <div className="h-3.5 w-20 rounded-md skeleton-base" />
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2.5">
-                          <div className="w-8 h-8 shrink-0 rounded-full skeleton-base" />
-                          <div className="space-y-1 flex-1">
-                            <div className="h-2.5 w-12 rounded-md skeleton-base" />
-                            <div className="h-3.5 w-16 rounded-md skeleton-base" />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-            
-            {/* View More Button Skeleton */}
-            <div className="flex justify-center -mt-4 sm:-mt-6">
-              <div className="h-12 w-48 rounded-xl skeleton-base" />
-            </div>
-          </main>
-          
-          {/* Footer Skeleton */}
-          <div className="mt-12 py-8 border-t border-white/20 dark:border-white/10">
-            <div className="max-w-[98%] mx-auto px-2.5 sm:px-4 md:px-6">
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-                <div className="flex items-center gap-3">
-                  <div className="h-8 w-8 rounded-full skeleton-base" />
-                  <div className="h-6 w-24 rounded-md skeleton-base" />
-                </div>
-                <div className="flex gap-4">
-                  <div className="h-8 w-20 rounded-full skeleton-base" />
-                  <div className="h-8 w-20 rounded-full skeleton-base" />
-                </div>
-              </div>
-              <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs">
-                <div className="h-4 w-48 rounded-md skeleton-base" />
-                <div className="h-4 w-32 rounded-md skeleton-base" />
-              </div>
-            </div>
-          </div>
-        </div>
-      ) : (
-        <div className="relative z-10">
+      <div className="relative z-10">
         <Navbar
           searchQuery={searchQuery}
           onSearch={handleSearch}
@@ -1075,14 +950,60 @@ export default function App() {
                       />
                   )}
 
-                  {/* Happening Today Slider */}
-                  <HappeningTodaySlider
-                    events={happeningTodayEvents}
-                    ads={ads}
-                    config={happeningTodayConfig}
-                    adSystemConfig={adSystemConfig}
-                    onSelectEvent={handleSelectEvent}
-                  />
+                  {/* Lower Content: Skeletons during initial load, otherwise live modules */}
+                  {appLoading ? (
+                    <div className="w-full space-y-6 sm:space-y-10 mt-2 sm:mt-4">
+                      {/* Happening Today Skeleton */}
+                      <div className="w-full">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="h-6 w-32 rounded-md skeleton-base" />
+                          <div className="h-8 w-20 rounded-full skeleton-base" />
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                          {Array.from({ length: 4 }).map((_, i) => (
+                            <div key={i} className="h-[180px] rounded-[20px] skeleton-base" />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Categories Skeleton */}
+                      <div className="w-full">
+                        <div className="flex items-center justify-between mb-4">
+                          <div className="h-6 w-24 rounded-md skeleton-base" />
+                          <div className="h-8 w-20 rounded-full skeleton-base" />
+                        </div>
+                        <div className="flex gap-2 overflow-x-auto pb-2">
+                          {Array.from({ length: 8 }).map((_, i) => (
+                            <div key={i} className="h-8 w-20 rounded-full skeleton-base flex-shrink-0" />
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Event Grid Skeleton */}
+                      <div className="w-full">
+                        <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                          {Array.from({ length: 6 }).map((_, i) => (
+                            <div key={i} className="flex flex-col h-full rounded-[20px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md">
+                              <div className="w-full aspect-[16/9] bg-gray-200/70 dark:bg-white/5 skeleton-base" />
+                              <div className="p-3.5 sm:p-5 flex flex-col flex-1 space-y-3">
+                                <div className="h-4 w-20 rounded-md skeleton-base" />
+                                <div className="h-6 w-3/4 rounded-md skeleton-base" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Happening Today Slider */}
+                      <HappeningTodaySlider
+                        events={happeningTodayEvents}
+                        ads={ads}
+                        config={happeningTodayConfig}
+                        adSystemConfig={adSystemConfig}
+                        onSelectEvent={handleSelectEvent}
+                      />
 
                   {/* Ad Slot 2: Below Happening Today */}
                   {adSystemConfig?.global_enabled &&
@@ -1148,6 +1069,8 @@ export default function App() {
                   </div>
                 </>
               )}
+            </>
+          )}
 
               {/* Event hub upcoming grid / Search Results Grid with Off-Screen Deferral */}
               <div id="events" className="deferred-feed-section">
@@ -1197,7 +1120,6 @@ export default function App() {
           <CookieConsentBanner onNavigatePrivacy={() => handleNavigate('privacy')} />
         </Suspense>
       </div>
-      )}
     </div>
   );
 }

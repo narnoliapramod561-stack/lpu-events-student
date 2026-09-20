@@ -1,0 +1,15 @@
+{
+  "$schema": "https://agenticresourcediscovery.org/schemas/v1/ai-catalog.json",
+  "name": "LPU Events",
+  "description": "Official campus events, workshops, hackathons, and activities discovery hub for Lovely Professional University",
+  "version": "1.0.0",
+  "homepage": "https://lpuevents.live",
+  "resources": [
+    {
+      "name": "Homepage Events Bundle",
+      "type": "api",
+      "description": "Public cached API endpoint providing active campus events, categories, and announcements",
+      "url": "https://lpuevents.live/api/public/homepage"
+    }
+  ]
+}

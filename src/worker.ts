@@ -2015,6 +2015,11 @@ export default {
         return handleStaticPageSeo(url.pathname, env, origin);
       }
 
+      // AI Agentic Resource Discovery (.well-known/ai-catalog.json -> /ai-catalog.json)
+      if (url.pathname === '/.well-known/ai-catalog.json') {
+        return env.ASSETS.fetch(new Request(`${origin}/ai-catalog.json`, request));
+      }
+
       // Homepage: / — Inject WebSite & Organization schema
       if (url.pathname === '/') {
         return handleHomepageSeo(env, origin);
