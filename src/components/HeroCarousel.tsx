@@ -201,7 +201,7 @@ export const HeroCarouselComponent = ({
         type: "event",
         title: "Discover Campus Events, Clubs & Festivities",
         description: "Explore tech hackathons, cultural nights, conferences, workshops, and student community gatherings happening across Lovely Professional University.",
-        image: "",
+        image: "/defaults/events/general_default_tablet.webp",
         category: "Campus Life",
         date: "Upcoming",
         time: "All Semesters",
@@ -413,8 +413,7 @@ export const HeroCarouselComponent = ({
                       loading={currentIndex === 0 ? "eager" : "lazy"}
                       fetchPriority={currentIndex === 0 ? "high" : "auto"}
                       containerClassName="absolute inset-0 w-full h-full"
-                      className="w-full h-full object-fill object-center relative z-10"
-                      style={{ objectFit: "fill" }}
+                      className="w-full h-full object-cover object-center relative z-10"
                     />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-orange-950/80 via-slate-900 to-indigo-950 flex flex-col justify-center items-center px-4 text-center pb-12">
@@ -591,11 +590,12 @@ export const HeroCarouselComponent = ({
                     >
                       <div className="relative w-full max-w-[760px] lg:max-w-none xl:max-w-[880px] 2xl:max-w-[940px] aspect-[16/9] rounded-[22px] lg:rounded-[30px] overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 group-hover/img:scale-[1.015] transition-transform duration-300 bg-slate-950">
                         <ProgressiveImage
-                          src={currentSlide.image}
+                          src={currentSlide.image || "/defaults/events/general_default_tablet.webp"}
                           alt={currentSlide.title}
+                          loading={currentIndex === 0 ? "eager" : "lazy"}
+                          fetchPriority={currentIndex === 0 ? "high" : "auto"}
                           containerClassName="absolute inset-0 w-full h-full"
-                          className="w-full h-full object-fill object-center relative z-10"
-                          style={{ objectFit: "fill" }}
+                          className="w-full h-full object-cover object-center relative z-10"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/5 pointer-events-none z-20" />
                       </div>

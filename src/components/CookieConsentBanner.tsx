@@ -53,9 +53,9 @@ export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({ onNavi
             <Cookie className="w-5 h-5" />
           </div>
           <div className="flex-1">
-            <h4 className="font-heading font-black text-xs sm:text-sm text-gray-900 dark:text-white">
+            <p className="font-heading font-black text-xs sm:text-sm text-gray-900 dark:text-white">
               Cookie & Ad Privacy Notice
-            </h4>
+            </p>
             <p className="text-[11px] sm:text-xs text-gray-600 dark:text-zinc-300 leading-relaxed mt-0.5 break-safe">
               We and third-party partners (like Google AdSense) use cookies to personalize content, deliver relevant campus ads, and analyze traffic. Review our{" "}
               <button

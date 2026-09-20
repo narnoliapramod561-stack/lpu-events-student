@@ -55,6 +55,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({ onBack }) => {
       </div>
 
       {/* Mission & Purpose Section */}
+      <h2 className="sr-only">Our Mission & Purpose</h2>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12">
         <div className="glass-panel rounded-[18px] sm:rounded-[28px] p-5 sm:p-6 border border-white/95 dark:border-white/10 shadow-md flex flex-col justify-between">
           <div>

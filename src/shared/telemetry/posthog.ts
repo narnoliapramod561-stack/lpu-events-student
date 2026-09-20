@@ -3,7 +3,7 @@
 
 import type posthogType from 'posthog-js';
 import { PostHogConfig, AppIdentifier } from './types';
-import { scrubSensitiveData } from './sentry';
+import { scrubSensitiveData } from './scrub';
 
 let posthogClient: typeof posthogType | null = null;
 let isInitialized = false;

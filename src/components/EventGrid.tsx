@@ -368,9 +368,9 @@ export const EventGridComponent = ({
         <div className="w-16 h-16 rounded-full bg-orange-500/10 flex items-center justify-center text-primary mb-4">
           <SearchX className="h-8 w-8" />
         </div>
-        <h3 className="text-xl font-bold font-heading text-gray-900 dark:text-white mb-2">
+        <h2 className="text-xl font-bold font-heading text-gray-900 dark:text-white mb-2">
           No Events Found
-        </h3>
+        </h2>
         <p className="text-sm text-gray-500 dark:text-gray-400 max-w-md mb-6">
           {searchQuery
             ? `We couldn't find any events matching "${searchQuery}". Try a different keyword or reset filters.`

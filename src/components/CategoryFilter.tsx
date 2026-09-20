@@ -565,9 +565,9 @@ export const CategoryFilterComponent = ({
         {/* 1. Schedule Quick Filters */}
         <div className="w-full flex flex-col gap-3.5">
           <div className="flex items-center justify-between">
-            <h3 className="font-heading text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+            <h2 className="font-heading text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
               Timeline & Schedule
-            </h3>
+            </h2>
           </div>
 
           {/* Timeline Pills */}
@@ -643,9 +643,9 @@ export const CategoryFilterComponent = ({
         {/* 2. Event Type Filters */}
         <div className="w-full flex flex-col gap-3.5">
           <div className="flex items-center justify-between">
-            <h3 className="font-heading text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+            <h2 className="font-heading text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
               Event Type
-            </h3>
+            </h2>
           </div>
 
           {/* Event Type Pills */}
@@ -693,9 +693,9 @@ export const CategoryFilterComponent = ({
         <div className="w-full flex flex-col gap-3.5">
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-wrap">
-              <h3 className="font-heading text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
+              <h2 className="font-heading text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
                 Event Categories
-              </h3>
+              </h2>
               {cleanQuery && (
                 <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25 font-heading">
                   {filteredCategories.length} {filteredCategories.length === 1 ? "category" : "categories"} found

@@ -59,9 +59,9 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onGoToCategories }) 
         <div className="grid grid-cols-2 gap-6 sm:gap-8 md:contents">
           {/* Column 2: Explore (Desktop: 3 Columns) */}
           <div className="md:col-span-3 flex flex-col">
-            <h4 className="font-heading font-black text-gray-900 dark:text-white text-xs sm:text-sm uppercase tracking-wider mb-2 sm:mb-3">
+            <h2 className="font-heading font-black text-gray-900 dark:text-white text-xs sm:text-sm uppercase tracking-wider mb-2 sm:mb-3">
               Explore
-            </h4>
+            </h2>
             <nav aria-label="Explore Links" className="flex flex-col space-y-1 sm:space-y-0">
               <a
                 href="/about"
@@ -89,9 +89,9 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onGoToCategories }) 
 
           {/* Column 3: Legal (Desktop: 3 Columns) */}
           <div className="md:col-span-3 flex flex-col">
-            <h4 className="font-heading font-black text-gray-900 dark:text-white text-xs sm:text-sm uppercase tracking-wider mb-2 sm:mb-3">
+            <h2 className="font-heading font-black text-gray-900 dark:text-white text-xs sm:text-sm uppercase tracking-wider mb-2 sm:mb-3">
               Legal & Privacy
-            </h4>
+            </h2>
             <nav aria-label="Legal Links" className="flex flex-col space-y-1 sm:space-y-0">
               <a
                 href="/privacy"
