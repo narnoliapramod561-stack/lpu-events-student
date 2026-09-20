@@ -117,6 +117,11 @@ export default defineConfig({
     target: 'es2022',
     sourcemap: true,
     chunkSizeWarningLimit: 600,
+    modulePreload: {
+      resolveDependencies(_filename, deps) {
+        return deps.filter((dep) => !dep.includes('sentry') && !dep.includes('posthog'));
+      }
+    },
     rollupOptions: {
       output: {
         manualChunks(id) {

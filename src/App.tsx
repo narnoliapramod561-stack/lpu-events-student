@@ -620,36 +620,16 @@ export default function App() {
         fetchUpcomingEvents(true);
       };
 
-      // 1. Cross-tab storage sync (same origin)
+      // Cross-tab storage sync (same origin) & local cache invalidation
       const handleStorage = (e: StorageEvent) => {
         if (e.key === 'lpu_cache_bust') handleSync();
       };
       window.addEventListener('storage', handleStorage);
       window.addEventListener('lpu:cache-invalidated', handleSync);
 
-      // 2. Supabase Realtime channel: cross-origin broadcasts and direct Postgres CDC events
-      const syncChannel = lpuClient.supabase
-        .channel('public:student-live-sync')
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'events' }, () => {
-          handleSync();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'carousel_items' }, () => {
-          handleSync();
-        })
-        .on('postgres_changes', { event: '*', schema: 'public', table: 'advertisements' }, () => {
-          handleSync();
-        })
-        .on('broadcast', { event: 'cache-bust' }, () => {
-          handleSync();
-        })
-        .subscribe();
-
       return () => {
         window.removeEventListener('storage', handleStorage);
         window.removeEventListener('lpu:cache-invalidated', handleSync);
-        try {
-          lpuClient.supabase.removeChannel(syncChannel);
-        } catch {}
       };
     }, [loadAllData, fetchUpcomingEvents]);
 

@@ -1,10 +1,11 @@
 // packages/shared/src/telemetry/posthog.ts
 // Resilient PostHog Product Analytics Client for LPU Events
 
-import posthog from 'posthog-js';
+import type posthogType from 'posthog-js';
 import { PostHogConfig, AppIdentifier } from './types';
 import { scrubSensitiveData } from './sentry';
 
+let posthogClient: typeof posthogType | null = null;
 let isInitialized = false;
 let activeApp: AppIdentifier = 'student';
 
@@ -13,22 +14,24 @@ let activeApp: AppIdentifier = 'student';
  */
 export function _resetPostHogForTesting(): void {
   isInitialized = false;
+  posthogClient = null;
   activeApp = 'student';
 }
 
 /**
  * Initialize PostHog client with single shared project key
  * and mandatory 'app' property isolation ('student' | 'admin').
+ * Dynamically imports posthog-js so it is not bundled in the initial critical path.
  */
-export function initPostHog(config: PostHogConfig): typeof posthog | null {
+export function initPostHog(config: PostHogConfig): typeof posthogType | null {
   if (typeof window === 'undefined') {
     return null;
   }
 
   activeApp = config.app;
 
-  if (isInitialized) {
-    return posthog;
+  if (isInitialized && posthogClient) {
+    return posthogClient;
   }
 
   const apiKey = config.apiKey || (typeof process !== 'undefined' ? process.env?.VITE_POSTHOG_KEY : undefined);
@@ -42,28 +45,32 @@ export function initPostHog(config: PostHogConfig): typeof posthog | null {
   }
 
   try {
-    posthog.init(apiKey, {
-      api_host: apiHost,
-      autocapture: false,
-      capture_pageview: false, // We control pageviews explicitly for single-page apps
-      capture_pageleave: true,
-      disable_session_recording: true, // We use Microsoft Clarity for recordings
-      respect_dnt: true,
-      persistence: 'localStorage+cookie',
-      loaded: (ph: any) => {
-        // Enforce required 'app' super property on ALL events
-        ph.register({
-          app: config.app,
-          environment: config.environment || 'production'
-        });
-        if (config.debug) {
-          console.log(`[Telemetry:PostHog] Initialized successfully with app="${config.app}"`);
+    import('posthog-js').then(({ default: ph }) => {
+      posthogClient = ph;
+      ph.init(apiKey, {
+        api_host: apiHost,
+        autocapture: false,
+        capture_pageview: false, // We control pageviews explicitly for single-page apps
+        capture_pageleave: true,
+        disable_session_recording: true, // We use Microsoft Clarity for recordings
+        respect_dnt: true,
+        persistence: 'localStorage+cookie',
+        loaded: (instance: any) => {
+          instance.register({
+            app: config.app,
+            environment: config.environment || 'production'
+          });
+          if (config.debug) {
+            console.log(`[Telemetry:PostHog] Initialized successfully with app="${config.app}"`);
+          }
         }
-      }
+      });
+      isInitialized = true;
+    }).catch(err => {
+      console.warn('[Telemetry:PostHog] Dynamic import error (non-fatal):', err);
     });
 
-    isInitialized = true;
-    return posthog;
+    return posthogClient;
   } catch (err) {
     // Non-blocking rule: analytics failure must never crash core app
     console.warn('[Telemetry:PostHog] Initialization error (non-fatal):', err);
@@ -85,8 +92,8 @@ export function trackEvent(eventName: string, properties: Record<string, any> = 
       ...safeProps
     };
 
-    if (isInitialized) {
-      posthog.capture(eventName, payload);
+    if (isInitialized && posthogClient) {
+      posthogClient.capture(eventName, payload);
     }
   } catch (err) {
     // Silently ignore telemetry failure

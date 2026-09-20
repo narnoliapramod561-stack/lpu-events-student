@@ -5,16 +5,15 @@ import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import { initPostHog, initClarity, initSentry } from '@lpu-events/shared';
 import './index.css';
 
-// Initialize production error telemetry
-initSentry({
-  dsn: import.meta.env.VITE_SENTRY_DSN,
-  environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || 'development',
-  release: import.meta.env.VITE_SENTRY_RELEASE || '1.0.0',
-  app: 'student'
-});
-
-// Non-blocking product telemetry deferred to idle thread
+// Non-blocking telemetry (Sentry, PostHog, Clarity) deferred to idle thread after initial interactive paint
 const initDeferredTelemetry = () => {
+  initSentry({
+    dsn: import.meta.env.VITE_SENTRY_DSN,
+    environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || 'development',
+    release: import.meta.env.VITE_SENTRY_RELEASE || '1.0.0',
+    app: 'student'
+  });
+
   initPostHog({
     apiKey: import.meta.env.VITE_POSTHOG_KEY,
     apiHost: import.meta.env.VITE_POSTHOG_HOST,
@@ -29,9 +28,9 @@ const initDeferredTelemetry = () => {
 
 if (typeof window !== 'undefined') {
   if ('requestIdleCallback' in window) {
-    (window as any).requestIdleCallback(initDeferredTelemetry, { timeout: 2000 });
+    (window as any).requestIdleCallback(initDeferredTelemetry, { timeout: 3500 });
   } else {
-    setTimeout(initDeferredTelemetry, 1000);
+    setTimeout(initDeferredTelemetry, 3000);
   }
 }
 

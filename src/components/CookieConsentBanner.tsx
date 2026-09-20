@@ -13,9 +13,14 @@ export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({ onNavi
     try {
       const consent = localStorage.getItem("lpu_cookie_consent_v1");
       if (!consent) {
-        // Show after a subtle 1-second delay for smooth page entrance
-        const timer = setTimeout(() => setIsVisible(true), 1000);
-        return () => clearTimeout(timer);
+        // Show after user scroll or after an idle 3.5s delay so it doesn't steal LCP from hero content
+        const show = () => setIsVisible(true);
+        const timer = setTimeout(show, 3500);
+        window.addEventListener('scroll', show, { once: true, passive: true });
+        return () => {
+          clearTimeout(timer);
+          window.removeEventListener('scroll', show);
+        };
       }
     } catch {
       // Storage access disabled or private mode

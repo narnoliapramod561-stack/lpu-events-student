@@ -30,10 +30,9 @@
       })();
     </script>
     
-    <!-- Preconnect & High-Performance Media/Fonts -->
+    <!-- Preconnect & High-Performance Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://images.lpuevents.live" crossorigin />
     
     <!-- Non-Render-Blocking Google Fonts -->
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" />
@@ -42,12 +41,21 @@
       <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" />
     </noscript>
 
-    <!-- Deferred High-Performance Analytics (Non-blocking) -->
+    <!-- Deferred High-Performance Analytics & Ads (Triggered on first user interaction or idle timeout) -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       
+      var analyticsInitialized = false;
       function loadAnalytics() {
+        if (analyticsInitialized) return;
+        analyticsInitialized = true;
+
+        var events = ['pointerdown', 'touchstart', 'scroll', 'keydown'];
+        events.forEach(function(e) {
+          window.removeEventListener(e, loadAnalytics, { passive: true });
+        });
+
         // Load GTM
         (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
         new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
@@ -64,12 +72,17 @@
         gtag('config', 'G-HXC7S26FSN');
       }
 
-      if (document.readyState === 'complete') {
-        setTimeout(loadAnalytics, 100);
-      } else {
-        window.addEventListener('load', function() {
-          setTimeout(loadAnalytics, 100);
+      var interactionEvents = ['pointerdown', 'touchstart', 'scroll', 'keydown'];
+      interactionEvents.forEach(function(e) {
+        window.addEventListener(e, loadAnalytics, { passive: true, once: true });
+      });
+
+      if ('requestIdleCallback' in window) {
+        window.requestIdleCallback(function() {
+          setTimeout(loadAnalytics, 3500);
         });
+      } else {
+        setTimeout(loadAnalytics, 3500);
       }
     </script>
 
