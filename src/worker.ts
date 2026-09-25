@@ -1850,13 +1850,6 @@ async function handleImageProxy(request: Request, env: Env, ctx: ExecutionContex
     return new Response('Forbidden target URL', { status: 403 });
   }
 
-  const cache = (caches as any).default;
-  const cacheKey = new Request(url.toString(), { method: 'GET' });
-  const cachedRes = await cache.match(cacheKey);
-  if (cachedRes) {
-    return cachedRes;
-  }
-
   // 1. Fast Path: Check if pre-optimized asset is available directly in env.ASSETS (instant edge delivery, 0ms TTFB)
   try {
     const parsedTarget = new URL(targetUrl);
@@ -1864,7 +1857,7 @@ async function handleImageProxy(request: Request, env: Env, ctx: ExecutionContex
     const localRes = await env.ASSETS.fetch(assetReq);
     if (localRes.ok && localRes.status === 200) {
       const contentType = localRes.headers.get('content-type') || 'image/webp';
-      const res = new Response(localRes.body, {
+      return new Response(localRes.body, {
         status: 200,
         headers: {
           'Content-Type': contentType,
@@ -1874,10 +1867,15 @@ async function handleImageProxy(request: Request, env: Env, ctx: ExecutionContex
           'X-Image-Proxy': 'edge-bundle-asset',
         },
       });
-      ctx.waitUntil(cache.put(cacheKey, res.clone()));
-      return res;
     }
   } catch {}
+
+  const cache = (caches as any).default;
+  const cacheKey = new Request(url.origin + url.pathname + '?v=v3&url=' + encodeURIComponent(targetUrl), { method: 'GET' });
+  const cachedRes = await cache.match(cacheKey);
+  if (cachedRes) {
+    return cachedRes;
+  }
 
   // 2. Upstream fetch with derivative fallback
   try {
@@ -2199,8 +2197,8 @@ export default {
       return handleCacheRebuild(origin, env, ctx);
     }
 
-    // 5. Only GET allowed for remaining public endpoints (POST for invalidation, view tracking, and search RPC)
-    if (url.pathname.startsWith('/api/public/') && request.method !== 'GET' && url.pathname !== '/api/public/view' && url.pathname !== '/api/public/search') {
+    // 5. Only GET and HEAD allowed for remaining public endpoints (POST for invalidation, view tracking, and search RPC)
+    if (url.pathname.startsWith('/api/public/') && request.method !== 'GET' && request.method !== 'HEAD' && url.pathname !== '/api/public/view' && url.pathname !== '/api/public/search') {
       return errorResponse('Method Not Allowed', 405);
     }
 
