@@ -1908,7 +1908,6 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
 
   // Dynamic edge discovery of top hero image to eliminate client render delay on Desktop & Mobile
   let heroImageUrl = '';
-  let heroTitle = '';
   try {
     const carouselRes = await fetchFromSupabase(
       `carousel_items?select=${encodeURIComponent(PROJECTIONS.carousel)}&is_active=eq.true&order=sort_order.asc&limit=1`,
@@ -1918,10 +1917,8 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
       const item = carouselRes.data[0];
       if (item.item_type === 'EVENT' && item.events) {
         heroImageUrl = getEventImageUrl(item.events);
-        heroTitle = item.custom_title?.trim() || item.events.name || '';
       } else if (item.item_type === 'MEDIA' && item.media_assets) {
         heroImageUrl = getEventImageUrl(item);
-        heroTitle = item.custom_title?.trim() || '';
       }
     }
   } catch {}
@@ -1988,25 +1985,6 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
       },
     });
 
-  if (heroMobileProxy || heroDesktopProxy) {
-    rewriter.on('picture source', {
-      element(el: CFElement) {
-        if (heroMobileProxy) {
-          el.setAttribute('srcset', heroMobileProxy);
-        }
-      }
-    });
-    rewriter.on('picture img', {
-      element(el: CFElement) {
-        if (heroDesktopProxy) {
-          el.setAttribute('src', heroDesktopProxy);
-          if (heroTitle) {
-            el.setAttribute('alt', heroTitle);
-          }
-        }
-      }
-    });
-  }
 
   const rewritten = rewriter.transform(indexHtml);
 

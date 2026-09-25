@@ -153,16 +153,36 @@ const normalizeEventDates = (evts: EventFeedItem[]): EventFeedItem[] => {
     .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
 };
 
+import { persistentCache } from "./shared/persistentCache";
+
 export default function App() {
+  const initialBundle = useMemo(() => {
+    try {
+      return persistentCache.get<any>('public:homepage');
+    } catch {
+      return null;
+    }
+  }, []);
+
   const [theme, setTheme] = useState("light");
-  const [categories, setCategories] = useState<CategoryFeedItem[]>(OFFICIAL_PLATFORM_CATEGORIES);
-  const [ads, setAds] = useState<AdvertisementFeedItem[]>([]);
-  const [featuredEvents, setFeaturedEvents] = useState<EventFeedItem[]>([]);
-  const [trendingEvents, setTrendingEvents] = useState<EventFeedItem[]>([]);
-  const [carouselSlides, setCarouselSlides] = useState<CarouselItemFeedItem[]>([]);
+  const [categories, setCategories] = useState<CategoryFeedItem[]>(
+    initialBundle?.categories || OFFICIAL_PLATFORM_CATEGORIES
+  );
+  const [ads, setAds] = useState<AdvertisementFeedItem[]>(initialBundle?.advertisements || []);
+  const [featuredEvents, setFeaturedEvents] = useState<EventFeedItem[]>(
+    initialBundle?.featured ? normalizeEventDates(initialBundle.featured.map((fe: any) => fe.events || fe).filter(Boolean)) : []
+  );
+  const [trendingEvents, setTrendingEvents] = useState<EventFeedItem[]>(
+    initialBundle?.trending ? normalizeEventDates(initialBundle.trending.filter(Boolean)) : []
+  );
+  const [carouselSlides, setCarouselSlides] = useState<CarouselItemFeedItem[]>(
+    initialBundle?.carousel || []
+  );
   const [happeningTodayEvents, setHappeningTodayEvents] = useState<EventFeedItem[]>([]);
   const [happeningTodayConfig, setHappeningTodayConfig] = useState<HappeningTodayConfig | null>(null);
-  const [adSystemConfig, setAdSystemConfig] = useState<AdSystemConfig>(DEFAULT_AD_SYSTEM_CONFIG);
+  const [adSystemConfig, setAdSystemConfig] = useState<AdSystemConfig>(
+    initialBundle?.settings ? DEFAULT_AD_SYSTEM_CONFIG : DEFAULT_AD_SYSTEM_CONFIG
+  );
 
   // Configurable limits (with PRD defaults)
   const [, setLimit] = useState(10);
