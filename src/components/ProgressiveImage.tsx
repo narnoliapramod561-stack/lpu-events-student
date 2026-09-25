@@ -119,8 +119,10 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
             target.src = defaultFallback;
           }
         }}
-        className={`${className} transition-all duration-500 ease-out ${
-          isHdLoaded ? "opacity-100 filter-none" : "opacity-90 filter blur-[2px]"
+        className={`${className} ${
+          isEager
+            ? "opacity-100"
+            : `transition-opacity duration-300 ease-out ${isHdLoaded ? "opacity-100" : "opacity-90"}`
         }`}
         style={{
           imageRendering: "-webkit-optimize-contrast",

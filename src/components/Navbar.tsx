@@ -287,7 +287,7 @@ export const NavbarComponent = ({
             <button 
               type="button"
               onClick={handleBrandClick} 
-              className={`transition-all cursor-pointer font-bold rounded-full px-4 py-2 select-none ${
+              className={`transition-[transform,background-color,color,border-color] duration-200 cursor-pointer font-bold rounded-full px-4 py-2 select-none ${
                 !isTrendingActive && !searchQuery
                   ? "glass-pill-active font-black scale-105"
                   : "glass-pill text-gray-700 dark:text-gray-200 hover:text-primary"
@@ -305,7 +305,7 @@ export const NavbarComponent = ({
                   handleNavigate("#categories");
                 }
               }} 
-              className="glass-pill text-gray-700 dark:text-gray-200 hover:text-primary transition-all cursor-pointer font-bold rounded-full px-4 py-2 select-none"
+              className="glass-pill text-gray-700 dark:text-gray-200 hover:text-primary transition-[transform,background-color,color,border-color] duration-200 cursor-pointer font-bold rounded-full px-4 py-2 select-none"
             >
               Categories
             </button>
@@ -315,7 +315,7 @@ export const NavbarComponent = ({
                 if (onSelectTrending) onSelectTrending();
                 handleNavigate("#events");
               }}
-              className={`transition-all cursor-pointer font-bold flex items-center gap-1.5 rounded-full px-4 py-2 select-none ${
+              className={`transition-[transform,background-color,color,border-color] duration-200 cursor-pointer font-bold flex items-center gap-1.5 rounded-full px-4 py-2 select-none ${
                 isTrendingActive
                   ? "glass-pill-active font-black scale-105"
                   : "glass-pill text-gray-700 dark:text-gray-200 hover:text-primary"
@@ -338,7 +338,7 @@ export const NavbarComponent = ({
                 }
               }}
               aria-label="Toggle mobile search"
-              className={`flex md:hidden h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary active:scale-95 transition-all cursor-pointer ${
+              className={`flex md:hidden h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary active:scale-95 transition-[transform,background-color,color] duration-200 cursor-pointer ${
                 mobileSearchOpen || localSearch ? "glass-pill-active" : ""
               }`}
             >
@@ -349,7 +349,7 @@ export const NavbarComponent = ({
             <button
               onClick={onToggleTheme}
               aria-label="Toggle light/dark mode"
-              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary hover:scale-105 active:scale-95 transition-all cursor-pointer"
+              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary hover:scale-105 active:scale-95 transition-[transform,background-color,color] duration-200 cursor-pointer"
             >
               {theme === "dark" ? <Sun className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-amber-400" /> : <Moon className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-indigo-600" />}
             </button>
@@ -358,7 +358,7 @@ export const NavbarComponent = ({
             <button
               onClick={() => setMobileMenuOpen((prev) => !prev)}
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary lg:hidden cursor-pointer active:scale-95 transition-all"
+              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary lg:hidden cursor-pointer active:scale-95 transition-[transform,background-color,color] duration-200"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>

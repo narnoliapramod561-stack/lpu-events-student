@@ -35,26 +35,21 @@ const slideVariants: Variants = {
   enter: (direction: number) => ({
     x: direction > 0 ? "100%" : "-100%",
     opacity: 0,
-    filter: "blur(4px)",
   }),
   center: {
     x: 0,
     opacity: 1,
-    filter: "blur(0px)",
     transition: {
       x: { type: "spring" as const, stiffness: 280, damping: 30, mass: 0.8 },
       opacity: { duration: 0.35, ease: "easeOut" },
-      filter: { duration: 0.25 },
     },
   },
   exit: (direction: number) => ({
     x: direction > 0 ? "-100%" : "100%",
     opacity: 0,
-    filter: "blur(4px)",
     transition: {
       x: { type: "spring" as const, stiffness: 280, damping: 30, mass: 0.8 },
       opacity: { duration: 0.3, ease: "easeIn" },
-      filter: { duration: 0.2 },
     },
   }),
 };
@@ -129,6 +124,11 @@ export const HeroCarouselComponent = ({
   const [[currentIndex, direction], setPage] = useState<[number, number]>([0, 0]);
   const [isHovered, setIsHovered] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const isFirstMountRef = useRef(true);
+
+  useEffect(() => {
+    isFirstMountRef.current = false;
+  }, []);
 
   const slides = React.useMemo<HeroSlideModel[]>(() => {
     let baseSlides: HeroSlideModel[] = [];
@@ -363,7 +363,7 @@ export const HeroCarouselComponent = ({
             key={currentIndex}
             custom={direction}
             variants={slideVariants}
-            initial="enter"
+            initial={isFirstMountRef.current ? false : "enter"}
             animate="center"
             exit="exit"
             drag="x"
@@ -406,6 +406,8 @@ export const HeroCarouselComponent = ({
                       alt={currentSlide.title}
                       loading={currentIndex === 0 ? "eager" : "lazy"}
                       fetchPriority={currentIndex === 0 ? "high" : "auto"}
+                      width={640}
+                      height={360}
                       containerClassName="absolute inset-0 w-full h-full"
                       className="w-full h-full object-cover object-center relative z-10"
                     />
@@ -569,7 +571,7 @@ export const HeroCarouselComponent = ({
                       <motion.div variants={contentItem} className="flex items-center gap-3">
                         <button
                           onClick={handleAction}
-                          className="relative group overflow-hidden flex items-center gap-2.5 px-8 sm:px-9 py-3 sm:py-3.5 rounded-full glass-btn-primary font-black cursor-pointer touch-target font-heading text-sm md:text-base transition-all shadow-md hover:shadow-xl"
+                          className="relative group overflow-hidden flex items-center gap-2.5 px-8 sm:px-9 py-3 sm:py-3.5 rounded-full glass-btn-primary font-black cursor-pointer touch-target font-heading text-sm md:text-base transition-[transform,box-shadow] duration-200 shadow-md hover:shadow-xl active:scale-[0.98]"
                         >
                           <span className="relative z-10">{currentSlide.ctaText || "View Details"}</span>
                           <ArrowRight className="relative z-10 h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
@@ -588,6 +590,8 @@ export const HeroCarouselComponent = ({
                           alt={currentSlide.title}
                           loading={currentIndex === 0 ? "eager" : "lazy"}
                           fetchPriority={currentIndex === 0 ? "high" : "auto"}
+                          width={1200}
+                          height={675}
                           containerClassName="absolute inset-0 w-full h-full"
                           className="w-full h-full object-cover object-center relative z-10"
                         />
@@ -604,6 +608,8 @@ export const HeroCarouselComponent = ({
                     <ProgressiveImage
                       src={currentSlide.image}
                       alt={currentSlide.title}
+                      width={1200}
+                      height={675}
                       containerClassName="absolute inset-0 w-full h-full"
                       className="w-full h-full object-cover"
                     />
@@ -651,6 +657,8 @@ export const HeroCarouselComponent = ({
                       <ProgressiveImage
                         src={currentSlide.image}
                         alt={currentSlide.title}
+                        width={1200}
+                        height={675}
                         containerClassName="absolute inset-0 w-full h-full"
                         className="w-full h-full object-cover"
                       />
@@ -726,7 +734,7 @@ export const HeroCarouselComponent = ({
                 e.stopPropagation();
                 paginate(-1);
               }}
-              className="sm:hidden absolute left-0.5 min-[390px]:left-1 top-1/2 -translate-y-1/2 z-30 w-7.5 h-7.5 min-[390px]:w-8 min-[390px]:h-8 rounded-full flex items-center justify-center bg-black/60 hover:bg-black/75 active:bg-black/90 backdrop-blur-md border border-white/35 dark:border-white/25 text-white shadow-[0_4px_14px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.4)] active:scale-90 transition-all duration-200 cursor-pointer touch-manipulation outline-none group select-none"
+              className="sm:hidden absolute left-0.5 min-[390px]:left-1 top-1/2 -translate-y-1/2 z-30 w-7.5 h-7.5 min-[390px]:w-8 min-[390px]:h-8 rounded-full flex items-center justify-center bg-black/60 hover:bg-black/75 active:bg-black/90 backdrop-blur-md border border-white/35 dark:border-white/25 text-white shadow-[0_4px_14px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.4)] active:scale-90 transition-transform duration-200 cursor-pointer touch-manipulation outline-none group select-none"
               aria-label="Previous slide"
             >
               <ChevronLeft className="h-4 w-4 text-white drop-shadow stroke-[2.6] group-active:-translate-x-0.5 transition-transform" />
@@ -738,7 +746,7 @@ export const HeroCarouselComponent = ({
                 e.stopPropagation();
                 paginate(1);
               }}
-              className="sm:hidden absolute right-0.5 min-[390px]:right-1 top-1/2 -translate-y-1/2 z-30 w-7.5 h-7.5 min-[390px]:w-8 min-[390px]:h-8 rounded-full flex items-center justify-center bg-black/60 hover:bg-black/75 active:bg-black/90 backdrop-blur-md border border-white/35 dark:border-white/25 text-white shadow-[0_4px_14px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.4)] active:scale-90 transition-all duration-200 cursor-pointer touch-manipulation outline-none group select-none"
+              className="sm:hidden absolute right-0.5 min-[390px]:right-1 top-1/2 -translate-y-1/2 z-30 w-7.5 h-7.5 min-[390px]:w-8 min-[390px]:h-8 rounded-full flex items-center justify-center bg-black/60 hover:bg-black/75 active:bg-black/90 backdrop-blur-md border border-white/35 dark:border-white/25 text-white shadow-[0_4px_14px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.4)] active:scale-90 transition-transform duration-200 cursor-pointer touch-manipulation outline-none group select-none"
               aria-label="Next slide"
             >
               <ChevronRight className="h-4 w-4 text-white drop-shadow stroke-[2.6] group-active:translate-x-0.5 transition-transform" />
@@ -754,7 +762,7 @@ export const HeroCarouselComponent = ({
             key={idx}
             onClick={() => goToSlide(idx)}
             aria-label={`Go to slide ${idx + 1}`}
-            className="group relative h-2 rounded-full overflow-hidden cursor-pointer bg-gray-400/40 dark:bg-white/20 transition-all duration-300 hover:scale-110"
+            className="group relative h-2 rounded-full overflow-hidden cursor-pointer bg-gray-400/40 dark:bg-white/20 transition-[width,transform] duration-300 hover:scale-110"
             style={{ width: idx === currentIndex ? "20px" : "5px" }}
           >
             {idx === currentIndex && (
@@ -780,7 +788,7 @@ export const HeroCarouselComponent = ({
               key={idx}
               onClick={() => goToSlide(idx)}
               aria-label={`Go to slide ${idx + 1}`}
-              className={`h-2 rounded-full transition-all duration-300 cursor-pointer ${
+              className={`h-2 rounded-full transition-[width,background-color] duration-300 cursor-pointer ${
                 idx === currentIndex
                   ? "w-5 bg-gradient-to-r from-amber-400 to-orange-500"
                   : "w-2 bg-gray-400/40 dark:bg-white/25"
@@ -795,17 +803,17 @@ export const HeroCarouselComponent = ({
         <>
           <button
             onClick={() => paginate(-1)}
-            className="hidden sm:flex absolute -left-3 sm:-left-4 md:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-30 w-11 sm:w-12 md:w-13 h-11 sm:h-12 md:h-13 rounded-full items-center justify-center transition-all duration-300 cursor-pointer hover:scale-110 active:scale-95 group bg-white/75 dark:bg-white/[0.14] hover:bg-white/90 dark:hover:bg-white/[0.25] backdrop-blur-2xl border border-white/90 dark:border-white/30 shadow-[0_10px_35px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.8)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_1.5px_rgba(255,255,255,0.4)] hover:border-white dark:hover:border-white/50 touch-target outline-none focus:outline-none focus-visible:outline-none ring-0"
+            className="hidden sm:flex absolute -left-3 sm:-left-4 md:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-30 w-11 sm:w-12 md:w-13 h-11 sm:h-12 md:h-13 rounded-full items-center justify-center transition-[transform,background-color,border-color,box-shadow] duration-200 cursor-pointer hover:scale-110 active:scale-95 group bg-white/75 dark:bg-white/[0.14] hover:bg-white/90 dark:hover:bg-white/[0.25] backdrop-blur-2xl border border-white/90 dark:border-white/30 shadow-[0_10px_35px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.8)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_1.5px_rgba(255,255,255,0.4)] hover:border-white dark:hover:border-white/50 touch-target outline-none focus:outline-none focus-visible:outline-none ring-0"
             aria-label="Previous slide"
           >
-            <ChevronLeft className="h-5 w-5 md:h-6 md:w-6 text-gray-900 dark:text-white drop-shadow-sm group-hover:-translate-x-0.5 group-hover:text-primary transition-all duration-200 stroke-[2.4]" />
+            <ChevronLeft className="h-5 w-5 md:h-6 md:w-6 text-gray-900 dark:text-white drop-shadow-sm group-hover:-translate-x-0.5 group-hover:text-primary transition-transform duration-200 stroke-[2.4]" />
           </button>
           <button
             onClick={() => paginate(1)}
-            className="hidden sm:flex absolute -right-3 sm:-right-4 md:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-30 w-11 sm:w-12 md:w-13 h-11 sm:h-12 md:h-13 rounded-full items-center justify-center transition-all duration-300 cursor-pointer hover:scale-110 active:scale-95 group bg-white/75 dark:bg-white/[0.14] hover:bg-white/90 dark:hover:bg-white/[0.25] backdrop-blur-2xl border border-white/90 dark:border-white/30 shadow-[0_10px_35px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.8)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_1.5px_rgba(255,255,255,0.4)] hover:border-white dark:hover:border-white/50 touch-target outline-none focus:outline-none focus-visible:outline-none ring-0"
+            className="hidden sm:flex absolute -right-3 sm:-right-4 md:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-30 w-11 sm:w-12 md:w-13 h-11 sm:h-12 md:h-13 rounded-full items-center justify-center transition-[transform,background-color,border-color,box-shadow] duration-200 cursor-pointer hover:scale-110 active:scale-95 group bg-white/75 dark:bg-white/[0.14] hover:bg-white/90 dark:hover:bg-white/[0.25] backdrop-blur-2xl border border-white/90 dark:border-white/30 shadow-[0_10px_35px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.8)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_1.5px_rgba(255,255,255,0.4)] hover:border-white dark:hover:border-white/50 touch-target outline-none focus:outline-none focus-visible:outline-none ring-0"
             aria-label="Next slide"
           >
-            <ChevronRight className="h-5 w-5 md:h-6 md:w-6 text-gray-900 dark:text-white drop-shadow-sm group-hover:translate-x-0.5 group-hover:text-primary transition-all duration-200 stroke-[2.4]" />
+            <ChevronRight className="h-5 w-5 md:h-6 md:w-6 text-gray-900 dark:text-white drop-shadow-sm group-hover:translate-x-0.5 group-hover:text-primary transition-transform duration-200 stroke-[2.4]" />
           </button>
         </>
       )}
