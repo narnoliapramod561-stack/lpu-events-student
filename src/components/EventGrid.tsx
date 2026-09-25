@@ -44,19 +44,20 @@ export const EventCardComponent = ({
       onClick={() => onSelect(event.id, event.name)}
       className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-[20px] sm:rounded-[28px] shadow-md hover:shadow-2xl transition-all duration-300 border border-white/80 dark:border-white/10 hover:border-primary/50 relative hover:scale-[1.01] active:scale-[0.99]"
     >
-      {/* Event Cover Image (Native 16:9 Slot Presentation) */}
-      <div className="w-full aspect-[16/9] relative overflow-hidden shrink-0 bg-slate-950">
+      {/* Event Cover Image (Native 16:9 Slot Presentation with Full Content Visibility) */}
+      <div className="w-full aspect-[16/9] relative overflow-hidden shrink-0 bg-slate-950 flex items-center justify-center">
         <ProgressiveImage
           src={imageUrl}
           alt={event.name}
           loading="lazy"
-          containerClassName="absolute inset-0 w-full h-full"
-          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out relative z-10"
+          ambientBackdrop
+          containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
+          className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-500 ease-out relative z-10"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none z-10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none z-10" />
 
         {event.is_trending && (
-          <div className="absolute top-2.5 left-2.5 sm:top-4 sm:left-4">
+          <div className="absolute top-2.5 left-2.5 sm:top-4 sm:left-4 z-20">
             <span className="flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-gradient-to-r from-orange-600 via-amber-500 to-orange-500 text-white rounded-full font-heading text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-lg border border-white/20">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               🔥 Trending
@@ -66,7 +67,7 @@ export const EventCardComponent = ({
 
         {/* Category Pill on Image (Bottom-Left) */}
         {categoryName && (
-          <div className="absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3.5 z-10 pointer-events-none">
+          <div className="absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3.5 z-20 pointer-events-none">
             <span className="inline-flex items-center px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-black/65 dark:bg-black/75 backdrop-blur-md text-white/95 font-heading text-[9px] sm:text-[10px] font-black uppercase tracking-wider border border-white/20 shadow-md">
               {categoryName}
             </span>

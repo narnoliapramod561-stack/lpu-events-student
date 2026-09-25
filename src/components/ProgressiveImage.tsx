@@ -13,6 +13,7 @@ export interface ProgressiveImageProps extends React.ImgHTMLAttributes<HTMLImage
   containerClassName?: string;
   aspectRatioClass?: string;
   onLoadComplete?: () => void;
+  ambientBackdrop?: boolean;
 }
 
 export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
@@ -24,6 +25,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
   containerClassName = "relative w-full h-full overflow-hidden",
   aspectRatioClass = "",
   onLoadComplete,
+  ambientBackdrop = false,
   loading = "lazy",
   fetchPriority,
   style,
@@ -87,9 +89,24 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
   const isContain = className.includes("object-contain");
   const isFill = className.includes("object-fill") || Boolean(style && (style as any).objectFit === "fill");
   const placeholderFit = isFill ? "object-fill" : isContain ? "object-contain" : "object-cover";
+  const overflowSafeContainerClass = containerClassName.includes("overflow-")
+    ? containerClassName
+    : `${containerClassName} overflow-hidden`;
 
   return (
-    <div className={`${containerClassName} ${aspectRatioClass} ${bgClass}`}>
+    <div className={`${overflowSafeContainerClass} ${aspectRatioClass} ${bgClass}`}>
+      {/* Ambient Blurred Backdrop for contained/non-16:9 images to avoid letterbox gaps */}
+      {ambientBackdrop && (
+        <>
+          <div
+            aria-hidden="true"
+            className="absolute inset-0 w-full h-full bg-cover bg-center blur-2xl opacity-50 scale-110 pointer-events-none transform-gpu"
+            style={{ backgroundImage: `url(${currentSrc || src})` }}
+          />
+          <div aria-hidden="true" className="absolute inset-0 bg-black/25 pointer-events-none z-[1]" />
+        </>
+      )}
+
       {/* 1. Low-Res Blurred Placeholder (Visible instantly until HD arrives, skipped for eager LCP) */}
       {!isHdLoaded && !isEager && (
         <img
@@ -100,7 +117,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
             // Silently suppress placeholder errors without triggering heavy asset downloads
             e.currentTarget.style.display = "none";
           }}
-          className={`absolute inset-0 w-full h-full ${placeholderFit} filter blur-md transition-opacity duration-500 ease-out opacity-100`}
+          className={`absolute inset-0 w-full h-full ${placeholderFit} filter blur-md transition-opacity duration-500 ease-out opacity-100 z-[2]`}
           style={isFill ? { objectFit: "fill" } : undefined}
         />
       )}
@@ -123,7 +140,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
           isEager
             ? "opacity-100"
             : `transition-opacity duration-300 ease-out ${isHdLoaded ? "opacity-100" : "opacity-90"}`
-        }`}
+        } ${ambientBackdrop ? "relative z-10" : ""}`}
         style={{
           imageRendering: "-webkit-optimize-contrast",
           ...(isFill ? { objectFit: "fill" } : {}),

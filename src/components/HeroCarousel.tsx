@@ -408,8 +408,9 @@ export const HeroCarouselComponent = ({
                       fetchPriority={currentIndex === 0 ? "high" : "auto"}
                       width={640}
                       height={360}
-                      containerClassName="absolute inset-0 w-full h-full"
-                      className="w-full h-full object-cover object-center relative z-10"
+                      ambientBackdrop
+                      containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
+                      className="w-full h-full object-contain object-center relative z-10"
                     />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-orange-950/80 via-slate-900 to-indigo-950 flex flex-col justify-center items-center px-4 text-center pb-12">
@@ -592,8 +593,9 @@ export const HeroCarouselComponent = ({
                           fetchPriority={currentIndex === 0 ? "high" : "auto"}
                           width={1200}
                           height={675}
-                          containerClassName="absolute inset-0 w-full h-full"
-                          className="w-full h-full object-cover object-center relative z-10"
+                          ambientBackdrop
+                          containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
+                          className="w-full h-full object-contain object-center relative z-10"
                         />
                         <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/5 pointer-events-none z-20" />
                       </div>

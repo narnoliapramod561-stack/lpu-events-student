@@ -404,8 +404,9 @@ export const HappeningTodaySliderComponent = ({
                     src={slide.image}
                     alt={slide.title}
                     loading={idx < 3 ? "eager" : "lazy"}
-                    containerClassName="absolute inset-0 w-full h-full"
-                    className="w-full h-full object-cover object-center relative z-10"
+                    ambientBackdrop
+                    containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
+                    className="w-full h-full object-contain object-center relative z-10"
                   />
                 ) : (
                   <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 flex flex-col items-center justify-center p-4">
@@ -573,13 +574,14 @@ export const HappeningTodaySliderComponent = ({
                   className="relative w-1/2 h-full overflow-hidden cursor-pointer group shrink-0"
                 >
                   {currentSlide.image ? (
-                    <div className="relative w-full h-full overflow-hidden bg-slate-950">
+                    <div className="relative w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
                       <ProgressiveImage
                         src={currentSlide.image}
                         alt={currentSlide.title}
                         loading="lazy"
-                        containerClassName="absolute inset-0 w-full h-full"
-                        className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out relative z-10"
+                        ambientBackdrop
+                        containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
+                        className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-700 ease-out relative z-10"
                       />
                     </div>
                   ) : (
