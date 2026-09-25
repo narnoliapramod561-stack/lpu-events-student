@@ -313,6 +313,143 @@ export function synthesizeSlotCanvas(
 }
 
 /**
+ * Tier 1: Cloudflare Workers AI Inpainting / Outpainting Gateway
+ * Attempts serverless edge AI outpainting if Cloudflare credentials are configured.
+ * Seamlessly returns null if unavailable/fails, triggering Tier 2 (Algorithmic Canvas Extender).
+ */
+export async function tryCloudflareWorkersAiOutpaint(
+  sourceBlob: Blob,
+  _targetWidth: number,
+  _targetHeight: number
+): Promise<HTMLImageElement | null> {
+  try {
+    const cfToken = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CLOUDFLARE_API_TOKEN) || '';
+    const cfAccountId = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CLOUDFLARE_ACCOUNT_ID) || 'ebc6930d2f0caf22655c09bd8296e9e1';
+
+    if (!cfToken) {
+      // Cloudflare token not configured; gracefully fall back to Tier 2 Canvas Extender
+      return null;
+    }
+
+    const endpoint = `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/ai/run/@cf/runwayml/stable-diffusion-v1-5-inpainting`;
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+
+    const formData = new FormData();
+    formData.append('image', sourceBlob);
+    formData.append('prompt', 'seamless extended background scenery, matching ambient environment, photorealistic, high quality');
+
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${cfToken}`,
+      },
+      body: formData,
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeout);
+
+    if (!res.ok) {
+      console.warn('[ImagePipeline] Cloudflare Workers AI responded with status:', res.status);
+      return null;
+    }
+
+    const aiBlob = await res.blob();
+    return await loadImageElement(aiBlob);
+  } catch (err) {
+    console.warn('[ImagePipeline] Cloudflare Workers AI outpaint failed, falling back to Canvas:', err);
+    return null;
+  }
+}
+
+/**
+ * Tier 2: Smart Algorithmic Content-Aware Canvas Extender
+ * Extends non-16:9 images (square 1:1, portrait 4:5) into a native 16:9 widescreen canvas:
+ * 1. Scales and diffuses matching background scenery across the full 16:9 width
+ * 2. Feathers the transition borders so there are zero harsh edges
+ * 3. Keeps 100% of the original poster data in the center with zero cropping and maximum sharpness
+ */
+export function renderSmartExtendedCanvas(
+  img: HTMLImageElement,
+  targetWidth: number,
+  targetHeight: number,
+  _targetRatio: number = 16 / 9
+): HTMLCanvasElement {
+  const srcW = img.naturalWidth || img.width;
+  const srcH = img.naturalHeight || img.height;
+  const srcRatio = srcW / srcH;
+
+  // If already widescreen (ratio >= 1.6), no extension needed
+  if (srcRatio >= 1.6) {
+    return renderDownscaledCanvas(img, 0, 0, srcW, srcH, targetWidth, targetHeight);
+  }
+
+  // Create native 16:9 target canvas
+  const canvas = document.createElement('canvas');
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  const ctx = canvas.getContext('2d', { willReadFrequently: true });
+  if (!ctx) throw new Error('Could not obtain 2D rendering context for smart extension.');
+
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+
+  // 1. LAYER 1: Background Scenery Extension
+  // Scale image to cover entire 16:9 bounds and apply smooth blur & vibrance
+  const bgScale = Math.max(targetWidth / srcW, targetHeight / srcH);
+  const bgW = Math.round(srcW * bgScale);
+  const bgH = Math.round(srcH * bgScale);
+  const bgX = Math.round((targetWidth - bgW) / 2);
+  const bgY = Math.round((targetHeight - bgH) / 2);
+
+  ctx.save();
+  ctx.filter = 'blur(28px) saturate(1.35) brightness(1.02)';
+  ctx.drawImage(img, bgX, bgY, bgW, bgH);
+  ctx.restore();
+
+  // Subtle ambient darkening to ensure foreground pop
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+  ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+  // 2. LAYER 2: Centered 100% Sharp Original Poster (Zero Crop, Zero Zoom)
+  const fgScale = Math.min(targetWidth / srcW, targetHeight / srcH);
+  const fgW = Math.round(srcW * fgScale);
+  const fgH = Math.round(srcH * fgScale);
+  const fgX = Math.round((targetWidth - fgW) / 2);
+  const fgY = Math.round((targetHeight - fgH) / 2);
+
+  // Soft edge feathering on the left and right border of the foreground image
+  const fgCanvas = document.createElement('canvas');
+  fgCanvas.width = fgW;
+  fgCanvas.height = fgH;
+  const fgCtx = fgCanvas.getContext('2d');
+  if (fgCtx) {
+    fgCtx.imageSmoothingEnabled = true;
+    fgCtx.imageSmoothingQuality = 'high';
+    fgCtx.drawImage(img, 0, 0, fgW, fgH);
+
+    // Apply horizontal edge feathering
+    fgCtx.globalCompositeOperation = 'destination-in';
+    const featherGrad = fgCtx.createLinearGradient(0, 0, fgW, 0);
+    const featherPx = Math.min(24, Math.round(fgW * 0.03));
+    featherGrad.addColorStop(0, 'rgba(0,0,0,0)');
+    featherGrad.addColorStop(featherPx / fgW, 'rgba(0,0,0,1)');
+    featherGrad.addColorStop(1 - featherPx / fgW, 'rgba(0,0,0,1)');
+    featherGrad.addColorStop(1, 'rgba(0,0,0,0)');
+    fgCtx.fillStyle = featherGrad;
+    fgCtx.fillRect(0, 0, fgW, fgH);
+
+    // Composite feathered foreground over extended background
+    ctx.drawImage(fgCanvas, fgX, fgY);
+  } else {
+    ctx.drawImage(img, fgX, fgY, fgW, fgH);
+  }
+
+  return canvas;
+}
+
+/**
  * Main Centralized Image Processing Function
  *
  * Processes any input image file into optimized, enhanced WebP derivatives
@@ -334,34 +471,79 @@ export async function processImageForContext(
   const vTag = `v${IMAGE_PIPELINE_VERSION}`;
 
   // 2. Load into image element for pixel processing
-  const img = await loadImageElement(fileOrBlob);
+  let img = await loadImageElement(fileOrBlob);
   const srcWidth = img.naturalWidth || img.width;
   const srcHeight = img.naturalHeight || img.height;
+  const srcRatio = srcWidth / srcHeight;
 
-  const targetDims = calculateTargetDimensions(
-    srcWidth,
-    srcHeight,
-    config.maxWidth,
-    config.maxHeight,
-    config.fitMode,
-    config.aspectRatio
-  );
+  const isPosterContext = context === 'event-banner' || context === 'hero' || context === 'event-card';
+  const shouldSmartExtend = isPosterContext && srcRatio < 1.6;
+
+  // Determine target dimensions: if extending non-widescreen poster, use native 16:9 canvas
+  const effectiveTargetDims = shouldSmartExtend
+    ? {
+        width: Math.min(config.maxWidth, Math.max(srcWidth, Math.round(srcHeight * config.aspectRatio))),
+        height: Math.min(config.maxHeight, srcHeight),
+        cropX: 0,
+        cropY: 0,
+        cropWidth: srcWidth,
+        cropHeight: srcHeight,
+      }
+    : calculateTargetDimensions(
+        srcWidth,
+        srcHeight,
+        config.maxWidth,
+        config.maxHeight,
+        config.fitMode,
+        config.aspectRatio
+      );
 
   // 3. Render and downscale to primary desktop size
-  const primaryCanvas = renderDownscaledCanvas(
-    img,
-    targetDims.cropX,
-    targetDims.cropY,
-    targetDims.cropWidth,
-    targetDims.cropHeight,
-    targetDims.width,
-    targetDims.height
-  );
+  let primaryCanvas: HTMLCanvasElement;
+
+  if (shouldSmartExtend) {
+    // Tier 1: Try Cloudflare Workers AI Inpainting
+    const aiImg = await tryCloudflareWorkersAiOutpaint(
+      fileOrBlob,
+      effectiveTargetDims.width,
+      effectiveTargetDims.height
+    );
+
+    if (aiImg) {
+      primaryCanvas = renderDownscaledCanvas(
+        aiImg,
+        0,
+        0,
+        aiImg.naturalWidth || aiImg.width,
+        aiImg.naturalHeight || aiImg.height,
+        effectiveTargetDims.width,
+        effectiveTargetDims.height
+      );
+    } else {
+      // Tier 2: Algorithmic Canvas Smart Extender (100% Free & Reliable Fallback)
+      primaryCanvas = renderSmartExtendedCanvas(
+        img,
+        effectiveTargetDims.width,
+        effectiveTargetDims.height,
+        config.aspectRatio
+      );
+    }
+  } else {
+    primaryCanvas = renderDownscaledCanvas(
+      img,
+      effectiveTargetDims.cropX,
+      effectiveTargetDims.cropY,
+      effectiveTargetDims.cropWidth,
+      effectiveTargetDims.cropHeight,
+      effectiveTargetDims.width,
+      effectiveTargetDims.height
+    );
+  }
 
   // 4. Apply deterministic visual quality enhancement (if enabled for context)
   const primaryCtx = primaryCanvas.getContext('2d', { willReadFrequently: true });
   if (primaryCtx && config.enhancement.enabled) {
-    const imgData = primaryCtx.getImageData(0, 0, targetDims.width, targetDims.height);
+    const imgData = primaryCtx.getImageData(0, 0, effectiveTargetDims.width, effectiveTargetDims.height);
     const enhanced = enhanceImageData(imgData, config.enhancement);
     primaryCtx.putImageData(enhanced, 0, 0);
   }
@@ -382,8 +564,8 @@ export async function processImageForContext(
     if (variant.name === 'desktop') {
       variantResults.push({
         name: 'desktop',
-        width: targetDims.width,
-        height: targetDims.height,
+        width: effectiveTargetDims.width,
+        height: effectiveTargetDims.height,
         blob: primaryBlob,
         dataUrl: primaryDataUrl,
         fileSizeBytes: primaryBlob.size,
@@ -393,24 +575,43 @@ export async function processImageForContext(
       continue;
     }
 
-    const varDims = calculateTargetDimensions(
-      srcWidth,
-      srcHeight,
-      variant.width,
-      variant.height,
-      config.fitMode,
-      config.aspectRatio
-    );
+    const varDims = shouldSmartExtend
+      ? {
+          width: variant.width,
+          height: variant.height,
+          cropX: 0,
+          cropY: 0,
+          cropWidth: effectiveTargetDims.width,
+          cropHeight: effectiveTargetDims.height
+        }
+      : calculateTargetDimensions(
+          srcWidth,
+          srcHeight,
+          variant.width,
+          variant.height,
+          config.fitMode,
+          config.aspectRatio
+        );
 
-    const varCanvas = renderDownscaledCanvas(
-      img,
-      varDims.cropX,
-      varDims.cropY,
-      varDims.cropWidth,
-      varDims.cropHeight,
-      varDims.width,
-      varDims.height
-    );
+    const varCanvas = shouldSmartExtend
+      ? renderDownscaledCanvas(
+          primaryCanvas as any,
+          0,
+          0,
+          effectiveTargetDims.width,
+          effectiveTargetDims.height,
+          variant.width,
+          variant.height
+        )
+      : renderDownscaledCanvas(
+          img,
+          varDims.cropX,
+          varDims.cropY,
+          varDims.cropWidth,
+          varDims.cropHeight,
+          varDims.width,
+          varDims.height
+        );
 
     const varCtx = varCanvas.getContext('2d', { willReadFrequently: true });
     if (varCtx && config.enhancement.enabled) {
@@ -489,8 +690,8 @@ export async function processImageForContext(
     originalWidth: srcWidth,
     originalHeight: srcHeight,
     originalSizeBytes: originalSize,
-    primaryWidth: targetDims.width,
-    primaryHeight: targetDims.height,
+    primaryWidth: effectiveTargetDims.width,
+    primaryHeight: effectiveTargetDims.height,
     primarySizeBytes: primarySize,
     primaryBlob,
     primaryDataUrl,

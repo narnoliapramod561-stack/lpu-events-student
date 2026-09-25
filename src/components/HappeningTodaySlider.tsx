@@ -397,7 +397,7 @@ export const HappeningTodaySliderComponent = ({
               className="group relative flex-shrink-0 w-[84vw] min-[390px]:w-[86vw] max-w-[360px] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border border-slate-200/80 dark:border-white/[0.12] bg-white dark:bg-[#0c0f1e] flex flex-col transition-all duration-200 active:scale-[0.98]"
             >
               {/* Uniform Crisp Banner Stage (Zero Zoom, Full Visibility) */}
-              <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 bg-slate-900">
+              <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 bg-black/5 dark:bg-white/5">
                 {/* Full Cover Slide Banner */}
                 {slide.image ? (
                   <ProgressiveImage
@@ -574,7 +574,7 @@ export const HappeningTodaySliderComponent = ({
                   className="relative w-1/2 h-full overflow-hidden cursor-pointer group shrink-0"
                 >
                   {currentSlide.image ? (
-                    <div className="relative w-full h-full overflow-hidden bg-slate-950 flex items-center justify-center">
+                    <div className="relative w-full h-full overflow-hidden bg-black/5 dark:bg-white/5 flex items-center justify-center">
                       <ProgressiveImage
                         src={currentSlide.image}
                         alt={currentSlide.title}

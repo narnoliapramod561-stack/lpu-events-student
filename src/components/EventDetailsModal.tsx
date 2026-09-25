@@ -83,7 +83,7 @@ export const EventDetailsModal = ({ eventId, onClose }: {
         ) : (
           <>
             {/* Banner Image Stage */}
-            <div className="w-full h-[260px] xs:h-[290px] sm:h-[340px] md:h-[380px] relative overflow-hidden border-b border-white/80 dark:border-white/10 shrink-0 bg-slate-950 flex items-center justify-center">
+            <div className="w-full h-[260px] xs:h-[290px] sm:h-[340px] md:h-[380px] relative overflow-hidden border-b border-white/80 dark:border-white/10 shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center">
               <ProgressiveImage
                 ambientBackdrop
                 src={getEventImage(event, 'event-banner', 1440)}

@@ -85,7 +85,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
     };
   }, [src, lowResSrc, defaultFallback, onLoadComplete, isEager]);
 
-  const bgClass = containerClassName.includes("bg-") ? "" : "bg-slate-900/40";
+  const bgClass = ambientBackdrop ? "" : containerClassName.includes("bg-") ? "" : "bg-slate-900/40";
   const isContain = className.includes("object-contain");
   const isFill = className.includes("object-fill") || Boolean(style && (style as any).objectFit === "fill");
   const placeholderFit = isFill ? "object-fill" : isContain ? "object-contain" : "object-cover";
@@ -95,16 +95,13 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
 
   return (
     <div className={`${overflowSafeContainerClass} ${aspectRatioClass} ${bgClass}`}>
-      {/* Ambient Blurred Backdrop for contained/non-16:9 images to avoid letterbox gaps */}
+      {/* Ambient Vibrant Extension for contained/non-16:9 images (Zero black space, continuous edge flow) */}
       {ambientBackdrop && (
-        <>
-          <div
-            aria-hidden="true"
-            className="absolute inset-0 w-full h-full bg-cover bg-center blur-2xl opacity-50 scale-110 pointer-events-none transform-gpu"
-            style={{ backgroundImage: `url(${currentSrc || src})` }}
-          />
-          <div aria-hidden="true" className="absolute inset-0 bg-black/25 pointer-events-none z-[1]" />
-        </>
+        <div
+          aria-hidden="true"
+          className="absolute inset-0 w-full h-full bg-cover bg-center blur-2xl saturate-150 brightness-105 scale-125 opacity-90 pointer-events-none transform-gpu"
+          style={{ backgroundImage: `url(${currentSrc || src})` }}
+        />
       )}
 
       {/* 1. Low-Res Blurred Placeholder (Visible instantly until HD arrives, skipped for eager LCP) */}
@@ -140,7 +137,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
           isEager
             ? "opacity-100"
             : `transition-opacity duration-300 ease-out ${isHdLoaded ? "opacity-100" : "opacity-90"}`
-        } ${ambientBackdrop ? "relative z-10" : ""}`}
+        } ${ambientBackdrop ? "relative z-10 [mask-image:linear-gradient(to_right,transparent,black_2.5%,black_97.5%,transparent)]" : ""}`}
         style={{
           imageRendering: "-webkit-optimize-contrast",
           ...(isFill ? { objectFit: "fill" } : {}),

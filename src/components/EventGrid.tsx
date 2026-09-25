@@ -45,7 +45,7 @@ export const EventCardComponent = ({
       className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-[20px] sm:rounded-[28px] shadow-md hover:shadow-2xl transition-all duration-300 border border-white/80 dark:border-white/10 hover:border-primary/50 relative hover:scale-[1.01] active:scale-[0.99]"
     >
       {/* Event Cover Image (Native 16:9 Slot Presentation with Full Content Visibility) */}
-      <div className="w-full aspect-[16/9] relative overflow-hidden shrink-0 bg-slate-950 flex items-center justify-center">
+      <div className="w-full aspect-[16/9] relative overflow-hidden shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center">
         <ProgressiveImage
           src={imageUrl}
           alt={event.name}

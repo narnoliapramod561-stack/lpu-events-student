@@ -585,7 +585,7 @@ export const HeroCarouselComponent = ({
                       onClick={handleAction}
                       className="relative w-full lg:w-[58%] xl:w-[60%] p-2.5 sm:p-3.5 lg:p-4 xl:p-5 flex items-center justify-center shrink-0 cursor-pointer group/img"
                     >
-                      <div className="relative w-full max-w-[760px] lg:max-w-none xl:max-w-[880px] 2xl:max-w-[940px] aspect-[16/9] rounded-[22px] lg:rounded-[30px] overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 group-hover/img:scale-[1.015] transition-transform duration-300 bg-slate-950">
+                      <div className="relative w-full max-w-[760px] lg:max-w-none xl:max-w-[880px] 2xl:max-w-[940px] aspect-[16/9] rounded-[22px] lg:rounded-[30px] overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 group-hover/img:scale-[1.015] transition-transform duration-300">
                         <ProgressiveImage
                           src={getResponsiveImageUrl(currentSlide.image || "/defaults/events/general_default_tablet.webp", 1200)}
                           alt={currentSlide.title}
@@ -597,7 +597,6 @@ export const HeroCarouselComponent = ({
                           containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
                           className="w-full h-full object-contain object-center relative z-10"
                         />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/25 via-transparent to-black/5 pointer-events-none z-20" />
                       </div>
                     </div>
                   </div>

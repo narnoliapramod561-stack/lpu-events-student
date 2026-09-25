@@ -499,7 +499,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
       </div>
 
       {/* Hero Banner Stage (Full Content Visibility with Ambient Backdrop) */}
-      <div className="w-full h-[280px] xs:h-[320px] sm:h-[420px] md:h-[480px] lg:h-[520px] overflow-hidden rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 relative glass-panel shadow-xl bg-slate-950 flex items-center justify-center">
+      <div className="w-full h-[280px] xs:h-[320px] sm:h-[420px] md:h-[480px] lg:h-[520px] overflow-hidden rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 relative glass-panel shadow-xl bg-black/5 dark:bg-white/5 flex items-center justify-center">
         <ProgressiveImage
           ambientBackdrop
           className="w-full h-full object-contain object-center relative z-10"
