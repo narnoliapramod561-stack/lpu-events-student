@@ -125,6 +125,15 @@ export async function uploadAndOptimizeImage(
       formData.append('checksum', processed.checksum);
       if (entityId) formData.append('entity_id', entityId);
 
+      // Append responsive derivative variants (mobile, tablet)
+      if (processed.variants) {
+        for (const variant of processed.variants) {
+          if (variant.name !== 'desktop') {
+            formData.append(`file_${variant.name}`, variant.blob, `${processed.checksum}_${variant.name}.webp`);
+          }
+        }
+      }
+
       // Append multi-slot synthesized derivatives
       if (processed.slots) {
         for (const [slotKey, slotItem] of Object.entries(processed.slots)) {

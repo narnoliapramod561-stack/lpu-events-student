@@ -1858,12 +1858,24 @@ async function handleImageProxy(request: Request, ctx: ExecutionContext): Promis
   }
 
   try {
-    const upstreamRes = await (fetch as any)(targetUrl, {
+    let upstreamRes = await (fetch as any)(targetUrl, {
       cf: {
         cacheEverything: true,
         cacheTtl: 31536000,
       },
     });
+
+    // Graceful derivative fallback: if _mobile.webp or _tablet.webp is not yet on R2,
+    // seamlessly fall back to primary _desktop.webp so the image never fails to display
+    if (!upstreamRes.ok && upstreamRes.status === 404 && (targetUrl.includes('_mobile.webp') || targetUrl.includes('_tablet.webp'))) {
+      const fallbackTarget = targetUrl.replace(/(_mobile|_tablet)\.webp$/, '_desktop.webp');
+      upstreamRes = await (fetch as any)(fallbackTarget, {
+        cf: {
+          cacheEverything: true,
+          cacheTtl: 31536000,
+        },
+      });
+    }
 
     if (!upstreamRes.ok) {
       return new Response('Image not found or upstream error', { status: upstreamRes.status });
@@ -1914,7 +1926,21 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
     }
   } catch {}
 
-  const heroProxyUrl = heroImageUrl ? `/api/public/image-proxy?url=${encodeURIComponent(heroImageUrl)}` : '';
+  const heroDesktopUrl = heroImageUrl || '/defaults/events/general_default_desktop.webp';
+  const heroMobileUrl = heroImageUrl
+    ? (heroImageUrl.includes('_desktop.webp')
+        ? heroImageUrl.replace('_desktop.webp', '_mobile.webp')
+        : (heroImageUrl.startsWith('/defaults/events/')
+            ? heroImageUrl.replace(/(_desktop|_tablet|_mobile)?\.webp$/, '_mobile.webp')
+            : heroImageUrl))
+    : '/defaults/events/general_default_mobile.webp';
+
+  const heroDesktopProxy = heroDesktopUrl.startsWith('https://images.lpuevents.live/')
+    ? `/api/public/image-proxy?url=${encodeURIComponent(heroDesktopUrl)}`
+    : heroDesktopUrl;
+  const heroMobileProxy = heroMobileUrl.startsWith('https://images.lpuevents.live/')
+    ? `/api/public/image-proxy?url=${encodeURIComponent(heroMobileUrl)}`
+    : heroMobileUrl;
 
   const websiteJsonLd = safeJsonLd({
     '@context': 'https://schema.org',
@@ -1953,29 +1979,30 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
       element(el: CFElement) {
         el.append(`<script type="application/ld+json">${websiteJsonLd}</script>`, { html: true });
         el.append(`<script type="application/ld+json">${orgJsonLd}</script>`, { html: true });
-        if (heroProxyUrl) {
-          el.append(`<link rel="preload" as="image" href="${escapeHtml(heroProxyUrl)}" fetchpriority="high" />`, { html: true });
+        if (heroMobileProxy && heroDesktopProxy && heroMobileProxy !== heroDesktopProxy) {
+          el.append(`<link rel="preload" as="image" href="${escapeHtml(heroMobileProxy)}" media="(max-width: 640px)" fetchpriority="high" />`, { html: true });
+          el.append(`<link rel="preload" as="image" href="${escapeHtml(heroDesktopProxy)}" media="(min-width: 641px)" fetchpriority="high" />`, { html: true });
+        } else if (heroDesktopProxy) {
+          el.append(`<link rel="preload" as="image" href="${escapeHtml(heroDesktopProxy)}" fetchpriority="high" />`, { html: true });
         }
       },
     });
 
-  if (heroProxyUrl) {
-    // Remove the static default preload tags since the hero proxy image replaces them
-    rewriter.on('link[rel="preload"][as="image"][href*="general_default"]', {
+  if (heroMobileProxy || heroDesktopProxy) {
+    rewriter.on('picture source', {
       element(el: CFElement) {
-        el.remove();
+        if (heroMobileProxy) {
+          el.setAttribute('srcset', heroMobileProxy);
+        }
       }
     });
-    rewriter.on('picture source[srcset*="general_default"]', {
+    rewriter.on('picture img', {
       element(el: CFElement) {
-        el.setAttribute('srcset', heroProxyUrl);
-      }
-    });
-    rewriter.on('picture img[src*="general_default"]', {
-      element(el: CFElement) {
-        el.setAttribute('src', heroProxyUrl);
-        if (heroTitle) {
-          el.setAttribute('alt', heroTitle);
+        if (heroDesktopProxy) {
+          el.setAttribute('src', heroDesktopProxy);
+          if (heroTitle) {
+            el.setAttribute('alt', heroTitle);
+          }
         }
       }
     });
@@ -1983,14 +2010,13 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
 
   const rewritten = rewriter.transform(indexHtml);
 
-  // Build HTTP Link headers for preconnect and LCP image preload
-  // Browsers process Link headers BEFORE parsing HTML, giving ~200ms LCP head start
-  const linkHeaders: string[] = [
-    '<https://fonts.googleapis.com>; rel=preconnect',
-    '<https://fonts.gstatic.com>; rel=preconnect; crossorigin',
-  ];
-  if (heroProxyUrl) {
-    linkHeaders.push(`<${heroProxyUrl}>; rel=preload; as=image; fetchpriority=high`);
+  // Device-aware Link preload headers without redundant preconnects
+  const linkHeaders: string[] = [];
+  if (heroMobileProxy && heroDesktopProxy && heroMobileProxy !== heroDesktopProxy) {
+    linkHeaders.push(`<${heroMobileProxy}>; rel=preload; as=image; media="(max-width: 640px)"; fetchpriority="high"`);
+    linkHeaders.push(`<${heroDesktopProxy}>; rel=preload; as=image; media="(min-width: 641px)"; fetchpriority="high"`);
+  } else if (heroDesktopProxy) {
+    linkHeaders.push(`<${heroDesktopProxy}>; rel=preload; as=image; fetchpriority="high"`);
   }
 
   return new Response(rewritten.body, {
@@ -1999,7 +2025,7 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
       'Content-Type': 'text/html; charset=utf-8',
       'Cache-Control': 'public, s-maxage=900, max-age=60, stale-while-revalidate=86400',
       'X-SEO-Engine': 'edge-rewriter',
-      'Link': linkHeaders.join(', '),
+      ...(linkHeaders.length > 0 ? { 'Link': linkHeaders.join(', ') } : {}),
       ...SECURITY_HEADERS,
     },
   });

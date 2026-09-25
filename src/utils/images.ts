@@ -39,7 +39,16 @@ export function getResponsiveImageUrl(url: string, targetWidth?: number): string
 
   // 3. Same-origin Edge CDN image proxy for instant zero-latency HTTP/2 reuse
   if (url.startsWith('https://images.lpuevents.live/')) {
-    return `/api/public/image-proxy?url=${encodeURIComponent(url)}`;
+    let resolvedUrl = url;
+    // Serve lightweight responsive mobile/tablet WebP derivatives for optimized R2 banners
+    if (url.includes('/optimized/') && url.endsWith('_desktop.webp')) {
+      if (effectiveWidth <= 640 || (isClient && screenWidth <= 640)) {
+        resolvedUrl = url.replace('_desktop.webp', '_mobile.webp');
+      } else if (effectiveWidth <= 1200 || (isClient && screenWidth <= 1024)) {
+        resolvedUrl = url.replace('_desktop.webp', '_tablet.webp');
+      }
+    }
+    return `/api/public/image-proxy?url=${encodeURIComponent(resolvedUrl)}`;
   }
 
   return url;

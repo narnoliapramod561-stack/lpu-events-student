@@ -138,7 +138,7 @@
     0 16px 40px -8px rgba(15, 23, 42, 0.06),
     0 4px 12px -2px rgba(15, 23, 42, 0.03),
     inset 0 0 0 1px rgba(255, 255, 255, 0.35);
-  transition: transform 0.25s ease, background 0.25s ease, border-color 0.25s ease, box-shadow 0.25s ease;
+  transition: transform 0.25s ease, opacity 0.25s ease, box-shadow 0.25s ease;
   position: relative;
 }
 
@@ -645,14 +645,31 @@ body {
   background-color: rgba(220, 228, 238, 0.7);
   animation: skeleton-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   will-change: opacity;
-  contain: paint;
+  contain: strict;
+  transform: translateZ(0);
 }
 
 .dark .skeleton-base {
   background-color: rgba(255, 255, 255, 0.07);
   animation: skeleton-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   will-change: opacity;
-  contain: paint;
+  contain: strict;
+  transform: translateZ(0);
+}
+
+/* GPU-Composited Ping Animation (Zero Non-Composited Border/Color Repaints) */
+@keyframes composited-ping {
+  75%, 100% {
+    transform: scale(2) translateZ(0);
+    opacity: 0;
+  }
+}
+
+.animate-ping {
+  animation: composited-ping 1s cubic-bezier(0, 0, 0.2, 1) infinite !important;
+  will-change: transform, opacity;
+  transform: translateZ(0);
+  border: none !important;
 }
 
 /* Mobile CSS Containment for Event Cards */
