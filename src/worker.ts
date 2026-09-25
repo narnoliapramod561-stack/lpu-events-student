@@ -1838,7 +1838,7 @@ async function handleEventPageSeo(
  * Proxies and caches images from images.lpuevents.live with 1-year immutable edge caching.
  * Reuses the existing HTTP/2 or HTTP/3 TCP connection for zero-latency instant LCP.
  */
-async function handleImageProxy(request: Request, ctx: ExecutionContext): Promise<Response> {
+async function handleImageProxy(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
   const url = new URL(request.url);
   const targetUrl = url.searchParams.get('url');
   if (!targetUrl) {
@@ -1857,6 +1857,29 @@ async function handleImageProxy(request: Request, ctx: ExecutionContext): Promis
     return cachedRes;
   }
 
+  // 1. Fast Path: Check if pre-optimized asset is available directly in env.ASSETS (instant edge delivery, 0ms TTFB)
+  try {
+    const parsedTarget = new URL(targetUrl);
+    const assetReq = new Request(new URL(parsedTarget.pathname, request.url).toString(), { method: 'GET' });
+    const localRes = await env.ASSETS.fetch(assetReq);
+    if (localRes.ok && localRes.status === 200) {
+      const contentType = localRes.headers.get('content-type') || 'image/webp';
+      const res = new Response(localRes.body, {
+        status: 200,
+        headers: {
+          'Content-Type': contentType,
+          'Cache-Control': 'public, max-age=31536000, immutable',
+          'Access-Control-Allow-Origin': '*',
+          'Timing-Allow-Origin': '*',
+          'X-Image-Proxy': 'edge-bundle-asset',
+        },
+      });
+      ctx.waitUntil(cache.put(cacheKey, res.clone()));
+      return res;
+    }
+  } catch {}
+
+  // 2. Upstream fetch with derivative fallback
   try {
     let upstreamRes = await (fetch as any)(targetUrl, {
       cf: {
@@ -2202,7 +2225,7 @@ export default {
     // ─── Public API Routes ─────────────────────────────────────────────
 
     if (url.pathname === '/api/public/image-proxy') {
-      return handleImageProxy(request, ctx);
+      return handleImageProxy(request, env, ctx);
     }
 
     if (url.pathname === '/api/public/homepage') {
