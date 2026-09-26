@@ -243,7 +243,7 @@ export const CategoryFilterComponent = ({
                       onSelectDate("");
                       onSelectScheduleFilter(item.id);
                     }}
-                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
+                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-transform duration-150 ${
                       isActive
                         ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                         : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
@@ -265,7 +265,7 @@ export const CategoryFilterComponent = ({
                 <button
                   type="button"
                   onClick={() => openDatePicker(mobileDateInputRef)}
-                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap active:scale-[0.96] transition-all duration-200 cursor-pointer ${
+                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap active:scale-[0.96] transition-transform duration-150 cursor-pointer ${
                     selectedDate
                       ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                       : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
@@ -351,7 +351,7 @@ export const CategoryFilterComponent = ({
                         if (onSelectPricingType) onSelectPricingType(item.id as 'ALL' | 'FREE' | 'PAID');
                       }
                     }}
-                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
+                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-transform duration-150 ${
                       isSelected
                         ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                         : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
@@ -446,7 +446,7 @@ export const CategoryFilterComponent = ({
                       onSelectCategory("all");
                       onSelectSubcategory("");
                     }}
-                    className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
+                    className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-transform duration-150 ${
                       selectedCategory === "all"
                         ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                         : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
@@ -472,7 +472,7 @@ export const CategoryFilterComponent = ({
                         onSelectCategory(isSelected ? "all" : cat.id);
                         onSelectSubcategory("");
                       }}
-                      className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
+                      className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-transform duration-150 ${
                         isSelected
                           ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                           : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
@@ -561,7 +561,7 @@ export const CategoryFilterComponent = ({
       {/* ======================================================== */}
       {/* 💻 DESKTOP DISCOVERY SUITE (sm:flex)                      */}
       {/* ======================================================== */}
-      <div className="hidden sm:flex sm:flex-col sm:gap-8">
+      <div className="hidden sm:flex sm:flex-col sm:gap-8 max-w-full overflow-hidden">
         {/* 1. Schedule Quick Filters */}
         <div className="w-full flex flex-col gap-3.5">
           <div className="flex items-center justify-between">
@@ -612,7 +612,7 @@ export const CategoryFilterComponent = ({
                 }`}
               >
                 <CalendarDays className="h-4 w-4" />
-                <span>{formatDisplayDate(selectedDate)}</span>
+                <span>{selectedDate ? formatDisplayDate(selectedDate) : "BY DATE"}</span>
                 {selectedDate && (
                   <span
                     role="button"
@@ -677,11 +677,7 @@ export const CategoryFilterComponent = ({
                       : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary hover:border-primary/50 shadow-sm"
                   }`}
                 >
-                  {typeItem.id === "TRENDING" ? (
-                    <span>🔥</span>
-                  ) : (
-                    <ItemIcon className="h-4 w-4" />
-                  )}
+                  <ItemIcon className={`h-4 w-4 ${typeItem.id === "TRENDING" ? "text-orange-500 dark:text-orange-400" : ""}`} />
                   <span>{typeItem.name}</span>
                 </button>
               );
@@ -691,7 +687,7 @@ export const CategoryFilterComponent = ({
 
         {/* 3. Primary Event Categories Bar & Search */}
         <div className="w-full flex flex-col gap-3.5">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between lg:justify-start gap-4 lg:gap-6 flex-wrap">
             <div className="flex items-center gap-2 flex-wrap">
               <h2 className="font-heading text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
                 Event Categories
@@ -781,7 +777,7 @@ export const CategoryFilterComponent = ({
 
           {/* Scrollable Category Pills */}
           {filteredCategories.length > 0 ? (
-            <div className="flex gap-3.5 overflow-x-auto hide-scrollbar py-2 px-1 select-none items-center touch-pan-x">
+            <div className="flex gap-3 overflow-x-auto hide-scrollbar py-2 select-none items-center touch-pan-x [mask-image:linear-gradient(to_right,black_90%,transparent)]">
               {/* "ALL" Category Pill */}
               {!cleanQuery && (
                 <button
@@ -790,15 +786,13 @@ export const CategoryFilterComponent = ({
                     onSelectCategory("all");
                     onSelectSubcategory("");
                   }}
-                  className={`group flex items-center gap-2 px-6 py-3 rounded-full font-heading font-black text-sm whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 touch-target ${
+                  className={`group flex items-center gap-2 px-5.5 py-3.5 rounded-2xl font-heading font-black text-sm whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-transform duration-150 shrink-0 touch-target ${
                     selectedCategory === "all"
                       ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white border border-white/50 shadow-[0_6px_20px_rgba(255,107,0,0.45)]"
                       : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary"
                   }`}
                 >
-                  <div className={`w-7 h-7 rounded-full flex items-center justify-center ${selectedCategory === "all" ? "bg-white/25 text-white" : "bg-primary/15 text-primary"}`}>
-                    <LayoutGrid className="h-3.5 w-3.5 shrink-0" />
-                  </div>
+                  <LayoutGrid className="h-4 w-4 shrink-0" />
                   <span>ALL</span>
                 </button>
               )}
@@ -817,18 +811,16 @@ export const CategoryFilterComponent = ({
                       onSelectCategory(isSelected ? "all" : cat.id);
                       onSelectSubcategory("");
                     }}
-                    className={`group flex items-center gap-2 px-6 py-3 rounded-full font-heading font-black text-sm whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 touch-target ${
+                    className={`group flex items-center gap-2 px-5.5 py-3.5 rounded-2xl font-heading font-black text-sm whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-transform duration-150 shrink-0 touch-target ${
                       isSelected
                         ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white border border-white/50 shadow-[0_6px_20px_rgba(255,107,0,0.45)]"
                         : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary"
                     }`}
                   >
-                    <div className={`w-7 h-7 rounded-full flex items-center justify-center ${isSelected ? "bg-white/25 text-white" : "bg-primary/15 text-primary"}`}>
-                      <CatIcon className="h-3.5 w-3.5 shrink-0" />
-                    </div>
+                    <CatIcon className="h-4 w-4 shrink-0" />
                     <span>{cat.name.toUpperCase()}</span>
                     {subCount > 0 && (
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full font-extrabold transition-colors ${
+                      <span className={`ml-1.5 inline-flex items-center justify-center min-w-5 h-5 px-1.5 rounded-full text-[10px] font-mono font-bold transition-colors ${
                         isSelected ? "bg-black/25 text-white" : "bg-primary/15 text-primary group-hover:bg-primary/25"
                       }`}>
                         {subCount}

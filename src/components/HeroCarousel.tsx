@@ -408,7 +408,7 @@ export const HeroCarouselComponent = ({
                       fetchPriority={currentIndex === 0 ? "high" : "auto"}
                       width={640}
                       height={360}
-                      ambientBackdrop
+                      ambientBackdrop={false}
                       containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
                       className="w-full h-full object-contain object-center relative z-10"
                     />
@@ -465,14 +465,14 @@ export const HeroCarouselComponent = ({
                     DESKTOP SLIDE LAYOUT (sm+): Two-Zone Showcase Card
                    ========================================================= */}
                 {currentSlide.type === "event" ? (
-                  <div className="hidden sm:flex flex-col-reverse lg:flex-row h-full w-full flex-1 relative">
+                  <div className="hidden sm:flex flex-col-reverse lg:flex-row items-stretch h-full w-full flex-1 relative">
                     {/* Seamless Full-Bleed Edge Vignette (Softened to allow subtle ambient glow through) */}
                     <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/70 to-transparent dark:from-[#060810]/72 dark:via-[#060810]/45 lg:dark:via-[#060810]/25 dark:to-transparent pointer-events-none z-0" />
 
                     {/* Content Panel (Left on Desktop) */}
                     <motion.div
                       variants={contentStagger}
-                      initial="hidden"
+                      initial={isFirstMountRef.current ? false : "hidden"}
                       animate="visible"
                       className="flex flex-col justify-center p-5 sm:pl-16 sm:pr-6 md:pl-20 md:pr-8 lg:px-7 lg:py-6 xl:px-8 xl:py-8 lg:w-[42%] xl:w-[40%] flex-1 relative z-10 gap-3 sm:gap-3.5 lg:gap-4 h-full"
                     >
@@ -502,9 +502,11 @@ export const HeroCarouselComponent = ({
                       {currentSlide.description && (
                         <motion.p
                           variants={contentItem}
-                          className="text-gray-600 dark:text-gray-200 leading-relaxed break-safe text-xs md:text-sm lg:text-[14.5px] font-medium line-clamp-2 xl:line-clamp-3 max-w-xl drop-shadow-[0_1px_8px_rgba(0,0,0,0.7)]"
+                          className="text-gray-600 dark:text-gray-200 leading-relaxed break-safe text-xs md:text-sm lg:text-base font-medium line-clamp-2 xl:line-clamp-3 max-w-xl drop-shadow-[0_1px_8px_rgba(0,0,0,0.7)]"
                         >
-                          {currentSlide.description}
+                          {currentSlide.date
+                            ? currentSlide.description.replace(/on \d{1,2}\s+[A-Za-z]+\s+\d{4}/g, `on ${currentSlide.date}`)
+                            : currentSlide.description}
                         </motion.p>
                       )}
 
@@ -539,8 +541,8 @@ export const HeroCarouselComponent = ({
                                 <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600 dark:text-white stroke-[2.2]" />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-[10.5px] sm:text-[11px] uppercase font-black tracking-wider text-amber-600 dark:text-white font-heading">
-                                  Location / Venue
+                                <span className="text-xs uppercase font-bold tracking-wider text-amber-600 dark:text-white font-heading">
+                                  Venue
                                 </span>
                                 <span className="text-xs sm:text-sm xl:text-base font-bold text-gray-800 dark:text-gray-100 truncate">
                                   {currentSlide.venue}
@@ -560,7 +562,7 @@ export const HeroCarouselComponent = ({
                                   Organized By
                                 </span>
                                 <span className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 truncate">
-                                  By <span className="text-gray-900 dark:text-white font-black">{currentSlide.organizer}</span>
+                                  <span className="text-gray-900 dark:text-white font-black">{currentSlide.organizer}</span>
                                 </span>
                               </div>
                             </div>
@@ -572,7 +574,7 @@ export const HeroCarouselComponent = ({
                       <motion.div variants={contentItem} className="flex items-center gap-3">
                         <button
                           onClick={handleAction}
-                          className="relative group overflow-hidden flex items-center gap-2.5 px-8 sm:px-9 py-3 sm:py-3.5 rounded-full glass-btn-primary font-black cursor-pointer touch-target font-heading text-sm md:text-base transition-[transform,box-shadow] duration-200 shadow-md hover:shadow-xl active:scale-[0.98]"
+                          className="relative group overflow-hidden flex items-center gap-2.5 px-8 sm:px-9 py-3 sm:py-3.5 rounded-full glass-btn-primary font-black cursor-pointer touch-target font-heading text-sm md:text-base transition-transform duration-150 shadow-md hover:shadow-xl active:scale-[0.98]"
                         >
                           <span className="relative z-10">{currentSlide.ctaText || "View Details"}</span>
                           <ArrowRight className="relative z-10 h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
@@ -585,7 +587,7 @@ export const HeroCarouselComponent = ({
                       onClick={handleAction}
                       className="relative w-full lg:w-[58%] xl:w-[60%] p-2.5 sm:p-3.5 lg:p-4 xl:p-5 flex items-center justify-center shrink-0 cursor-pointer group/img"
                     >
-                      <div className="relative w-full max-w-[760px] lg:max-w-none xl:max-w-[880px] 2xl:max-w-[940px] aspect-[16/9] rounded-[22px] lg:rounded-[30px] overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 group-hover/img:scale-[1.015] transition-transform duration-300">
+                      <div className="relative w-full max-w-[760px] lg:max-w-none xl:max-w-[880px] 2xl:max-w-[940px] aspect-[16/9] lg:aspect-auto lg:h-full lg:min-h-[360px] rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 group-hover/img:scale-[1.015] transition-transform duration-300">
                         <ProgressiveImage
                           src={getResponsiveImageUrl(currentSlide.image || "/defaults/events/general_default_tablet.webp", 1200)}
                           alt={currentSlide.title}
@@ -712,7 +714,7 @@ export const HeroCarouselComponent = ({
                             e.stopPropagation();
                             handleAction();
                           }}
-                          className="flex items-center gap-2 px-6 py-3 rounded-2xl glass-btn-ad font-black text-sm shadow-[0_6px_20px_rgba(99,102,241,0.4)] transition-all hover:scale-105 active:scale-95 group cursor-pointer touch-target font-heading"
+                          className="flex items-center gap-2 px-6 py-3 rounded-2xl glass-btn-ad font-black text-sm shadow-[0_6px_20px_rgba(99,102,241,0.4)] transition-transform duration-150 hover:scale-105 active:scale-95 group cursor-pointer touch-target font-heading"
                         >
                           <span>{currentSlide.ctaText || "Explore More"}</span>
                           <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
@@ -756,31 +758,33 @@ export const HeroCarouselComponent = ({
         )}
       </div>
 
-      {/* 3. Progress Dots — Below card on mobile, inside card on desktop */}
-      <div className="hidden sm:flex absolute bottom-5 left-1/2 -translate-x-1/2 z-30 items-center gap-2 px-3.5 py-1.5 rounded-full glass-pill shadow-lg border border-white/80 dark:border-white/15 pointer-events-auto max-w-fit w-auto">
-        {slides.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => goToSlide(idx)}
-            aria-label={`Go to slide ${idx + 1}`}
-            className="group relative h-2 rounded-full overflow-hidden cursor-pointer bg-gray-400/40 dark:bg-white/20 transition-[width,transform] duration-300 hover:scale-110"
-            style={{ width: idx === currentIndex ? "20px" : "5px" }}
-          >
-            {idx === currentIndex && (
-              <motion.div
-                layoutId="heroActiveProgress"
-                className="absolute inset-0 bg-gradient-to-r from-amber-400 to-orange-500 dark:from-white/80 dark:to-white/60 rounded-full shadow-[0_0_8px_rgba(255,107,0,0.8)] dark:shadow-[0_0_6px_rgba(255,255,255,0.25)]"
-                initial={{ width: 0 }}
-                animate={{ width: "100%" }}
-                transition={{
-                  duration: isHovered ? 0 : (slides[currentIndex]?.duration || 5000) / 1000,
-                  ease: "linear",
-                }}
-              />
-            )}
-          </button>
-        ))}
-      </div>
+      {/* 3. Progress Dots — Below card on mobile, inside card on desktop (only when multiple slides) */}
+      {slides.length > 1 && (
+        <div className="hidden sm:flex absolute bottom-5 left-1/2 -translate-x-1/2 z-30 items-center gap-2 px-3.5 py-1.5 rounded-full glass-pill shadow-lg border border-white/80 dark:border-white/15 pointer-events-auto max-w-fit w-auto">
+          {slides.map((_, idx) => (
+            <button
+              key={idx}
+              onClick={() => goToSlide(idx)}
+              aria-label={`Go to slide ${idx + 1}`}
+              className="group relative h-2 rounded-full overflow-hidden cursor-pointer bg-gray-400/40 dark:bg-white/20 transition-[width,transform] duration-300 hover:scale-110"
+              style={{ width: idx === currentIndex ? "20px" : "5px" }}
+            >
+              {idx === currentIndex && (
+                <motion.div
+                  layoutId="heroActiveProgress"
+                  className="absolute inset-0 bg-gradient-to-r from-amber-400 to-orange-500 dark:from-white/80 dark:to-white/60 rounded-full shadow-[0_0_8px_rgba(255,107,0,0.8)] dark:shadow-[0_0_6px_rgba(255,255,255,0.25)]"
+                  initial={{ width: 0 }}
+                  animate={{ width: "100%" }}
+                  transition={{
+                    duration: isHovered ? 0 : (slides[currentIndex]?.duration || 5000) / 1000,
+                    ease: "linear",
+                  }}
+                />
+              )}
+            </button>
+          ))}
+        </div>
+      )}
       {/* Mobile Dots — Below the card */}
       {slides.length > 1 && (
         <div className="flex sm:hidden items-center justify-center gap-1.5 mt-2">

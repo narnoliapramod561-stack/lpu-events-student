@@ -178,5 +178,23 @@ export function resolveDefaultEventImage(eventOrMeta: any): string {
     return `/defaults/events/${cleanCat}_default.webp`;
   }
 
+  // 4. Contextual keyword heuristic fallback (prevents mismatch like Seminar graphic for Cricket)
+  const title = String(eventOrMeta.name || eventOrMeta.title || '').toLowerCase();
+  if (/\b(cricket|football|basketball|badminton|sports|league|tournament|championship|match|matches|athletics)\b/.test(title)) {
+    return '/defaults/events/co-curricular_competitions.webp';
+  }
+  if (/\b(hackathon|coding|code|developer|ai|ml|tech|robotics)\b/.test(title)) {
+    return '/defaults/events/innovation_hackathon.webp';
+  }
+  if (/\b(dance|music|singing|drama|theatre|concert|dj)\b/.test(title)) {
+    return '/defaults/events/cultural_music.webp';
+  }
+  if (/\b(workshop|masterclass|bootcamp)\b/.test(title)) {
+    return '/defaults/events/academics_workshop.webp';
+  }
+  if (/\b(seminar|symposium|conference)\b/.test(title)) {
+    return '/defaults/events/academics_seminar.webp';
+  }
+
   return '/defaults/events/general_default.webp';
 }

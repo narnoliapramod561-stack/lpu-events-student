@@ -43,7 +43,7 @@ export const SearchAutocompleteComponent = ({
                 onSelect(item.name);
               }
             }}
-            className="flex items-center justify-between w-full text-left px-3 py-2 text-sm text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08] rounded-xl transition-all cursor-pointer h-[52px] shrink-0 group border border-transparent hover:border-slate-200 dark:hover:border-white/10"
+            className="flex items-center justify-between w-full text-left px-3 py-2 text-sm text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-white/[0.08] rounded-xl transition-colors cursor-pointer h-[52px] shrink-0 group border border-transparent hover:border-slate-200 dark:hover:border-white/10"
           >
             <div className="flex flex-col min-w-0 max-w-[75%]">
               <span className="truncate font-bold text-slate-900 dark:text-white group-hover:text-primary transition-colors text-xs sm:text-sm leading-tight">
@@ -64,7 +64,7 @@ export const SearchAutocompleteComponent = ({
                   onSelect(item.name);
                 }
               }}
-              className="text-xs font-black bg-slate-900 text-white dark:bg-white/14 dark:hover:bg-white/22 dark:text-white dark:border dark:border-white/18 px-3.5 py-1.5 rounded-full whitespace-nowrap shrink-0 ml-2 transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95"
+              className="text-xs font-black bg-slate-900 text-white dark:bg-white/14 dark:hover:bg-white/22 dark:text-white dark:border dark:border-white/18 px-3.5 py-1.5 rounded-full whitespace-nowrap shrink-0 ml-2 transition-transform duration-150 cursor-pointer shadow-xs hover:scale-105 active:scale-95"
             >
               View
             </button>
@@ -224,7 +224,7 @@ export const NavbarComponent = ({
   };
 
   return (
-    <nav className="sticky top-0 z-50 w-full glass-nav transition-colors duration-300">
+    <nav className="sticky top-0 z-50 w-full glass-nav">
       <div className="mx-auto flex h-20 sm:h-[88px] max-w-[98%] items-center justify-between px-3 sm:px-4 md:px-6">
         
         {/* Brand Logo & Title */}
@@ -258,7 +258,7 @@ export const NavbarComponent = ({
               onKeyDown={handleKeyDown}
               onFocus={() => setShowSuggestions(true)}
               placeholder="Search events, clubs, venues..."
-              className="h-11 w-full rounded-2xl bg-white dark:bg-[#3a3a3c] pl-10 pr-9 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:bg-white dark:focus:bg-[#3a3a3c] focus:border-slate-900 dark:focus:border-white focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:outline-none transition-all duration-200 shadow-xs"
+              className="h-11 w-full rounded-2xl bg-white dark:bg-[#3a3a3c] pl-10 pr-9 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:bg-white dark:focus:bg-[#3a3a3c] focus:border-slate-900 dark:focus:border-white focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:outline-none transition-colors duration-150 shadow-xs"
             />
             {localSearch && (
               <button
@@ -287,7 +287,7 @@ export const NavbarComponent = ({
             <button 
               type="button"
               onClick={handleBrandClick} 
-              className={`transition-[transform,background-color,color,border-color] duration-200 cursor-pointer font-bold rounded-full px-4 py-2 select-none ${
+              className={`transition-transform duration-150 cursor-pointer font-bold rounded-full px-4 py-2 select-none ${
                 !isTrendingActive && !searchQuery
                   ? "glass-pill-active font-black scale-105"
                   : "glass-pill text-gray-700 dark:text-gray-200 hover:text-primary"
@@ -305,7 +305,7 @@ export const NavbarComponent = ({
                   handleNavigate("#categories");
                 }
               }} 
-              className="glass-pill text-gray-700 dark:text-gray-200 hover:text-primary transition-[transform,background-color,color,border-color] duration-200 cursor-pointer font-bold rounded-full px-4 py-2 select-none"
+              className="glass-pill text-gray-700 dark:text-gray-200 hover:text-primary transition-transform duration-150 cursor-pointer font-bold rounded-full px-4 py-2 select-none"
             >
               Categories
             </button>
@@ -315,7 +315,7 @@ export const NavbarComponent = ({
                 if (onSelectTrending) onSelectTrending();
                 handleNavigate("#events");
               }}
-              className={`transition-[transform,background-color,color,border-color] duration-200 cursor-pointer font-bold flex items-center gap-1.5 rounded-full px-4 py-2 select-none ${
+              className={`transition-transform duration-150 cursor-pointer font-bold flex items-center gap-1.5 rounded-full px-4 py-2 select-none ${
                 isTrendingActive
                   ? "glass-pill-active font-black scale-105"
                   : "glass-pill text-gray-700 dark:text-gray-200 hover:text-primary"
@@ -338,7 +338,7 @@ export const NavbarComponent = ({
                 }
               }}
               aria-label="Toggle mobile search"
-              className={`flex md:hidden h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary active:scale-95 transition-[transform,background-color,color] duration-200 cursor-pointer ${
+              className={`flex md:hidden h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary active:scale-95 transition-transform duration-150 cursor-pointer ${
                 mobileSearchOpen || localSearch ? "glass-pill-active" : ""
               }`}
             >
@@ -349,7 +349,7 @@ export const NavbarComponent = ({
             <button
               onClick={onToggleTheme}
               aria-label="Toggle light/dark mode"
-              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary hover:scale-105 active:scale-95 transition-[transform,background-color,color] duration-200 cursor-pointer"
+              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary hover:scale-105 active:scale-95 transition-transform duration-150 cursor-pointer"
             >
               {theme === "dark" ? <Sun className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-white" /> : <Moon className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-indigo-600" />}
             </button>
@@ -358,7 +358,7 @@ export const NavbarComponent = ({
             <button
               onClick={() => setMobileMenuOpen((prev) => !prev)}
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary lg:hidden cursor-pointer active:scale-95 transition-[transform,background-color,color] duration-200"
+              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary lg:hidden cursor-pointer active:scale-95 transition-transform duration-150"
             >
               {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
             </button>
@@ -389,7 +389,7 @@ export const NavbarComponent = ({
                 onKeyDown={handleKeyDown}
                 onFocus={() => setShowSuggestions(true)}
                 placeholder="Search events, clubs, venues..."
-                className="h-10 w-full rounded-xl bg-slate-100 dark:bg-[#3a3a3c] pl-10 pr-9 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:bg-white dark:focus:bg-[#3a3a3c] focus:border-slate-900 dark:focus:border-white focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:outline-none transition-all duration-200"
+                className="h-10 w-full rounded-xl bg-slate-100 dark:bg-[#3a3a3c] pl-10 pr-9 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:bg-white dark:focus:bg-[#3a3a3c] focus:border-slate-900 dark:focus:border-white focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:outline-none transition-colors duration-150"
               />
               {localSearch && (
                 <button

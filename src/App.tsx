@@ -209,10 +209,10 @@ export default function App() {
   } | null>(null);
 
   // Pagination lists & loading
-  const [events, setEvents] = useState<EventFeedItem[]>([]);
-  const [eventsLoading, setEventsLoading] = useState(true);
+  const [events, setEvents] = useState<EventFeedItem[]>(initialBundle?.events || []);
+  const [eventsLoading, setEventsLoading] = useState(!initialBundle?.events?.length);
   const [visibleEventsCount, setVisibleEventsCount] = useState(10);
-  const [appLoading, setAppLoading] = useState(true);
+  const [appLoading, setAppLoading] = useState(!initialBundle);
   const [isMaintenanceWarming, setIsMaintenanceWarming] = useState(false);
   const searchReqIdRef = useRef(0);
 

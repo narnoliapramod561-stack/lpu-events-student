@@ -259,11 +259,12 @@ export const HappeningTodaySliderComponent = ({
             <button
               type="button"
               onClick={() => setIsAllTodayModalOpen(true)}
-              className="inline-flex items-center gap-1.5 text-orange-700 dark:text-white font-heading font-black text-xs hover:text-orange-800 dark:hover:text-gray-300 transition-colors cursor-pointer px-3 py-1.5 sm:px-3.5 sm:py-1.5 rounded-full bg-orange-500/10 dark:bg-white/10 hover:bg-orange-500/20 dark:hover:bg-white/15 active:scale-95 border border-orange-500/20 dark:border-white/15"
+              className="inline-flex items-center gap-1.5 text-orange-700 dark:text-white font-heading font-black text-xs hover:text-orange-800 dark:hover:text-gray-300 transition-colors cursor-pointer px-3.5 py-1.5 rounded-full bg-orange-500/10 dark:bg-white/10 hover:bg-orange-500/20 dark:hover:bg-white/15 active:scale-95 border border-orange-500/20 dark:border-white/15"
+              aria-label={`View All ${events.length} Events Happening Today`}
             >
               <span>View All</span>
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-orange-500/20 dark:bg-white/15 text-orange-700 dark:text-white">
-                {events.length}
+              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-orange-500/20 dark:bg-white/15 text-orange-700 dark:text-white">
+                ({events.length})
               </span>
               <ArrowRight className="h-3.5 w-3.5" />
             </button>
@@ -300,28 +301,6 @@ export const HappeningTodaySliderComponent = ({
           (calc((100% - 32px) / 3)), 2 on tablet, and swipeable on mobile.
          ========================================================= */}
       <div className="relative group/track w-full">
-        {/* Subtle floating side arrows on desktop hover */}
-        {hasMultiplePages && canScrollLeft && (
-          <button
-            type="button"
-            onClick={() => scrollTrack("left")}
-            className="hidden md:flex absolute -left-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-white/95 dark:bg-[#1f1f21]/95 hover:bg-white dark:hover:bg-[#2c2c2e] text-gray-900 dark:text-white items-center justify-center shadow-xl border border-black/10 dark:border-white/15 transition-all opacity-0 group-hover/track:opacity-100 hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md"
-            aria-label="Scroll left"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-        )}
-
-        {hasMultiplePages && canScrollRight && (
-          <button
-            type="button"
-            onClick={() => scrollTrack("right")}
-            className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-white/95 dark:bg-[#1f1f21]/95 hover:bg-white dark:hover:bg-[#2c2c2e] text-gray-900 dark:text-white items-center justify-center shadow-xl border border-black/10 dark:border-white/15 transition-all opacity-0 group-hover/track:opacity-100 hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md"
-            aria-label="Scroll right"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
-        )}
 
         <div
           ref={trackRef}
@@ -360,7 +339,7 @@ export const HappeningTodaySliderComponent = ({
               <div
                 key={slide.id}
                 onClick={handleCardClick}
-                className="group relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-16px)/2)] md:w-[calc((100%-32px)/3)] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border border-slate-200/80 dark:border-white/[0.12] bg-white dark:bg-[#2c2c2e] flex flex-col transition-all duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
+                className="group relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-16px)/2)] md:w-[calc((100%-32px)/3)] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border border-slate-200/80 dark:border-white/[0.12] bg-white dark:bg-[#2c2c2e] flex flex-col transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
               >
                 {/* Uniform Crisp Banner Stage (Zero Zoom, Full Visibility) */}
                 <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 bg-black/5 dark:bg-white/5">
@@ -412,7 +391,10 @@ export const HappeningTodaySliderComponent = ({
                 {/* Bottom Information Deck: Strictly consistent height & snug layout */}
                 <div className="p-3 min-[400px]:p-3.5 flex flex-col justify-between h-[78px] min-[400px]:h-[82px] bg-white dark:bg-[#2c2c2e] border-t border-slate-100 dark:border-white/[0.08]">
                   {/* Event Name */}
-                  <h3 className="text-gray-950 dark:text-white font-heading font-black text-[14.5px] min-[400px]:text-[15.5px] leading-snug truncate group-hover:text-primary transition-colors tracking-tight">
+                  <h3
+                    title={slide.title}
+                    className="text-gray-950 dark:text-white font-heading font-black text-sm min-[400px]:text-[15px] leading-snug truncate group-hover:text-primary transition-colors tracking-tight"
+                  >
                     {slide.title}
                   </h3>
 
@@ -429,7 +411,10 @@ export const HappeningTodaySliderComponent = ({
 
                       {/* Location Pill */}
                       {slide.type === "event" && slide.venue && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-white/[0.08] text-slate-900 dark:text-white font-heading font-bold text-xs border border-slate-200/90 dark:border-white/15 truncate min-w-0 max-w-[125px] min-[390px]:max-w-[145px] md:max-w-[180px] shadow-2xs">
+                        <span
+                          title={slide.venue}
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-white/[0.08] text-slate-900 dark:text-white font-heading font-bold text-xs border border-slate-200/90 dark:border-white/15 truncate min-w-0 max-w-[140px] min-[390px]:max-w-[170px] md:max-w-[210px] shadow-2xs"
+                        >
                           <MapPin className="w-3.5 h-3.5 text-amber-500 dark:text-white shrink-0" />
                           <span className="truncate">{slide.venue}</span>
                         </span>
@@ -458,7 +443,7 @@ export const HappeningTodaySliderComponent = ({
           {events.length > slides.length && (
             <div
               onClick={() => setIsAllTodayModalOpen(true)}
-              className="group relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-16px)/2)] md:w-[calc((100%-32px)/3)] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border border-orange-500/30 dark:border-white/15 bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-transparent dark:from-white/[0.08] dark:to-transparent flex flex-col justify-between transition-all duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
+              className="group relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-16px)/2)] md:w-[calc((100%-32px)/3)] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border border-orange-500/30 dark:border-white/15 bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-transparent dark:from-white/[0.08] dark:to-transparent flex flex-col justify-between transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
             >
               {/* Visual Header matching 16:9 banner */}
               <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 flex flex-col items-center justify-center bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-orange-600/20 dark:from-white/10 dark:via-white/5 dark:to-white/10">
