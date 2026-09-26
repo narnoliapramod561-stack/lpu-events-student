@@ -65,11 +65,11 @@ export const BookingDisclaimerModal: React.FC<BookingDisclaimerModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 16 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full max-w-[490px] rounded-[32px] sm:rounded-[36px] bg-white/95 dark:bg-[#12141c]/95 border border-black/[0.08] dark:border-white/[0.12] p-6 sm:p-8 text-gray-900 dark:text-white shadow-[0_30px_90px_rgba(0,0,0,0.35)] backdrop-blur-2xl z-10 font-sans overflow-hidden"
+          className="relative w-full max-w-[490px] rounded-[32px] sm:rounded-[36px] bg-white/95 dark:bg-black/95 border border-black/[0.08] dark:border-white/[0.12] p-6 sm:p-8 text-gray-900 dark:text-white shadow-[0_30px_90px_rgba(0,0,0,0.35)] backdrop-blur-2xl z-10 font-sans overflow-hidden"
         >
           {/* Subtle Ambient Glow in background */}
-          <div className="absolute -top-24 -right-24 w-48 h-48 rounded-full bg-orange-500/15 blur-3xl pointer-events-none" />
-          <div className="absolute -bottom-24 -left-24 w-48 h-48 rounded-full bg-amber-500/10 blur-3xl pointer-events-none" />
+          <div className="absolute -top-24 -right-24 w-48 h-48 rounded-full bg-orange-500/15 blur-3xl pointer-events-none dark:hidden" />
+          <div className="absolute -bottom-24 -left-24 w-48 h-48 rounded-full bg-amber-500/10 blur-3xl pointer-events-none dark:hidden" />
 
           {/* Close Button */}
           <button
@@ -83,7 +83,7 @@ export const BookingDisclaimerModal: React.FC<BookingDisclaimerModalProps> = ({
 
           {/* Header Badge */}
           <div className="flex items-center gap-2 mb-3">
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-heading tracking-wide uppercase bg-orange-500/10 text-primary border border-orange-500/20">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold font-heading tracking-wide uppercase bg-orange-500/10 dark:bg-white/10 text-primary dark:text-white border border-orange-500/20 dark:border-white/15">
               <Sparkles className="h-3 w-3" />
               <span>External Ticketing</span>
             </span>
@@ -95,7 +95,7 @@ export const BookingDisclaimerModal: React.FC<BookingDisclaimerModalProps> = ({
               You are leaving LPU Events
             </h3>
             <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
-              You are being redirected to <span className="font-bold text-gray-900 dark:text-white">{targetHost}</span> to book tickets for <strong className="text-primary font-bold">{eventName}</strong>.
+              You are being redirected to <span className="font-bold text-gray-900 dark:text-white">{targetHost}</span> to book tickets for <strong className="text-primary dark:text-white font-bold">{eventName}</strong>.
             </p>
           </div>
 
@@ -103,7 +103,7 @@ export const BookingDisclaimerModal: React.FC<BookingDisclaimerModalProps> = ({
           <div className="space-y-3 mb-7">
             {/* Card 1: Organizer Info */}
             <div className="flex items-start gap-3.5 p-4 rounded-[22px] bg-black/[0.02] dark:bg-white/[0.04] border border-black/[0.05] dark:border-white/[0.08] transition-colors">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 text-primary mt-0.5">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-orange-500/10 dark:bg-white/10 text-primary dark:text-white mt-0.5">
                 <Ticket className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -117,8 +117,8 @@ export const BookingDisclaimerModal: React.FC<BookingDisclaimerModalProps> = ({
             </div>
 
             {/* Card 2: Simple Plain English Disclaimer */}
-            <div className="flex items-start gap-3.5 p-4 rounded-[22px] bg-amber-50/50 dark:bg-amber-500/[0.06] border border-amber-200/60 dark:border-amber-500/20 transition-colors">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 text-amber-700 dark:text-amber-400 mt-0.5">
+            <div className="flex items-start gap-3.5 p-4 rounded-[22px] bg-amber-50/50 dark:bg-white/[0.04] border border-amber-200/60 dark:border-white/10 transition-colors">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-amber-500/15 dark:bg-white/10 text-amber-700 dark:text-white mt-0.5">
                 <ShieldAlert className="h-5 w-5" />
               </div>
               <div className="min-w-0 flex-1">
@@ -145,7 +145,7 @@ export const BookingDisclaimerModal: React.FC<BookingDisclaimerModalProps> = ({
             <button
               type="button"
               onClick={onConfirm}
-              className="w-full sm:w-2/3 h-12 rounded-2xl bg-gradient-to-r from-[#FF5E00] via-[#FF6A00] to-[#FF7A00] hover:brightness-105 active:scale-[0.98] text-white font-bold text-sm font-heading transition-all shadow-[0_6px_22px_rgba(255,94,0,0.35)] flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full sm:w-2/3 h-12 rounded-2xl bg-gradient-to-r from-[#FF5E00] via-[#FF6A00] to-[#FF7A00] dark:from-white dark:to-white text-white dark:text-black dark:shadow-[0_0_16px_rgba(255,255,255,0.2)] hover:brightness-105 active:scale-[0.98] font-bold text-sm font-heading transition-all shadow-[0_6px_22px_rgba(255,94,0,0.35)] flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>Continue to Book Ticket</span>
               <ArrowUpRight className="h-4 w-4" />

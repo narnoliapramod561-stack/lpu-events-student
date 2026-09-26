@@ -26,10 +26,10 @@ export const TermsOfServiceView: React.FC<TermsOfServiceViewProps> = ({ onBack }
 
       {/* Header Banner */}
       <div className="relative glass-panel rounded-[20px] sm:rounded-[36px] p-6 sm:p-10 mb-8 border border-white/95 dark:border-white/10 shadow-xl overflow-hidden">
-        <div className="absolute top-0 right-0 w-72 h-72 bg-orange-500/10 dark:bg-orange-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-72 h-72 bg-orange-500/10 rounded-full blur-3xl pointer-events-none dark:hidden" />
 
         <div className="relative z-10 flex flex-col items-start gap-3">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-badge text-primary dark:text-orange-400 font-heading text-xs font-black tracking-wider uppercase border border-primary/30 shadow-xs">
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full glass-badge text-primary dark:text-white font-heading text-xs font-black tracking-wider uppercase border border-primary/30 dark:border-white/20 shadow-xs">
             <FileText className="h-3.5 w-3.5" />
             Terms of Service
           </div>
@@ -45,9 +45,9 @@ export const TermsOfServiceView: React.FC<TermsOfServiceViewProps> = ({ onBack }
       </div>
 
       {/* CRUCIAL ORGANIZER DISCLAIMER CALLOUT BOX */}
-      <div className="relative rounded-[18px] sm:rounded-[28px] p-6 sm:p-8 mb-8 border border-amber-500/40 bg-amber-500/[0.04] dark:bg-amber-500/[0.06] shadow-lg backdrop-blur-md">
+      <div className="relative rounded-[18px] sm:rounded-[28px] p-6 sm:p-8 mb-8 border border-amber-500/40 dark:border-white/15 bg-amber-500/[0.04] dark:bg-white/[0.04] shadow-lg backdrop-blur-md">
         <div className="flex items-center gap-3 mb-3">
-          <div className="w-9 h-9 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+          <div className="w-9 h-9 rounded-xl bg-amber-500/20 dark:bg-white/10 text-amber-600 dark:text-white flex items-center justify-center shrink-0">
             <AlertTriangle className="h-5 w-5" />
           </div>
           <h2 className="font-heading text-base sm:text-xl font-black text-gray-900 dark:text-white">

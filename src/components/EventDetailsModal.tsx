@@ -93,7 +93,7 @@ export const EventDetailsModal = ({ eventId, onClose }: {
               />
               <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/25 to-transparent pointer-events-none z-20" />
               <div className="absolute bottom-4 left-4 sm:bottom-6 sm:left-6 pr-4 sm:pr-6 z-20">
-                <span className="px-3 py-1 glass-badge text-orange-400 rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider border border-orange-400/40 font-heading shadow-md">
+                <span className="px-3 py-1 glass-badge text-orange-400 dark:text-white rounded-full text-[10px] sm:text-xs font-black uppercase tracking-wider border border-orange-400/40 dark:border-white/20 font-heading shadow-md">
                   {event.pricing_type}
                 </span>
                 <h2 className="text-xl sm:text-2xl md:text-4xl font-black font-heading text-white mt-2 sm:mt-3 drop-shadow-md leading-tight break-safe">
@@ -108,7 +108,7 @@ export const EventDetailsModal = ({ eventId, onClose }: {
               {/* Left Column */}
               <div className="lg:col-span-2 flex flex-col gap-4 sm:gap-6">
                 <div className="flex flex-col gap-2 sm:gap-3">
-                  <h3 className="font-heading text-sm sm:text-base font-black text-primary uppercase tracking-wider">About the Event</h3>
+                  <h3 className="font-heading text-sm sm:text-base font-black text-primary dark:text-white uppercase tracking-wider">About the Event</h3>
                   <p className="text-gray-700 dark:text-zinc-200 text-sm sm:text-[15px] md:text-base leading-[1.8] tracking-[-0.011em] font-sans antialiased break-safe">
                     {event.description}
                   </p>
@@ -126,7 +126,7 @@ export const EventDetailsModal = ({ eventId, onClose }: {
                             <ul className="space-y-2 text-gray-700 dark:text-zinc-200 text-sm sm:text-[15px] leading-relaxed font-sans">
                               {sec.content.rules_list.map((rule: string, i: number) => (
                                 <li key={i} className="flex items-start gap-2.5 break-safe">
-                                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 mt-2 shrink-0" />
+                                  <span className="w-1.5 h-1.5 rounded-full bg-orange-500 dark:bg-white mt-2 shrink-0" />
                                   <span>{rule}</span>
                                 </li>
                               ))}
@@ -157,8 +157,8 @@ export const EventDetailsModal = ({ eventId, onClose }: {
                   <h4 className="font-heading text-xs sm:text-sm font-black uppercase text-gray-500 dark:text-gray-400 tracking-wider">Event Schedule</h4>
 
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-orange-500/15 border border-orange-300/60 flex items-center justify-center shrink-0">
-                      <Calendar className="h-4 w-4 text-primary" />
+                    <div className="w-8 h-8 rounded-lg bg-orange-500/15 dark:bg-white/10 border border-orange-300/60 dark:border-white/15 flex items-center justify-center shrink-0">
+                      <Calendar className="h-4 w-4 text-primary dark:text-white" />
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider font-heading">Date</span>
@@ -167,8 +167,8 @@ export const EventDetailsModal = ({ eventId, onClose }: {
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-300/60 flex items-center justify-center shrink-0">
-                      <Clock className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+                    <div className="w-8 h-8 rounded-lg bg-amber-500/15 dark:bg-white/10 border border-amber-300/60 dark:border-white/15 flex items-center justify-center shrink-0">
+                      <Clock className="h-4 w-4 text-amber-600 dark:text-white" />
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider font-heading">Time</span>
@@ -179,7 +179,7 @@ export const EventDetailsModal = ({ eventId, onClose }: {
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-rose-500/15 border border-rose-300/60 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-rose-500/15 dark:bg-white/10 border border-rose-300/60 dark:border-white/15 flex items-center justify-center shrink-0">
                       <MapPin className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                     </div>
                     <div className="flex flex-col min-w-0">
@@ -189,12 +189,12 @@ export const EventDetailsModal = ({ eventId, onClose }: {
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-orange-500/15 border border-orange-300/60 flex items-center justify-center shrink-0">
-                      <Users className="h-4 w-4 text-primary" />
+                    <div className="w-8 h-8 rounded-lg bg-orange-500/15 dark:bg-white/10 border border-orange-300/60 dark:border-white/15 flex items-center justify-center shrink-0">
+                      <Users className="h-4 w-4 text-primary dark:text-white" />
                     </div>
                     <div className="flex flex-col min-w-0">
                       <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider font-heading">Organizer</span>
-                      <span className="text-xs sm:text-sm font-bold text-primary truncate">{(event as any).organizations?.name || "LPU Club"}</span>
+                      <span className="text-xs sm:text-sm font-bold text-primary dark:text-white truncate">{(event as any).organizations?.name || "LPU Club"}</span>
                     </div>
                   </div>
                 </div>

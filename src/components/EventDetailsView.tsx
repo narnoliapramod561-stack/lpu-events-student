@@ -278,7 +278,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
               const match = trimmed.match(/^(\d+[\.\)])\s*(.*)$/);
               return (
                 <div key={i} className="flex items-start gap-3 sm:gap-3.5 pl-0.5">
-                  <span className="inline-flex items-center justify-center min-w-[24px] h-[24px] px-1 rounded-lg bg-orange-500/10 dark:bg-orange-500/15 border border-orange-500/25 text-orange-700 dark:text-orange-300 font-heading font-bold text-xs shrink-0 mt-0.5 shadow-xs">
+                  <span className="inline-flex items-center justify-center min-w-[24px] h-[24px] px-1 rounded-lg bg-orange-500/10 dark:bg-white/10 border border-orange-500/25 dark:border-white/15 text-orange-700 dark:text-white font-heading font-bold text-xs shrink-0 mt-0.5 shadow-xs">
                     {match ? match[1].replace(/[\.\)]/, '') : i + 1}
                   </span>
                   <span className="text-gray-700 dark:text-zinc-200 leading-[1.8]">{match ? match[2] : trimmed}</span>
@@ -321,7 +321,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         <div className="flex flex-col gap-3 sm:gap-3.5 font-sans">
           {content.schedule.map((item: any, i: number) => (
             <div key={i} className="flex flex-col xs:flex-row gap-3 xs:gap-4 p-4 sm:p-4.5 rounded-2xl bg-white/50 dark:bg-white/[0.04] border border-white/80 dark:border-white/8 shadow-xs hover:border-primary/40 transition-colors">
-              <span className="font-heading font-extrabold text-primary dark:text-orange-400 text-xs sm:text-sm shrink-0 tracking-wider uppercase px-3 py-1 rounded-full bg-orange-500/10 border border-orange-500/20 self-start">{item.time}</span>
+              <span className="font-heading font-extrabold text-primary dark:text-white text-xs sm:text-sm shrink-0 tracking-wider uppercase px-3 py-1 rounded-full bg-orange-500/10 dark:bg-white/10 border border-orange-500/20 dark:border-white/15 self-start">{item.time}</span>
               <div className="flex flex-col">
                 <span className="font-heading font-bold text-base sm:text-lg text-gray-900 dark:text-white break-safe">{item.title || item.details}</span>
                 {item.description && <span className="text-sm text-gray-600 dark:text-zinc-300 mt-1 break-safe leading-relaxed font-normal">{item.description}</span>}
@@ -548,7 +548,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
       <div className="flex flex-col gap-2.5 sm:gap-3 mb-6 sm:mb-10">
         {/* Organizer Name directly above Date Box */}
         <div className="px-1 flex items-center gap-2">
-          <p className="text-primary dark:text-[#ffb693] font-bold text-xs sm:text-sm md:text-base font-heading">
+          <p className="text-primary dark:text-white font-bold text-xs sm:text-sm md:text-base font-heading">
             Organized by {event.organizations?.name || "LPU Organization"}
           </p>
         </div>
@@ -563,11 +563,11 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
             <div className="flex-1 flex flex-col justify-center">
               {/* Date */}
               <div className="flex items-center space-x-3 sm:space-x-4 p-4 sm:p-6 hover:bg-primary/[0.02] transition-colors">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-orange-500/15 dark:bg-gradient-to-br dark:from-orange-500/20 dark:to-orange-500/5 border border-orange-200/80 dark:border-orange-500/30 flex items-center justify-center text-primary dark:text-orange-400 shrink-0 shadow-xs">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-orange-500/15 dark:bg-white/10 border border-orange-200/80 dark:border-white/15 flex items-center justify-center text-primary dark:text-white shrink-0 shadow-xs">
                   <Calendar className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] sm:text-[11px] font-heading font-black tracking-[0.14em] uppercase text-primary dark:text-orange-400 mb-0.5">DATE</p>
+                  <p className="text-[10px] sm:text-[11px] font-heading font-black tracking-[0.14em] uppercase text-primary dark:text-white mb-0.5">DATE</p>
                   <p className="font-heading text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white break-safe">{dateDisplay}</p>
                 </div>
               </div>
@@ -577,11 +577,11 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
               {/* Time */}
               <div className="flex items-center space-x-3 sm:space-x-4 p-4 sm:p-6 hover:bg-primary/[0.02] transition-colors">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-500/15 dark:bg-gradient-to-br dark:from-amber-500/20 dark:to-amber-500/5 border border-amber-200/80 dark:border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-xs">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-500/15 dark:bg-white/10 border border-amber-200/80 dark:border-white/15 flex items-center justify-center text-amber-600 dark:text-white shrink-0 shadow-xs">
                   <Clock className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div className="min-w-0">
-                  <p className="text-[10px] sm:text-[11px] font-heading font-black tracking-[0.14em] uppercase text-amber-600 dark:text-amber-400 mb-0.5">TIME</p>
+                  <p className="text-[10px] sm:text-[11px] font-heading font-black tracking-[0.14em] uppercase text-amber-600 dark:text-white mb-0.5">TIME</p>
                   <p className="font-heading text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white break-safe">{timeDisplay}</p>
                 </div>
               </div>
@@ -591,7 +591,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
               {/* Venue */}
               <div className="flex items-center space-x-3 sm:space-x-4 p-4 sm:p-6 hover:bg-primary/[0.02] transition-colors">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-rose-500/15 dark:bg-gradient-to-br dark:from-rose-500/20 dark:to-orange-500/5 border border-rose-200/80 dark:border-rose-500/30 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0 shadow-xs">
+                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-rose-500/15 dark:bg-white/10 border border-rose-200/80 dark:border-white/15 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0 shadow-xs">
                   <MapPin className="h-5 w-5 sm:h-6 sm:w-6" />
                 </div>
                 <div className="min-w-0">
@@ -621,7 +621,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
               </div>
 
               <div className="md:mt-3 flex flex-col items-start md:items-center gap-0.5">
-                <span className="font-heading font-black text-[11px] sm:text-xs uppercase tracking-wider text-primary dark:text-orange-400 flex items-center gap-1">
+                <span className="font-heading font-black text-[11px] sm:text-xs uppercase tracking-wider text-primary dark:text-white flex items-center gap-1">
                   <QrCode className="h-3.5 w-3.5" />
                   Scan to View Event
                 </span>
@@ -680,8 +680,8 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
       {/* Content Area */}
       <div className="relative glass-panel rounded-[18px] sm:rounded-[30px] md:rounded-[36px] px-5 py-6 sm:p-8 md:p-10 lg:p-12 mb-8 sm:mb-12 border border-white/90 dark:border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.35)] overflow-hidden">
         {/* Atmospheric Ambient Glow */}
-        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-orange-500/15 via-amber-500/8 to-transparent rounded-full blur-3xl pointer-events-none hidden sm:block" />
-        <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-rose-500/10 via-transparent to-transparent rounded-full blur-3xl pointer-events-none hidden sm:block" />
+        <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-orange-500/15 via-amber-500/8 to-transparent rounded-full blur-3xl pointer-events-none hidden sm:block dark:hidden" />
+        <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-rose-500/10 via-transparent to-transparent rounded-full blur-3xl pointer-events-none hidden sm:block dark:hidden" />
 
         <div className="relative z-10">
           {(() => {
@@ -711,7 +711,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
               </span>
               <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-md border shrink-0 ${
                 isPaid 
-                  ? "text-orange-800 dark:text-orange-400 bg-orange-100 dark:bg-orange-500/15 border-orange-300 dark:border-orange-500/30"
+                  ? "text-orange-800 dark:text-zinc-200 bg-orange-100 dark:bg-white/10 border-orange-300 dark:border-white/15"
                   : "text-emerald-800 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/15 border-emerald-300 dark:border-emerald-500/30"
               }`}>
                 {isPaid ? "Paid Event" : "Free Event"}

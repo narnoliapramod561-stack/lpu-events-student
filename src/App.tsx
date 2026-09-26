@@ -866,34 +866,43 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] dark:bg-[#08090f] text-gray-900 dark:text-gray-100 transition-colors duration-300 relative selection:bg-primary/20 selection:text-primary overflow-x-hidden font-sans">
-      {/* High-Performance Fixed Ambient Light & Orange Glare Canvas (Additive Screen Lighting) */}
+    <div className="min-h-screen bg-[#faf8f5] dark:bg-[#000000] text-gray-900 dark:text-gray-100 transition-colors duration-300 relative selection:bg-primary/20 selection:text-primary dark:selection:bg-white/20 dark:selection:text-white overflow-x-hidden font-sans">
+      {/* High-Performance Fixed Ambient Light & Orange Glare Canvas (Light mode only) */}
       <div 
         style={{ contain: 'strict' }}
-        className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none hidden sm:block dark:mix-blend-screen"
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none hidden sm:block dark:hidden"
       >
         {/* 1. Golden Amber Sun Burst (Top Center-Right) */}
-        <div className="animate-blob-1 absolute -top-28 right-1/4 w-[500px] sm:w-[680px] h-[500px] sm:h-[680px] rounded-full bg-gradient-to-br from-[#ff6b00]/45 via-[#ff9500]/25 to-transparent dark:from-[#ff8c32]/30 dark:via-[#f59e0b]/14 dark:to-transparent blur-[70px] sm:blur-[110px]" />
+        <div className="animate-blob-1 absolute -top-28 right-1/4 w-[500px] sm:w-[680px] h-[500px] sm:h-[680px] rounded-full bg-gradient-to-br from-[#ff6b00]/45 via-[#ff9500]/25 to-transparent blur-[70px] sm:blur-[110px]" />
 
-        {/* 2. Cosmic Indigo Rim Light (Top Left - Chromatic contrast to keep blacks pure) */}
-        <div className="animate-blob-2 absolute -top-20 -left-20 w-[420px] sm:w-[560px] h-[420px] sm:h-[560px] rounded-full bg-gradient-to-br from-[#ff3d00]/30 via-[#ff6b00]/18 to-transparent dark:from-[#818cf8]/12 dark:via-[#6366f1]/06 dark:to-transparent blur-[60px] sm:blur-[95px]" />
+        {/* 2. Cosmic Indigo Rim Light (Top Left) */}
+        <div className="animate-blob-2 absolute -top-20 -left-20 w-[420px] sm:w-[560px] h-[420px] sm:h-[560px] rounded-full bg-gradient-to-br from-[#ff3d00]/30 via-[#ff6b00]/18 to-transparent blur-[60px] sm:blur-[95px]" />
 
         {/* 3. Violet Cyan Horizon Sky (Mid-Left) */}
-        <div className="animate-blob-3 absolute top-[32%] -left-24 -translate-y-1/2 w-[460px] sm:w-[600px] h-[460px] sm:h-[600px] rounded-full bg-gradient-to-tr from-[#3b82f6]/28 via-[#6366f1]/20 to-transparent dark:from-[#4338ca]/06 dark:via-transparent blur-[65px] sm:blur-[90px]" />
+        <div className="animate-blob-3 absolute top-[32%] -left-24 -translate-y-1/2 w-[460px] sm:w-[600px] h-[460px] sm:h-[600px] rounded-full bg-gradient-to-tr from-[#3b82f6]/28 via-[#6366f1]/20 to-transparent blur-[65px] sm:blur-[90px]" />
 
         {/* 4. Golden Ember Sun Ribbon (Mid-Right) */}
-        <div className="animate-blob-1 absolute top-[56%] -right-20 -translate-y-1/2 w-[440px] sm:w-[580px] h-[440px] sm:h-[580px] rounded-full bg-gradient-to-l from-[#ffb800]/35 via-[#ff7700]/22 to-transparent dark:from-[#ff9500]/18 dark:via-[#ff6b00]/06 dark:to-transparent blur-[60px] sm:blur-[85px]" />
+        <div className="animate-blob-1 absolute top-[56%] -right-20 -translate-y-1/2 w-[440px] sm:w-[580px] h-[440px] sm:h-[580px] rounded-full bg-gradient-to-l from-[#ffb800]/35 via-[#ff7700]/22 to-transparent blur-[60px] sm:blur-[85px]" />
 
         {/* 5. Horizon Soft Warm Glow (Bottom) */}
-        <div className="animate-blob-2 absolute -bottom-24 left-1/3 -translate-x-1/2 w-[650px] sm:w-[850px] h-[420px] sm:h-[500px] rounded-full bg-gradient-to-t from-[#ff6b00]/38 via-[#ff9500]/20 to-transparent dark:from-[#ff6b00]/16 dark:via-[#ff8800]/06 dark:to-transparent blur-[65px] sm:blur-[95px]" />
+        <div className="animate-blob-2 absolute -bottom-24 left-1/3 -translate-x-1/2 w-[650px] sm:w-[850px] h-[420px] sm:h-[500px] rounded-full bg-gradient-to-t from-[#ff6b00]/38 via-[#ff9500]/20 to-transparent blur-[65px] sm:blur-[95px]" />
       </div>
 
-      {/* Mobile Optical Depth Canvas (GPU-Optimized Clean Solar Glare, Zero Mud) */}
+      {/* Mobile Optical Depth Canvas (Light mode only) */}
       <div 
         style={{ contain: 'strict' }}
-        className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none sm:hidden dark:mix-blend-screen"
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none sm:hidden dark:hidden"
       >
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_100%_40%_at_50%_-5%,rgba(255,107,0,0.18),transparent_70%),radial-gradient(circle_300px_at_90%_25%,rgba(255,107,0,0.12),transparent_60%),radial-gradient(circle_300px_at_10%_45%,rgba(59,130,246,0.08),transparent_60%),radial-gradient(circle_280px_at_90%_65%,rgba(245,158,11,0.09),transparent_60%),radial-gradient(ellipse_100%_35%_at_50%_105%,rgba(255,107,0,0.14),transparent_70%)] dark:bg-[radial-gradient(ellipse_100%_38%_at_50%_-3%,rgba(255,140,50,0.24),rgba(255,107,0,0.06)_42%,transparent_68%),radial-gradient(circle_280px_at_88%_15%,rgba(255,120,40,0.12),transparent_55%),radial-gradient(circle_260px_at_10%_35%,rgba(79,70,229,0.06),transparent_55%),radial-gradient(ellipse_100%_30%_at_50%_105%,rgba(255,107,0,0.12),transparent_68%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(ellipse_100%_40%_at_50%_-5%,rgba(255,107,0,0.18),transparent_70%),radial-gradient(circle_300px_at_90%_25%,rgba(255,107,0,0.12),transparent_60%),radial-gradient(circle_300px_at_10%_45%,rgba(59,130,246,0.08),transparent_60%),radial-gradient(circle_280px_at_90%_65%,rgba(245,158,11,0.09),transparent_60%),radial-gradient(ellipse_100%_35%_at_50%_105%,rgba(255,107,0,0.14),transparent_70%)]" />
+      </div>
+
+      {/* Dark Mode Premium Obsidian Glass Canvas (Zero Orange, Pure Black & Subtle Glass Luminescence) */}
+      <div 
+        style={{ contain: 'strict' }}
+        className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none hidden dark:block"
+      >
+        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] h-[500px] rounded-full bg-white/[0.025] blur-[120px]" />
+        <div className="absolute top-[40%] right-[-100px] w-[500px] h-[500px] rounded-full bg-white/[0.015] blur-[100px]" />
       </div>
 
       {/* Scroll Top Reference Anchor */}

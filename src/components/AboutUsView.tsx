@@ -27,11 +27,11 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({ onBack }) => {
 
       {/* Hero Header Card */}
       <div className="relative glass-panel rounded-[20px] sm:rounded-[36px] p-6 sm:p-10 md:p-12 mb-8 sm:mb-12 border border-white/95 dark:border-white/10 shadow-xl overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 dark:bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-500/10 dark:bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none dark:hidden" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none dark:hidden" />
 
         <div className="relative z-10 flex flex-col items-start gap-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-badge text-primary dark:text-orange-400 font-heading text-xs font-black tracking-wider uppercase border border-primary/30 shadow-xs">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-badge text-primary dark:text-white font-heading text-xs font-black tracking-wider uppercase border border-primary/30 dark:border-white/20 shadow-xs">
             <Sparkles className="h-3.5 w-3.5" />
             Official Student Discovery Hub
           </div>
@@ -42,7 +42,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({ onBack }) => {
               <h1 className="font-heading text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">
                 About LPU Events
               </h1>
-              <p className="text-xs sm:text-sm font-heading font-semibold text-primary dark:text-orange-400 mt-0.5">
+              <p className="text-xs sm:text-sm font-heading font-semibold text-primary dark:text-gray-300 mt-0.5">
                 Lovely Professional University
               </p>
             </div>
@@ -59,7 +59,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({ onBack }) => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 sm:gap-6 mb-8 sm:mb-12">
         <div className="glass-panel rounded-[18px] sm:rounded-[28px] p-5 sm:p-6 border border-white/95 dark:border-white/10 shadow-md flex flex-col justify-between">
           <div>
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-orange-500/15 text-primary flex items-center justify-center mb-4 border border-orange-500/30 shadow-xs">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-orange-500/15 dark:bg-white/10 text-primary dark:text-white flex items-center justify-center mb-4 border border-orange-500/30 dark:border-white/15 shadow-xs">
               <Compass className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <h3 className="font-heading text-base sm:text-lg font-black text-gray-900 dark:text-white mb-2">
@@ -73,7 +73,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({ onBack }) => {
 
         <div className="glass-panel rounded-[18px] sm:rounded-[28px] p-5 sm:p-6 border border-white/95 dark:border-white/10 shadow-md flex flex-col justify-between">
           <div>
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-500/15 text-amber-600 dark:text-amber-400 flex items-center justify-center mb-4 border border-amber-500/30 shadow-xs">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-500/15 dark:bg-white/10 text-amber-600 dark:text-white flex items-center justify-center mb-4 border border-amber-500/30 dark:border-white/15 shadow-xs">
               <Zap className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <h3 className="font-heading text-base sm:text-lg font-black text-gray-900 dark:text-white mb-2">
@@ -87,7 +87,7 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({ onBack }) => {
 
         <div className="glass-panel rounded-[18px] sm:rounded-[28px] p-5 sm:p-6 border border-white/95 dark:border-white/10 shadow-md flex flex-col justify-between">
           <div>
-            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center mb-4 border border-emerald-500/30 shadow-xs">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-emerald-500/15 dark:bg-white/10 text-emerald-600 dark:text-white flex items-center justify-center mb-4 border border-emerald-500/30 dark:border-white/15 shadow-xs">
               <ShieldCheck className="h-5 w-5 sm:h-6 sm:w-6" />
             </div>
             <h3 className="font-heading text-base sm:text-lg font-black text-gray-900 dark:text-white mb-2">

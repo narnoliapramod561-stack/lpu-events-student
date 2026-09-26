@@ -351,7 +351,7 @@ export const NavbarComponent = ({
               aria-label="Toggle light/dark mode"
               className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary hover:scale-105 active:scale-95 transition-[transform,background-color,color] duration-200 cursor-pointer"
             >
-              {theme === "dark" ? <Sun className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-amber-400" /> : <Moon className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-indigo-600" />}
+              {theme === "dark" ? <Sun className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-white" /> : <Moon className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-indigo-600" />}
             </button>
 
             {/* Mobile Menu Hamburger Button */}
@@ -438,7 +438,7 @@ export const NavbarComponent = ({
                 <button
                   type="button"
                   onClick={handleBrandClick}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 hover:text-primary transition-colors text-left min-h-[44px] cursor-pointer font-bold focus:outline-none"
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 dark:hover:bg-white/10 hover:text-primary dark:hover:text-white transition-colors text-left min-h-[44px] cursor-pointer font-bold focus:outline-none"
                   title="Go to Student Dashboard"
                 >
                   <Home className="h-4.5 w-4.5 text-primary" />
@@ -455,7 +455,7 @@ export const NavbarComponent = ({
                       handleNavigate("#categories");
                     }
                   }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 hover:text-primary transition-colors text-left min-h-[44px] cursor-pointer font-bold focus:outline-none"
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 dark:hover:bg-white/10 hover:text-primary dark:hover:text-white transition-colors text-left min-h-[44px] cursor-pointer font-bold focus:outline-none"
                 >
                   <LayoutGrid className="h-4.5 w-4.5 text-primary" />
                   <span>Event Categories</span>
@@ -470,17 +470,17 @@ export const NavbarComponent = ({
                   }}
                   className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors text-left min-h-[44px] cursor-pointer font-bold focus:outline-none ${
                     isTrendingActive
-                      ? "bg-orange-500/20 text-primary font-black border border-orange-500/30"
-                      : "text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 hover:text-primary"
+                      ? "bg-orange-500/20 text-primary dark:bg-white/15 dark:text-white font-black border border-orange-500/30 dark:border-white/20"
+                      : "text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 dark:hover:bg-white/10 hover:text-primary dark:hover:text-white"
                   }`}
                 >
-                  <Flame className="h-4.5 w-4.5 text-orange-500" />
+                  <Flame className="h-4.5 w-4.5 text-orange-500 dark:text-white" />
                   <span>Trending Events</span>
                 </button>
 
                 <button
                   onClick={() => handleNavigate("#events")}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 hover:text-primary transition-colors text-left min-h-[44px] cursor-pointer"
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 dark:hover:bg-white/10 hover:text-primary dark:hover:text-white transition-colors text-left min-h-[44px] cursor-pointer"
                 >
                   <Users className="h-4.5 w-4.5 text-primary" />
                   <span>Student Clubs & Organizations</span>
@@ -489,7 +489,7 @@ export const NavbarComponent = ({
                 <a
                   href="/about"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 hover:text-primary transition-colors text-left min-h-[44px] cursor-pointer"
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 dark:hover:bg-white/10 hover:text-primary dark:hover:text-white transition-colors text-left min-h-[44px] cursor-pointer"
                 >
                   <Info className="h-4.5 w-4.5 text-primary" />
                   <span>About LPU Events</span>
@@ -498,7 +498,7 @@ export const NavbarComponent = ({
                 <a
                   href="/contact"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 hover:text-primary transition-colors text-left min-h-[44px] cursor-pointer"
+                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 dark:hover:bg-white/10 hover:text-primary dark:hover:text-white transition-colors text-left min-h-[44px] cursor-pointer"
                 >
                   <Mail className="h-4.5 w-4.5 text-primary" />
                   <span>Contact Support</span>
@@ -532,7 +532,7 @@ export const NavbarComponent = ({
                   >
                     {theme === "dark" ? (
                       <>
-                        <Sun className="h-3.5 w-3.5 text-amber-400" />
+                        <Sun className="h-3.5 w-3.5 text-white" />
                         <span>Dark Mode</span>
                       </>
                     ) : (

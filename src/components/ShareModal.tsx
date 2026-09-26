@@ -179,12 +179,12 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 15 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
-          className="relative w-full max-w-lg bg-white/95 dark:bg-zinc-900/95 backdrop-blur-2xl rounded-[28px] sm:rounded-[32px] border border-white/80 dark:border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.3)] overflow-hidden z-10 flex flex-col my-auto"
+          className="relative w-full max-w-lg bg-white/95 dark:bg-black/95 backdrop-blur-2xl rounded-[28px] sm:rounded-[32px] border border-white/80 dark:border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.3)] overflow-hidden z-10 flex flex-col my-auto"
         >
           {/* Header Bar */}
           <div className="flex items-center justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-3">
             <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-orange-500/10 dark:bg-orange-500/20 text-primary flex items-center justify-center">
+              <div className="w-8 h-8 rounded-full bg-orange-500/10 dark:bg-white/10 text-primary dark:text-white flex items-center justify-center">
                 <Share2 className="w-4 h-4" />
               </div>
               <h3 className="font-heading font-black text-lg sm:text-xl text-gray-900 dark:text-white">
@@ -209,7 +209,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 onClick={() => setActiveView("share")}
                 className={`py-2 px-3 rounded-xl font-heading font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-2 ${
                   activeView === "share"
-                    ? "bg-white dark:bg-zinc-800 text-primary shadow-sm"
+                    ? "bg-white dark:bg-white/15 text-primary dark:text-white shadow-sm"
                     : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
@@ -221,7 +221,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 onClick={() => setActiveView("qr")}
                 className={`py-2 px-3 rounded-xl font-heading font-bold text-xs sm:text-sm transition-all cursor-pointer flex items-center justify-center gap-2 ${
                   activeView === "qr"
-                    ? "bg-white dark:bg-zinc-800 text-primary shadow-sm"
+                    ? "bg-white dark:bg-white/15 text-primary dark:text-white shadow-sm"
                     : "text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white"
                 }`}
               >
@@ -233,7 +233,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
           {/* Event Mini Preview Card */}
           <div className="px-5 sm:px-6 mb-4">
-            <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-orange-500/[0.06] dark:bg-orange-500/[0.1] border border-orange-500/20">
+            <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-orange-500/[0.06] dark:bg-white/[0.04] border border-orange-500/20 dark:border-white/10">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-slate-900/40 shrink-0 border border-white/20">
                 <ProgressiveImage
                   src={getEventImage(event, "event-card", 400)}
@@ -243,7 +243,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 />
               </div>
               <div className="min-w-0 flex-1">
-                <span className="text-[9px] sm:text-[10px] font-black uppercase text-orange-700 dark:text-orange-300 font-heading tracking-wider">
+                <span className="text-[9px] sm:text-[10px] font-black uppercase text-orange-700 dark:text-gray-300 font-heading tracking-wider">
                   {event?.categories?.name || "Campus Event"}
                 </span>
                 <h4 className="font-heading font-bold text-sm sm:text-base text-gray-900 dark:text-white truncate">
@@ -327,9 +327,9 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                   <button
                     type="button"
                     onClick={() => handleSocialShare("email")}
-                    className="hidden sm:flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-orange-500/10 hover:bg-orange-500/20 border border-orange-500/30 text-primary transition-all cursor-pointer group hover:scale-104 active:scale-95"
+                    className="hidden sm:flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-orange-500/10 dark:bg-white/10 hover:bg-orange-500/20 dark:hover:bg-white/15 border border-orange-500/30 dark:border-white/15 text-primary dark:text-white transition-all cursor-pointer group hover:scale-104 active:scale-95"
                   >
-                    <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center shadow-md">
+                    <div className="w-8 h-8 rounded-full bg-primary dark:bg-white text-white dark:text-black flex items-center justify-center shadow-md">
                       <Mail className="w-4 h-4" />
                     </div>
                     <span className="text-[10px] sm:text-[11px] font-bold font-heading text-gray-800 dark:text-gray-200">
@@ -354,7 +354,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     className={`px-4 py-2.5 rounded-xl font-heading font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm ${
                       copied
                         ? "bg-emerald-500 text-white shadow-emerald-500/30"
-                        : "bg-primary text-white hover:bg-orange-600 shadow-orange-500/30 active:scale-95"
+                        : "bg-primary dark:bg-white text-white dark:text-black hover:bg-orange-600 dark:hover:bg-gray-100 shadow-orange-500/30 dark:shadow-[0_0_12px_rgba(255,255,255,0.2)] active:scale-95"
                     }`}
                   >
                     {copied ? (
@@ -387,7 +387,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           ) : (
             /* QR Code View */
             <div className="px-5 sm:px-6 pb-6 flex flex-col items-center gap-4 text-center">
-              <div className="p-4 bg-white rounded-3xl border-2 border-orange-500/30 shadow-xl inline-block">
+              <div className="p-4 bg-white rounded-3xl border-2 border-orange-500/30 dark:border-white/20 shadow-xl inline-block">
                 {qrDataUrl ? (
                   <img
                     src={qrDataUrl}
@@ -415,7 +415,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 <button
                   type="button"
                   onClick={() => downloadQrCode(shareUrl, eventName, "png")}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-primary text-white hover:bg-orange-600 font-heading font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-primary dark:bg-white text-white dark:text-black hover:bg-orange-600 dark:hover:bg-gray-100 font-heading font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Download PNG</span>
@@ -441,7 +441,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 exit={{ opacity: 0, y: 20 }}
                 className="absolute bottom-4 left-4 right-4 bg-zinc-900/95 text-white dark:bg-white dark:text-zinc-900 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold font-heading border border-white/20 z-20"
               >
-                <Sparkles className="w-4 h-4 text-orange-400 shrink-0 animate-bounce" />
+                <Sparkles className="w-4 h-4 text-orange-400 dark:text-white shrink-0 animate-bounce" />
                 <span className="flex-1">{toastMessage}</span>
               </motion.div>
             )}

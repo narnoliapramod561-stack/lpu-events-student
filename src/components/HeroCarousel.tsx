@@ -346,17 +346,17 @@ export const HeroCarouselComponent = ({
             transition={{ duration: 0.6 }}
             className="w-full h-full relative"
           >
-            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/40 via-amber-500/25 to-rose-500/20 dark:from-orange-600/25 dark:via-amber-500/15 dark:to-transparent blur-2xl rounded-[44px]" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/40 via-amber-500/25 to-rose-500/20 blur-2xl rounded-[44px] dark:hidden" />
           </motion.div>
         </AnimatePresence>
       </div>
 
       {/* 2. Main Carousel Viewport Frame */}
-      <div className="relative z-10 w-full h-[250px] min-[390px]:h-[275px] min-[430px]:h-[295px] sm:h-auto sm:min-h-[520px] lg:h-[560px] xl:h-[580px] overflow-hidden rounded-[20px] sm:rounded-[34px] md:rounded-[40px] glass-panel shadow-[0_20px_60px_-10px_rgba(255,107,0,0.25),0_8px_25px_-5px_rgba(15,23,42,0.08)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.85)] flex flex-col">
+      <div className="relative z-10 w-full h-[250px] min-[390px]:h-[275px] min-[430px]:h-[295px] sm:h-auto sm:min-h-[520px] lg:h-[560px] xl:h-[580px] overflow-hidden rounded-[20px] sm:rounded-[34px] md:rounded-[40px] glass-panel shadow-[0_20px_60px_-10px_rgba(255,107,0,0.25),0_8px_25px_-5px_rgba(15,23,42,0.08)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.95)] flex flex-col">
         
-        {/* Subtle Decorative Ambient Flares (Behind Content at z-0) */}
-        <div className="absolute top-0 right-0 w-[420px] h-[420px] bg-gradient-to-br from-orange-500/35 via-amber-500/20 to-transparent dark:from-orange-500/35 dark:via-amber-500/20 rounded-full blur-3xl pointer-events-none z-0 hidden sm:block" />
-        <div className="absolute -bottom-10 -left-10 w-96 h-96 bg-gradient-to-tr from-orange-500/25 via-amber-500/15 to-transparent dark:from-orange-600/30 dark:via-amber-500/18 rounded-full blur-3xl pointer-events-none z-0 hidden sm:block" />
+        {/* Subtle Decorative Ambient Flares (Light mode only) */}
+        <div className="absolute top-0 right-0 w-[420px] h-[420px] bg-gradient-to-br from-orange-500/35 via-amber-500/20 to-transparent rounded-full blur-3xl pointer-events-none z-0 hidden sm:block dark:hidden" />
+        <div className="absolute -bottom-10 -left-10 w-96 h-96 bg-gradient-to-tr from-orange-500/25 via-amber-500/15 to-transparent rounded-full blur-3xl pointer-events-none z-0 hidden sm:block dark:hidden" />
 
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
@@ -413,8 +413,8 @@ export const HeroCarouselComponent = ({
                       className="w-full h-full object-contain object-center relative z-10"
                     />
                   ) : (
-                    <div className="absolute inset-0 bg-gradient-to-br from-orange-950/80 via-slate-900 to-indigo-950 flex flex-col justify-center items-center px-4 text-center pb-12">
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-500/20 text-orange-400 border border-orange-500/30 rounded-full font-heading text-[10px] font-black uppercase tracking-wider mb-2">
+                    <div className="absolute inset-0 bg-gradient-to-br from-orange-950/80 via-slate-900 to-indigo-950 dark:from-black dark:via-zinc-950 dark:to-neutral-900 flex flex-col justify-center items-center px-4 text-center pb-12">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-500/20 text-orange-400 dark:bg-white/10 dark:text-white border border-orange-500/30 dark:border-white/15 rounded-full font-heading text-[10px] font-black uppercase tracking-wider mb-2">
                         Campus Events &amp; Festivities
                       </span>
                       <h1 className="text-xl min-[390px]:text-2xl font-black text-white font-heading leading-tight tracking-tight max-w-xs drop-shadow-md">
@@ -432,10 +432,10 @@ export const HeroCarouselComponent = ({
                       {/* Event Date & Time */}
                       {currentSlide.type === "event" && (currentSlide.date || currentSlide.time) && (
                         <span className="inline-flex items-center gap-1.5 text-xs min-[390px]:text-[13px] font-bold text-white shrink-0 font-heading">
-                          <Calendar className="w-3.5 h-3.5 text-orange-400 shrink-0" />
+                          <Calendar className="w-3.5 h-3.5 text-orange-400 dark:text-white shrink-0" />
                           <span className="whitespace-nowrap">{currentSlide.date}</span>
                           {currentSlide.time && (
-                            <span className="text-orange-300 whitespace-nowrap">• {currentSlide.time}</span>
+                            <span className="text-orange-300 dark:text-gray-300 whitespace-nowrap">• {currentSlide.time}</span>
                           )}
                         </span>
                       )}
@@ -478,12 +478,12 @@ export const HeroCarouselComponent = ({
                     >
                       {/* Badge & Category Pill */}
                       <motion.div variants={contentItem} className="flex items-center gap-2 flex-wrap">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-orange-500/20 to-amber-500/15 text-orange-700 dark:text-orange-300 border border-orange-500/35 rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-[0_0_12px_rgba(255,107,0,0.2)] backdrop-blur-md">
-                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-orange-500/20 to-amber-500/15 text-orange-700 dark:bg-white/10 dark:text-white dark:border-white/15 dark:shadow-none border border-orange-500/35 rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-[0_0_12px_rgba(255,107,0,0.2)] backdrop-blur-md">
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 dark:bg-white animate-pulse" />
                           Featured Event
                         </span>
                         {currentSlide.category && (
-                          <span className="text-gray-700 dark:text-on-surface-muted text-xs font-black uppercase tracking-wide font-heading">
+                          <span className="text-gray-700 dark:text-gray-300 text-xs font-black uppercase tracking-wide font-heading">
                             • {currentSlide.category}
                           </span>
                         )}
@@ -517,11 +517,11 @@ export const HeroCarouselComponent = ({
                           {/* Date & Time */}
                           {(currentSlide.date || currentSlide.time) && (
                             <div className="flex items-center gap-3 sm:gap-3.5">
-                              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 bg-orange-500/15 dark:bg-orange-500/25 text-orange-700 dark:text-orange-300 border border-orange-500/25 shadow-xs">
-                                <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-orange-700 dark:text-orange-300 stroke-[2.2]" />
+                              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 bg-orange-500/15 dark:bg-white/10 text-orange-700 dark:text-white border border-orange-500/25 dark:border-white/10 shadow-xs">
+                                <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-orange-700 dark:text-white stroke-[2.2]" />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-[10.5px] sm:text-[11px] uppercase font-black tracking-wider text-orange-700 dark:text-orange-300 font-heading">
+                                <span className="text-[10.5px] sm:text-[11px] uppercase font-black tracking-wider text-orange-700 dark:text-gray-400 font-heading">
                                   Date & Time
                                 </span>
                                 <span className="font-black font-heading text-gray-900 dark:text-white tracking-tight text-sm sm:text-base xl:text-lg truncate">
@@ -535,11 +535,11 @@ export const HeroCarouselComponent = ({
                           {/* Venue */}
                           {currentSlide.venue && (
                             <div className="flex items-center gap-3 sm:gap-3.5">
-                              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 bg-amber-500/15 dark:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/25 shadow-xs">
-                                <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600 dark:text-amber-400 stroke-[2.2]" />
+                              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 bg-amber-500/15 dark:bg-white/10 text-amber-600 dark:text-white border border-amber-500/25 dark:border-white/10 shadow-xs">
+                                <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600 dark:text-white stroke-[2.2]" />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-[10.5px] sm:text-[11px] uppercase font-black tracking-wider text-amber-600 dark:text-amber-400 font-heading">
+                                <span className="text-[10.5px] sm:text-[11px] uppercase font-black tracking-wider text-amber-600 dark:text-white font-heading">
                                   Location / Venue
                                 </span>
                                 <span className="text-xs sm:text-sm xl:text-base font-bold text-gray-800 dark:text-gray-100 truncate">
@@ -769,7 +769,7 @@ export const HeroCarouselComponent = ({
             {idx === currentIndex && (
               <motion.div
                 layoutId="heroActiveProgress"
-                className="absolute inset-0 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full shadow-[0_0_8px_rgba(255,107,0,0.8)]"
+                className="absolute inset-0 bg-gradient-to-r from-amber-400 to-orange-500 dark:from-white dark:to-gray-200 rounded-full shadow-[0_0_8px_rgba(255,107,0,0.8)] dark:shadow-[0_0_10px_rgba(255,255,255,0.7)]"
                 initial={{ width: 0 }}
                 animate={{ width: "100%" }}
                 transition={{
@@ -791,7 +791,7 @@ export const HeroCarouselComponent = ({
               aria-label={`Go to slide ${idx + 1}`}
               className={`h-2 rounded-full transition-[width,background-color] duration-300 cursor-pointer ${
                 idx === currentIndex
-                  ? "w-5 bg-gradient-to-r from-amber-400 to-orange-500"
+                  ? "w-5 bg-gradient-to-r from-amber-400 to-orange-500 dark:from-white dark:to-gray-200"
                   : "w-2 bg-gray-400/40 dark:bg-white/25"
               }`}
             />

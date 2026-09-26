@@ -58,7 +58,7 @@ export const EventCardComponent = ({
 
         {event.is_trending && (
           <div className="absolute top-2.5 left-2.5 sm:top-4 sm:left-4 z-20">
-            <span className="flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-gradient-to-r from-orange-600 via-amber-500 to-orange-500 text-white rounded-full font-heading text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-lg border border-white/20">
+            <span className="flex items-center gap-1.5 px-2.5 py-0.5 sm:px-3 sm:py-1 bg-gradient-to-r from-orange-600 via-amber-500 to-orange-500 dark:from-white/20 dark:via-white/10 dark:to-white/20 text-white rounded-full font-heading text-[9px] sm:text-[10px] font-black uppercase tracking-wider shadow-lg border border-white/20">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               🔥 Trending
             </span>
@@ -78,7 +78,7 @@ export const EventCardComponent = ({
       {/* Event Body */}
       <div className="p-3.5 sm:p-5 flex flex-col flex-1">
         {/* Event Title */}
-        <h3 className="text-base sm:text-xl lg:text-[22px] font-black font-heading text-orange-700 dark:text-orange-300 group-hover:text-orange-600 dark:group-hover:text-orange-200 transition-colors mb-2.5 sm:mb-4 tracking-tight line-clamp-2 leading-snug break-safe">
+        <h3 className="text-base sm:text-xl lg:text-[22px] font-black font-heading text-orange-700 dark:text-white group-hover:text-orange-600 dark:group-hover:text-gray-300 transition-colors mb-2.5 sm:mb-4 tracking-tight line-clamp-2 leading-snug break-safe">
           {event.name}
         </h3>
 
@@ -133,7 +133,7 @@ export const EventCardComponent = ({
             {/* Mobile View Details Button (fitted in venue row, eliminating bottom line & separate footer on mobile) */}
             <button
               type="button"
-              className="sm:hidden px-3.5 py-1.5 bg-gradient-to-r from-[#fc721e] to-[#ff8c42] text-white rounded-full font-heading font-black text-xs shadow-md shadow-orange-500/20 active:scale-95 transition-all cursor-pointer shrink-0"
+              className="sm:hidden px-3.5 py-1.5 bg-gradient-to-r from-[#fc721e] to-[#ff8c42] dark:from-white dark:to-white text-white dark:text-black rounded-full font-heading font-black text-xs shadow-md shadow-orange-500/20 dark:shadow-[0_0_12px_rgba(255,255,255,0.2)] active:scale-95 transition-all cursor-pointer shrink-0"
             >
               View Details
             </button>
@@ -149,7 +149,7 @@ export const EventCardComponent = ({
           </div>
           <button
             type="button"
-            className="px-5 py-2 bg-gradient-to-r from-[#fc721e] to-[#ff8c42] text-white rounded-full font-heading font-black text-xs shadow-md shadow-orange-500/20 hover:scale-103 active:scale-95 transition-all cursor-pointer shrink-0 touch-target ml-auto"
+            className="px-5 py-2 bg-gradient-to-r from-[#fc721e] to-[#ff8c42] dark:from-white dark:to-white text-white dark:text-black rounded-full font-heading font-black text-xs shadow-md shadow-orange-500/20 dark:shadow-[0_0_14px_rgba(255,255,255,0.2)] hover:scale-103 active:scale-95 transition-all cursor-pointer shrink-0 touch-target ml-auto"
           >
             View Details
           </button>
@@ -365,7 +365,7 @@ export const EventGridComponent = ({
   if (events.length === 0) {
     return (
       <section className="w-full py-12 flex flex-col items-center justify-center text-center">
-        <div className="w-16 h-16 rounded-full bg-orange-500/10 flex items-center justify-center text-primary mb-4">
+        <div className="w-16 h-16 rounded-full bg-orange-500/10 dark:bg-white/10 flex items-center justify-center text-primary dark:text-white mb-4">
           <SearchX className="h-8 w-8" />
         </div>
         <h2 className="text-xl font-bold font-heading text-gray-900 dark:text-white mb-2">

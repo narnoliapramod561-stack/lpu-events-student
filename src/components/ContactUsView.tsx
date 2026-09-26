@@ -43,11 +43,11 @@ export const ContactUsView: React.FC<ContactUsViewProps> = ({ onBack }) => {
 
       {/* Header Banner */}
       <div className="relative glass-panel rounded-[20px] sm:rounded-[36px] p-6 sm:p-10 mb-8 border border-white/95 dark:border-white/10 shadow-xl overflow-hidden">
-        <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 dark:bg-primary/5 rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-500/10 dark:bg-amber-500/5 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-80 h-80 bg-primary/10 rounded-full blur-3xl pointer-events-none dark:hidden" />
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-amber-500/10 rounded-full blur-3xl pointer-events-none dark:hidden" />
 
         <div className="relative z-10 flex flex-col items-start gap-4">
-          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-badge text-primary dark:text-orange-400 font-heading text-xs font-black tracking-wider uppercase border border-primary/30 shadow-xs">
+          <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-badge text-primary dark:text-white font-heading text-xs font-black tracking-wider uppercase border border-primary/30 dark:border-white/20 shadow-xs">
             <Mail className="h-3.5 w-3.5" />
             Official Contact Channel
           </div>
@@ -58,7 +58,7 @@ export const ContactUsView: React.FC<ContactUsViewProps> = ({ onBack }) => {
               <h1 className="font-heading text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">
                 Contact LPU Events Team
               </h1>
-              <p className="text-xs sm:text-sm font-heading font-semibold text-primary dark:text-orange-400 mt-0.5">
+              <p className="text-xs sm:text-sm font-heading font-semibold text-primary dark:text-gray-300 mt-0.5">
                 We're here to assist students, organizers, and campus visitors
               </p>
             </div>
