@@ -190,7 +190,7 @@ export const CategoryFilterComponent = ({
       {/* ======================================================== */}
       {/* 📱 MOBILE DISCOVERY SUITE (< sm) — ULTRA-PREMIUM UNIFIED  */}
       {/* ======================================================== */}
-      <div className="relative sm:hidden rounded-[28px] overflow-hidden border border-slate-200/90 dark:border-white/[0.12] bg-white/95 dark:bg-[#0a0d14]/95 backdrop-blur-3xl shadow-[0_18px_50px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)] dark:shadow-[0_24px_65px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)]">
+      <div className="relative sm:hidden rounded-[28px] overflow-hidden border border-slate-200/90 dark:border-white/[0.12] bg-white/95 dark:bg-[#2c2c2e]/95 backdrop-blur-3xl shadow-[0_18px_50px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)] dark:shadow-[0_24px_65px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)]">
         
         {/* Atmospheric Ambient Glow Mesh — Minimalist Monochrome */}
         <div className="absolute top-0 right-0 w-80 h-44 bg-gradient-to-bl from-slate-400/[0.06] dark:from-white/[0.04] to-transparent rounded-full blur-3xl pointer-events-none" />
@@ -245,7 +245,7 @@ export const CategoryFilterComponent = ({
                     }}
                     className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                       isActive
-                        ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_4px_16px_rgba(255,255,255,0.18)] ring-1 ring-black/10 dark:ring-white"
+                        ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                         : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
                     }`}
                   >
@@ -267,11 +267,11 @@ export const CategoryFilterComponent = ({
                   onClick={() => openDatePicker(mobileDateInputRef)}
                   className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap active:scale-[0.96] transition-all duration-200 cursor-pointer ${
                     selectedDate
-                      ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_4px_16px_rgba(255,255,255,0.18)] ring-1 ring-black/10 dark:ring-white"
+                      ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                       : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
                   }`}
                 >
-                  <CalendarDays className={`h-3.5 w-3.5 ${selectedDate ? "text-white dark:text-slate-950" : "text-slate-500 dark:text-slate-400"}`} />
+                  <CalendarDays className={`h-3.5 w-3.5 ${selectedDate ? "text-white dark:text-white" : "text-slate-500 dark:text-slate-400"}`} />
                   <span>{formatDisplayDate(selectedDate)}</span>
                   {selectedDate && (
                     <span
@@ -279,7 +279,7 @@ export const CategoryFilterComponent = ({
                       tabIndex={0}
                       onClick={handleClearDate}
                       onKeyDown={(e) => { if (e.key === 'Enter') handleClearDate(e as any); }}
-                      className="ml-0.5 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-black/20 text-white/80 dark:text-slate-700 hover:text-white dark:hover:text-slate-950 transition-colors cursor-pointer"
+                      className="ml-0.5 p-0.5 rounded-full hover:bg-black/10 dark:hover:bg-white/20 text-white/80 dark:text-white/80 hover:text-white dark:hover:text-white transition-colors cursor-pointer"
                       title="Clear date filter"
                     >
                       <X className="h-3 w-3" />
@@ -353,7 +353,7 @@ export const CategoryFilterComponent = ({
                     }}
                     className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                       isSelected
-                        ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_4px_16px_rgba(255,255,255,0.18)] ring-1 ring-black/10 dark:ring-white"
+                        ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                         : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
                     }`}
                   >
@@ -422,7 +422,7 @@ export const CategoryFilterComponent = ({
                         }}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-heading font-bold whitespace-nowrap shrink-0 active:scale-95 transition-all ${
                           isSubSelected
-                            ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-sm ring-1 ring-black/10 dark:ring-white"
+                            ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-sm ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                             : "bg-slate-100 dark:bg-white/[0.06] text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-white/[0.08]"
                         }`}
                       >
@@ -448,11 +448,11 @@ export const CategoryFilterComponent = ({
                     }}
                     className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                       selectedCategory === "all"
-                        ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_4px_16px_rgba(255,255,255,0.18)] ring-1 ring-black/10 dark:ring-white"
+                        ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                         : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
                     }`}
                   >
-                    <div className={`w-4 h-4 rounded-md flex items-center justify-center ${selectedCategory === "all" ? "text-white dark:text-slate-950" : "text-slate-500 dark:text-slate-400"}`}>
+                    <div className={`w-4 h-4 rounded-md flex items-center justify-center ${selectedCategory === "all" ? "text-white dark:text-white" : "text-slate-500 dark:text-slate-400"}`}>
                       <LayoutGrid className="h-3.5 w-3.5" />
                     </div>
                     All
@@ -474,15 +474,15 @@ export const CategoryFilterComponent = ({
                       }}
                       className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                         isSelected
-                          ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_4px_16px_rgba(255,255,255,0.18)] ring-1 ring-black/10 dark:ring-white"
+                          ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                           : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
                       }`}
                     >
-                      <CatIcon className={`h-3.5 w-3.5 ${isSelected ? "text-white dark:text-slate-950" : "text-slate-500 dark:text-slate-400"}`} />
+                      <CatIcon className={`h-3.5 w-3.5 ${isSelected ? "text-white dark:text-white" : "text-slate-500 dark:text-slate-400"}`} />
                       <span>{cat.name}</span>
                       {subCount > 0 && (
                         <span className={`text-[9.5px] min-w-[17px] text-center px-1.5 py-0.5 rounded-full font-mono font-black leading-none ${
-                          isSelected ? "bg-white/20 dark:bg-black/15 text-white dark:text-slate-950" : "bg-black/[0.06] dark:bg-white/12 text-slate-600 dark:text-slate-300"
+                          isSelected ? "bg-white/20 dark:bg-white/20 text-white dark:text-white" : "bg-black/[0.06] dark:bg-white/12 text-slate-600 dark:text-slate-300"
                         }`}>
                           {subCount}
                         </span>
@@ -522,11 +522,11 @@ export const CategoryFilterComponent = ({
                     onClick={() => onSelectSubcategory("")}
                     className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                       !selectedSubcategory
-                        ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-sm ring-1 ring-black/10 dark:ring-white"
+                        ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-sm ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                         : "bg-slate-100/90 dark:bg-white/[0.06] text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.08]"
                     }`}
                   >
-                    <div className={`w-3.5 h-3.5 rounded-md flex items-center justify-center ${!selectedSubcategory ? "text-white dark:text-slate-950" : "text-slate-500 dark:text-slate-400"}`}>
+                    <div className={`w-3.5 h-3.5 rounded-md flex items-center justify-center ${!selectedSubcategory ? "text-white dark:text-white" : "text-slate-500 dark:text-slate-400"}`}>
                       <LayoutGrid className="h-2.5 w-2.5" />
                     </div>
                     All
@@ -541,11 +541,11 @@ export const CategoryFilterComponent = ({
                         onClick={() => onSelectSubcategory(isSelected ? "" : sub.id)}
                         className={`group flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-200 ${
                           isSelected
-                            ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-sm ring-1 ring-black/10 dark:ring-white"
+                            ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-sm ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                             : "bg-slate-100/90 dark:bg-white/[0.06] text-slate-700 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.08]"
                         }`}
                       >
-                        <SubIcon className={`h-3 w-3 ${isSelected ? "text-white dark:text-slate-950" : "text-slate-500 dark:text-slate-400"}`} />
+                        <SubIcon className={`h-3 w-3 ${isSelected ? "text-white dark:text-white" : "text-slate-500 dark:text-slate-400"}`} />
                         <span>{sub.name}</span>
                       </button>
                     );
@@ -725,7 +725,7 @@ export const CategoryFilterComponent = ({
                   value={categorySearch}
                   onChange={(e) => setCategorySearch(e.target.value)}
                   placeholder="Search categories & subcategories..."
-                  className="w-full pl-9 pr-9 py-2.5 rounded-2xl bg-white dark:bg-[#121622] text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:border-slate-900 dark:focus:border-white shadow-xs transition-all"
+                  className="w-full pl-9 pr-9 py-2.5 rounded-2xl bg-white dark:bg-[#3a3a3c] text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:border-slate-900 dark:focus:border-white shadow-xs transition-all"
                 />
                 {categorySearch && (
                   <button
@@ -743,7 +743,7 @@ export const CategoryFilterComponent = ({
 
           {/* Direct Matching Subcategory Instant Jump Bar */}
           {cleanQuery && directMatchingSubcategories.length > 0 && (
-            <div className="flex flex-col gap-2 p-3.5 rounded-2xl bg-white dark:bg-[#0e121d] border border-slate-200/90 dark:border-white/15 shadow-sm">
+            <div className="flex flex-col gap-2 p-3.5 rounded-2xl bg-white dark:bg-[#2c2c2e] border border-slate-200/90 dark:border-white/15 shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5 font-heading">
                   <Sparkles className="h-3.5 w-3.5" />
@@ -765,7 +765,7 @@ export const CategoryFilterComponent = ({
                       }}
                       className={`group flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl font-heading font-black text-xs whitespace-nowrap cursor-pointer active:scale-[0.97] transition-transform shrink-0 touch-target ${
                         isSubSelected
-                          ? "bg-slate-950 dark:bg-white text-white dark:text-slate-950 shadow-sm border border-black/10 dark:border-white/20"
+                          ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white border border-white/50 shadow-[0_4px_14px_rgba(255,107,0,0.4)]"
                           : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary hover:border-primary/50 shadow-sm"
                       }`}
                     >
@@ -792,7 +792,7 @@ export const CategoryFilterComponent = ({
                   }}
                   className={`group flex items-center gap-2 px-6 py-3 rounded-full font-heading font-black text-sm whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 touch-target ${
                     selectedCategory === "all"
-                      ? "glass-pill-active"
+                      ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white border border-white/50 shadow-[0_6px_20px_rgba(255,107,0,0.45)]"
                       : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary"
                   }`}
                 >
@@ -819,7 +819,7 @@ export const CategoryFilterComponent = ({
                     }}
                     className={`group flex items-center gap-2 px-6 py-3 rounded-full font-heading font-black text-sm whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 touch-target ${
                       isSelected
-                        ? "glass-pill-active"
+                        ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white border border-white/50 shadow-[0_6px_20px_rgba(255,107,0,0.45)]"
                         : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary"
                     }`}
                   >
@@ -891,7 +891,7 @@ export const CategoryFilterComponent = ({
                     onClick={() => onSelectSubcategory("")}
                     className={`group flex items-center gap-2 px-6 py-3 rounded-full font-heading font-black text-sm whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 touch-target ${
                       !selectedSubcategory
-                        ? "glass-pill-active"
+                        ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white border border-white/50 shadow-[0_6px_20px_rgba(255,107,0,0.45)]"
                         : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary"
                     }`}
                   >
@@ -914,7 +914,7 @@ export const CategoryFilterComponent = ({
                         onClick={() => onSelectSubcategory(isSelected ? "" : sub.id)}
                         className={`group flex items-center gap-2 px-6 py-3 rounded-full font-heading font-black text-sm whitespace-nowrap cursor-pointer outline-none active:scale-[0.97] transition-all shrink-0 touch-target ${
                           isSelected
-                            ? "glass-pill-active"
+                            ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white border border-white/50 shadow-[0_6px_20px_rgba(255,107,0,0.45)]"
                             : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary"
                         }`}
                       >

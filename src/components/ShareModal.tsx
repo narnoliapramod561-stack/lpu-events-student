@@ -179,7 +179,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 15 }}
           transition={{ type: "spring", damping: 26, stiffness: 320 }}
-          className="relative w-full max-w-lg bg-white/95 dark:bg-black/95 backdrop-blur-2xl rounded-[28px] sm:rounded-[32px] border border-white/80 dark:border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.3)] overflow-hidden z-10 flex flex-col my-auto"
+          className="relative w-full max-w-lg bg-white/95 dark:bg-[#2c2c2e]/95 backdrop-blur-2xl rounded-[28px] sm:rounded-[32px] border border-white/80 dark:border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.5)] overflow-hidden z-10 flex flex-col my-auto"
         >
           {/* Header Bar */}
           <div className="flex items-center justify-between px-5 sm:px-6 pt-5 sm:pt-6 pb-3">
@@ -315,7 +315,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     onClick={() => handleSocialShare("twitter")}
                     className="flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-black/10 dark:bg-white/10 hover:bg-black/15 dark:hover:bg-white/15 border border-black/20 dark:border-white/20 text-gray-900 dark:text-white transition-all cursor-pointer group hover:scale-104 active:scale-95"
                   >
-                    <div className="w-8 h-8 rounded-full bg-zinc-900 dark:bg-white text-white dark:text-black flex items-center justify-center shadow-md font-bold text-xs">
+                    <div className="w-8 h-8 rounded-full bg-zinc-900 dark:bg-white/14 text-white dark:text-white dark:border dark:border-white/18 flex items-center justify-center shadow-md font-bold text-xs">
                       𝕏
                     </div>
                     <span className="text-[10px] sm:text-[11px] font-bold font-heading text-gray-800 dark:text-gray-200">
@@ -329,7 +329,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     onClick={() => handleSocialShare("email")}
                     className="hidden sm:flex flex-col items-center gap-1.5 p-3 rounded-2xl bg-orange-500/10 dark:bg-white/10 hover:bg-orange-500/20 dark:hover:bg-white/15 border border-orange-500/30 dark:border-white/15 text-primary dark:text-white transition-all cursor-pointer group hover:scale-104 active:scale-95"
                   >
-                    <div className="w-8 h-8 rounded-full bg-primary dark:bg-white text-white dark:text-black flex items-center justify-center shadow-md">
+                    <div className="w-8 h-8 rounded-full bg-primary dark:bg-white/14 text-white dark:text-white dark:border dark:border-white/18 flex items-center justify-center shadow-md">
                       <Mail className="w-4 h-4" />
                     </div>
                     <span className="text-[10px] sm:text-[11px] font-bold font-heading text-gray-800 dark:text-gray-200">
@@ -354,7 +354,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                     className={`px-4 py-2.5 rounded-xl font-heading font-black text-xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0 shadow-sm ${
                       copied
                         ? "bg-emerald-500 text-white shadow-emerald-500/30"
-                        : "bg-primary dark:bg-white text-white dark:text-black hover:bg-orange-600 dark:hover:bg-gray-100 shadow-orange-500/30 dark:shadow-[0_0_12px_rgba(255,255,255,0.2)] active:scale-95"
+                        : "bg-primary dark:bg-white/14 dark:hover:bg-white/22 text-white dark:text-white dark:border dark:border-white/18 shadow-orange-500/30 dark:shadow-none active:scale-95"
                     }`}
                   >
                     {copied ? (
@@ -415,7 +415,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 <button
                   type="button"
                   onClick={() => downloadQrCode(shareUrl, eventName, "png")}
-                  className="flex-1 py-2.5 px-3 rounded-xl bg-primary dark:bg-white text-white dark:text-black hover:bg-orange-600 dark:hover:bg-gray-100 font-heading font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
+                  className="flex-1 py-2.5 px-3 rounded-xl bg-primary dark:bg-white/14 dark:hover:bg-white/22 text-white dark:text-white dark:border dark:border-white/18 font-heading font-black text-xs transition-all cursor-pointer flex items-center justify-center gap-1.5 shadow-sm active:scale-95"
                 >
                   <Download className="w-3.5 h-3.5" />
                   <span>Download PNG</span>
@@ -439,7 +439,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 20 }}
-                className="absolute bottom-4 left-4 right-4 bg-zinc-900/95 text-white dark:bg-white dark:text-zinc-900 px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold font-heading border border-white/20 z-20"
+                className="absolute bottom-4 left-4 right-4 bg-zinc-900/95 text-white dark:bg-zinc-800/95 dark:text-white px-4 py-3 rounded-2xl shadow-2xl flex items-center gap-2.5 text-xs font-bold font-heading border border-white/20 z-20"
               >
                 <Sparkles className="w-4 h-4 text-orange-400 dark:text-white shrink-0 animate-bounce" />
                 <span className="flex-1">{toastMessage}</span>

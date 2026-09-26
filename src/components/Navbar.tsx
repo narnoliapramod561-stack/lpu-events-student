@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Search, Sun, Moon, Menu, X, Home, LayoutGrid, Flame, Users, ExternalLink, HelpCircle, Info, Mail } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import { lpuClient } from "../supabase";
+import { searchEventsClientSide } from "../shared/clientSearch";
+import type { EventFeedItem } from "@lpu-events/shared";
 import { LpuLogo } from "./LpuLogo";
 
 export const SearchAutocompleteComponent = ({ 
@@ -18,7 +19,7 @@ export const SearchAutocompleteComponent = ({
   if (!show || !suggestions || suggestions.length === 0) return null;
 
   return (
-    <div className="absolute top-full left-0 right-0 w-full mt-2 rounded-2xl bg-white dark:bg-[#0c0f17] shadow-[0_20px_50px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_70px_rgba(0,0,0,0.85)] p-2.5 z-[100] border border-slate-200 dark:border-white/[0.14] overflow-hidden">
+    <div className="absolute top-full left-0 right-0 w-full mt-2 rounded-2xl bg-white dark:bg-[#2c2c2e] shadow-[0_20px_50px_rgba(0,0,0,0.18)] dark:shadow-[0_24px_70px_rgba(0,0,0,0.85)] p-2.5 z-[100] border border-slate-200 dark:border-white/[0.14] overflow-hidden">
       <div className="text-[10px] font-black text-slate-800 dark:text-white uppercase px-3 py-1.5 tracking-wider border-b border-slate-200/80 dark:border-white/10 mb-1.5 font-heading flex justify-between items-center shrink-0">
         <span className="flex items-center gap-1.5">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
@@ -63,7 +64,7 @@ export const SearchAutocompleteComponent = ({
                   onSelect(item.name);
                 }
               }}
-              className="text-xs font-black bg-slate-900 text-white dark:bg-white dark:text-slate-950 px-3.5 py-1.5 rounded-full whitespace-nowrap shrink-0 ml-2 transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95"
+              className="text-xs font-black bg-slate-900 text-white dark:bg-white/14 dark:hover:bg-white/22 dark:text-white dark:border dark:border-white/18 px-3.5 py-1.5 rounded-full whitespace-nowrap shrink-0 ml-2 transition-all cursor-pointer shadow-xs hover:scale-105 active:scale-95"
             >
               View
             </button>
@@ -85,7 +86,8 @@ export const NavbarComponent = ({
   onSelectTrending,
   onSelectEvent,
   onGoHome,
-  onSelectCategories
+  onSelectCategories,
+  allEvents = []
 }: {
   searchQuery: string;
   onSearch: (q: string) => void;
@@ -96,6 +98,7 @@ export const NavbarComponent = ({
   onSelectEvent?: (id: string, name?: string) => void;
   onGoHome?: () => void;
   onSelectCategories?: () => void;
+  allEvents?: EventFeedItem[];
 }) => {
   const [localSearch, setLocalSearch] = useState(searchQuery || "");
   const [suggestions, setSuggestions] = useState<any[]>([]);
@@ -151,18 +154,15 @@ export const NavbarComponent = ({
     }
 
     setShowSuggestions(true);
-    debounceTimer.current = setTimeout(async () => {
+    debounceTimer.current = setTimeout(() => {
       onSearch(trimmed);
       const reqId = ++suggestionReqIdRef.current;
-      try {
-        const { data, error } = await lpuClient.searchEvents(trimmed, { limit: 10 });
-        if (!error && data && reqId === suggestionReqIdRef.current) {
-          setSuggestions(data);
-        }
-      } catch (err) {
-        console.error("Suggestions search failed:", err);
+      // Pure client-side search — zero database calls
+      const results = searchEventsClientSide(allEvents, trimmed, 10);
+      if (reqId === suggestionReqIdRef.current) {
+        setSuggestions(results);
       }
-    }, 300);
+    }, 150);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
@@ -225,21 +225,21 @@ export const NavbarComponent = ({
 
   return (
     <nav className="sticky top-0 z-50 w-full glass-nav transition-colors duration-300">
-      <div className="mx-auto flex h-16 sm:h-[76px] max-w-[98%] items-center justify-between px-3 sm:px-4 md:px-6">
+      <div className="mx-auto flex h-20 sm:h-[88px] max-w-[98%] items-center justify-between px-3 sm:px-4 md:px-6">
         
         {/* Brand Logo & Title */}
         <div 
-          className="flex items-center gap-2 sm:gap-3 cursor-pointer shrink-0 group select-none" 
+          className="flex items-center gap-2.5 sm:gap-3.5 cursor-pointer shrink-0 group select-none" 
           onClick={handleBrandClick}
           title="Go to Student Dashboard"
         >
-          <LpuLogo className="h-9 w-9 sm:h-12 sm:w-12 md:h-14 md:w-14 shrink-0 drop-shadow-sm group-hover:scale-105 transition-transform" />
+          <LpuLogo id="navbar-brand-logo" className="h-13 w-13 sm:h-[64px] sm:w-[64px] md:h-[74px] md:w-[74px] shrink-0 drop-shadow-md group-hover:scale-105 transition-transform" />
           <div className="flex flex-col">
-            <div className="flex items-center text-lg sm:text-xl md:text-2xl font-black tracking-tight font-heading leading-tight">
+            <div className="flex items-center text-xl sm:text-2xl md:text-[27px] font-black tracking-tight font-heading leading-tight">
               <span className="text-gray-900 dark:text-white group-hover:text-primary transition-colors">LPU</span>
-              <span className="ml-1 text-primary">Events</span>
+              <span className="ml-1.5 text-primary">Events</span>
             </div>
-            <span className="hidden xs:inline-block text-[8px] sm:text-[9px] font-extrabold tracking-[0.16em] sm:tracking-[0.2em] text-gray-500 dark:text-gray-400 uppercase font-heading">
+            <span className="hidden xs:inline-block text-[9px] sm:text-[10px] md:text-[11px] font-extrabold tracking-[0.2em] sm:tracking-[0.22em] text-gray-500 dark:text-gray-400 uppercase font-heading mt-0.5">
               Student Directory
             </span>
           </div>
@@ -258,7 +258,7 @@ export const NavbarComponent = ({
               onKeyDown={handleKeyDown}
               onFocus={() => setShowSuggestions(true)}
               placeholder="Search events, clubs, venues..."
-              className="h-11 w-full rounded-2xl bg-white dark:bg-[#121622] pl-10 pr-9 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:bg-white dark:focus:bg-[#161a28] focus:border-slate-900 dark:focus:border-white focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:outline-none transition-all duration-200 shadow-xs"
+              className="h-11 w-full rounded-2xl bg-white dark:bg-[#3a3a3c] pl-10 pr-9 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:bg-white dark:focus:bg-[#3a3a3c] focus:border-slate-900 dark:focus:border-white focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:outline-none transition-all duration-200 shadow-xs"
             />
             {localSearch && (
               <button
@@ -375,7 +375,7 @@ export const NavbarComponent = ({
             exit={{ opacity: 0, height: 0 }}
             transition={{ duration: 0.2 }}
             ref={mobileContainerRef}
-            className="md:hidden border-t border-slate-200/80 dark:border-white/10 px-3 py-2.5 bg-white dark:bg-[#0c0f17] shadow-lg relative z-50"
+            className="md:hidden border-t border-slate-200/80 dark:border-white/10 px-3 py-2.5 bg-white dark:bg-[#2c2c2e] shadow-lg relative z-50"
           >
             <div className="relative w-full">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none">
@@ -389,7 +389,7 @@ export const NavbarComponent = ({
                 onKeyDown={handleKeyDown}
                 onFocus={() => setShowSuggestions(true)}
                 placeholder="Search events, clubs, venues..."
-                className="h-10 w-full rounded-xl bg-slate-100 dark:bg-[#121622] pl-10 pr-9 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:bg-white dark:focus:bg-[#161a28] focus:border-slate-900 dark:focus:border-white focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:outline-none transition-all duration-200"
+                className="h-10 w-full rounded-xl bg-slate-100 dark:bg-[#3a3a3c] pl-10 pr-9 text-xs sm:text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:bg-white dark:focus:bg-[#3a3a3c] focus:border-slate-900 dark:focus:border-white focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:outline-none transition-all duration-200"
               />
               {localSearch && (
                 <button

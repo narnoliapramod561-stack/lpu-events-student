@@ -65,7 +65,7 @@ export const BookingDisclaimerModal: React.FC<BookingDisclaimerModalProps> = ({
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.94, y: 16 }}
           transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          className="relative w-full max-w-[490px] rounded-[32px] sm:rounded-[36px] bg-white/95 dark:bg-black/95 border border-black/[0.08] dark:border-white/[0.12] p-6 sm:p-8 text-gray-900 dark:text-white shadow-[0_30px_90px_rgba(0,0,0,0.35)] backdrop-blur-2xl z-10 font-sans overflow-hidden"
+          className="relative w-full max-w-[490px] rounded-[32px] sm:rounded-[36px] bg-white/95 dark:bg-[#2c2c2e]/95 border border-black/[0.08] dark:border-white/[0.12] p-6 sm:p-8 text-gray-900 dark:text-white shadow-[0_30px_90px_rgba(0,0,0,0.50)] backdrop-blur-2xl z-10 font-sans overflow-hidden"
         >
           {/* Subtle Ambient Glow in background */}
           <div className="absolute -top-24 -right-24 w-48 h-48 rounded-full bg-orange-500/15 blur-3xl pointer-events-none dark:hidden" />
@@ -145,7 +145,7 @@ export const BookingDisclaimerModal: React.FC<BookingDisclaimerModalProps> = ({
             <button
               type="button"
               onClick={onConfirm}
-              className="w-full sm:w-2/3 h-12 rounded-2xl bg-gradient-to-r from-[#FF5E00] via-[#FF6A00] to-[#FF7A00] dark:from-white dark:to-white text-white dark:text-black dark:shadow-[0_0_16px_rgba(255,255,255,0.2)] hover:brightness-105 active:scale-[0.98] font-bold text-sm font-heading transition-all shadow-[0_6px_22px_rgba(255,94,0,0.35)] flex items-center justify-center gap-2 cursor-pointer"
+              className="w-full sm:w-2/3 h-12 rounded-2xl bg-gradient-to-r from-[#FF5E00] via-[#FF6A00] to-[#FF7A00] dark:from-white/16 dark:to-white/20 dark:hover:from-white/25 dark:hover:to-white/30 text-white dark:text-white dark:border dark:border-white/20 dark:shadow-none hover:brightness-105 active:scale-[0.98] font-bold text-sm font-heading transition-all shadow-[0_6px_22px_rgba(255,94,0,0.35)] flex items-center justify-center gap-2 cursor-pointer"
             >
               <span>Continue to Book Ticket</span>
               <ArrowUpRight className="h-4 w-4" />

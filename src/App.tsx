@@ -7,6 +7,7 @@ import { EventGrid } from "./components/EventGrid";
 import { Footer } from "./components/Footer";
 import { UnifiedAdSlot } from "./components/UnifiedAdSlot";
 import { MaintenanceView } from "./components/MaintenanceView";
+import { SplashScreen } from "./components/SplashScreen";
 
 const EventDetailsView = lazy(() => import("./components/EventDetailsView").then(m => ({ default: m.EventDetailsView })));
 const AboutUsView = lazy(() => import("./components/AboutUsView").then(m => ({ default: m.AboutUsView })));
@@ -16,6 +17,7 @@ const ContactUsView = lazy(() => import("./components/ContactUsView").then(m => 
 const CookieConsentBanner = lazy(() => import("./components/CookieConsentBanner").then(m => ({ default: m.CookieConsentBanner })));
 import { OFFICIAL_PLATFORM_CATEGORIES } from "./utils/categories";
 import { lpuClient } from "./supabase";
+import { searchEventsClientSide } from "./shared/clientSearch";
 import { 
   CategoryFeedItem, 
   EventFeedItem, 
@@ -517,71 +519,42 @@ export default function App() {
       }
     }, []);
 
-    // Fetch upcoming events feed dynamically based on filter states
+    // Fetch upcoming events feed dynamically based on filter states.
+    // Server fetch only executes when server-level filters (category, date, pricing) change.
     const fetchUpcomingEvents = useCallback(async (forceFresh = false) => {
       const currentReqId = ++searchReqIdRef.current;
-      const isSearching = searchQuery.trim().length >= 2;
-
       setEventsLoading(true);
       try {
         if (forceFresh) {
           lpuClient.invalidateClientCache('public:events');
         }
 
-        if (isSearching) {
-          const searchOpts: any = {
-            show_past: true,
-            limit: 50
-          };
-          if (selectedPricingType !== 'ALL') {
-            searchOpts.pricing_type = selectedPricingType;
-          }
-          const { data, error } = await lpuClient.searchEvents(searchQuery.trim(), searchOpts);
-          if (!error && data && currentReqId === searchReqIdRef.current) {
-            const valid = data.filter(
-              (evt) => evt.status === 'PUBLISHED' && !evt.deleted_at
-            );
-            // Synchronously hydrate uploaded banner images from allAvailableEvents / in-memory cache
-            const eventMap = new Map(allAvailableEvents.map(e => [e.id, e]));
-            const hydrated = valid.map(evt => {
-              if (!evt.media_assets || !evt.media_assets.object_key) {
-                const cached = eventMap.get(evt.id);
-                if (cached?.media_assets?.object_key) {
-                  return { ...evt, media_assets: cached.media_assets };
-                }
-              }
-              return evt;
-            });
-            setEvents(normalizeEventDates(hydrated));
-          }
-        } else {
-          let filters: any = {};
-          if (selectedCategory && selectedCategory !== "all") {
-            filters.category_id = selectedCategory;
-          }
-          if (selectedSubcategory) {
-            filters.subcategory_id = selectedSubcategory;
-          }
-          if (selectedPricingType !== 'ALL') {
-            filters.pricing_type = selectedPricingType;
-          }
-          if (activeScheduleFilter && activeScheduleFilter !== 'all') {
-            filters.timeline = activeScheduleFilter;
-          }
-          if (selectedDate) {
-            filters.date = selectedDate;
-          }
-          if (forceFresh) {
-            filters.force_fresh = true;
-          }
+        let filters: any = {};
+        if (selectedCategory && selectedCategory !== "all") {
+          filters.category_id = selectedCategory;
+        }
+        if (selectedSubcategory) {
+          filters.subcategory_id = selectedSubcategory;
+        }
+        if (selectedPricingType !== 'ALL') {
+          filters.pricing_type = selectedPricingType;
+        }
+        if (activeScheduleFilter && activeScheduleFilter !== 'all') {
+          filters.timeline = activeScheduleFilter;
+        }
+        if (selectedDate) {
+          filters.date = selectedDate;
+        }
+        if (forceFresh) {
+          filters.force_fresh = true;
+        }
 
-          const { data, error } = await lpuClient.fetchEventFeed(filters);
-          if (!error && data && currentReqId === searchReqIdRef.current) {
-            const validEvents = data.filter(
-              (evt) => evt.status === 'PUBLISHED' && !evt.deleted_at
-            );
-            setEvents(normalizeEventDates(validEvents));
-          }
+        const { data, error } = await lpuClient.fetchEventFeed(filters);
+        if (!error && data && currentReqId === searchReqIdRef.current) {
+          const validEvents = data.filter(
+            (evt) => evt.status === 'PUBLISHED' && !evt.deleted_at
+          );
+          setEvents(normalizeEventDates(validEvents));
         }
       } catch (err) {
         console.error("Failed to fetch event feed:", err);
@@ -590,7 +563,7 @@ export default function App() {
           setEventsLoading(false);
         }
       }
-    }, [searchQuery, selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
+    }, [selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
 
     // Initial mount: load theme and initial homepage snapshot
     useEffect(() => {
@@ -626,7 +599,7 @@ export default function App() {
       }
       const metaTheme = document.querySelector('meta[name="theme-color"]');
       if (metaTheme) {
-        metaTheme.setAttribute('content', storedTheme === 'dark' ? '#08090f' : '#f7f9fc');
+        metaTheme.setAttribute('content', storedTheme === 'dark' ? '#1c1c1e' : '#f7f9fc');
       }
 
       loadAllData(false);
@@ -717,7 +690,7 @@ export default function App() {
       }
       const metaTheme = document.querySelector('meta[name="theme-color"]');
       if (metaTheme) {
-        metaTheme.setAttribute('content', newTheme === 'dark' ? '#06070a' : '#f7f9fc');
+        metaTheme.setAttribute('content', newTheme === 'dark' ? '#1c1c1e' : '#f7f9fc');
       }
       return newTheme;
     });
@@ -832,20 +805,31 @@ export default function App() {
     trackEvent('pricing_type_selected', { pricing_type: type });
   }, [isTrendingActive]);
 
-  // Client-side date filtering and trending list mapping using industry-standard schedule matcher
+  // Client-side date filtering, search, and trending list mapping
+  const isSearching = searchQuery.trim().length >= 2;
   const filteredEvents = useMemo(() => {
-    const list = isTrendingActive ? trendingEvents : events;
+    let list: EventFeedItem[];
+
+    if (isSearching) {
+      // Pure client-side search across all available events in memory (zero DB calls)
+      list = searchEventsClientSide(allAvailableEvents, searchQuery.trim(), 50);
+    } else if (isTrendingActive) {
+      list = trendingEvents;
+    } else {
+      list = events;
+    }
+
     const now = new Date();
 
     const result = list.filter((e) => {
-      if (!isTrendingActive && selectedPricingType !== 'ALL') {
+      if (!isTrendingActive && !isSearching && selectedPricingType !== 'ALL') {
         if (e.pricing_type !== selectedPricingType) return false;
       }
       return matchesScheduleFilter(e, activeScheduleFilter, selectedDate, now);
     });
 
     return result.slice().sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
-  }, [events, trendingEvents, isTrendingActive, activeScheduleFilter, selectedDate, selectedPricingType]);
+  }, [events, trendingEvents, isTrendingActive, activeScheduleFilter, selectedDate, selectedPricingType, isSearching, searchQuery, allAvailableEvents]);
 
   // Paginated/Limited display list for upcoming events feed
   const displayedEvents = useMemo(() => {
@@ -866,7 +850,9 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] dark:bg-[#000000] text-gray-900 dark:text-gray-100 transition-colors duration-300 relative selection:bg-primary/20 selection:text-primary dark:selection:bg-white/20 dark:selection:text-white overflow-x-hidden font-sans">
+    <div className="min-h-screen bg-[#faf8f5] dark:bg-transparent text-gray-900 dark:text-gray-100 transition-colors duration-300 relative selection:bg-primary/20 selection:text-primary dark:selection:bg-white/20 dark:selection:text-white overflow-x-hidden font-sans">
+      <SplashScreen />
+
       {/* High-Performance Fixed Ambient Light & Orange Glare Canvas (Light mode only) */}
       <div 
         style={{ contain: 'strict' }}
@@ -896,13 +882,19 @@ export default function App() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_100%_40%_at_50%_-5%,rgba(255,107,0,0.18),transparent_70%),radial-gradient(circle_300px_at_90%_25%,rgba(255,107,0,0.12),transparent_60%),radial-gradient(circle_300px_at_10%_45%,rgba(59,130,246,0.08),transparent_60%),radial-gradient(circle_280px_at_90%_65%,rgba(245,158,11,0.09),transparent_60%),radial-gradient(ellipse_100%_35%_at_50%_105%,rgba(255,107,0,0.14),transparent_70%)]" />
       </div>
 
-      {/* Dark Mode Premium Obsidian Glass Canvas (Zero Orange, Pure Black & Subtle Glass Luminescence) */}
+      {/* Dark Mode Premium Ambient Canvas — Warm Charcoal with Subtle Depth */}
       <div 
         style={{ contain: 'strict' }}
         className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none hidden dark:block"
       >
-        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[800px] h-[500px] rounded-full bg-white/[0.025] blur-[120px]" />
-        <div className="absolute top-[40%] right-[-100px] w-[500px] h-[500px] rounded-full bg-white/[0.015] blur-[100px]" />
+        {/* 1. Soft Silver Top Wash (creates navbar glow) */}
+        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[900px] sm:w-[1300px] h-[500px] rounded-full bg-gradient-to-b from-white/[0.04] via-neutral-400/[0.03] to-transparent blur-[120px]" />
+        {/* 2. Warm Left Ambient (creates depth on left) */}
+        <div className="absolute top-[28%] -left-32 w-[600px] h-[600px] rounded-full bg-gradient-to-tr from-neutral-500/[0.05] via-neutral-400/[0.03] to-transparent blur-[130px]" />
+        {/* 3. Subtle Right Sheen (card-level refraction) */}
+        <div className="absolute top-[50%] -right-28 w-[650px] h-[650px] rounded-full bg-gradient-to-l from-neutral-400/[0.04] via-neutral-500/[0.03] to-transparent blur-[140px]" />
+        {/* 4. Warm Bottom Ambient (footer depth) */}
+        <div className="absolute -bottom-36 left-1/3 -translate-x-1/2 w-[750px] h-[400px] rounded-full bg-gradient-to-t from-neutral-500/[0.05] via-neutral-400/[0.025] to-transparent blur-[120px]" />
       </div>
 
       {/* Scroll Top Reference Anchor */}
@@ -919,6 +911,7 @@ export default function App() {
           onSelectEvent={handleSelectEvent}
           onGoHome={handleGoToDashboard}
           onSelectCategories={handleGoToCategories}
+          allEvents={allAvailableEvents}
         />
 
         <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-1 sm:px-4 md:px-6 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6 overflow-hidden">
@@ -1107,12 +1100,12 @@ export default function App() {
                   events={displayedEvents}
                   ads={ads}
                   adSystemConfig={adSystemConfig}
-                  loading={eventsLoading}
+                  loading={isSearching ? false : eventsLoading}
                   onResetFilters={handleResetFilters}
                   onSelectEvent={handleSelectEvent}
                   adInterval={adInterval}
                   title={
-                    searchQuery.trim().length >= 2
+                    isSearching
                       ? "Search Results"
                       : isTrendingActive
                       ? "🔥 Trending Events"
@@ -1123,7 +1116,7 @@ export default function App() {
               </div>
 
               {/* Show More upcoming events */}
-              {!eventsLoading && filteredEvents.length > visibleEventsCount && (
+              {!isSearching && !eventsLoading && filteredEvents.length > visibleEventsCount && (
                 <div className="flex justify-center -mt-4 sm:-mt-6">
                   <button
                     type="button"

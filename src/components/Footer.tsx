@@ -40,8 +40,8 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onGoToCategories }) 
               onClick={(e) => handleLinkClick(e, 'home')}
               className="inline-flex items-center gap-2.5 mb-3 group focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-lg"
             >
-              <LpuLogo className="h-8 w-8 shrink-0 drop-shadow-sm group-hover:scale-105 transition-transform" />
-              <span className="font-heading text-lg sm:text-xl font-black text-gray-900 dark:text-white tracking-tight group-hover:text-primary transition-colors">
+              <LpuLogo className="h-11 w-11 sm:h-13 sm:w-13 shrink-0 drop-shadow-sm group-hover:scale-105 transition-transform" />
+              <span className="font-heading text-xl sm:text-2xl font-black text-gray-900 dark:text-white tracking-tight group-hover:text-primary transition-colors">
                 LPU Events
               </span>
             </a>

@@ -47,7 +47,7 @@ export const CookieConsentBanner: React.FC<CookieConsentBannerProps> = ({ onNavi
       aria-label="Cookie and Privacy Consent"
       className="fixed bottom-3 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 z-50 max-w-lg w-auto animate-fade-in"
     >
-      <div className="glass-panel p-4 sm:p-5 rounded-[20px] sm:rounded-[24px] border border-orange-500/30 dark:border-white/15 shadow-2xl backdrop-blur-2xl bg-white/95 dark:bg-[#0b0e17]/95 text-gray-900 dark:text-white flex flex-col gap-3">
+      <div className="glass-panel p-4 sm:p-5 rounded-[20px] sm:rounded-[24px] border border-orange-500/30 dark:border-white/15 shadow-2xl backdrop-blur-2xl bg-white/95 dark:bg-[#2c2c2e]/95 text-gray-900 dark:text-white flex flex-col gap-3">
         <div className="flex items-start gap-3">
           <div className="w-9 h-9 rounded-xl bg-orange-500/15 text-primary flex items-center justify-center shrink-0 border border-orange-500/25">
             <Cookie className="w-5 h-5" />

@@ -106,7 +106,7 @@ export const PrivacyPolicyView: React.FC<PrivacyPolicyViewProps> = ({ onBack, on
                 href="https://www.google.com/settings/ads"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between p-3 rounded-xl bg-white/60 dark:bg-black/40 border border-indigo-500/20 hover:border-primary transition-all text-xs font-heading font-bold text-gray-900 dark:text-white group"
+                className="flex items-center justify-between p-3 rounded-xl bg-white/60 dark:bg-white/[0.04] border border-indigo-500/20 dark:border-white/10 hover:border-primary dark:hover:border-white/20 transition-all text-xs font-heading font-bold text-gray-900 dark:text-white group"
               >
                 <span>Google Ads Settings</span>
                 <ExternalLink className="h-3.5 w-3.5 text-primary group-hover:translate-x-0.5 transition-transform" />
@@ -115,7 +115,7 @@ export const PrivacyPolicyView: React.FC<PrivacyPolicyViewProps> = ({ onBack, on
                 href="https://www.aboutads.info/choices/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between p-3 rounded-xl bg-white/60 dark:bg-black/40 border border-indigo-500/20 hover:border-primary transition-all text-xs font-heading font-bold text-gray-900 dark:text-white group"
+                className="flex items-center justify-between p-3 rounded-xl bg-white/60 dark:bg-white/[0.04] border border-indigo-500/20 dark:border-white/10 hover:border-primary dark:hover:border-white/20 transition-all text-xs font-heading font-bold text-gray-900 dark:text-white group"
               >
                 <span>AboutAds.info Consumer Opt-Out</span>
                 <ExternalLink className="h-3.5 w-3.5 text-primary group-hover:translate-x-0.5 transition-transform" />
@@ -124,7 +124,7 @@ export const PrivacyPolicyView: React.FC<PrivacyPolicyViewProps> = ({ onBack, on
                 href="https://www.youronlinechoices.com/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between p-3 rounded-xl bg-white/60 dark:bg-black/40 border border-indigo-500/20 hover:border-primary transition-all text-xs font-heading font-bold text-gray-900 dark:text-white group"
+                className="flex items-center justify-between p-3 rounded-xl bg-white/60 dark:bg-white/[0.04] border border-indigo-500/20 dark:border-white/10 hover:border-primary dark:hover:border-white/20 transition-all text-xs font-heading font-bold text-gray-900 dark:text-white group"
               >
                 <span>Your Online Choices (EU/UK)</span>
                 <ExternalLink className="h-3.5 w-3.5 text-primary group-hover:translate-x-0.5 transition-transform" />
@@ -133,7 +133,7 @@ export const PrivacyPolicyView: React.FC<PrivacyPolicyViewProps> = ({ onBack, on
                 href="https://optout.networkadvertising.org/"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center justify-between p-3 rounded-xl bg-white/60 dark:bg-black/40 border border-indigo-500/20 hover:border-primary transition-all text-xs font-heading font-bold text-gray-900 dark:text-white group"
+                className="flex items-center justify-between p-3 rounded-xl bg-white/60 dark:bg-white/[0.04] border border-indigo-500/20 dark:border-white/10 hover:border-primary dark:hover:border-white/20 transition-all text-xs font-heading font-bold text-gray-900 dark:text-white group"
               >
                 <span>Network Advertising Initiative (NAI)</span>
                 <ExternalLink className="h-3.5 w-3.5 text-primary group-hover:translate-x-0.5 transition-transform" />

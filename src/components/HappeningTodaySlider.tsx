@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
-import { motion, AnimatePresence, type Variants } from "framer-motion";
-import { CalendarDays, Clock, MapPin, ArrowRight, ChevronLeft, ChevronRight, Megaphone, ExternalLink, X } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import { CalendarDays, Clock, MapPin, ArrowRight, ChevronLeft, ChevronRight, Megaphone, X } from "lucide-react";
 import { 
   EventFeedItem, 
   AdvertisementFeedItem, 
@@ -11,59 +11,6 @@ import {
 import { getEventImage } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
 import { AdSenseSlot } from "./AdSenseSlot";
-
-const cardVariants: Variants = {
-  enter: (direction: number) => ({
-    x: direction > 0 ? "100%" : "-100%",
-    opacity: 0,
-    scale: 0.96,
-  }),
-  center: {
-    x: 0,
-    opacity: 1,
-    scale: 1,
-    transition: {
-      x: { type: "spring" as const, stiffness: 280, damping: 28 },
-      opacity: { duration: 0.25 },
-      scale: { duration: 0.3 },
-    },
-  },
-  exit: (direction: number) => ({
-    x: direction > 0 ? "-100%" : "100%",
-    opacity: 0,
-    scale: 0.96,
-    transition: {
-      x: { type: "spring" as const, stiffness: 280, damping: 28 },
-      opacity: { duration: 0.2 },
-      scale: { duration: 0.25 },
-    },
-  }),
-};
-
-const contentStagger: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.06,
-    },
-  },
-};
-
-const contentItem: Variants = {
-  hidden: { opacity: 0, y: 8 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring" as const, stiffness: 320, damping: 26 },
-  },
-};
-
-const swipeConfidenceThreshold = 10000;
-const swipePower = (offset: number, velocity: number) => {
-  return Math.abs(offset) * velocity;
-};
 
 export interface HappeningTodaySlideItem {
   type: "event" | "ad" | "adsense";
@@ -98,10 +45,11 @@ export const HappeningTodaySliderComponent = ({
   adSystemConfig,
   onSelectEvent,
 }: HappeningTodaySliderProps) => {
-  const [[activeIndex, direction], setPage] = useState<[number, number]>([0, 0]);
   const [isHovered, setIsHovered] = useState(false);
   const [isAllTodayModalOpen, setIsAllTodayModalOpen] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(true);
+  const trackRef = useRef<HTMLDivElement>(null);
 
   // Lock body scroll when the Today's Events modal is open
   useEffect(() => {
@@ -217,26 +165,37 @@ export const HappeningTodaySliderComponent = ({
     }).filter(Boolean) as HappeningTodaySlideItem[];
   }, [events, ads, adSystemConfig]);
 
+  // Track scroll position for chevron buttons
+  const checkScroll = useCallback(() => {
+    if (!trackRef.current) return;
+    const { scrollLeft, scrollWidth, clientWidth } = trackRef.current;
+    setCanScrollLeft(scrollLeft > 10);
+    setCanScrollRight(scrollLeft + clientWidth < scrollWidth - 10);
+  }, []);
+
   useEffect(() => {
-    if (activeIndex >= slides.length && slides.length > 0) {
-      setPage([0, 0]);
-    }
-  }, [slides.length, activeIndex]);
+    checkScroll();
+    const el = trackRef.current;
+    if (!el) return;
+    el.addEventListener("scroll", checkScroll, { passive: true });
+    window.addEventListener("resize", checkScroll);
+    return () => {
+      el.removeEventListener("scroll", checkScroll);
+      window.removeEventListener("resize", checkScroll);
+    };
+  }, [checkScroll, slides.length]);
 
-  const paginate = useCallback(
-    (newDirection: number) => {
-      if (slides.length <= 1) return;
-      setPage(([prevIndex]) => {
-        let nextIndex = prevIndex + newDirection;
-        if (nextIndex < 0) nextIndex = slides.length - 1;
-        if (nextIndex >= slides.length) nextIndex = 0;
-        return [nextIndex, newDirection];
-      });
-    },
-    [slides.length]
-  );
+  const scrollTrack = useCallback((direction: "left" | "right") => {
+    if (!trackRef.current) return;
+    const card = trackRef.current.firstElementChild as HTMLElement;
+    const step = card ? card.offsetWidth + 16 : 360;
+    trackRef.current.scrollBy({
+      left: direction === "left" ? -step : step,
+      behavior: "smooth",
+    });
+  }, []);
 
-  // Auto advance only on desktop view to preserve pristine mobile touch interactions
+  // Auto advance smoothly on desktop view when not hovered
   useEffect(() => {
     const isAutoAdvance = config?.auto_advance !== false;
     if (slides.length <= 1 || isHovered || !isAutoAdvance) return;
@@ -247,39 +206,33 @@ export const HappeningTodaySliderComponent = ({
 
     const duration = config?.slide_duration_ms || 4500;
     const timer = setInterval(() => {
-      paginate(1);
+      if (!trackRef.current) return;
+      const { scrollLeft, scrollWidth, clientWidth } = trackRef.current;
+      const isAtEnd = scrollLeft + clientWidth >= scrollWidth - 15;
+      if (isAtEnd) {
+        trackRef.current.scrollTo({ left: 0, behavior: "smooth" });
+      } else {
+        const card = trackRef.current.firstElementChild as HTMLElement;
+        const step = card ? card.offsetWidth + 16 : 360;
+        trackRef.current.scrollBy({ left: step, behavior: "smooth" });
+      }
     }, duration);
 
     return () => clearInterval(timer);
-  }, [slides.length, isHovered, config?.auto_advance, config?.slide_duration_ms, paginate]);
+  }, [slides.length, isHovered, config?.auto_advance, config?.slide_duration_ms]);
 
   if (slides.length === 0 && events.length === 0) return null;
 
-  const currentSlide = slides[activeIndex] || slides[0];
-
-  const handleAction = () => {
-    if (!currentSlide || currentSlide.type === "adsense") return;
-
-    if (currentSlide.type === "ad" && currentSlide.ctaUrl) {
-      if (currentSlide.ctaUrl.startsWith("http")) {
-        window.open(currentSlide.ctaUrl, "_blank", "noopener,noreferrer");
-      } else {
-        window.location.href = currentSlide.ctaUrl;
-      }
-    } else if (currentSlide.eventId) {
-      onSelectEvent(currentSlide.eventId, currentSlide.title);
-    }
-  };
+  const hasMultiplePages = slides.length > 3 || events.length > slides.length;
 
   return (
     <section
-      ref={containerRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className="w-full flex flex-col select-none"
     >
       {/* Section Header */}
-      <div className="flex items-center justify-between mb-3.5 sm:mb-6 px-1">
+      <div className="flex items-center justify-between mb-3.5 sm:mb-4 px-1">
         <div className="flex items-center gap-2.5 sm:gap-3">
           <div className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-orange-500/15 dark:bg-white/10 text-primary dark:text-white border border-orange-500/25 dark:border-white/15 shadow-xs">
             <CalendarDays className="h-5 w-5 sm:h-6 sm:w-6" />
@@ -300,55 +253,41 @@ export const HappeningTodaySliderComponent = ({
           </div>
         </div>
 
-        {/* Header Controls: Mobile View All Button, Desktop View All & Arrows */}
+        {/* Header Controls: View All Button & Desktop Arrows */}
         <div className="flex items-center gap-2">
-          {/* Mobile: View All triggers dedicated Today's Events Modal */}
-          <button
-            type="button"
-            onClick={() => setIsAllTodayModalOpen(true)}
-            className="md:hidden inline-flex items-center gap-1.5 text-orange-700 dark:text-white font-heading font-black text-xs hover:text-orange-800 dark:hover:text-gray-300 transition-colors cursor-pointer px-3 py-1.5 rounded-full bg-orange-500/10 dark:bg-white/10 hover:bg-orange-500/20 dark:hover:bg-white/15 active:scale-95 border border-orange-500/20 dark:border-white/15"
-          >
-            <span>View All</span>
-            <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-orange-500/20 dark:bg-white/15 text-orange-700 dark:text-white">
-              {events.length}
-            </span>
-            <ArrowRight className="h-3.5 w-3.5" />
-          </button>
-
-          {/* Desktop Controls */}
           {events.length > 0 && (
             <button
               type="button"
               onClick={() => setIsAllTodayModalOpen(true)}
-              className="hidden md:inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-orange-500/10 dark:bg-white/10 hover:bg-orange-500/20 dark:hover:bg-white/15 text-orange-700 dark:text-white font-heading font-bold text-xs border border-orange-500/25 dark:border-white/15 transition-all cursor-pointer mr-1 active:scale-95"
+              className="inline-flex items-center gap-1.5 text-orange-700 dark:text-white font-heading font-black text-xs hover:text-orange-800 dark:hover:text-gray-300 transition-colors cursor-pointer px-3 py-1.5 sm:px-3.5 sm:py-1.5 rounded-full bg-orange-500/10 dark:bg-white/10 hover:bg-orange-500/20 dark:hover:bg-white/15 active:scale-95 border border-orange-500/20 dark:border-white/15"
             >
-              <span>View All Today</span>
-              <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-orange-500/20 dark:bg-white/15">
+              <span>View All</span>
+              <span className="text-[10px] font-mono font-bold px-1.5 py-0.2 rounded-full bg-orange-500/20 dark:bg-white/15 text-orange-700 dark:text-white">
                 {events.length}
               </span>
+              <ArrowRight className="h-3.5 w-3.5" />
             </button>
           )}
 
-          {slides.length > 1 && (
-            <div className="hidden md:flex items-center gap-2">
-              <span className="text-xs font-mono font-bold text-gray-600 dark:text-gray-300 px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/10 border border-black/10 dark:border-white/10 inline-block">
-                {activeIndex + 1}/{slides.length}
-              </span>
+          {hasMultiplePages && (
+            <div className="hidden md:flex items-center gap-1.5">
               <button
                 type="button"
-                onClick={() => paginate(-1)}
-                className="w-10 h-10 rounded-full glass-pill flex items-center justify-center cursor-pointer hover:text-primary transition-colors border border-white/95 dark:border-white/10 shadow-sm"
-                aria-label="Previous event"
+                onClick={() => scrollTrack("left")}
+                disabled={!canScrollLeft}
+                className="w-8 h-8 rounded-full glass-pill flex items-center justify-center cursor-pointer hover:text-primary transition-colors border border-black/10 dark:border-white/10 shadow-xs hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 disabled:opacity-25 disabled:cursor-not-allowed text-gray-800 dark:text-white"
+                aria-label="Scroll left"
               >
-                <ChevronLeft className="h-5 w-5" />
+                <ChevronLeft className="h-4.5 w-4.5" />
               </button>
               <button
                 type="button"
-                onClick={() => paginate(1)}
-                className="w-10 h-10 rounded-full glass-pill flex items-center justify-center cursor-pointer hover:text-primary transition-colors border border-white/95 dark:border-white/10 shadow-sm"
-                aria-label="Next event"
+                onClick={() => scrollTrack("right")}
+                disabled={!canScrollRight}
+                className="w-8 h-8 rounded-full glass-pill flex items-center justify-center cursor-pointer hover:text-primary transition-colors border border-black/10 dark:border-white/10 shadow-xs hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 disabled:opacity-25 disabled:cursor-not-allowed text-gray-800 dark:text-white"
+                aria-label="Scroll right"
               >
-                <ChevronRight className="h-5 w-5" />
+                <ChevronRight className="h-4.5 w-4.5" />
               </button>
             </div>
           )}
@@ -356,411 +295,202 @@ export const HappeningTodaySliderComponent = ({
       </div>
 
       {/* =========================================================
-          1. MOBILE HORIZONTAL TRACK (< md)
-          Standalone native touch track: 60/120fps hardware acceleration,
-          zero gesture collision, zero timer-induced re-mounting.
+          HORIZONTAL TRACK (Unified Mobile & Desktop)
+          Cards sized to show exactly 3 boxes at once on desktop
+          (calc((100% - 32px) / 3)), 2 on tablet, and swipeable on mobile.
          ========================================================= */}
-      <div className="md:hidden w-full overflow-x-auto overflow-y-hidden hide-scrollbar snap-x snap-mandatory flex items-stretch gap-3.5 px-1 py-1.5 touch-pan-x overscroll-x-contain">
-        {slides.map((slide, idx) => {
-          const handleCardClick = () => {
-            if (slide.type === "adsense") return;
-            if (slide.type === "ad" && slide.ctaUrl) {
-              if (slide.ctaUrl.startsWith("http")) {
-                window.open(slide.ctaUrl, "_blank", "noopener,noreferrer");
-              } else {
-                window.location.href = slide.ctaUrl;
-              }
-            } else if (slide.eventId) {
-              onSelectEvent(slide.eventId, slide.title);
-            }
-          };
+      <div className="relative group/track w-full">
+        {/* Subtle floating side arrows on desktop hover */}
+        {hasMultiplePages && canScrollLeft && (
+          <button
+            type="button"
+            onClick={() => scrollTrack("left")}
+            className="hidden md:flex absolute -left-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-white/95 dark:bg-[#1f1f21]/95 hover:bg-white dark:hover:bg-[#2c2c2e] text-gray-900 dark:text-white items-center justify-center shadow-xl border border-black/10 dark:border-white/15 transition-all opacity-0 group-hover/track:opacity-100 hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md"
+            aria-label="Scroll left"
+          >
+            <ChevronLeft className="w-5 h-5" />
+          </button>
+        )}
 
-          if (slide.type === "adsense") {
+        {hasMultiplePages && canScrollRight && (
+          <button
+            type="button"
+            onClick={() => scrollTrack("right")}
+            className="hidden md:flex absolute -right-3 top-1/2 -translate-y-1/2 z-30 w-10 h-10 rounded-full bg-white/95 dark:bg-[#1f1f21]/95 hover:bg-white dark:hover:bg-[#2c2c2e] text-gray-900 dark:text-white items-center justify-center shadow-xl border border-black/10 dark:border-white/15 transition-all opacity-0 group-hover/track:opacity-100 hover:scale-110 active:scale-95 cursor-pointer backdrop-blur-md"
+            aria-label="Scroll right"
+          >
+            <ChevronRight className="w-5 h-5" />
+          </button>
+        )}
+
+        <div
+          ref={trackRef}
+          className="w-full overflow-x-auto overflow-y-hidden hide-scrollbar snap-x snap-mandatory flex items-stretch gap-3.5 sm:gap-4 px-1 md:px-0 py-1.5 touch-pan-x overscroll-x-contain scroll-smooth"
+        >
+          {slides.map((slide, idx) => {
+            const handleCardClick = () => {
+              if (slide.type === "adsense") return;
+              if (slide.type === "ad" && slide.ctaUrl) {
+                if (slide.ctaUrl.startsWith("http")) {
+                  window.open(slide.ctaUrl, "_blank", "noopener,noreferrer");
+                } else {
+                  window.location.href = slide.ctaUrl;
+                }
+              } else if (slide.eventId) {
+                onSelectEvent(slide.eventId, slide.title);
+              }
+            };
+
+            if (slide.type === "adsense") {
+              return (
+                <div
+                  key={slide.id}
+                  className="relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-16px)/2)] md:w-[calc((100%-32px)/3)] rounded-[22px] overflow-hidden p-3.5 bg-white dark:bg-[#2c2c2e] border border-black/10 dark:border-white/10 flex flex-col items-center justify-center snap-start shadow-md"
+                >
+                  <AdSenseSlot
+                    format="in_feed_card"
+                    slotId={slide.adUnitId}
+                    adSenseConfig={adSystemConfig?.adsense}
+                  />
+                </div>
+              );
+            }
+
             return (
               <div
                 key={slide.id}
-                className="relative flex-shrink-0 w-[84vw] min-[390px]:w-[86vw] max-w-[360px] rounded-[22px] overflow-hidden p-3.5 bg-white dark:bg-[#0c0f1d] border border-black/10 dark:border-white/10 flex flex-col items-center justify-center snap-start shadow-md"
+                onClick={handleCardClick}
+                className="group relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-16px)/2)] md:w-[calc((100%-32px)/3)] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border border-slate-200/80 dark:border-white/[0.12] bg-white dark:bg-[#2c2c2e] flex flex-col transition-all duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
               >
-                <AdSenseSlot
-                  format="in_feed_card"
-                  slotId={slide.adUnitId}
-                  adSenseConfig={adSystemConfig?.adsense}
-                />
-              </div>
-            );
-          }
-
-          return (
-            <div
-              key={slide.id}
-              onClick={handleCardClick}
-              className="group relative flex-shrink-0 w-[84vw] min-[390px]:w-[86vw] max-w-[360px] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border border-slate-200/80 dark:border-white/[0.12] bg-white dark:bg-[#0c0f1e] flex flex-col transition-all duration-200 active:scale-[0.98]"
-            >
-              {/* Uniform Crisp Banner Stage (Zero Zoom, Full Visibility) */}
-              <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 bg-black/5 dark:bg-white/5">
-                {/* Full Cover Slide Banner */}
-                {slide.image ? (
-                  <ProgressiveImage
-                    src={slide.image}
-                    alt={slide.title}
-                    loading={idx < 3 ? "eager" : "lazy"}
-                    ambientBackdrop
-                    containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
-                    className="w-full h-full object-contain object-center relative z-10"
-                  />
-                ) : (
-                  <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 flex flex-col items-center justify-center p-4">
-                    <Megaphone className="w-8 h-8 text-indigo-400 mb-1" />
-                    <span className="text-[10px] font-black uppercase tracking-wider text-indigo-300 font-heading">
-                      Official Campus Partner
-                    </span>
-                  </div>
-                )}
-
-                {/* Top Badges: Category + LIVE TODAY */}
-                <div className="absolute top-2.5 left-2.5 right-2.5 z-20 flex items-center justify-between pointer-events-none">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {slide.type === "event" && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-600 text-white font-heading text-[9px] font-black uppercase tracking-wider shadow-md backdrop-blur-md">
-                        <span className="relative flex h-1.5 w-1.5">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                          <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
-                        </span>
-                        LIVE TODAY
-                      </span>
-                    )}
-                    {slide.type === "ad" && (
-                      <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-600 text-white font-heading text-[9px] font-black uppercase tracking-wider shadow-md backdrop-blur-md">
-                        Sponsored
-                      </span>
-                    )}
-                  </div>
-                  {slide.category && (
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white/95 font-heading text-[9px] font-bold uppercase tracking-wider border border-white/20 shadow-sm">
-                      {slide.category}
-                    </span>
-                  )}
-                </div>
-              </div>
-
-              {/* Bottom Information Deck: Strictly consistent height & snug layout */}
-              <div className="p-3 min-[400px]:p-3.5 flex flex-col justify-between h-[78px] min-[400px]:h-[82px] bg-white dark:bg-[#0c0f1e] border-t border-slate-100 dark:border-white/[0.08]">
-                {/* Event Name: Premium, bold, best font contrast for light and dark modes */}
-                <h3 className="text-gray-950 dark:text-white font-heading font-black text-[14.5px] min-[400px]:text-[15.5px] leading-snug truncate group-hover:text-primary transition-colors tracking-tight">
-                  {slide.title}
-                </h3>
-
-                {/* Badges Row (Time + Location) & View Action - single row, flex-nowrap */}
-                <div className="flex items-center justify-between gap-2 flex-nowrap">
-                  <div className="flex items-center gap-1.5 min-w-0 flex-nowrap">
-                    {/* Time Pill */}
-                    {slide.type === "event" && slide.time && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-white/[0.08] text-slate-900 dark:text-white font-heading font-bold text-xs border border-slate-200/90 dark:border-white/15 shrink-0 shadow-2xs">
-                        <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
-                        <span>{slide.time}</span>
-                      </span>
-                    )}
-
-                    {/* Location Pill */}
-                    {slide.type === "event" && slide.venue && (
-                      <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-white/[0.08] text-slate-900 dark:text-white font-heading font-bold text-xs border border-slate-200/90 dark:border-white/15 truncate min-w-0 max-w-[125px] min-[390px]:max-w-[145px] shadow-2xs">
-                        <MapPin className="w-3.5 h-3.5 text-amber-500 dark:text-white shrink-0" />
-                        <span className="truncate">{slide.venue}</span>
-                      </span>
-                    )}
-
-                    {/* Ad description if partner ad */}
-                    {slide.type === "ad" && slide.description && (
-                      <span className="text-xs text-gray-600 dark:text-gray-300 font-medium truncate max-w-[170px]">
-                        {slide.description}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Tactile View Action */}
-                  <span className="inline-flex items-center gap-1 font-heading font-black text-xs text-orange-700 dark:text-white group-hover:translate-x-0.5 transition-transform shrink-0 ml-auto">
-                    <span>{slide.type === "ad" ? "Learn More" : "View"}</span>
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-
-        {/* Dedicated "View All" Trailing Card on Mobile - shown if more events exist beyond the slider limit */}
-        {events.length > slides.length && (
-          <div
-            onClick={() => setIsAllTodayModalOpen(true)}
-            className="group relative flex-shrink-0 w-[84vw] min-[390px]:w-[86vw] max-w-[360px] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border border-orange-500/30 dark:border-white/15 bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-transparent dark:from-white/[0.08] dark:to-transparent flex flex-col justify-between transition-all duration-200 active:scale-[0.98]"
-          >
-            {/* Visual Header matching 16:9 banner */}
-            <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 flex flex-col items-center justify-center bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-orange-600/20 dark:from-white/10 dark:via-white/5 dark:to-white/10">
-              <div className="w-14 h-14 rounded-full bg-orange-500/20 dark:bg-white/10 border border-orange-500/40 dark:border-white/20 flex items-center justify-center mb-2 group-hover:scale-110 group-active:scale-95 transition-transform shadow-inner text-orange-700 dark:text-white">
-                <ArrowRight className="w-6 h-6" />
-              </div>
-              <span className="text-sm font-heading font-black text-orange-700 dark:text-white uppercase tracking-wider">
-                Explore All Today
-              </span>
-              <span className="text-xs text-gray-600 dark:text-gray-300 font-semibold mt-0.5">
-                {events.length} Live Activities
-              </span>
-            </div>
-
-            {/* Bottom bar matching 78px-82px deck */}
-            <div className="p-3 min-[400px]:p-3.5 flex items-center justify-between h-[78px] min-[400px]:h-[82px] bg-white/80 dark:bg-black/90 border-t border-orange-500/20 dark:border-white/10">
-              <div>
-                <p className="text-xs font-heading font-black text-gray-900 dark:text-white">
-                  Full Campus Schedule
-                </p>
-                <p className="text-[11px] text-gray-500 dark:text-gray-400">
-                  Tap to view complete list
-                </p>
-              </div>
-              <span className="inline-flex items-center gap-1 font-heading font-black text-xs text-orange-700 dark:text-white group-hover:translate-x-1 transition-transform">
-                <span>View All</span>
-                <ArrowRight className="w-3.5 h-3.5" />
-              </span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* =========================================================
-          2. DESKTOP SHOWCASE (md+)
-          Preserved single-card 50/50 split showcase with AnimatePresence,
-          smooth paging, and side arrow controls.
-         ========================================================= */}
-      <div className="hidden md:flex relative z-10 w-full md:min-h-[420px] lg:h-[440px] xl:h-[460px] overflow-hidden rounded-[30px] md:rounded-[40px] glass-panel shadow-[0_16px_50px_rgba(0,0,0,0.18)] border border-white/80 dark:border-white/10 bg-white/40 dark:bg-black/85 backdrop-blur-2xl flex-col">
-        {/* Atmospheric Ambient Glow */}
-        <div className="hidden dark:block absolute top-0 right-0 w-80 h-80 bg-white/[0.02] rounded-full blur-3xl pointer-events-none z-0" />
-        <div className="hidden dark:block absolute bottom-0 left-0 w-80 h-80 bg-white/[0.015] rounded-full blur-3xl pointer-events-none z-0" />
-
-        <AnimatePresence initial={false} custom={direction} mode="popLayout">
-          <motion.div
-            key={activeIndex}
-            custom={direction}
-            variants={cardVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.2}
-            onDragEnd={(_e, { offset, velocity }) => {
-              const swipe = swipePower(offset.x, velocity.x);
-              if (swipe < -swipeConfidenceThreshold || offset.x < -50) {
-                paginate(1);
-              } else if (swipe > swipeConfidenceThreshold || offset.x > 50) {
-                paginate(-1);
-              }
-            }}
-            className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col flex-1"
-          >
-            {/* If Google AdSense slide, render isolated AdSense unit */}
-            {currentSlide.type === "adsense" ? (
-              <div className="w-full h-full p-6 sm:p-8 flex flex-col flex-1">
-                <AdSenseSlot
-                  format="carousel_slide"
-                  slotId={currentSlide.adUnitId}
-                  adSenseConfig={adSystemConfig?.adsense}
-                />
-              </div>
-            ) : (
-              <div className="flex flex-row h-full w-full flex-1">
-                {/* Visual Imagery Panel (Left) */}
-                <div
-                  onClick={handleAction}
-                  className="relative w-1/2 h-full overflow-hidden cursor-pointer group shrink-0"
-                >
-                  {currentSlide.image ? (
-                    <div className="relative w-full h-full overflow-hidden bg-black/5 dark:bg-white/5 flex items-center justify-center">
-                      <ProgressiveImage
-                        src={currentSlide.image}
-                        alt={currentSlide.title}
-                        loading="lazy"
-                        ambientBackdrop
-                        containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
-                        className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-700 ease-out relative z-10"
-                      />
-                    </div>
+                {/* Uniform Crisp Banner Stage (Zero Zoom, Full Visibility) */}
+                <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 bg-black/5 dark:bg-white/5">
+                  {/* Full Cover Slide Banner */}
+                  {slide.image ? (
+                    <ProgressiveImage
+                      src={slide.image}
+                      alt={slide.title}
+                      loading={idx < 4 ? "eager" : "lazy"}
+                      ambientBackdrop
+                      containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
+                      className="w-full h-full object-contain object-center relative z-10"
+                    />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 p-6 flex flex-col items-center justify-center relative">
-                      <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-transparent to-purple-500/10 pointer-events-none" />
-                      <Megaphone className="w-16 h-16 text-indigo-400/50 mb-3" />
-                      <span className="text-xs font-black uppercase tracking-wider text-indigo-300 font-heading">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 flex flex-col items-center justify-center p-4">
+                      <Megaphone className="w-8 h-8 text-indigo-400 mb-1" />
+                      <span className="text-[10px] font-black uppercase tracking-wider text-indigo-300 font-heading">
                         Official Campus Partner
                       </span>
                     </div>
                   )}
 
-                  {/* Blending Gradients */}
-                  <div className="absolute inset-y-0 right-0 w-32 bg-gradient-to-l from-white/35 dark:from-[#0b0d16]/80 via-white/10 dark:via-[#0b0d16]/30 to-transparent pointer-events-none" />
-
-                  {/* Badge Overlay */}
-                  <div className="absolute top-5 left-5 right-5 z-20 flex items-center justify-between pointer-events-none">
-                    <span className={`inline-flex items-center gap-1.5 px-3.5 py-1.5 ${
-                      currentSlide.type === "ad"
-                        ? "bg-indigo-950/90 text-indigo-200 border-indigo-500/40"
-                        : "bg-red-600/90 text-white border-white/20"
-                    } rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-lg backdrop-blur-md border pointer-events-auto`}>
-                      <span className={`w-1.5 h-1.5 rounded-full ${
-                        currentSlide.type === "ad" ? "bg-indigo-400" : "bg-white"
-                      } animate-pulse`} />
-                      {currentSlide.type === "ad" ? "Sponsored Partner" : currentSlide.badge}
-                    </span>
-                    {currentSlide.category && (
-                      <span className="inline-flex px-3 py-1 bg-black/60 backdrop-blur-md text-white/90 rounded-full font-heading text-xs font-bold uppercase tracking-wider border border-white/20 pointer-events-auto">
-                        {currentSlide.category}
+                  {/* Top Badges: Category + LIVE TODAY */}
+                  <div className="absolute top-2.5 left-2.5 right-2.5 z-20 flex items-center justify-between pointer-events-none">
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      {slide.type === "event" && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-600 text-white font-heading text-[9px] font-black uppercase tracking-wider shadow-md backdrop-blur-md">
+                          <span className="relative flex h-1.5 w-1.5">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
+                          </span>
+                          LIVE TODAY
+                        </span>
+                      )}
+                      {slide.type === "ad" && (
+                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-600 text-white font-heading text-[9px] font-black uppercase tracking-wider shadow-md backdrop-blur-md">
+                          Sponsored
+                        </span>
+                      )}
+                    </div>
+                    {slide.category && (
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full bg-black/70 backdrop-blur-md text-white/95 font-heading text-[9px] font-bold uppercase tracking-wider border border-white/20 shadow-sm">
+                        {slide.category}
                       </span>
                     )}
                   </div>
                 </div>
 
-                {/* Content Information Deck (Right) */}
-                <motion.div
-                  variants={contentStagger}
-                  initial="hidden"
-                  animate="visible"
-                  className="w-1/2 p-8 lg:p-10 xl:p-12 pr-16 lg:pr-20 flex flex-col justify-between flex-1 bg-gradient-to-r from-white/35 via-white/12 to-orange-50/5 dark:bg-gradient-to-br dark:from-[#0b0d16]/80 dark:via-[#0e111d]/60 dark:to-transparent relative z-10"
-                >
-                  <div className="space-y-3 sm:space-y-4">
-                    <motion.h3
-                      variants={contentItem}
-                      className="text-2xl md:text-3xl lg:text-[34px] xl:text-[38px] font-black font-heading text-gray-900 dark:text-white tracking-tight line-clamp-2 leading-tight sm:leading-[1.18] group-hover:text-primary transition-colors duration-300 break-safe"
-                    >
-                      {currentSlide.title}
-                    </motion.h3>
+                {/* Bottom Information Deck: Strictly consistent height & snug layout */}
+                <div className="p-3 min-[400px]:p-3.5 flex flex-col justify-between h-[78px] min-[400px]:h-[82px] bg-white dark:bg-[#2c2c2e] border-t border-slate-100 dark:border-white/[0.08]">
+                  {/* Event Name */}
+                  <h3 className="text-gray-950 dark:text-white font-heading font-black text-[14.5px] min-[400px]:text-[15.5px] leading-snug truncate group-hover:text-primary transition-colors tracking-tight">
+                    {slide.title}
+                  </h3>
 
-                    {/* Schedule & Info (for events) or Promo Box (for ads) */}
-                    {currentSlide.type === "event" ? (
-                      <motion.div variants={contentItem} className="space-y-3 py-1">
-                        {/* Date */}
-                        {currentSlide.date && (
-                          <div className="flex items-center gap-3.5 text-gray-900 dark:text-white font-heading font-black text-base md:text-lg">
-                            <div className="w-8 h-8 rounded-full bg-orange-500/15 dark:bg-white/10 border border-orange-300/40 dark:border-white/10 flex items-center justify-center text-orange-700 dark:text-white shrink-0">
-                              <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5 text-primary dark:text-white shrink-0" />
-                            </div>
-                            <span className="tracking-wide truncate">{currentSlide.date}</span>
-                          </div>
-                        )}
+                  {/* Badges Row (Time + Location) & View Action - single row, flex-nowrap */}
+                  <div className="flex items-center justify-between gap-2 flex-nowrap">
+                    <div className="flex items-center gap-1.5 min-w-0 flex-nowrap">
+                      {/* Time Pill */}
+                      {slide.type === "event" && slide.time && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-white/[0.08] text-slate-900 dark:text-white font-heading font-bold text-xs border border-slate-200/90 dark:border-white/15 shrink-0 shadow-2xs">
+                          <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
+                          <span>{slide.time}</span>
+                        </span>
+                      )}
 
-                        {/* Time */}
-                        {currentSlide.time && (
-                          <div className="flex items-center gap-3.5 text-gray-900 dark:text-white font-heading font-black text-base md:text-lg">
-                            <div className="w-8 h-8 rounded-full bg-orange-500/15 dark:bg-white/10 border border-orange-300/40 dark:border-white/10 flex items-center justify-center text-orange-700 dark:text-white shrink-0">
-                              <Clock className="h-4 w-4 sm:h-5 sm:w-5 text-primary dark:text-white shrink-0" />
-                            </div>
-                            <span className="tracking-wide truncate">{currentSlide.time}</span>
-                          </div>
-                        )}
+                      {/* Location Pill */}
+                      {slide.type === "event" && slide.venue && (
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-white/[0.08] text-slate-900 dark:text-white font-heading font-bold text-xs border border-slate-200/90 dark:border-white/15 truncate min-w-0 max-w-[125px] min-[390px]:max-w-[145px] md:max-w-[180px] shadow-2xs">
+                          <MapPin className="w-3.5 h-3.5 text-amber-500 dark:text-white shrink-0" />
+                          <span className="truncate">{slide.venue}</span>
+                        </span>
+                      )}
 
-                        {/* Venue */}
-                        {currentSlide.venue && (
-                          <div className="flex items-center gap-3 text-gray-700 dark:text-gray-300 font-semibold text-sm md:text-base">
-                            <div className="w-8 h-8 rounded-full bg-orange-500/15 dark:bg-white/10 border border-orange-300/40 dark:border-white/10 flex items-center justify-center text-orange-700 dark:text-white shrink-0">
-                              <MapPin className="h-4 w-4 sm:h-5 sm:w-5 text-primary dark:text-white shrink-0" />
-                            </div>
-                            <span className="truncate">{currentSlide.venue}</span>
-                          </div>
-                        )}
-                      </motion.div>
-                    ) : (
-                      <motion.div variants={contentItem} className="p-5 rounded-[22px] bg-amber-500/10 dark:bg-white/[0.06] border border-amber-500/25 dark:border-white/10 space-y-1.5">
-                        <div className="flex items-center gap-2 text-amber-600 dark:text-white font-black text-base">
-                          <Megaphone className="h-4 w-4 shrink-0" />
-                          <span>Official University Partner Spotlight</span>
-                        </div>
-                        {currentSlide.ctaUrl && (
-                          <p className="text-sm text-gray-600 dark:text-gray-400 truncate flex items-center gap-1.5">
-                            <ExternalLink className="h-3.5 w-3.5 shrink-0" />
-                            <span>{currentSlide.ctaUrl}</span>
-                          </p>
-                        )}
-                      </motion.div>
-                    )}
+                      {/* Ad description if partner ad */}
+                      {slide.type === "ad" && slide.description && (
+                        <span className="text-xs text-gray-600 dark:text-gray-300 font-medium truncate max-w-[170px]">
+                          {slide.description}
+                        </span>
+                      )}
+                    </div>
 
-                    {/* Description */}
-                    <motion.p
-                      variants={contentItem}
-                      className="text-gray-700 dark:text-gray-300 text-sm md:text-base leading-relaxed line-clamp-3 font-normal break-safe"
-                    >
-                      {currentSlide.description}
-                    </motion.p>
+                    {/* Tactile View Action */}
+                    <span className="inline-flex items-center gap-1 font-heading font-black text-xs text-orange-700 dark:text-white group-hover:translate-x-0.5 transition-transform shrink-0 ml-auto">
+                      <span>{slide.type === "ad" ? "Learn More" : "View"}</span>
+                      <ArrowRight className="w-3.5 h-3.5" />
+                    </span>
                   </div>
-
-                  {/* Bottom Row: CTA Button & Slide Count */}
-                  <motion.div variants={contentItem} className="flex items-center justify-between gap-4 pt-4">
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleAction();
-                      }}
-                      className="relative group/btn overflow-hidden flex items-center gap-2 px-10 py-3.5 rounded-full glass-btn-primary font-black text-sm md:text-base cursor-pointer font-heading touch-target shadow-md transition-transform duration-200 hover:scale-103 active:scale-97"
-                    >
-                      <span className="relative z-10">{currentSlide.ctaText}</span>
-                      <ArrowRight className="relative z-10 h-4 w-4 group-hover/btn:translate-x-1 transition-transform duration-300" />
-                    </button>
-
-                    {/* Animated Counter */}
-                    {slides.length > 1 && (
-                      <div className="flex items-center gap-1 text-base font-black font-heading tracking-wider text-gray-600 dark:text-gray-400 select-none">
-                        <AnimatePresence mode="wait" initial={false}>
-                          <motion.span
-                            key={activeIndex}
-                            initial={{ opacity: 0, y: direction > 0 ? 6 : -6 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            exit={{ opacity: 0, y: direction > 0 ? -6 : 6 }}
-                            transition={{ duration: 0.2, ease: "easeOut" }}
-                            className="inline-block min-w-[20px] text-right text-gray-900 dark:text-white"
-                          >
-                            {String(activeIndex + 1).padStart(2, "0")}
-                          </motion.span>
-                        </AnimatePresence>
-                        <span>/</span>
-                        <span>{String(slides.length).padStart(2, "0")}</span>
-                      </div>
-                    )}
-                  </motion.div>
-                </motion.div>
+                </div>
               </div>
-            )}
-          </motion.div>
-        </AnimatePresence>
+            );
+          })}
 
-        {/* Side Navigation Arrow Buttons (Desktop md+) */}
-        {slides.length > 1 && (
-          <>
-            <motion.button
-              whileHover={{ scale: 1.12, x: -2 }}
-              whileTap={{ scale: 0.92 }}
-              transition={{ type: "spring", stiffness: 400, damping: 22 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                paginate(-1);
-              }}
-              className="absolute left-4 md:left-6 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full glass-pill flex items-center justify-center cursor-pointer shadow-2xl group border border-white/95 dark:border-white/20 bg-white/90 dark:bg-black/85 backdrop-blur-2xl touch-target"
-              aria-label="Previous event"
+          {/* Dedicated "View All" Trailing Card - shown if more events exist beyond the slider limit */}
+          {events.length > slides.length && (
+            <div
+              onClick={() => setIsAllTodayModalOpen(true)}
+              className="group relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-16px)/2)] md:w-[calc((100%-32px)/3)] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border border-orange-500/30 dark:border-white/15 bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-transparent dark:from-white/[0.08] dark:to-transparent flex flex-col justify-between transition-all duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
             >
-              <ChevronLeft className="h-6 w-6 text-gray-900 dark:text-white group-hover:-translate-x-0.5 group-hover:text-primary transition-transform duration-200" />
-            </motion.button>
+              {/* Visual Header matching 16:9 banner */}
+              <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 flex flex-col items-center justify-center bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-orange-600/20 dark:from-white/10 dark:via-white/5 dark:to-white/10">
+                <div className="w-14 h-14 rounded-full bg-orange-500/20 dark:bg-white/10 border border-orange-500/40 dark:border-white/20 flex items-center justify-center mb-2 group-hover:scale-110 group-active:scale-95 transition-transform shadow-inner text-orange-700 dark:text-white">
+                  <ArrowRight className="w-6 h-6" />
+                </div>
+                <span className="text-sm font-heading font-black text-orange-700 dark:text-white uppercase tracking-wider">
+                  Explore All Today
+                </span>
+                <span className="text-xs text-gray-600 dark:text-gray-300 font-semibold mt-0.5">
+                  {events.length} Live Activities
+                </span>
+              </div>
 
-            <motion.button
-              whileHover={{ scale: 1.12, x: 2 }}
-              whileTap={{ scale: 0.92 }}
-              transition={{ type: "spring", stiffness: 400, damping: 22 }}
-              onClick={(e) => {
-                e.stopPropagation();
-                paginate(1);
-              }}
-              className="absolute right-4 md:right-6 top-1/2 -translate-y-1/2 z-30 w-12 h-12 rounded-full glass-pill flex items-center justify-center cursor-pointer shadow-2xl group border border-white/95 dark:border-white/20 bg-white/90 dark:bg-black/85 backdrop-blur-2xl touch-target"
-              aria-label="Next event"
-            >
-              <ChevronRight className="h-6 w-6 text-gray-900 dark:text-white group-hover:translate-x-0.5 group-hover:text-primary transition-transform duration-200" />
-            </motion.button>
-          </>
-        )}
+              {/* Bottom bar matching 78px-82px deck */}
+              <div className="p-3 min-[400px]:p-3.5 flex items-center justify-between h-[78px] min-[400px]:h-[82px] bg-white/80 dark:bg-[#3a3a3c]/90 border-t border-orange-500/20 dark:border-white/10">
+                <div>
+                  <p className="text-xs font-heading font-black text-gray-900 dark:text-white">
+                    Full Campus Schedule
+                  </p>
+                  <p className="text-[11px] text-gray-500 dark:text-gray-400">
+                    Tap to view complete list
+                  </p>
+                </div>
+                <span className="inline-flex items-center gap-1 font-heading font-black text-xs text-orange-700 dark:text-white group-hover:translate-x-1 transition-transform">
+                  <span>View All</span>
+                  <ArrowRight className="w-3.5 h-3.5" />
+                </span>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* =========================================================
@@ -787,7 +517,7 @@ export const HappeningTodaySliderComponent = ({
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: 40, scale: 0.96 }}
               transition={{ type: "spring", stiffness: 360, damping: 30 }}
-              className="relative z-10 w-full sm:max-w-2xl max-h-[88vh] sm:max-h-[82vh] bg-white dark:bg-[#0c0f1e] rounded-t-[28px] sm:rounded-[28px] border border-black/10 dark:border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden"
+              className="relative z-10 w-full sm:max-w-2xl max-h-[88vh] sm:max-h-[82vh] bg-white dark:bg-[#2c2c2e]/95 backdrop-blur-2xl rounded-t-[28px] sm:rounded-[28px] border border-black/10 dark:border-white/10 shadow-[0_25px_60px_rgba(0,0,0,0.5)] flex flex-col overflow-hidden"
               role="dialog"
               aria-modal="true"
               aria-labelledby="today-modal-title"
@@ -924,11 +654,11 @@ export const HappeningTodaySliderComponent = ({
               </div>
 
               {/* Modal Footer */}
-              <div className="px-5 sm:px-6 py-3.5 bg-gray-50 dark:bg-black/30 border-t border-black/[0.06] dark:border-white/10 flex items-center justify-end shrink-0">
+              <div className="px-5 sm:px-6 py-3.5 bg-gray-50 dark:bg-white/[0.03] border-t border-black/[0.06] dark:border-white/10 flex items-center justify-end shrink-0">
                 <button
                   type="button"
                   onClick={() => setIsAllTodayModalOpen(false)}
-                  className="px-6 py-2 rounded-full bg-gray-900 hover:bg-black dark:bg-white dark:hover:bg-gray-100 text-white dark:text-gray-900 text-xs sm:text-sm font-heading font-black cursor-pointer transition-colors shadow-sm active:scale-95"
+                  className="px-6 py-2 rounded-full bg-gray-900 hover:bg-black dark:bg-white/14 dark:hover:bg-white/22 text-white dark:text-white dark:border dark:border-white/18 text-xs sm:text-sm font-heading font-black cursor-pointer transition-colors shadow-sm active:scale-95"
                 >
                   Close
                 </button>

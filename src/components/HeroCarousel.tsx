@@ -769,7 +769,7 @@ export const HeroCarouselComponent = ({
             {idx === currentIndex && (
               <motion.div
                 layoutId="heroActiveProgress"
-                className="absolute inset-0 bg-gradient-to-r from-amber-400 to-orange-500 dark:from-white dark:to-gray-200 rounded-full shadow-[0_0_8px_rgba(255,107,0,0.8)] dark:shadow-[0_0_10px_rgba(255,255,255,0.7)]"
+                className="absolute inset-0 bg-gradient-to-r from-amber-400 to-orange-500 dark:from-white/80 dark:to-white/60 rounded-full shadow-[0_0_8px_rgba(255,107,0,0.8)] dark:shadow-[0_0_6px_rgba(255,255,255,0.25)]"
                 initial={{ width: 0 }}
                 animate={{ width: "100%" }}
                 transition={{
@@ -791,7 +791,7 @@ export const HeroCarouselComponent = ({
               aria-label={`Go to slide ${idx + 1}`}
               className={`h-2 rounded-full transition-[width,background-color] duration-300 cursor-pointer ${
                 idx === currentIndex
-                  ? "w-5 bg-gradient-to-r from-amber-400 to-orange-500 dark:from-white dark:to-gray-200"
+                  ? "w-5 bg-gradient-to-r from-amber-400 to-orange-500 dark:from-white/80 dark:to-white/60"
                   : "w-2 bg-gray-400/40 dark:bg-white/25"
               }`}
             />

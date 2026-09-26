@@ -665,7 +665,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
                   onClick={() => setActiveTab(tab.id)}
                   className={`px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 cursor-pointer touch-target font-heading outline-none shrink-0 tracking-wide ${
                     isActive
-                      ? "!bg-gradient-to-r !from-[#FF5E00] !to-[#FFA000] !text-white shadow-[0_4px_16px_rgba(255,94,0,0.35)] !border-transparent scale-[1.01]"
+                      ? "!bg-gradient-to-r !from-[#FF5E00] !to-[#FFA000] dark:!from-white/16 dark:!to-white/12 !text-white shadow-[0_4px_16px_rgba(255,94,0,0.35)] dark:shadow-none !border-transparent dark:!border dark:!border-white/20 scale-[1.01]"
                       : "text-gray-600 dark:text-zinc-300 hover:text-primary hover:bg-black/5 dark:hover:bg-white/5 !bg-transparent border-transparent"
                   }`}
                 >

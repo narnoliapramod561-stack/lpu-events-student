@@ -36,8 +36,8 @@ export const AboutUsView: React.FC<AboutUsViewProps> = ({ onBack }) => {
             Official Student Discovery Hub
           </div>
 
-          <div className="flex items-center gap-3 sm:gap-4 mt-2">
-            <LpuLogo className="h-10 w-10 sm:h-14 sm:w-14 shrink-0 drop-shadow-md" />
+          <div className="flex items-center gap-3.5 sm:gap-5 mt-2">
+            <LpuLogo className="h-16 w-16 sm:h-20 sm:w-20 shrink-0 drop-shadow-md" />
             <div>
               <h1 className="font-heading text-2xl sm:text-4xl md:text-5xl font-black tracking-tight text-gray-900 dark:text-white leading-tight">
                 About LPU Events

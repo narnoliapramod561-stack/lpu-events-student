@@ -42,9 +42,9 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     <div className="min-h-screen bg-neutral-950 text-white flex flex-col justify-between selection:bg-orange-500/30 selection:text-orange-200">
       {/* Top Bar */}
       <header className="w-full px-6 py-4 flex items-center justify-between border-b border-white/10 bg-neutral-950/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="flex items-center gap-3">
-          <LpuLogo className="h-8 w-auto" />
-          <span className="text-sm font-semibold tracking-wide text-neutral-300">
+        <div className="flex items-center gap-3.5">
+          <LpuLogo className="h-12 w-12 shrink-0 drop-shadow-md" />
+          <span className="text-base font-bold tracking-wide text-neutral-200">
             LPU Events Engine
           </span>
         </div>

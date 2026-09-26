@@ -42,7 +42,7 @@ export const EventCardComponent = ({
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.3, delay: Math.min(idx * 0.04, 0.25) }}
       onClick={() => onSelect(event.id, event.name)}
-      className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-[20px] sm:rounded-[28px] shadow-md hover:shadow-2xl transition-all duration-300 border border-white/80 dark:border-white/10 hover:border-primary/50 relative hover:scale-[1.01] active:scale-[0.99]"
+      className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-[20px] sm:rounded-[28px] shadow-md hover:shadow-2xl transition-all duration-300 border border-white/80 dark:border-white/[0.08] hover:border-primary/50 dark:hover:border-white/20 relative hover:scale-[1.01] active:scale-[0.99]"
     >
       {/* Event Cover Image (Native 16:9 Slot Presentation with Full Content Visibility) */}
       <div className="w-full aspect-[16/9] relative overflow-hidden shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center">
@@ -68,7 +68,7 @@ export const EventCardComponent = ({
         {/* Category Pill on Image (Bottom-Left) */}
         {categoryName && (
           <div className="absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3.5 z-20 pointer-events-none">
-            <span className="inline-flex items-center px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-black/65 dark:bg-black/75 backdrop-blur-md text-white/95 font-heading text-[9px] sm:text-[10px] font-black uppercase tracking-wider border border-white/20 shadow-md">
+            <span className="inline-flex items-center px-2.5 py-0.5 sm:px-3 sm:py-1 rounded-full bg-black/65 dark:bg-black/60 backdrop-blur-xl text-white font-heading text-[9px] sm:text-[10px] font-black uppercase tracking-wider border border-white/20 shadow-md">
               {categoryName}
             </span>
           </div>
@@ -78,7 +78,7 @@ export const EventCardComponent = ({
       {/* Event Body */}
       <div className="p-3.5 sm:p-5 flex flex-col flex-1">
         {/* Event Title */}
-        <h3 className="text-base sm:text-xl lg:text-[22px] font-black font-heading text-orange-700 dark:text-white group-hover:text-orange-600 dark:group-hover:text-gray-300 transition-colors mb-2.5 sm:mb-4 tracking-tight line-clamp-2 leading-snug break-safe">
+        <h3 className="text-base sm:text-xl lg:text-[22px] font-black font-heading text-orange-700 dark:text-white group-hover:text-orange-600 dark:group-hover:text-amber-200 transition-colors mb-2.5 sm:mb-4 tracking-tight line-clamp-2 leading-snug break-safe">
           {event.name}
         </h3>
 
@@ -86,11 +86,11 @@ export const EventCardComponent = ({
         <div className="space-y-2 sm:space-y-3 mb-0 sm:mb-5 mt-auto">
           {/* Date */}
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-400">
-              <Calendar className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-primary" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-orange-500/10 dark:bg-white/[0.05] border border-orange-500/15 dark:border-white/[0.08] flex items-center justify-center">
+              <Calendar className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-primary dark:text-amber-400" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 font-heading leading-tight">
+              <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-neutral-400 font-heading leading-tight">
                 DATE
               </span>
               <span className="text-gray-900 dark:text-white font-black text-xs sm:text-sm truncate">
@@ -101,11 +101,11 @@ export const EventCardComponent = ({
 
           {/* Schedule */}
           <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-400">
-              <Clock className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-amber-500" />
+            <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-amber-500/10 dark:bg-white/[0.05] border border-amber-500/15 dark:border-white/[0.08] flex items-center justify-center">
+              <Clock className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-amber-500 dark:text-amber-300" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 font-heading leading-tight">
+              <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-neutral-400 font-heading leading-tight">
                 SCHEDULE
               </span>
               <span className="text-gray-900 dark:text-white font-black text-xs sm:text-sm truncate">
@@ -117,11 +117,11 @@ export const EventCardComponent = ({
           {/* Venue & Mobile View Details Action */}
           <div className="flex items-center justify-between gap-2 pt-0.5 sm:pt-0">
             <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
-              <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-white/5 border border-black/5 dark:border-white/10 flex items-center justify-center text-gray-400">
-                <MapPin className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-rose-500" />
+              <div className="w-8 h-8 sm:w-10 sm:h-10 shrink-0 rounded-full bg-rose-500/10 dark:bg-white/[0.05] border border-rose-500/15 dark:border-white/[0.08] flex items-center justify-center">
+                <MapPin className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-rose-500 dark:text-rose-400" />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 font-heading leading-tight">
+                <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-neutral-400 font-heading leading-tight">
                   VENUE
                 </span>
                 <span className="text-gray-900 dark:text-white font-black text-xs sm:text-sm truncate">
@@ -133,7 +133,7 @@ export const EventCardComponent = ({
             {/* Mobile View Details Button (fitted in venue row, eliminating bottom line & separate footer on mobile) */}
             <button
               type="button"
-              className="sm:hidden px-3.5 py-1.5 bg-gradient-to-r from-[#fc721e] to-[#ff8c42] dark:from-white dark:to-white text-white dark:text-black rounded-full font-heading font-black text-xs shadow-md shadow-orange-500/20 dark:shadow-[0_0_12px_rgba(255,255,255,0.2)] active:scale-95 transition-all cursor-pointer shrink-0"
+              className="sm:hidden px-3.5 py-1.5 bg-gradient-to-r from-[#ff6b00] to-[#ff8c42] hover:from-[#ff7a1a] hover:to-[#ff9955] text-white rounded-full font-heading font-black text-xs shadow-md shadow-orange-500/25 dark:shadow-[0_2px_12px_rgba(255,107,0,0.32)] border border-orange-400/30 active:scale-95 transition-all cursor-pointer shrink-0"
             >
               View Details
             </button>
@@ -141,15 +141,15 @@ export const EventCardComponent = ({
         </div>
 
         {/* Desktop-only Footer: View Details CTA & Club Name (Hidden on Mobile) */}
-        <div className="hidden sm:flex justify-between items-center pt-3.5 border-t border-gray-200/60 dark:border-white/10 mt-auto gap-2">
+        <div className="hidden sm:flex justify-between items-center pt-3.5 border-t border-gray-200/60 dark:border-white/[0.08] mt-auto gap-2">
           <div className="flex flex-col min-w-0 max-w-[55%]">
-            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-gray-400 font-heading truncate">
+            <span className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-gray-500 dark:text-neutral-400 font-heading truncate">
               {event.organizations?.name || "LPU Club"}
             </span>
           </div>
           <button
             type="button"
-            className="px-5 py-2 bg-gradient-to-r from-[#fc721e] to-[#ff8c42] dark:from-white dark:to-white text-white dark:text-black rounded-full font-heading font-black text-xs shadow-md shadow-orange-500/20 dark:shadow-[0_0_14px_rgba(255,255,255,0.2)] hover:scale-103 active:scale-95 transition-all cursor-pointer shrink-0 touch-target ml-auto"
+            className="px-5 py-2 bg-gradient-to-r from-[#ff6b00] to-[#ff8c42] hover:from-[#ff7a1a] hover:to-[#ff9955] text-white rounded-full font-heading font-black text-xs shadow-md shadow-orange-500/25 dark:shadow-[0_4px_16px_rgba(255,107,0,0.35)] border border-orange-400/30 hover:scale-103 active:scale-95 transition-all cursor-pointer shrink-0 touch-target ml-auto"
           >
             View Details
           </button>

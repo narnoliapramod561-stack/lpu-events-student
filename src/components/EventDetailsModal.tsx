@@ -55,13 +55,13 @@ export const EventDetailsModal = ({ eventId, onClose }: {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-slate-900/60 animate-in fade-in duration-300">
-      <div className="relative w-[95vw] sm:w-full max-w-4xl max-h-[88vh] overflow-y-auto rounded-[26px] sm:rounded-[32px] border border-white/95 dark:border-white/10 glass-panel text-gray-900 dark:text-white shadow-[0_25px_70px_rgba(15,23,42,0.2)] flex flex-col hide-scrollbar animate-in zoom-in-95 duration-300">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
+      <div className="relative w-[95vw] sm:w-full max-w-4xl max-h-[88vh] overflow-y-auto rounded-[26px] sm:rounded-[32px] border border-white/95 dark:border-white/12 glass-panel text-gray-900 dark:text-white shadow-[0_25px_70px_rgba(0,0,0,0.45)] flex flex-col hide-scrollbar animate-in zoom-in-95 duration-300">
         
         {/* Close Button */}
         <button
           onClick={onClose}
-          className="absolute right-3 top-3 sm:right-4 sm:top-4 z-40 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full glass-pill border border-white/95 dark:border-white/15 bg-white/90 dark:bg-black/70 text-gray-800 dark:text-white transition-all hover:scale-110 active:scale-95 cursor-pointer touch-target shadow-md"
+          className="absolute right-3 top-3 sm:right-4 sm:top-4 z-40 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full glass-pill border border-white/95 dark:border-white/18 bg-white/90 dark:bg-white/12 dark:hover:bg-white/22 text-gray-800 dark:text-white transition-all hover:scale-110 active:scale-95 cursor-pointer touch-target shadow-md"
           aria-label="Close details"
         >
           <X className="h-4 w-4 sm:h-5 sm:w-5" />
