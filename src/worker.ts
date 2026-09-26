@@ -1526,6 +1526,15 @@ User-agent: Googlebot
 Allow: /
 Disallow: /api/
 
+User-agent: Googlebot-Image
+Allow: /
+Allow: /*.ico$
+Allow: /*.png$
+Allow: /*.svg$
+Allow: /*.webp$
+Allow: /*.jpeg$
+Allow: /*.jpg$
+
 User-agent: Mediapartners-Google
 Allow: /
 
@@ -1974,7 +1983,7 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
     'name': 'Lovely Professional University',
     'alternateName': 'LPU',
     'url': 'https://www.lpu.in',
-    'logo': `${SITE_ORIGIN}/logo.jpeg`,
+    'logo': `${SITE_ORIGIN}/logo.png?v=20260927`,
     'address': {
       '@type': 'PostalAddress',
       'streetAddress': 'Grand Trunk Road',
@@ -1992,11 +2001,24 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
     ],
   });
 
+  const appOrgJsonLd = safeJsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'Organization',
+    'name': 'LPU Events',
+    'url': SITE_ORIGIN,
+    'logo': `${SITE_ORIGIN}/logo.png?v=20260927`,
+    'sameAs': [
+      'https://www.instagram.com/lpuuniversity',
+      'https://twitter.com/lpuuniversity',
+    ],
+  });
+
   const rewriter = new HTMLRewriter()
     .on('head', {
       element(el: CFElement) {
         el.append(`<script type="application/ld+json">${websiteJsonLd}</script>`, { html: true });
         el.append(`<script type="application/ld+json">${orgJsonLd}</script>`, { html: true });
+        el.append(`<script type="application/ld+json">${appOrgJsonLd}</script>`, { html: true });
         if (heroMobileProxy && heroDesktopProxy && heroMobileProxy !== heroDesktopProxy) {
           el.append(`<link rel="preload" as="image" href="${escapeHtml(heroMobileProxy)}" media="(max-width: 640px)" fetchpriority="high" />`, { html: true });
           el.append(`<link rel="preload" as="image" href="${escapeHtml(heroDesktopProxy)}" media="(min-width: 641px)" fetchpriority="high" />`, { html: true });
