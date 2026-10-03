@@ -3,12 +3,22 @@
  * Centralized Image Configuration for LPU Events
  *
  * Single authoritative source of truth for:
- * - Dimensions, aspect ratios, fit modes, responsive variant rules
- * - Conservative visual enhancement parameters (subtle sharpening, color fidelity preservation)
+ * - Production Image Pipeline V2 specifications & target placements
+ * - Aspect ratio match tolerance (2% threshold)
+ * - Zero-crop foreground preservation & adaptive background rules
+ * - Conservative visual enhancement parameters (OFF for event artwork)
  * - Versioning, safety limits, and R2 storage namespace contracts
  */
 
-export const IMAGE_PIPELINE_VERSION = 1;
+export const IMAGE_PIPELINE_VERSION = 2;
+export const V2_PIPELINE_VERSION = 2;
+
+/**
+ * Aspect Ratio Match Tolerance (2%)
+ * If relative difference between sourceRatio and targetRatio is <= 2%,
+ * direct proportional downscaling is used without cropping or background fill.
+ */
+export const ASPECT_RATIO_TOLERANCE = 0.02;
 
 export type ImageContext =
   | 'hero'
@@ -22,6 +32,83 @@ export type ImageContext =
 
 export type ImageFitMode = 'cover' | 'contain' | 'inside';
 
+// -----------------------------------------------------------------------------
+// V2 PLACEMENT DEFINITIONS & TYPES
+// -----------------------------------------------------------------------------
+export type PlacementKey = 'hero' | 'card' | 'details';
+
+export type CompositionMode = 'DIRECT_PROPORTIONAL' | 'ADAPTIVE_BACKGROUND';
+
+export interface PlacementVariantConfig {
+  name: string;
+  width: number;
+  height: number;
+  quality: number;
+  objectSuffix?: string;
+}
+
+export interface PlacementConfig {
+  key: PlacementKey;
+  label: string;
+  targetWidth: number;
+  targetHeight: number;
+  aspectRatio: number;
+  quality: number;
+  objectSuffix: string;
+  variants: PlacementVariantConfig[];
+}
+
+/**
+ * Production V2 Target Placements for Event Artwork
+ * Derived from real production UI slots:
+ * - Hero: 1920x800 (2.4:1 Ultra HD Widescreen Carousel)
+ * - Card: 800x480 (5:3 Grid Tile)
+ * - Details: 1280x720 (16:9 Event Details Canvas)
+ */
+export const V2_PLACEMENT_CONFIGS: Record<PlacementKey, PlacementConfig> = {
+  hero: {
+    key: 'hero',
+    label: 'Hero Carousel (2.4:1)',
+    targetWidth: 1920,
+    targetHeight: 800,
+    aspectRatio: 1920 / 800, // 2.4:1
+    quality: 90,
+    objectSuffix: 'hero.webp',
+    variants: [
+      { name: '1200w', width: 1200, height: 500, quality: 88, objectSuffix: 'hero_1200w.webp' },
+      { name: '800w', width: 800, height: 333, quality: 85, objectSuffix: 'hero_800w.webp' }
+    ]
+  },
+  card: {
+    key: 'card',
+    label: 'Event Card (5:3)',
+    targetWidth: 800,
+    targetHeight: 480,
+    aspectRatio: 800 / 480, // 5:3
+    quality: 88,
+    objectSuffix: 'card.webp',
+    variants: [
+      { name: '480w', width: 480, height: 288, quality: 85, objectSuffix: 'card_480w.webp' }
+    ]
+  },
+  details: {
+    key: 'details',
+    label: 'Event Details Canvas (16:9)',
+    targetWidth: 1280,
+    targetHeight: 720,
+    aspectRatio: 1280 / 720, // 16:9
+    quality: 90,
+    objectSuffix: 'details.webp',
+    variants: [
+      { name: '800w', width: 800, height: 450, quality: 88, objectSuffix: 'details_800w.webp' },
+      { name: '640w', width: 640, height: 360, quality: 85, objectSuffix: 'details_640w.webp' }
+    ]
+  }
+};
+
+// -----------------------------------------------------------------------------
+// LEGACY COMPATIBILITY TYPES & CONFIGS (V1)
+// -----------------------------------------------------------------------------
 export type EventSlotKey = 'card' | 'card_mobile' | 'banner' | 'banner_mobile' | 'thumb';
 
 export interface EventSlotConfig {
@@ -33,6 +120,39 @@ export interface EventSlotConfig {
   quality: number;
   objectSuffix: string;
 }
+
+export type EventPresentationKey = '16:9' | '7:5';
+
+export interface EventPresentationConfig {
+  key: EventPresentationKey;
+  label: string;
+  targetWidth: number;
+  targetHeight: number;
+  aspectRatio: number;
+  quality: number;
+  objectSuffix: string;
+}
+
+export const EVENT_POSTER_PRESENTATIONS: Record<EventPresentationKey, EventPresentationConfig> = {
+  '16:9': {
+    key: '16:9',
+    label: 'Standard Widescreen Presentation (16:9)',
+    targetWidth: 1600,
+    targetHeight: 900,
+    aspectRatio: 16 / 9,
+    quality: 86,
+    objectSuffix: '_16_9.webp'
+  },
+  '7:5': {
+    key: '7:5',
+    label: 'Mobile Adaptive Presentation (7:5)',
+    targetWidth: 1050,
+    targetHeight: 750,
+    aspectRatio: 7 / 5,
+    quality: 86,
+    objectSuffix: '_7_5.webp'
+  }
+};
 
 export const EVENT_SLOT_CONFIGS: Record<EventSlotKey, EventSlotConfig> = {
   card: {
@@ -91,9 +211,9 @@ export interface ResponsiveVariantConfig {
 
 export interface ImageEnhancementConfig {
   enabled: boolean;
-  /** High-pass unsharp mask sharpening factor (0.0 to 1.0) - kept gentle (0.10 to 0.25) */
+  /** High-pass unsharp mask sharpening factor (0.0 to 1.0) */
   sharpenAmount: number;
-  /** Contrast stretch clipping percentile (0.001 to 0.005) - very conservative */
+  /** Contrast stretch clipping percentile (0.001 to 0.005) */
   contrastClip: number;
   /** Vibrance / subtle saturation multiplier (1.0 to 1.05) */
   vibranceBoost: number;
@@ -111,12 +231,6 @@ export interface ImageContextConfig {
   maxHeight: number;
   aspectRatio: number; // width / height
   aspectRatioLabel: string;
-  /**
-   * Fit Mode Strategy:
-   * - cover: Crops edges to fill the exact aspect ratio (uniform card grids and hero banners).
-   * - inside: Scales down within max bounds without cropping (preserves 100% of posters, memories, and artwork).
-   * - contain: Fits within bounds and preserves transparency without distortion (partner/brand logos).
-   */
   fitMode: ImageFitMode;
   outputFormat: 'image/webp' | 'image/avif' | 'image/png';
   quality: number;
@@ -141,7 +255,8 @@ export const IMAGE_PIPELINE_LIMITS = {
 
 /**
  * Authoritative Image Context Rules
- * Carefully calibrated for visual fidelity, zero poster cropping, and free-tier efficiency.
+ * V2 calibrated: Zero automatic color enhancement or sharpening for event artwork.
+ * Organizers' original typography, colors, and graphics are preserved with 100% fidelity.
  */
 export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
   hero: {
@@ -161,18 +276,19 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
       { name: 'mobile', width: 1080, height: 600, quality: 85 }
     ],
     enhancement: {
-      enabled: true,
-      sharpenAmount: 0.22,
-      contrastClip: 0.003,
-      vibranceBoost: 1.04,
-      denoiseArtifacts: true
+      enabled: false,
+      sharpenAmount: 0.0,
+      contrastClip: 0.0,
+      vibranceBoost: 1.0,
+      denoiseArtifacts: false,
+      preserveOriginalColorProfile: true
     }
   },
 
   'event-banner': {
     context: 'event-banner',
     label: 'Event Details Banner & Poster',
-    description: 'Header banner inside Event Details view. Uses inside fit to ensure posters with typography/schedules are never cropped.',
+    description: 'Header banner inside Event Details view. Fixed-ratio composition canvas with zero-crop foreground.',
     maxWidth: 1920,
     maxHeight: 1080,
     aspectRatio: 16 / 9,
@@ -186,11 +302,11 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
       { name: 'mobile', width: 800, height: 450, quality: 85 }
     ],
     enhancement: {
-      enabled: true,
-      sharpenAmount: 0.16,
-      contrastClip: 0.001,
-      vibranceBoost: 1.02,
-      denoiseArtifacts: true,
+      enabled: false,
+      sharpenAmount: 0.0,
+      contrastClip: 0.0,
+      vibranceBoost: 1.0,
+      denoiseArtifacts: false,
       preserveOriginalColorProfile: true
     }
   },
@@ -198,7 +314,7 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
   'event-card': {
     context: 'event-card',
     label: 'Event Feed Card & Slider',
-    description: 'Featured in Happening Today slider and standard Event Hub grids. Cover mode enforces uniform tile alignment.',
+    description: 'Featured in Happening Today slider and standard Event Hub grids.',
     maxWidth: 1200,
     maxHeight: 720,
     aspectRatio: 5 / 3,
@@ -211,11 +327,12 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
       { name: 'mobile', width: 800, height: 480, quality: 85 }
     ],
     enhancement: {
-      enabled: true,
-      sharpenAmount: 0.24,
-      contrastClip: 0.003,
-      vibranceBoost: 1.04,
-      denoiseArtifacts: true
+      enabled: false,
+      sharpenAmount: 0.0,
+      contrastClip: 0.0,
+      vibranceBoost: 1.0,
+      denoiseArtifacts: false,
+      preserveOriginalColorProfile: true
     }
   },
 
@@ -235,8 +352,8 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
       { name: 'mobile', width: 960, height: 480, quality: 85 }
     ],
     enhancement: {
-      enabled: true,
-      sharpenAmount: 0.16,
+      enabled: false,
+      sharpenAmount: 0.0,
       contrastClip: 0.0,
       vibranceBoost: 1.0,
       denoiseArtifacts: false,
@@ -260,11 +377,12 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
       { name: 'mobile', width: 960, height: 540, quality: 85 }
     ],
     enhancement: {
-      enabled: true,
-      sharpenAmount: 0.18,
-      contrastClip: 0.003,
-      vibranceBoost: 1.03,
-      denoiseArtifacts: true
+      enabled: false,
+      sharpenAmount: 0.0,
+      contrastClip: 0.0,
+      vibranceBoost: 1.0,
+      denoiseArtifacts: false,
+      preserveOriginalColorProfile: true
     }
   },
 
@@ -284,8 +402,8 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
       { name: 'mobile', width: 360, height: 180, quality: 90 }
     ],
     enhancement: {
-      enabled: true,
-      sharpenAmount: 0.15,
+      enabled: false,
+      sharpenAmount: 0.0,
       contrastClip: 0.0,
       vibranceBoost: 1.0,
       denoiseArtifacts: false,
@@ -309,11 +427,12 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
       { name: 'mobile', width: 240, height: 240, quality: 85 }
     ],
     enhancement: {
-      enabled: true,
-      sharpenAmount: 0.28,
-      contrastClip: 0.003,
-      vibranceBoost: 1.03,
-      denoiseArtifacts: true
+      enabled: false,
+      sharpenAmount: 0.0,
+      contrastClip: 0.0,
+      vibranceBoost: 1.0,
+      denoiseArtifacts: false,
+      preserveOriginalColorProfile: true
     }
   },
 
@@ -332,11 +451,12 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
       { name: 'desktop', width: 600, height: 338, quality: 80 }
     ],
     enhancement: {
-      enabled: true,
-      sharpenAmount: 0.15,
-      contrastClip: 0.002,
-      vibranceBoost: 1.02,
-      denoiseArtifacts: true
+      enabled: false,
+      sharpenAmount: 0.0,
+      contrastClip: 0.0,
+      vibranceBoost: 1.0,
+      denoiseArtifacts: false,
+      preserveOriginalColorProfile: true
     }
   }
 };

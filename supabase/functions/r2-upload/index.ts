@@ -150,6 +150,19 @@ function validateWebPSignature(bytes: Uint8Array): boolean {
   return isRiff && isWebp;
 }
 
+function validateImageSignature(bytes: Uint8Array): boolean {
+  if (bytes.length < 4) return false;
+  // JPEG: FF D8 FF
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return true;
+  // PNG: 89 50 4E 47
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return true;
+  // WebP: RIFF ... WEBP
+  if (validateWebPSignature(bytes)) return true;
+  // AVIF: ftypavif / ftypavis
+  if (bytes.length >= 12 && bytes[4] === 0x66 && bytes[5] === 0x74 && bytes[6] === 0x79 && bytes[7] === 0x70) return true;
+  return false;
+}
+
 function contextToMediaType(context: string): string {
   switch (context) {
     case "hero":
@@ -382,12 +395,16 @@ serve(async (req: Request) => {
 
   // 5. Gather and Validate All WebP Variants
   interface VariantUploadItem {
-    name: "desktop" | "tablet" | "mobile";
+    name: string;
     file: File;
     bytes: Uint8Array;
     objectKey: string;
     width: number;
     height: number;
+    isSlot?: boolean;
+    isPresentation?: boolean;
+    isMaster?: boolean;
+    contentType?: string;
   }
 
   const variantUploads: VariantUploadItem[] = [];
@@ -443,10 +460,132 @@ serve(async (req: Request) => {
     }
   }
 
-  // Primary desktop variant is strictly required
-  const desktopVariant = variantUploads.find((v) => v.name === "desktop");
+  // Check for multi-slot synthesized derivatives (card, card_mobile, banner, banner_mobile, thumb)
+  const slotKeys = ["card", "card_mobile", "banner", "banner_mobile", "thumb"] as const;
+  for (const slotName of slotKeys) {
+    const fileEntry = formData.get(`slot_${slotName}`) || formData.get(`file_slot_${slotName}`);
+    if (fileEntry && fileEntry instanceof File) {
+      if (!sanitizeFilename(fileEntry.name) || fileEntry.size > 10 * 1024 * 1024) continue;
+      const buffer = await fileEntry.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      if (!validateWebPSignature(bytes)) continue;
+
+      const metaSlot = parsedMetadata?.slots?.[slotName];
+      const width = metaSlot?.width || (slotName.startsWith("banner") ? 1920 : slotName === "thumb" ? 400 : 1200);
+      const height = metaSlot?.height || (slotName.startsWith("banner") ? 800 : slotName === "thumb" ? 400 : 675);
+      const slotContext = slotName.startsWith("card") ? "event-card" : slotName.startsWith("banner") ? "event-banner" : "thumbnail";
+      const objectKey = metaSlot?.object_key || `optimized/${slotContext}/v1/${hashPrefix}/${checksum}_${slotName}.webp`;
+
+      variantUploads.push({
+        name: slotName,
+        file: fileEntry,
+        bytes,
+        objectKey,
+        width,
+        height,
+        isSlot: true
+      });
+    }
+  }
+
+  // V2 Pipeline: Check for master/source file (untouched original)
+  const masterFileEntry = formData.get("file_source") || formData.get("file_master");
+  if (masterFileEntry && masterFileEntry instanceof File) {
+    if (masterFileEntry.size <= 15 * 1024 * 1024) {
+      const buffer = await masterFileEntry.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      if (validateImageSignature(bytes)) {
+        const metaSource = parsedMetadata?.source || parsedMetadata?.master;
+        const masterExt = masterFileEntry.type === "image/png" ? "png" : masterFileEntry.type === "image/webp" ? "webp" : "jpg";
+        const masterKey = metaSource?.object_key || `events/v2/${hashPrefix}/${checksum}/source.${masterExt}`;
+        const masterMime = metaSource?.mime_type || masterFileEntry.type || "image/jpeg";
+
+        variantUploads.push({
+          name: "source",
+          file: masterFileEntry,
+          bytes,
+          objectKey: masterKey,
+          width: metaSource?.width || 0,
+          height: metaSource?.height || 0,
+          isMaster: true,
+          contentType: masterMime
+        });
+      }
+    }
+  }
+
+  // V2 Pipeline: Check for placement derivatives (hero, card, details) & responsive variants
+  const placementKeys = [
+    { formKey: "file_hero", name: "hero", width: 1920, height: 800, defKey: `events/v2/${hashPrefix}/${checksum}/hero.webp` },
+    { formKey: "file_hero_1200w", name: "hero_1200w", width: 1200, height: 500, defKey: `events/v2/${hashPrefix}/${checksum}/hero_1200w.webp` },
+    { formKey: "file_hero_800w", name: "hero_800w", width: 800, height: 333, defKey: `events/v2/${hashPrefix}/${checksum}/hero_800w.webp` },
+    { formKey: "file_card", name: "card", width: 800, height: 480, defKey: `events/v2/${hashPrefix}/${checksum}/card.webp` },
+    { formKey: "file_card_480w", name: "card_480w", width: 480, height: 288, defKey: `events/v2/${hashPrefix}/${checksum}/card_480w.webp` },
+    { formKey: "file_details", name: "details", width: 1280, height: 720, defKey: `events/v2/${hashPrefix}/${checksum}/details.webp` },
+    { formKey: "file_details_800w", name: "details_800w", width: 800, height: 450, defKey: `events/v2/${hashPrefix}/${checksum}/details_800w.webp` },
+    { formKey: "file_details_640w", name: "details_640w", width: 640, height: 360, defKey: `events/v2/${hashPrefix}/${checksum}/details_640w.webp` }
+  ];
+
+  for (const p of placementKeys) {
+    const fileEntry = formData.get(p.formKey);
+    if (fileEntry && fileEntry instanceof File) {
+      if (fileEntry.size > 10 * 1024 * 1024) continue;
+      const buffer = await fileEntry.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      if (!validateWebPSignature(bytes)) continue;
+
+      let customKey = p.defKey;
+      if (p.name === 'hero') customKey = parsedMetadata?.placement?.hero?.object_key || p.defKey;
+      else if (p.name === 'card') customKey = parsedMetadata?.placement?.card?.object_key || p.defKey;
+      else if (p.name === 'details') customKey = parsedMetadata?.placement?.details?.object_key || p.defKey;
+
+      variantUploads.push({
+        name: p.name,
+        file: fileEntry,
+        bytes,
+        objectKey: customKey,
+        width: p.width,
+        height: p.height,
+        isPlacement: true
+      } as any);
+    }
+  }
+
+  // V2 Pipeline: Check for presentation derivatives (file_pres_16_9, file_pres_7_5)
+  const presKeys = ["16_9", "7_5"] as const;
+  for (const presKey of presKeys) {
+    const fileEntry = formData.get(`file_pres_${presKey}`);
+    if (fileEntry && fileEntry instanceof File) {
+      if (fileEntry.size > 10 * 1024 * 1024) continue;
+      const buffer = await fileEntry.arrayBuffer();
+      const bytes = new Uint8Array(buffer);
+      if (!validateWebPSignature(bytes)) continue;
+
+      const ratioKey = presKey.replace("_", ":");
+      const metaPres = parsedMetadata?.presentations?.[ratioKey];
+      const objectKey = metaPres?.object_key || `optimized/event-banner/v2/${hashPrefix}/${checksum}_${presKey}.webp`;
+      const width = metaPres?.width || (presKey === "16_9" ? 1600 : 1050);
+      const height = metaPres?.height || (presKey === "16_9" ? 900 : 750);
+
+      variantUploads.push({
+        name: `pres_${presKey}`,
+        file: fileEntry,
+        bytes,
+        objectKey,
+        width,
+        height,
+        isPresentation: true
+      });
+    }
+  }
+
+  // Primary variant is strictly required (details, hero, card, or desktop)
+  const desktopVariant =
+    variantUploads.find((v) => v.name === "desktop" || v.name === "details" || v.name === "hero" || v.name === "card") ||
+    variantUploads[0];
+
   if (!desktopVariant) {
-    return new Response(JSON.stringify({ error: "MISSING_PRIMARY_VARIANT", message: "Primary desktop WebP variant is required." }), {
+    return new Response(JSON.stringify({ error: "MISSING_PRIMARY_VARIANT", message: "Primary WebP derivative is required." }), {
       status: 400,
       headers: corsHeaders,
     });
@@ -474,7 +613,7 @@ serve(async (req: Request) => {
       r2Config,
       item.objectKey,
       item.bytes,
-      "image/webp",
+      item.contentType || "image/webp",
       "public, max-age=31536000, immutable"
     );
 
@@ -518,20 +657,58 @@ serve(async (req: Request) => {
   const primaryPublicUrl = `${publicBaseUrl}/${primaryObjectKey}`;
   const mediaType = contextToMediaType(context);
 
+  const slotsMetadata: Record<string, any> = {};
+  const presentationsMetadata: Record<string, any> = {};
+  let masterMetadata: any = null;
+
+  for (const item of variantUploads) {
+    if (item.isSlot) {
+      slotsMetadata[item.name] = {
+        name: item.name,
+        object_key: item.objectKey,
+        width: item.width,
+        height: item.height,
+        file_size_bytes: item.bytes.length
+      };
+    } else if (item.isPresentation) {
+      const ratioKey = item.name.replace('pres_', '').replace('_', ':');
+      presentationsMetadata[ratioKey] = {
+        ratio: ratioKey,
+        object_key: item.objectKey,
+        width: item.width,
+        height: item.height,
+        file_size_bytes: item.bytes.length
+      };
+    } else if (item.isMaster) {
+      masterMetadata = {
+        object_key: item.objectKey,
+        width: item.width,
+        height: item.height,
+        file_size_bytes: item.bytes.length,
+        mime_type: item.contentType || 'image/jpeg'
+      };
+    }
+  }
+
   const finalMetadata = {
-    pipeline_version: 1,
+    pipeline_version: parsedMetadata?.pipeline_version || 2,
     context,
+    source: parsedMetadata?.source || masterMetadata,
+    placement: parsedMetadata?.placement || undefined,
     original_size_bytes: parsedMetadata?.original_size_bytes || desktopVariant.file.size,
     optimized_size_bytes: desktopVariant.file.size,
     savings_percentage: parsedMetadata?.savings_percentage || 0,
     compression_ratio: parsedMetadata?.compression_ratio || 1.0,
-    variants: variantUploads.map((v) => ({
+    variants: variantUploads.filter(v => !v.isSlot && !v.isPresentation && !v.isMaster).map((v) => ({
       name: v.name,
       object_key: v.objectKey,
       width: v.width,
       height: v.height,
       file_size_bytes: v.bytes.length,
     })),
+    slots: Object.keys(slotsMetadata).length > 0 ? slotsMetadata : (parsedMetadata?.slots || undefined),
+    presentations: Object.keys(presentationsMetadata).length > 0 ? presentationsMetadata : (parsedMetadata?.presentations || undefined),
+    master: masterMetadata || (parsedMetadata?.master || undefined)
   };
 
   let registeredMediaId: string | null = null;
@@ -616,7 +793,13 @@ serve(async (req: Request) => {
       context,
       storage_target: targetBucket,
       r2_diagnostics: r2Error || null,
+      pipeline_version: finalMetadata.pipeline_version,
+      source: finalMetadata.source,
+      placement: finalMetadata.placement,
       variants: finalMetadata.variants,
+      slots: finalMetadata.slots,
+      presentations: finalMetadata.presentations,
+      master: finalMetadata.master,
     }),
     { status: 200, headers: corsHeaders }
   );

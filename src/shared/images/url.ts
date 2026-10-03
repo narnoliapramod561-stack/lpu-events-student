@@ -232,6 +232,76 @@ export function getStorageBaseUrl(_bucket?: string): string {
 const MEDIA_KEY_CACHE = new Map<string, string>();
 const EVENT_MEDIA_KEY_CACHE = new Map<string, string>();
 const MEDIA_SLOT_CACHE = new Map<string, Record<string, string>>();
+const MEDIA_PRESENTATION_CACHE = new Map<string, Record<string, string>>();
+const MEDIA_PLACEMENT_CACHE = new Map<string, Record<string, any>>();
+
+/**
+ * Production V2: Resolves the pre-generated placement derivative key
+ * (hero, card, details) and responsive variants from media_assets metadata.
+ */
+export function resolvePlacementFromMediaAsset(
+  mediaAsset: any,
+  context: ImageContext,
+  _maxWidth?: number
+): string | null {
+  if (!mediaAsset) return null;
+  const placement = mediaAsset.metadata?.placement;
+  if (!placement || typeof placement !== 'object') return null;
+
+  const isClient = typeof window !== 'undefined';
+  const screenWidth = isClient ? window.innerWidth : 1200;
+  const isMobile = screenWidth <= 640;
+  const isTablet = screenWidth <= 1024 && !isMobile;
+
+  if (context === 'event-card') {
+    const card = placement.card;
+    if (!card) return null;
+    if (isMobile && card.variants && Array.isArray(card.variants)) {
+      const v480 = card.variants.find((v: any) => v.name === '480w');
+      if (v480?.object_key) return v480.object_key;
+    }
+    return card.object_key || null;
+  }
+
+  if (context === 'event-banner') {
+    const details = placement.details;
+    if (!details) return null;
+    if (isMobile && details.variants && Array.isArray(details.variants)) {
+      const v640 = details.variants.find((v: any) => v.name === '640w');
+      if (v640?.object_key) return v640.object_key;
+      const v800 = details.variants.find((v: any) => v.name === '800w');
+      if (v800?.object_key) return v800.object_key;
+    } else if (isTablet && details.variants && Array.isArray(details.variants)) {
+      const v800 = details.variants.find((v: any) => v.name === '800w');
+      if (v800?.object_key) return v800.object_key;
+    }
+    return details.object_key || null;
+  }
+
+  if (context === 'hero') {
+    const hero = placement.hero;
+    if (!hero) return null;
+    if (isMobile && hero.variants && Array.isArray(hero.variants)) {
+      const v800 = hero.variants.find((v: any) => v.name === '800w');
+      if (v800?.object_key) return v800.object_key;
+    } else if (isTablet && hero.variants && Array.isArray(hero.variants)) {
+      const v1200 = hero.variants.find((v: any) => v.name === '1200w');
+      if (v1200?.object_key) return v1200.object_key;
+    }
+    return hero.object_key || null;
+  }
+
+  if (context === 'thumbnail') {
+    return placement.card?.object_key || placement.details?.object_key || null;
+  }
+
+  return (
+    placement.details?.object_key ||
+    placement.card?.object_key ||
+    placement.hero?.object_key ||
+    null
+  );
+}
 
 /**
  * Resolves a tailored slot derivative key (card, banner, thumb) from a media asset's metadata.
@@ -251,6 +321,26 @@ export function resolveSlotFromMediaAsset(mediaAsset: any, context: ImageContext
     return slots.thumb?.object_key || null;
   }
   return null;
+}
+
+/**
+ * Legacy V1: Resolves the best canonical presentation key from a media asset's metadata.
+ */
+export function resolvePresentationFromMediaAsset(mediaAsset: any, context: ImageContext): string | null {
+  if (!mediaAsset) return null;
+  const presentations = mediaAsset.metadata?.presentations;
+  if (!presentations || typeof presentations !== 'object') return null;
+
+  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 640;
+
+  if (context === 'hero' || context === 'event-banner' || context === 'event-card') {
+    const ratio = isMobile ? '7:5' : '16:9';
+    const pres = presentations[ratio] || presentations['16:9'] || presentations['7:5'];
+    return pres?.object_key || null;
+  }
+
+  const fallbackPres = presentations['16:9'] || presentations['7:5'];
+  return fallbackPres?.object_key || null;
 }
 
 /**
@@ -280,6 +370,18 @@ export function registerMediaAssets(
       }
     }
 
+    // V2: Cache placements
+    const placement = mediaAsset?.metadata?.placement;
+    if (placement && typeof placement === 'object') {
+      const pMap: Record<string, string> = {};
+      if (placement.hero?.object_key) pMap.hero = placement.hero.object_key;
+      if (placement.card?.object_key) pMap['event-card'] = placement.card.object_key;
+      if (placement.details?.object_key) pMap['event-banner'] = placement.details.object_key;
+      if (item.banner_media_id) MEDIA_PLACEMENT_CACHE.set(item.banner_media_id, pMap);
+      if (mediaAsset?.id) MEDIA_PLACEMENT_CACHE.set(mediaAsset.id, pMap);
+      if (item.id) MEDIA_PLACEMENT_CACHE.set(item.id, pMap);
+    }
+
     const slots = mediaAsset?.metadata?.slots;
     if (slots && typeof slots === 'object') {
       const slotMap: Record<string, string> = {};
@@ -289,6 +391,18 @@ export function registerMediaAssets(
       if (item.banner_media_id) MEDIA_SLOT_CACHE.set(item.banner_media_id, slotMap);
       if (mediaAsset?.id) MEDIA_SLOT_CACHE.set(mediaAsset.id, slotMap);
       if (item.id) MEDIA_SLOT_CACHE.set(item.id, slotMap);
+    }
+
+    // V2: Cache presentations
+    const presentations = mediaAsset?.metadata?.presentations;
+    if (presentations && typeof presentations === 'object') {
+      const presMap: Record<string, string> = {};
+      for (const [k, v] of Object.entries(presentations)) {
+        if ((v as any)?.object_key) presMap[k] = (v as any).object_key;
+      }
+      if (item.banner_media_id) MEDIA_PRESENTATION_CACHE.set(item.banner_media_id, presMap);
+      if (mediaAsset?.id) MEDIA_PRESENTATION_CACHE.set(mediaAsset.id, presMap);
+      if (item.id) MEDIA_PRESENTATION_CACHE.set(item.id, presMap);
     }
   }
 }
@@ -356,8 +470,13 @@ export function getOptimizedImage(
     : (source.media_assets || (Array.isArray(source.media_asset) ? source.media_asset[0] : source.media_asset));
 
   if (mediaAsset?.object_key) {
-    const slotKey = resolveSlotFromMediaAsset(mediaAsset, context);
-    const key = slotKey || mediaAsset.object_key;
+    // V2: Try placement-based resolution first (zero-crop, fixed-ratio canvas)
+    const placementKey = resolvePlacementFromMediaAsset(mediaAsset, context);
+    // Legacy: Try presentation-based resolution
+    const presKey = !placementKey ? resolvePresentationFromMediaAsset(mediaAsset, context) : null;
+    // Legacy: Fall back to slot-based resolution
+    const slotKey = !placementKey && !presKey ? resolveSlotFromMediaAsset(mediaAsset, context) : null;
+    const key = placementKey || presKey || slotKey || mediaAsset.object_key;
     const bucket = mediaAsset.bucket;
     if (source.banner_media_id) MEDIA_KEY_CACHE.set(source.banner_media_id, mediaAsset.object_key);
     if (source.id) EVENT_MEDIA_KEY_CACHE.set(source.id, mediaAsset.object_key);
@@ -385,7 +504,39 @@ export function getOptimizedImage(
     return `${getStorageBaseUrl(bucket)}/${key.replace(/^\/+/, '')}`;
   }
 
-  // 3b. Check registered slot & media key caches (e.g. for search results that omit full media_assets join)
+  // 3b. Check registered placement & presentation & slot & media key caches
+  // V2 placements take absolute priority
+  const cacheId = source.banner_media_id || source.id;
+  if (cacheId && MEDIA_PLACEMENT_CACHE.has(cacheId)) {
+    const pMap = MEDIA_PLACEMENT_CACHE.get(cacheId)!;
+    const pKey = pMap[context] || pMap['event-banner'] || pMap['event-card'] || pMap.hero;
+    if (pKey) {
+      return `${getStorageBaseUrl()}/${pKey.replace(/^\/+/, '')}`;
+    }
+  }
+
+  if (source.banner_media_id && MEDIA_PRESENTATION_CACHE.has(source.banner_media_id)) {
+    const pres = MEDIA_PRESENTATION_CACHE.get(source.banner_media_id)!;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 640;
+    const presKey = (context === 'hero' || context === 'event-banner' || context === 'event-card')
+      ? (isMobile ? (pres['7:5'] || pres['16:9']) : (pres['16:9'] || pres['7:5']))
+      : (pres['16:9'] || pres['7:5']);
+    if (presKey) {
+      return `${getStorageBaseUrl()}/${presKey.replace(/^\/+/, '')}`;
+    }
+  }
+
+  if (source.id && MEDIA_PRESENTATION_CACHE.has(source.id)) {
+    const pres = MEDIA_PRESENTATION_CACHE.get(source.id)!;
+    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 640;
+    const presKey = (context === 'hero' || context === 'event-banner' || context === 'event-card')
+      ? (isMobile ? (pres['7:5'] || pres['16:9']) : (pres['16:9'] || pres['7:5']))
+      : (pres['16:9'] || pres['7:5']);
+    if (presKey) {
+      return `${getStorageBaseUrl()}/${presKey.replace(/^\/+/, '')}`;
+    }
+  }
+
   if (source.banner_media_id && MEDIA_SLOT_CACHE.has(source.banner_media_id)) {
     const slots = MEDIA_SLOT_CACHE.get(source.banner_media_id)!;
     const slotKey = context === 'event-card' ? (slots.card || slots.card_mobile) : (context === 'event-banner' || context === 'hero') ? (slots.banner || slots.banner_mobile) : context === 'thumbnail' ? slots.thumb : null;
@@ -410,7 +561,7 @@ export function getOptimizedImage(
     return `${getStorageBaseUrl()}/${key.replace(/^\/+/, '')}`;
   }
 
-  if (source.id && EVENT_MEDIA_KEY_CACHE.has(source.id)) {
+  if (source.id && EVENT_MEDIA_KEY_CACHE.get(source.id)) {
     const key = EVENT_MEDIA_KEY_CACHE.get(source.id)!;
     if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
       return key;
@@ -470,7 +621,21 @@ export function getOptimizedImageSrcSet(
   let srcSet: string | undefined = undefined;
   let sizes: string | undefined = undefined;
 
-  if (baseSrc.includes('_card.webp')) {
+  if (baseSrc.endsWith('/card.webp')) {
+    const mobileSrc = baseSrc.replace('/card.webp', '/card_480w.webp');
+    srcSet = `${mobileSrc} 480w, ${baseSrc} 800w`;
+    sizes = `(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 800px`;
+  } else if (baseSrc.endsWith('/details.webp')) {
+    const mobileSrc = baseSrc.replace('/details.webp', '/details_640w.webp');
+    const tabletSrc = baseSrc.replace('/details.webp', '/details_800w.webp');
+    srcSet = `${mobileSrc} 640w, ${tabletSrc} 800w, ${baseSrc} 1280w`;
+    sizes = `(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 1280px`;
+  } else if (baseSrc.endsWith('/hero.webp')) {
+    const mobileSrc = baseSrc.replace('/hero.webp', '/hero_800w.webp');
+    const tabletSrc = baseSrc.replace('/hero.webp', '/hero_1200w.webp');
+    srcSet = `${mobileSrc} 800w, ${tabletSrc} 1200w, ${baseSrc} 1920w`;
+    sizes = `(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 1920px`;
+  } else if (baseSrc.includes('_card.webp')) {
     const mobileSrc = baseSrc.replace('_card.webp', '_card_mobile.webp');
     srcSet = `${mobileSrc} 800w, ${baseSrc} 1200w`;
     sizes = `(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 1200px`;

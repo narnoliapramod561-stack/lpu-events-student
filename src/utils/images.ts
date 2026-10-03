@@ -40,8 +40,24 @@ export function getResponsiveImageUrl(url: string, targetWidth?: number): string
   // 3. Same-origin Edge CDN image proxy for instant zero-latency HTTP/2 reuse
   if (url.startsWith('https://images.lpuevents.live/')) {
     let resolvedUrl = url;
-    // Serve lightweight responsive mobile/tablet WebP derivatives for optimized R2 banners
-    if (url.includes('/optimized/') && url.endsWith('_desktop.webp')) {
+    // Serve lightweight responsive mobile/tablet WebP derivatives for V2 placements
+    if (url.includes('/events/v2/')) {
+      if (url.endsWith('/card.webp') && effectiveWidth <= 480) {
+        resolvedUrl = url.replace('/card.webp', '/card_480w.webp');
+      } else if (url.endsWith('/details.webp')) {
+        if (effectiveWidth <= 640) {
+          resolvedUrl = url.replace('/details.webp', '/details_640w.webp');
+        } else if (effectiveWidth <= 800) {
+          resolvedUrl = url.replace('/details.webp', '/details_800w.webp');
+        }
+      } else if (url.endsWith('/hero.webp')) {
+        if (effectiveWidth <= 800) {
+          resolvedUrl = url.replace('/hero.webp', '/hero_800w.webp');
+        } else if (effectiveWidth <= 1200) {
+          resolvedUrl = url.replace('/hero.webp', '/hero_1200w.webp');
+        }
+      }
+    } else if (url.includes('/optimized/') && url.endsWith('_desktop.webp')) {
       if (effectiveWidth <= 640 || (isClient && screenWidth <= 640)) {
         resolvedUrl = url.replace('_desktop.webp', '_mobile.webp');
       } else if (effectiveWidth <= 1200 || (isClient && screenWidth <= 1024)) {

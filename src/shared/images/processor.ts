@@ -1,17 +1,18 @@
 /**
  * processor.ts
- * Core Image Processing & Optimization Engine
+ * Production Image Pipeline V2 — Deterministic Composition & Optimization Engine
  *
  * Implements:
- * - Smart Aspect Fit Modes:
- *     - 'cover': Center crop to exact aspect ratio (hero, card grids)
- *     - 'inside': Scale down within bounding box preserving 100% of the image without crop (posters/flyers with typography)
- *     - 'contain': Contain within bounds preserving alpha transparency (sponsor/partner logos)
- * - Multi-Step Smooth Downscaling (MIP-like step-down to avoid aliasing artifacts)
- * - No-Blind-Upscale Guard (preserves best quality without artificial upscaling/pixel-bloating)
- * - Deterministic SHA-256 Checksum Hashing & Processing Versioning (`v1`)
- * - Responsive Derivatives Generation (desktop, tablet, mobile)
- * - Modern WebP Compression with EXIF/metadata stripping
+ * - V2 Principle: Upload once -> Process once -> Store immutable in R2 -> Cache at CDN -> Reuse forever
+ * - Zero Artwork Loss: NO automatic cropping or blind center-crop for event posters
+ * - Aspect Ratio Match Tolerance: Direct proportional resize if aspect ratio matches within 2%
+ * - Adaptive Background Composition: Fixed target canvas with soft blurred ambient backdrop
+ *   and pristine, 100% uncropped foreground when aspect ratios differ
+ * - Strict Pixel Protection: Zero distortion, zero AI, zero automatic color/sharpening alteration
+ * - No-Blind-Upscale Guard: Never invent fake resolution for small source images
+ * - Independent Variant Geometry: Responsive derivatives independently calculate their own coordinates
+ * - Deterministic SHA-256 Content-Addressed Storage Keys
+ * - High-Fidelity WebP Encoding with Metadata Stripping
  */
 
 import {
@@ -19,14 +20,87 @@ import {
   IMAGE_CONTEXT_CONFIGS,
   ImageContextConfig,
   IMAGE_PIPELINE_VERSION,
+  V2_PIPELINE_VERSION,
+  ASPECT_RATIO_TOLERANCE,
+  PlacementKey,
+  CompositionMode,
+  V2_PLACEMENT_CONFIGS,
   EventSlotKey,
-  EVENT_SLOT_CONFIGS,
-  EventSlotConfig
+  EventPresentationKey
 } from './config';
 import { enhanceImageData } from './enhancer';
+import { calculateForegroundPlacement } from './expansion';
 
+export { calculateForegroundPlacement };
+
+// -----------------------------------------------------------------------------
+// V2 DATA STRUCTURES
+// -----------------------------------------------------------------------------
+
+export interface PlacementGeometry {
+  targetWidth: number;
+  targetHeight: number;
+  canvasWidth: number;
+  canvasHeight: number;
+  targetRatio: number;
+  sourceWidth: number;
+  sourceHeight: number;
+  sourceRatio: number;
+  relativeDiff: number;
+  composition: CompositionMode;
+  fgX: number;
+  fgY: number;
+  fgWidth: number;
+  fgHeight: number;
+  bgX: number;
+  bgY: number;
+  bgWidth: number;
+  bgHeight: number;
+  cropped: false;
+  distorted: false;
+}
+
+export interface ProcessedPlacementVariant {
+  name: string;
+  width: number;
+  height: number;
+  blob: Blob;
+  dataUrl: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  objectKey: string;
+}
+
+export interface ProcessedPlacementResult {
+  placement: PlacementKey;
+  label: string;
+  width: number;
+  height: number;
+  composition: CompositionMode;
+  cropped: false;
+  distorted: false;
+  blob: Blob;
+  dataUrl: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  objectKey: string;
+  variants: ProcessedPlacementVariant[];
+}
+
+export interface ProcessedSourceResult {
+  blob: Blob;
+  dataUrl: string;
+  width: number;
+  height: number;
+  fileSizeBytes: number;
+  mimeType: string;
+  objectKey: string;
+  checksum: string;
+}
+
+// Legacy compatibility interfaces
 export interface ProcessedVariantResult {
-  name: 'desktop' | 'tablet' | 'mobile';
+  name: 'desktop' | 'tablet' | 'mobile' | string;
   width: number;
   height: number;
   blob: Blob;
@@ -48,6 +122,28 @@ export interface ProcessedSlotResult {
   objectKey: string;
 }
 
+export interface ProcessedPresentationResult {
+  ratio: EventPresentationKey;
+  label: string;
+  width: number;
+  height: number;
+  blob: Blob;
+  dataUrl: string;
+  fileSizeBytes: number;
+  mimeType: string;
+  objectKey: string;
+}
+
+export interface ProcessedMasterResult {
+  blob: Blob;
+  dataUrl: string;
+  width: number;
+  height: number;
+  fileSizeBytes: number;
+  mimeType: string;
+  objectKey: string;
+}
+
 export interface ImageProcessingResult {
   context: ImageContext;
   pipelineVersion: number;
@@ -63,10 +159,20 @@ export interface ImageProcessingResult {
   primaryObjectKey: string;
   mimeType: string;
   variants: ProcessedVariantResult[];
+  // V2 Structured Results
+  source?: ProcessedSourceResult;
+  placements?: Record<PlacementKey, ProcessedPlacementResult>;
+  // Legacy Results for Backward Compatibility
+  presentations?: Record<EventPresentationKey, ProcessedPresentationResult>;
+  master?: ProcessedMasterResult;
   slots?: Record<EventSlotKey, ProcessedSlotResult>;
   compressionRatio: number;
   savingsPercentage: number;
 }
+
+// -----------------------------------------------------------------------------
+// CORE ALGORITHMS: GEOMETRY & PLACEMENT CALCULATION
+// -----------------------------------------------------------------------------
 
 /**
  * Computes SHA-256 hex string from ArrayBuffer
@@ -87,23 +193,107 @@ export async function computeBufferSha256(buffer: ArrayBuffer): Promise<string> 
 }
 
 /**
- * Calculates target dimensions respecting No-Blind-Upscale Guard and Fit Mode
+ * Production V2 Placement Geometry Calculation
+ * Independently calculates coordinates for each derivative:
+ * 1. Ratio Match Check: If relativeDifference <= 2%, DIRECT_PROPORTIONAL.
+ * 2. Mismatch: ADAPTIVE_BACKGROUND with centered uncropped foreground.
+ * 3. No-Blind-Upscale Guard: Small source artwork is not artificially upscaled.
+ * 4. Zero Foreground Crop: 100% of the artwork is visible.
+ */
+export function calculatePlacementGeometry(
+  srcWidth: number,
+  srcHeight: number,
+  targetWidth: number,
+  targetHeight: number,
+  tolerance: number = ASPECT_RATIO_TOLERANCE
+): PlacementGeometry {
+  const sourceRatio = srcWidth / srcHeight;
+  const targetRatio = targetWidth / targetHeight;
+  const relativeDiff = Math.abs(sourceRatio - targetRatio) / targetRatio;
+
+  // Case A: Source matches target ratio within tolerance (2%)
+  if (relativeDiff <= tolerance) {
+    return {
+      targetWidth,
+      targetHeight,
+      canvasWidth: targetWidth,
+      canvasHeight: targetHeight,
+      targetRatio,
+      sourceWidth: srcWidth,
+      sourceHeight: srcHeight,
+      sourceRatio,
+      relativeDiff,
+      composition: 'DIRECT_PROPORTIONAL',
+      fgX: 0,
+      fgY: 0,
+      fgWidth: targetWidth,
+      fgHeight: targetHeight,
+      bgX: 0,
+      bgY: 0,
+      bgWidth: 0,
+      bgHeight: 0,
+      cropped: false,
+      distorted: false
+    };
+  }
+
+  // Case B: Ratio mismatch -> Adaptive Background Composition
+  // 1. Foreground dimensions (No-Blind-Upscale Guard)
+  const scale =
+    srcWidth < targetWidth && srcHeight < targetHeight
+      ? Math.min(targetWidth / srcWidth, targetHeight / srcHeight, 1.0)
+      : Math.min(targetWidth / srcWidth, targetHeight / srcHeight);
+
+  const fgWidth = Math.max(1, Math.round(srcWidth * scale));
+  const fgHeight = Math.max(1, Math.round(srcHeight * scale));
+  const fgX = Math.round((targetWidth - fgWidth) / 2);
+  const fgY = Math.round((targetHeight - fgHeight) / 2);
+
+  // 2. Background dimensions (Cover fit to fill target canvas)
+  const bgScale = Math.max(targetWidth / srcWidth, targetHeight / srcHeight);
+  const bgWidth = Math.round(srcWidth * bgScale);
+  const bgHeight = Math.round(srcHeight * bgScale);
+  const bgX = Math.round((targetWidth - bgWidth) / 2);
+  const bgY = Math.round((targetHeight - bgHeight) / 2);
+
+  return {
+    targetWidth,
+    targetHeight,
+    canvasWidth: targetWidth,
+    canvasHeight: targetHeight,
+    targetRatio,
+    sourceWidth: srcWidth,
+    sourceHeight: srcHeight,
+    sourceRatio,
+    relativeDiff,
+    composition: 'ADAPTIVE_BACKGROUND',
+    fgX,
+    fgY,
+    fgWidth,
+    fgHeight,
+    bgX,
+    bgY,
+    bgWidth,
+    bgHeight,
+    cropped: false,
+    distorted: false
+  };
+}
+
+/**
+ * Calculates target dimensions for non-event media contexts
  */
 export function calculateTargetDimensions(
   srcWidth: number,
   srcHeight: number,
   targetMaxWidth: number,
   targetMaxHeight: number,
-  fitMode: 'cover' | 'contain' | 'inside' = 'cover',
+  fitMode: 'cover' | 'contain' | 'inside' = 'inside',
   aspectRatio?: number
 ): { width: number; height: number; cropX: number; cropY: number; cropWidth: number; cropHeight: number } {
-  // 1. NO-BLIND-UPSCALE GUARD:
-  // If the source image is already smaller than target bounds, do NOT blow it up to a blurry giant canvas.
   const maxWidth = Math.min(srcWidth, targetMaxWidth);
   const maxHeight = Math.min(srcHeight, targetMaxHeight);
 
-  // 2. INSIDE FIT MODE (For posters/flyers/artwork):
-  // Scales down to fit inside max width & max height while keeping 100% of the image without any crop.
   if (fitMode === 'inside' || fitMode === 'contain') {
     const scale = Math.min(maxWidth / srcWidth, maxHeight / srcHeight, 1.0);
     const width = Math.max(1, Math.round(srcWidth * scale));
@@ -118,8 +308,7 @@ export function calculateTargetDimensions(
     };
   }
 
-  // 3. COVER FIT MODE (For uniform grids / widescreen banners):
-  // Center crops to target aspect ratio then scales down cleanly.
+  // Cover fit for non-event banners/avatars (non-artwork)
   const targetRatio = aspectRatio || targetMaxWidth / targetMaxHeight;
   const srcRatio = srcWidth / srcHeight;
 
@@ -129,16 +318,13 @@ export function calculateTargetDimensions(
   let cropY = 0;
 
   if (srcRatio > targetRatio) {
-    // Source is wider than target: center crop horizontal edges
     cropWidth = Math.round(srcHeight * targetRatio);
     cropX = Math.round((srcWidth - cropWidth) / 2);
   } else {
-    // Source is taller than target: center crop vertical edges
     cropHeight = Math.round(srcWidth / targetRatio);
     cropY = Math.round((srcHeight - cropHeight) / 2);
   }
 
-  // Scale down to bounded target dimensions
   let width = Math.min(cropWidth, targetMaxWidth);
   let height = Math.round(width / targetRatio);
 
@@ -157,9 +343,10 @@ export function calculateTargetDimensions(
   };
 }
 
-/**
- * Loads an image from File, Blob, or URL into an HTMLImageElement
- */
+// -----------------------------------------------------------------------------
+// BROWSER CANVAS RENDERING & ENCODING
+// -----------------------------------------------------------------------------
+
 function loadImageElement(source: Blob | string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     if (typeof window === 'undefined') {
@@ -190,9 +377,6 @@ function loadImageElement(source: Blob | string): Promise<HTMLImageElement> {
   });
 }
 
-/**
- * Converts a Canvas to a compressed WebP/AVIF Blob and DataURL
- */
 function canvasToBlob(
   canvas: HTMLCanvasElement,
   mimeType: string,
@@ -216,11 +400,10 @@ function canvasToBlob(
 }
 
 /**
- * High-quality multi-step downsampler
- * Steps down by 50% iteratively to avoid shimmering / aliasing before final pass.
+ * Multi-Step Smooth Downsampler to avoid aliasing artifacts
  */
 function renderDownscaledCanvas(
-  img: HTMLImageElement,
+  img: HTMLImageElement | HTMLCanvasElement,
   cropX: number,
   cropY: number,
   cropW: number,
@@ -232,7 +415,7 @@ function renderDownscaledCanvas(
   curCanvas.width = cropW;
   curCanvas.height = cropH;
 
-  let ctx = curCanvas.getContext('2d', { willReadFrequently: true });
+  const ctx = curCanvas.getContext('2d', { willReadFrequently: true });
   if (!ctx) throw new Error('Could not obtain 2D rendering context.');
 
   ctx.imageSmoothingEnabled = true;
@@ -277,183 +460,97 @@ function renderDownscaledCanvas(
 }
 
 /**
- * Synthesizes a native aspect-ratio slot canvas with full-cover stretch (Paper Mâché feel).
- * Stretches the source flyer/artwork cleanly across 100% of target dimensions,
- * eliminating all ambient blurred sidebars/wings while preserving all text and details.
+ * V2 Composition: Generates a fixed-ratio placement canvas with zero foreground crop.
+ * - DIRECT_PROPORTIONAL: Proportional downscale if source matches target ratio within 2%.
+ * - ADAPTIVE_BACKGROUND: Soft blurred background + darkening + 100% untouched foreground.
  */
-export function synthesizeSlotCanvas(
-  img: HTMLImageElement,
+export function composeEventPlacementCanvas(
+  img: HTMLImageElement | HTMLCanvasElement,
   targetWidth: number,
-  targetHeight: number,
-  enhancementConfig?: any
-): HTMLCanvasElement {
+  targetHeight: number
+): { canvas: HTMLCanvasElement; geometry: PlacementGeometry } {
+  const srcW = (img as HTMLImageElement).naturalWidth || img.width;
+  const srcH = (img as HTMLImageElement).naturalHeight || img.height;
+
+  const geometry = calculatePlacementGeometry(srcW, srcH, targetWidth, targetHeight);
+
   const canvas = document.createElement('canvas');
   canvas.width = targetWidth;
   canvas.height = targetHeight;
   const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) throw new Error('Could not create slot 2D canvas context.');
-
-  const srcW = img.naturalWidth || img.width;
-  const srcH = img.naturalHeight || img.height;
-
-  // Stretched Full-Cover Canvas: Fills 100% of target slot dimensions edge-to-edge
-  const stretched = renderDownscaledCanvas(img, 0, 0, srcW, srcH, targetWidth, targetHeight);
-
-  if (enhancementConfig?.enabled) {
-    const pCtx = stretched.getContext('2d', { willReadFrequently: true });
-    if (pCtx) {
-      const pData = pCtx.getImageData(0, 0, targetWidth, targetHeight);
-      const enhanced = enhanceImageData(pData, enhancementConfig);
-      pCtx.putImageData(enhanced, 0, 0);
-    }
-  }
-
-  ctx.drawImage(stretched, 0, 0, targetWidth, targetHeight);
-  return canvas;
-}
-
-/**
- * Tier 1: Cloudflare Workers AI Inpainting / Outpainting Gateway
- * Attempts serverless edge AI outpainting if Cloudflare credentials are configured.
- * Seamlessly returns null if unavailable/fails, triggering Tier 2 (Algorithmic Canvas Extender).
- */
-export async function tryCloudflareWorkersAiOutpaint(
-  sourceBlob: Blob,
-  _targetWidth: number,
-  _targetHeight: number
-): Promise<HTMLImageElement | null> {
-  try {
-    const cfToken = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CLOUDFLARE_API_TOKEN) || '';
-    const cfAccountId = (typeof import.meta !== 'undefined' && import.meta.env?.VITE_CLOUDFLARE_ACCOUNT_ID) || 'ebc6930d2f0caf22655c09bd8296e9e1';
-
-    if (!cfToken) {
-      // Cloudflare token not configured; gracefully fall back to Tier 2 Canvas Extender
-      return null;
-    }
-
-    const endpoint = `https://api.cloudflare.com/client/v4/accounts/${cfAccountId}/ai/run/@cf/runwayml/stable-diffusion-v1-5-inpainting`;
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
-
-    const formData = new FormData();
-    formData.append('image', sourceBlob);
-    formData.append('prompt', 'seamless extended background scenery, matching ambient environment, photorealistic, high quality');
-
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${cfToken}`,
-      },
-      body: formData,
-      signal: controller.signal,
-    });
-
-    clearTimeout(timeout);
-
-    if (!res.ok) {
-      console.warn('[ImagePipeline] Cloudflare Workers AI responded with status:', res.status);
-      return null;
-    }
-
-    const aiBlob = await res.blob();
-    return await loadImageElement(aiBlob);
-  } catch (err) {
-    console.warn('[ImagePipeline] Cloudflare Workers AI outpaint failed, falling back to Canvas:', err);
-    return null;
-  }
-}
-
-/**
- * Tier 2: Smart Algorithmic Content-Aware Canvas Extender
- * Extends non-16:9 images (square 1:1, portrait 4:5) into a native 16:9 widescreen canvas:
- * 1. Scales and diffuses matching background scenery across the full 16:9 width
- * 2. Feathers the transition borders so there are zero harsh edges
- * 3. Keeps 100% of the original poster data in the center with zero cropping and maximum sharpness
- */
-export function renderSmartExtendedCanvas(
-  img: HTMLImageElement,
-  targetWidth: number,
-  targetHeight: number,
-  _targetRatio: number = 16 / 9
-): HTMLCanvasElement {
-  const srcW = img.naturalWidth || img.width;
-  const srcH = img.naturalHeight || img.height;
-  const srcRatio = srcW / srcH;
-
-  // If already widescreen (ratio >= 1.6), no extension needed
-  if (srcRatio >= 1.6) {
-    return renderDownscaledCanvas(img, 0, 0, srcW, srcH, targetWidth, targetHeight);
-  }
-
-  // Create native 16:9 target canvas
-  const canvas = document.createElement('canvas');
-  canvas.width = targetWidth;
-  canvas.height = targetHeight;
-  const ctx = canvas.getContext('2d', { willReadFrequently: true });
-  if (!ctx) throw new Error('Could not obtain 2D rendering context for smart extension.');
+  if (!ctx) throw new Error('Could not create 2D canvas context for placement composition.');
 
   ctx.imageSmoothingEnabled = true;
   ctx.imageSmoothingQuality = 'high';
 
-  // 1. LAYER 1: Background Scenery Extension
-  // Scale image to cover entire 16:9 bounds and apply smooth blur & vibrance
-  const bgScale = Math.max(targetWidth / srcW, targetHeight / srcH);
-  const bgW = Math.round(srcW * bgScale);
-  const bgH = Math.round(srcH * bgScale);
-  const bgX = Math.round((targetWidth - bgW) / 2);
-  const bgY = Math.round((targetHeight - bgH) / 2);
-
-  ctx.save();
-  ctx.filter = 'blur(28px) saturate(1.35) brightness(1.02)';
-  ctx.drawImage(img, bgX, bgY, bgW, bgH);
-  ctx.restore();
-
-  // Subtle ambient darkening to ensure foreground pop
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-  ctx.fillRect(0, 0, targetWidth, targetHeight);
-
-  // 2. LAYER 2: Centered 100% Sharp Original Poster (Zero Crop, Zero Zoom)
-  const fgScale = Math.min(targetWidth / srcW, targetHeight / srcH);
-  const fgW = Math.round(srcW * fgScale);
-  const fgH = Math.round(srcH * fgScale);
-  const fgX = Math.round((targetWidth - fgW) / 2);
-  const fgY = Math.round((targetHeight - fgH) / 2);
-
-  // Soft edge feathering on the left and right border of the foreground image
-  const fgCanvas = document.createElement('canvas');
-  fgCanvas.width = fgW;
-  fgCanvas.height = fgH;
-  const fgCtx = fgCanvas.getContext('2d');
-  if (fgCtx) {
-    fgCtx.imageSmoothingEnabled = true;
-    fgCtx.imageSmoothingQuality = 'high';
-    fgCtx.drawImage(img, 0, 0, fgW, fgH);
-
-    // Apply horizontal edge feathering
-    fgCtx.globalCompositeOperation = 'destination-in';
-    const featherGrad = fgCtx.createLinearGradient(0, 0, fgW, 0);
-    const featherPx = Math.min(24, Math.round(fgW * 0.03));
-    featherGrad.addColorStop(0, 'rgba(0,0,0,0)');
-    featherGrad.addColorStop(featherPx / fgW, 'rgba(0,0,0,1)');
-    featherGrad.addColorStop(1 - featherPx / fgW, 'rgba(0,0,0,1)');
-    featherGrad.addColorStop(1, 'rgba(0,0,0,0)');
-    fgCtx.fillStyle = featherGrad;
-    fgCtx.fillRect(0, 0, fgW, fgH);
-
-    // Composite feathered foreground over extended background
-    ctx.drawImage(fgCanvas, fgX, fgY);
-  } else {
-    ctx.drawImage(img, fgX, fgY, fgW, fgH);
+  // Case A: Direct proportional resizing (ratios match within tolerance)
+  if (geometry.composition === 'DIRECT_PROPORTIONAL') {
+    ctx.drawImage(img, 0, 0, srcW, srcH, 0, 0, targetWidth, targetHeight);
+    return { canvas, geometry };
   }
 
-  return canvas;
+  // Case B: Adaptive Background Composition
+  // 1. Render Blurred Ambient Background
+  // Slightly expand background dimensions to avoid edge bleed from blur radius
+  const marginScale = 1.08;
+  const mBgW = Math.round(geometry.bgWidth * marginScale);
+  const mBgH = Math.round(geometry.bgHeight * marginScale);
+  const mBgX = Math.round((targetWidth - mBgW) / 2);
+  const mBgY = Math.round((targetHeight - mBgH) / 2);
+
+  ctx.save();
+  if ('filter' in ctx) {
+    ctx.filter = 'blur(28px)';
+  }
+  ctx.drawImage(img, 0, 0, srcW, srcH, mBgX, mBgY, mBgW, mBgH);
+  ctx.restore();
+
+  // 2. Subtle Luminance / Darkening Treatment (ensures foreground artwork clearly pops)
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.22)';
+  ctx.fillRect(0, 0, targetWidth, targetHeight);
+
+  // 3. MANDATORY FOREGROUND PIXEL PROTECTION:
+  // Render untouched original source artwork centered at [fgX, fgY, fgWidth, fgHeight]
+  // Zero crop, zero distortion, zero sharpening or color alteration
+  ctx.drawImage(
+    img,
+    0,
+    0,
+    srcW,
+    srcH,
+    geometry.fgX,
+    geometry.fgY,
+    geometry.fgWidth,
+    geometry.fgHeight
+  );
+
+  return { canvas, geometry };
 }
+
+/**
+ * Backward compatibility alias for expandEventPosterCanvas
+ */
+export function expandEventPosterCanvas(
+  img: HTMLImageElement | HTMLCanvasElement,
+  targetWidth: number,
+  targetHeight: number
+): HTMLCanvasElement {
+  return composeEventPlacementCanvas(img, targetWidth, targetHeight).canvas;
+}
+
+// -----------------------------------------------------------------------------
+// MAIN CENTRALIZED IMAGE PROCESSING ORCHESTRATOR
+// -----------------------------------------------------------------------------
 
 /**
  * Main Centralized Image Processing Function
  *
- * Processes any input image file into optimized, enhanced WebP derivatives
- * tailored precisely for its target UI context and processing version.
+ * For Event Images (event-banner, hero, event-card):
+ * - Uploads one source image ONCE.
+ * - Generates immutable master + all required placement derivatives (hero, card, details)
+ *   and responsive variants ONCE at upload time.
+ * - Zero crop, zero distortion, zero automatic enhancement on event artwork.
+ * - Outputs deterministic, content-addressed R2 keys (`events/v2/...`).
  */
 export async function processImageForContext(
   fileOrBlob: Blob,
@@ -464,83 +561,287 @@ export async function processImageForContext(
     throw new Error(`Unknown image context "${context}".`);
   }
 
-  // 1. Calculate deterministic hash from source buffer
+  // 1. Calculate deterministic SHA-256 hash from source buffer
   const originalBuffer = await fileOrBlob.arrayBuffer();
   const checksum = await computeBufferSha256(originalBuffer);
   const hashPrefix = checksum.slice(0, 4);
-  const vTag = `v${IMAGE_PIPELINE_VERSION}`;
+  const vTag = `v${V2_PIPELINE_VERSION}`;
 
   // 2. Load into image element for pixel processing
-  let img = await loadImageElement(fileOrBlob);
+  const img = await loadImageElement(fileOrBlob);
   const srcWidth = img.naturalWidth || img.width;
   const srcHeight = img.naturalHeight || img.height;
-  const srcRatio = srcWidth / srcHeight;
 
-  const isPosterContext = context === 'event-banner' || context === 'hero' || context === 'event-card';
-  const shouldSmartExtend = isPosterContext && srcRatio < 1.6;
+  const isEventContext = context === 'event-banner' || context === 'hero' || context === 'event-card';
 
-  // Determine target dimensions: if extending non-widescreen poster, use native 16:9 canvas
-  const effectiveTargetDims = shouldSmartExtend
-    ? {
-        width: Math.min(config.maxWidth, Math.max(srcWidth, Math.round(srcHeight * config.aspectRatio))),
-        height: Math.min(config.maxHeight, srcHeight),
-        cropX: 0,
-        cropY: 0,
-        cropWidth: srcWidth,
-        cropHeight: srcHeight,
-      }
-    : calculateTargetDimensions(
-        srcWidth,
-        srcHeight,
-        config.maxWidth,
-        config.maxHeight,
-        config.fitMode,
-        config.aspectRatio
-      );
+  // ---------------------------------------------------------------------------
+  // PRODUCTION IMAGE PIPELINE V2 FOR EVENT ARTWORK
+  // ---------------------------------------------------------------------------
+  if (isEventContext) {
+    const ext =
+      fileOrBlob.type === 'image/png'
+        ? 'png'
+        : fileOrBlob.type === 'image/webp'
+        ? 'webp'
+        : 'jpg';
 
-  // 3. Render and downscale to primary desktop size
-  let primaryCanvas: HTMLCanvasElement;
+    // 1. Master / Source Asset Preservation (Immutable Raw Master)
+    const masterKey = `events/${vTag}/${hashPrefix}/${checksum}/source.${ext}`;
+    const sourceResult: ProcessedSourceResult = {
+      blob: fileOrBlob,
+      dataUrl: URL.createObjectURL(fileOrBlob),
+      width: srcWidth,
+      height: srcHeight,
+      fileSizeBytes: originalBuffer.byteLength,
+      mimeType: fileOrBlob.type || 'image/jpeg',
+      objectKey: masterKey,
+      checksum
+    };
 
-  if (shouldSmartExtend) {
-    // Tier 1: Try Cloudflare Workers AI Inpainting
-    const aiImg = await tryCloudflareWorkersAiOutpaint(
-      fileOrBlob,
-      effectiveTargetDims.width,
-      effectiveTargetDims.height
-    );
+    const placementsMap: Record<PlacementKey, ProcessedPlacementResult> = {} as any;
+    const allVariants: ProcessedVariantResult[] = [];
 
-    if (aiImg) {
-      primaryCanvas = renderDownscaledCanvas(
-        aiImg,
-        0,
-        0,
-        aiImg.naturalWidth || aiImg.width,
-        aiImg.naturalHeight || aiImg.height,
-        effectiveTargetDims.width,
-        effectiveTargetDims.height
-      );
-    } else {
-      // Tier 2: Algorithmic Canvas Smart Extender (100% Free & Reliable Fallback)
-      primaryCanvas = renderSmartExtendedCanvas(
+    // 2. Generate Each Required Placement Derivative ONCE
+    for (const [key, pConfig] of Object.entries(V2_PLACEMENT_CONFIGS) as [PlacementKey, any][]) {
+      // Primary Placement Canvas Composition
+      const { canvas: primaryCanvas, geometry } = composeEventPlacementCanvas(
         img,
-        effectiveTargetDims.width,
-        effectiveTargetDims.height,
-        config.aspectRatio
+        pConfig.targetWidth,
+        pConfig.targetHeight
       );
+
+      const { blob: pBlob, dataUrl: pDataUrl } = await canvasToBlob(
+        primaryCanvas,
+        'image/webp',
+        pConfig.quality
+      );
+
+      const primaryObjectKey = `events/${vTag}/${hashPrefix}/${checksum}/${key}.webp`;
+
+      // Responsive Variants for this Placement
+      const placementVariants: ProcessedPlacementVariant[] = [];
+
+      for (const variant of pConfig.variants) {
+        // Each variant independently calculates its own geometry and canvas
+        const { canvas: varCanvas } = composeEventPlacementCanvas(
+          img,
+          variant.width,
+          variant.height
+        );
+
+        const { blob: varBlob, dataUrl: varDataUrl } = await canvasToBlob(
+          varCanvas,
+          'image/webp',
+          variant.quality
+        );
+
+        const varObjectKey = `events/${vTag}/${hashPrefix}/${checksum}/${key}_${variant.name}.webp`;
+
+        placementVariants.push({
+          name: variant.name,
+          width: variant.width,
+          height: variant.height,
+          blob: varBlob,
+          dataUrl: varDataUrl,
+          fileSizeBytes: varBlob.size,
+          mimeType: 'image/webp',
+          objectKey: varObjectKey
+        });
+
+        allVariants.push({
+          name: `${key}_${variant.name}`,
+          width: variant.width,
+          height: variant.height,
+          blob: varBlob,
+          dataUrl: varDataUrl,
+          fileSizeBytes: varBlob.size,
+          mimeType: 'image/webp',
+          objectKey: varObjectKey
+        });
+      }
+
+      placementsMap[key] = {
+        placement: key,
+        label: pConfig.label,
+        width: pConfig.targetWidth,
+        height: pConfig.targetHeight,
+        composition: geometry.composition,
+        cropped: false,
+        distorted: false,
+        blob: pBlob,
+        dataUrl: pDataUrl,
+        fileSizeBytes: pBlob.size,
+        mimeType: 'image/webp',
+        objectKey: primaryObjectKey,
+        variants: placementVariants
+      };
+
+      allVariants.push({
+        name: key,
+        width: pConfig.targetWidth,
+        height: pConfig.targetHeight,
+        blob: pBlob,
+        dataUrl: pDataUrl,
+        fileSizeBytes: pBlob.size,
+        mimeType: 'image/webp',
+        objectKey: primaryObjectKey
+      });
     }
-  } else {
-    primaryCanvas = renderDownscaledCanvas(
-      img,
-      effectiveTargetDims.cropX,
-      effectiveTargetDims.cropY,
-      effectiveTargetDims.cropWidth,
-      effectiveTargetDims.cropHeight,
-      effectiveTargetDims.width,
-      effectiveTargetDims.height
-    );
+
+    // Determine primary derivative based on the calling context
+    let primaryPlacement: ProcessedPlacementResult;
+    if (context === 'hero') {
+      primaryPlacement = placementsMap.hero;
+    } else if (context === 'event-card') {
+      primaryPlacement = placementsMap.card;
+    } else {
+      primaryPlacement = placementsMap.details;
+    }
+
+    const originalSize = fileOrBlob.size;
+    const primarySize = primaryPlacement.fileSizeBytes;
+    const ratio = primarySize / Math.max(1, originalSize);
+    const savingsPct = Math.max(0, Number(((1 - ratio) * 100).toFixed(1)));
+
+    // Legacy Presentations & Slots Mapping for Seamless Compatibility
+    const legacyPresentations: Record<EventPresentationKey, ProcessedPresentationResult> = {
+      '16:9': {
+        ratio: '16:9',
+        label: 'Standard Widescreen Presentation (16:9)',
+        width: placementsMap.details.width,
+        height: placementsMap.details.height,
+        blob: placementsMap.details.blob,
+        dataUrl: placementsMap.details.dataUrl,
+        fileSizeBytes: placementsMap.details.fileSizeBytes,
+        mimeType: 'image/webp',
+        objectKey: placementsMap.details.objectKey
+      },
+      '7:5': {
+        ratio: '7:5',
+        label: 'Mobile Adaptive Presentation (7:5)',
+        width: placementsMap.card.width,
+        height: placementsMap.card.height,
+        blob: placementsMap.card.blob,
+        dataUrl: placementsMap.card.dataUrl,
+        fileSizeBytes: placementsMap.card.fileSizeBytes,
+        mimeType: 'image/webp',
+        objectKey: placementsMap.card.objectKey
+      }
+    };
+
+    const legacySlots: Record<EventSlotKey, ProcessedSlotResult> = {
+      card: {
+        slot: 'card',
+        label: 'Event Card',
+        width: placementsMap.card.width,
+        height: placementsMap.card.height,
+        blob: placementsMap.card.blob,
+        dataUrl: placementsMap.card.dataUrl,
+        fileSizeBytes: placementsMap.card.fileSizeBytes,
+        mimeType: 'image/webp',
+        objectKey: placementsMap.card.objectKey
+      },
+      card_mobile: {
+        slot: 'card_mobile',
+        label: 'Event Card Mobile',
+        width: placementsMap.card.variants[0]?.width || 480,
+        height: placementsMap.card.variants[0]?.height || 288,
+        blob: placementsMap.card.variants[0]?.blob || placementsMap.card.blob,
+        dataUrl: placementsMap.card.variants[0]?.dataUrl || placementsMap.card.dataUrl,
+        fileSizeBytes: placementsMap.card.variants[0]?.fileSizeBytes || placementsMap.card.fileSizeBytes,
+        mimeType: 'image/webp',
+        objectKey: placementsMap.card.variants[0]?.objectKey || placementsMap.card.objectKey
+      },
+      banner: {
+        slot: 'banner',
+        label: 'Event Details Banner',
+        width: placementsMap.details.width,
+        height: placementsMap.details.height,
+        blob: placementsMap.details.blob,
+        dataUrl: placementsMap.details.dataUrl,
+        fileSizeBytes: placementsMap.details.fileSizeBytes,
+        mimeType: 'image/webp',
+        objectKey: placementsMap.details.objectKey
+      },
+      banner_mobile: {
+        slot: 'banner_mobile',
+        label: 'Event Details Banner Mobile',
+        width: placementsMap.details.variants[0]?.width || 800,
+        height: placementsMap.details.variants[0]?.height || 450,
+        blob: placementsMap.details.variants[0]?.blob || placementsMap.details.blob,
+        dataUrl: placementsMap.details.variants[0]?.dataUrl || placementsMap.details.dataUrl,
+        fileSizeBytes: placementsMap.details.variants[0]?.fileSizeBytes || placementsMap.details.fileSizeBytes,
+        mimeType: 'image/webp',
+        objectKey: placementsMap.details.variants[0]?.objectKey || placementsMap.details.objectKey
+      },
+      thumb: {
+        slot: 'thumb',
+        label: 'Thumbnail',
+        width: 400,
+        height: 400,
+        blob: placementsMap.card.blob,
+        dataUrl: placementsMap.card.dataUrl,
+        fileSizeBytes: placementsMap.card.fileSizeBytes,
+        mimeType: 'image/webp',
+        objectKey: placementsMap.card.objectKey
+      }
+    };
+
+    return {
+      context,
+      pipelineVersion: V2_PIPELINE_VERSION,
+      checksum,
+      originalWidth: srcWidth,
+      originalHeight: srcHeight,
+      originalSizeBytes: originalSize,
+      primaryWidth: primaryPlacement.width,
+      primaryHeight: primaryPlacement.height,
+      primarySizeBytes: primaryPlacement.fileSizeBytes,
+      primaryBlob: primaryPlacement.blob,
+      primaryDataUrl: primaryPlacement.dataUrl,
+      primaryObjectKey: primaryPlacement.objectKey,
+      mimeType: 'image/webp',
+      variants: allVariants,
+      source: sourceResult,
+      placements: placementsMap,
+      master: {
+        blob: sourceResult.blob,
+        dataUrl: sourceResult.dataUrl,
+        width: sourceResult.width,
+        height: sourceResult.height,
+        fileSizeBytes: sourceResult.fileSizeBytes,
+        mimeType: sourceResult.mimeType,
+        objectKey: sourceResult.objectKey
+      },
+      presentations: legacyPresentations,
+      slots: legacySlots,
+      compressionRatio: Number(ratio.toFixed(3)),
+      savingsPercentage: savingsPct
+    };
   }
 
-  // 4. Apply deterministic visual quality enhancement (if enabled for context)
+  // ---------------------------------------------------------------------------
+  // STANDARD PIPELINE FOR NON-EVENT MEDIA (advertisements, logos, memory, etc.)
+  // ---------------------------------------------------------------------------
+  const effectiveTargetDims = calculateTargetDimensions(
+    srcWidth,
+    srcHeight,
+    config.maxWidth,
+    config.maxHeight,
+    config.fitMode,
+    config.aspectRatio
+  );
+
+  const primaryCanvas = renderDownscaledCanvas(
+    img,
+    effectiveTargetDims.cropX,
+    effectiveTargetDims.cropY,
+    effectiveTargetDims.cropWidth,
+    effectiveTargetDims.cropHeight,
+    effectiveTargetDims.width,
+    effectiveTargetDims.height
+  );
+
   const primaryCtx = primaryCanvas.getContext('2d', { willReadFrequently: true });
   if (primaryCtx && config.enhancement.enabled) {
     const imgData = primaryCtx.getImageData(0, 0, effectiveTargetDims.width, effectiveTargetDims.height);
@@ -548,7 +849,6 @@ export async function processImageForContext(
     primaryCtx.putImageData(enhanced, 0, 0);
   }
 
-  // 5. Encode primary derivative to modern WebP
   const { blob: primaryBlob, dataUrl: primaryDataUrl } = await canvasToBlob(
     primaryCanvas,
     config.outputFormat,
@@ -556,8 +856,6 @@ export async function processImageForContext(
   );
 
   const primaryObjectKey = `optimized/${context}/${vTag}/${hashPrefix}/${checksum}_desktop.webp`;
-
-  // 6. Generate responsive variants (e.g. tablet, mobile) if configured
   const variantResults: ProcessedVariantResult[] = [];
 
   for (const variant of config.variants) {
@@ -575,43 +873,24 @@ export async function processImageForContext(
       continue;
     }
 
-    const varDims = shouldSmartExtend
-      ? {
-          width: variant.width,
-          height: variant.height,
-          cropX: 0,
-          cropY: 0,
-          cropWidth: effectiveTargetDims.width,
-          cropHeight: effectiveTargetDims.height
-        }
-      : calculateTargetDimensions(
-          srcWidth,
-          srcHeight,
-          variant.width,
-          variant.height,
-          config.fitMode,
-          config.aspectRatio
-        );
+    const varDims = calculateTargetDimensions(
+      srcWidth,
+      srcHeight,
+      variant.width,
+      variant.height,
+      config.fitMode,
+      config.aspectRatio
+    );
 
-    const varCanvas = shouldSmartExtend
-      ? renderDownscaledCanvas(
-          primaryCanvas as any,
-          0,
-          0,
-          effectiveTargetDims.width,
-          effectiveTargetDims.height,
-          variant.width,
-          variant.height
-        )
-      : renderDownscaledCanvas(
-          img,
-          varDims.cropX,
-          varDims.cropY,
-          varDims.cropWidth,
-          varDims.cropHeight,
-          varDims.width,
-          varDims.height
-        );
+    const varCanvas = renderDownscaledCanvas(
+      img,
+      varDims.cropX,
+      varDims.cropY,
+      varDims.cropWidth,
+      varDims.cropHeight,
+      varDims.width,
+      varDims.height
+    );
 
     const varCtx = varCanvas.getContext('2d', { willReadFrequently: true });
     if (varCtx && config.enhancement.enabled) {
@@ -640,44 +919,6 @@ export async function processImageForContext(
     });
   }
 
-  // 7. Automated Multi-Slot Responsive Synthesis (for event images)
-  const slotResults: Partial<Record<EventSlotKey, ProcessedSlotResult>> = {};
-  if (context === 'event-banner' || context === 'event-card') {
-    for (const [slotKey, slotConfig] of Object.entries(EVENT_SLOT_CONFIGS) as [EventSlotKey, EventSlotConfig][]) {
-      const slotCanvas = synthesizeSlotCanvas(
-        img,
-        slotConfig.targetWidth,
-        slotConfig.targetHeight,
-        config.enhancement
-      );
-
-      const { blob: slotBlob, dataUrl: slotDataUrl } = await canvasToBlob(
-        slotCanvas,
-        config.outputFormat,
-        slotConfig.quality
-      );
-
-      const slotContext = slotKey.startsWith('card')
-        ? 'event-card'
-        : slotKey.startsWith('banner')
-        ? 'event-banner'
-        : 'thumbnail';
-      const slotObjectKey = `optimized/${slotContext}/${vTag}/${hashPrefix}/${checksum}${slotConfig.objectSuffix}`;
-
-      slotResults[slotKey] = {
-        slot: slotKey,
-        label: slotConfig.label,
-        width: slotConfig.targetWidth,
-        height: slotConfig.targetHeight,
-        blob: slotBlob,
-        dataUrl: slotDataUrl,
-        fileSizeBytes: slotBlob.size,
-        mimeType: config.outputFormat,
-        objectKey: slotObjectKey
-      };
-    }
-  }
-
   const originalSize = fileOrBlob.size;
   const primarySize = primaryBlob.size;
   const ratio = primarySize / Math.max(1, originalSize);
@@ -698,7 +939,6 @@ export async function processImageForContext(
     primaryObjectKey,
     mimeType: config.outputFormat,
     variants: variantResults,
-    slots: Object.keys(slotResults).length > 0 ? (slotResults as Record<EventSlotKey, ProcessedSlotResult>) : undefined,
     compressionRatio: Number(ratio.toFixed(3)),
     savingsPercentage: savingsPct
   };

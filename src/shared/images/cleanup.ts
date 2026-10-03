@@ -115,7 +115,7 @@ export async function cleanupPhysicalMediaAssets(
 
       result.unreferencedCount++;
 
-      // 3. Gather all physical R2 keys to purge (primary + responsive variants)
+      // 3. Gather all physical R2 keys to purge (primary + responsive variants + presentations + master)
       const keysToPurge: string[] = [];
 
       if (asset.object_key && !asset.object_key.startsWith('http') && !asset.object_key.startsWith('data:')) {
@@ -128,6 +128,49 @@ export async function cleanupPhysicalMediaAssets(
           if (variant.object_key && !variant.object_key.startsWith('http') && !variant.object_key.startsWith('data:')) {
             if (!keysToPurge.includes(variant.object_key)) {
               keysToPurge.push(variant.object_key);
+            }
+          }
+        }
+      }
+
+      // V2: Purge presentation derivative keys
+      if (metadata?.presentations && typeof metadata.presentations === 'object') {
+        for (const pres of Object.values(metadata.presentations) as any[]) {
+          if (pres?.object_key && !pres.object_key.startsWith('http') && !pres.object_key.startsWith('data:')) {
+            if (!keysToPurge.includes(pres.object_key)) {
+              keysToPurge.push(pres.object_key);
+            }
+          }
+        }
+      }
+
+      // V2: Purge master / source key
+      if (metadata?.master?.object_key && !metadata.master.object_key.startsWith('http') && !metadata.master.object_key.startsWith('data:')) {
+        if (!keysToPurge.includes(metadata.master.object_key)) {
+          keysToPurge.push(metadata.master.object_key);
+        }
+      }
+      if (metadata?.source?.object_key && !metadata.source.object_key.startsWith('http') && !metadata.source.object_key.startsWith('data:')) {
+        if (!keysToPurge.includes(metadata.source.object_key)) {
+          keysToPurge.push(metadata.source.object_key);
+        }
+      }
+
+      // V2: Purge placement derivative keys (hero, card, details) and their variants
+      if (metadata?.placement && typeof metadata.placement === 'object') {
+        for (const p of Object.values(metadata.placement) as any[]) {
+          if (p?.object_key && !p.object_key.startsWith('http') && !p.object_key.startsWith('data:')) {
+            if (!keysToPurge.includes(p.object_key)) {
+              keysToPurge.push(p.object_key);
+            }
+          }
+          if (p?.variants && Array.isArray(p.variants)) {
+            for (const v of p.variants) {
+              if (v?.object_key && !v.object_key.startsWith('http') && !v.object_key.startsWith('data:')) {
+                if (!keysToPurge.includes(v.object_key)) {
+                  keysToPurge.push(v.object_key);
+                }
+              }
             }
           }
         }

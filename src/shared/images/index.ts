@@ -12,3 +12,4 @@ export * from './uploader';
 export * from './cleanup';
 export * from './storage';
 export * from './defaults';
+export * from './expansion';

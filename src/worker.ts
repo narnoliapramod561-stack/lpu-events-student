@@ -245,7 +245,12 @@ function escapeHtml(str: string): string {
  * Build the image URL from an event's media_assets relation.
  */
 function getEventImageUrl(event: any): string {
-  const objectKey = event?.media_assets?.object_key;
+  const metadata = event?.media_assets?.metadata;
+  const placementKey =
+    metadata?.placement?.details?.object_key ||
+    metadata?.placement?.card?.object_key ||
+    metadata?.placement?.hero?.object_key;
+  const objectKey = placementKey || event?.media_assets?.object_key;
   if (!objectKey) return `${SITE_ORIGIN}/logo.jpeg`;
   if (objectKey.startsWith('http://') || objectKey.startsWith('https://')) return objectKey;
   return `${R2_IMAGE_CDN}/${objectKey.replace(/^\/+/, '')}`;
