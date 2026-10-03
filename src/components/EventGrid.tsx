@@ -38,11 +38,13 @@ export const EventCardComponent = ({
 
   return (
     <motion.article
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: Math.min(idx * 0.04, 0.25) }}
+      initial={{ opacity: 0, y: 8 }}
+      whileInView={{ opacity: 1, y: 0 }}
+      viewport={{ once: true, margin: "60px" }}
+      transition={{ duration: 0.25, delay: Math.min((idx % 6) * 0.03, 0.15) }}
       onClick={() => onSelect(event.id, event.name)}
       className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-2xl sm:rounded-3xl shadow-md hover:shadow-2xl transition-[transform,box-shadow] duration-200 border border-white/80 dark:border-white/[0.08] hover:border-primary/50 dark:hover:border-white/20 relative hover:scale-[1.01] active:scale-[0.99]"
+      style={{ willChange: 'opacity, transform' }}
     >
       {/* Event Cover Image (Native 16:9 Slot Presentation with Full Content Visibility) */}
       <div className="w-full aspect-[16/9] relative overflow-hidden shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center">

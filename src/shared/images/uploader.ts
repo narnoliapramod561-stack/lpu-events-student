@@ -107,9 +107,7 @@ export interface ImageUploadOptions {
   supabase: SupabaseClient;
   file: File | Blob;
   context: ImageContext;
-  adminUserId?: string;
   entityId?: string;
-  bucketName?: string;
   onProgress?: (step: 'validating' | 'enhancing' | 'compressing' | 'uploading' | 'completed') => void;
 }
 
@@ -122,36 +120,13 @@ export interface ReplaceEntityMediaOptions {
 }
 
 /**
- * Maps image context to MediaType enum
- */
-function contextToMediaType(context: ImageContext): string {
-  switch (context) {
-    case 'hero':
-      return 'CAROUSEL_IMAGE';
-    case 'event-banner':
-    case 'event-card':
-      return 'EVENT_BANNER';
-    case 'advertisement':
-      return 'ADVERTISEMENT';
-    case 'sponsor-logo':
-      return 'SPONSOR_LOGO';
-    case 'memory':
-      return 'MEMORY_IMAGE';
-    case 'thumbnail':
-    case 'admin-preview':
-    default:
-      return 'EVENT_BANNER';
-  }
-}
-
-/**
  * Uploads, optimizes, and registers any image file with R2 storage and database metadata.
  * Implements SHA-256 pre-flight deduplication to avoid redundant processing/storage.
  */
 export async function uploadAndOptimizeImage(
   options: ImageUploadOptions
 ): Promise<UploadedMediaResult> {
-  const { supabase, file, context, adminUserId, entityId, bucketName = 'lpu-events-images', onProgress } = options;
+  const { supabase, file, context, entityId, onProgress } = options;
 
   // 1. Validate magic bytes, bounds, and limits
   if (onProgress) onProgress('validating');
@@ -245,8 +220,7 @@ export async function uploadAndOptimizeImage(
   // 4. Store into Cloudflare R2 / Storage via Authenticated Backend or Fallback
   if (onProgress) onProgress('uploading');
 
-  let primaryPublicUrl = '';
-
+  
   // Build unified V2 metadata payload
   let v2PlacementMeta: any = undefined;
   if (processed.placements) {
@@ -358,6 +332,10 @@ export async function uploadAndOptimizeImage(
     const { data: { session } } = await supabase.auth.getSession();
     const supabaseUrl = (supabase as any).supabaseUrl || (supabase as any).rest?.url?.replace(/\/rest\/v1\/?$/, '');
 
+    if (!session || !supabaseUrl) {
+      throw new Error('An authenticated session is required for image upload.');
+    }
+
     if (session && supabaseUrl) {
       const edgeUrl = `${supabaseUrl}/functions/v1/r2-upload`;
       const formData = new FormData();
@@ -384,11 +362,9 @@ export async function uploadAndOptimizeImage(
         }
       }
 
-      // Append source master
-      if (processed.source) {
-        formData.append('file_source', processed.source.blob, `${processed.checksum}_source`);
-        formData.append('file_master', processed.source.blob, `${processed.checksum}_master`);
-      }
+      const sourceFile = processed.source?.blob || file;
+      const sourceFilename = sourceFile instanceof File ? sourceFile.name : `${processed.checksum}_source`;
+      formData.append('file_source', sourceFile, sourceFilename);
 
       // Append standard responsive variants for non-event contexts
       if (processed.variants) {
@@ -409,8 +385,17 @@ export async function uploadAndOptimizeImage(
         body: formData
       });
 
+      if (!edgeRes.ok) {
+        const responseText = await edgeRes.text().catch(() => '');
+        throw new Error(`R2 upload failed (${edgeRes.status}): ${responseText || edgeRes.statusText}`);
+      }
+
+      const edgeData = await edgeRes.json();
+      if (!edgeData?.media_id) {
+        throw new Error('R2 upload completed without a registered media ID.');
+      }
+
       if (edgeRes.ok) {
-        const edgeData = await edgeRes.json();
         if (edgeData?.media_id) {
           if (onProgress) onProgress('completed');
 
@@ -469,182 +454,11 @@ export async function uploadAndOptimizeImage(
         }
       }
     }
+    throw new Error('R2 upload did not return a media ID.');
   } catch (edgeErr) {
-    console.warn('Edge Function r2-upload notice (using direct storage/database fallback):', edgeErr);
+    throw edgeErr instanceof Error ? edgeErr : new Error('R2 upload failed.');
   }
 
-  // Fallback direct storage upload (for local test environments)
-  try {
-    await supabase.storage
-      .from('media')
-      .upload(processed.primaryObjectKey, processed.primaryBlob, {
-        contentType: processed.mimeType,
-        cacheControl: 'public, max-age=31536000, immutable',
-        upsert: true
-      });
-
-    if (processed.placements) {
-      for (const p of Object.values(processed.placements)) {
-        await supabase.storage
-          .from('media')
-          .upload(p.objectKey, p.blob, {
-            contentType: p.mimeType,
-            cacheControl: 'public, max-age=31536000, immutable',
-            upsert: true
-          })
-          .catch(() => {});
-
-        for (const v of p.variants) {
-          await supabase.storage
-            .from('media')
-            .upload(v.objectKey, v.blob, {
-              contentType: v.mimeType,
-              cacheControl: 'public, max-age=31536000, immutable',
-              upsert: true
-            })
-            .catch(() => {});
-        }
-      }
-    }
-
-    if (processed.source) {
-      await supabase.storage
-        .from('media')
-        .upload(processed.source.objectKey, processed.source.blob, {
-          contentType: processed.source.mimeType,
-          cacheControl: 'public, max-age=31536000, immutable',
-          upsert: true
-        })
-        .catch(() => {});
-    }
-  } catch {}
-
-  // Resolve Admin User ID
-  let resolvedAdminId = adminUserId;
-  if (!resolvedAdminId) {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: adminRow } = await supabase
-          .from('admin_users')
-          .select('id')
-          .eq('auth_user_id', user.id)
-          .maybeSingle();
-        if (adminRow?.id) resolvedAdminId = adminRow.id;
-      }
-    } catch {}
-  }
-  if (!resolvedAdminId) {
-    resolvedAdminId = '05680f86-a752-4792-9051-d091414d8e9f';
-  }
-
-  // Register in PostgreSQL media_assets
-  const mediaType = contextToMediaType(context);
-  const finalObjectKey = processed.primaryObjectKey;
-  primaryPublicUrl = `${baseUrl}/${finalObjectKey}`;
-
-  let registeredMediaId: string | null = null;
-
-  try {
-    const { data: rpcData, error: rpcErr } = await supabase.rpc('register_uploaded_media_asset', {
-      p_bucket: bucketName,
-      p_object_key: finalObjectKey,
-      p_media_type: mediaType,
-      p_mime_type: processed.mimeType,
-      p_file_size_bytes: processed.primarySizeBytes,
-      p_checksum: processed.checksum,
-      p_width: processed.primaryWidth,
-      p_height: processed.primaryHeight,
-      p_context: context,
-      p_metadata: finalMetadataPayload,
-      p_created_by: resolvedAdminId
-    });
-
-    if (!rpcErr && rpcData?.media_id) {
-      registeredMediaId = rpcData.media_id;
-    }
-  } catch {}
-
-  if (!registeredMediaId) {
-    const { data: insertedAsset } = await supabase
-      .from('media_assets')
-      .upsert({
-        bucket: bucketName,
-        object_key: finalObjectKey,
-        media_type: mediaType,
-        mime_type: processed.mimeType,
-        file_size_bytes: processed.primarySizeBytes,
-        checksum: processed.checksum,
-        width: processed.primaryWidth,
-        height: processed.primaryHeight,
-        context,
-        metadata: finalMetadataPayload,
-        status: 'READY',
-        created_by: resolvedAdminId,
-        verified_at: new Date().toISOString()
-      }, { onConflict: 'bucket,object_key' })
-      .select('id')
-      .maybeSingle();
-
-    if (insertedAsset?.id) {
-      registeredMediaId = insertedAsset.id;
-    }
-  }
-
-  if (onProgress) onProgress('completed');
-
-  const returnedPlacementMap: any = processed.placements ? {
-    hero: {
-      ...v2PlacementMeta.hero,
-      public_url: `${baseUrl}/${v2PlacementMeta.hero.object_key}`,
-      data_url: processed.placements.hero.dataUrl
-    },
-    card: {
-      ...v2PlacementMeta.card,
-      public_url: `${baseUrl}/${v2PlacementMeta.card.object_key}`,
-      data_url: processed.placements.card.dataUrl
-    },
-    details: {
-      ...v2PlacementMeta.details,
-      public_url: `${baseUrl}/${v2PlacementMeta.details.object_key}`,
-      data_url: processed.placements.details.dataUrl
-    }
-  } : undefined;
-
-  return {
-    mediaId: registeredMediaId || `media-${checksum.slice(0, 12)}`,
-    objectKey: finalObjectKey,
-    publicUrl: primaryPublicUrl,
-    dataUrl: processed.primaryDataUrl,
-    context,
-    pipelineVersion: V2_PIPELINE_VERSION,
-    mimeType: processed.mimeType,
-    fileSizeBytes: processed.primarySizeBytes,
-    originalSizeBytes: processed.originalSizeBytes,
-    width: processed.primaryWidth,
-    height: processed.primaryHeight,
-    checksum: processed.checksum,
-    savingsPercentage: processed.savingsPercentage,
-    compressionRatio: processed.compressionRatio,
-    source: processed.source ? {
-      objectKey: processed.source.objectKey,
-      publicUrl: `${baseUrl}/${processed.source.objectKey}`,
-      width: processed.source.width,
-      height: processed.source.height,
-      mimeType: processed.source.mimeType,
-      fileSizeBytes: processed.source.fileSizeBytes,
-      checksum: processed.source.checksum
-    } : undefined,
-    placement: returnedPlacementMap,
-    variants: processed.variants.map((v) => ({
-      name: v.name,
-      objectKey: v.objectKey,
-      width: v.width,
-      height: v.height,
-      fileSizeBytes: v.fileSizeBytes
-    })),
-    masterObjectKey: processed.source?.objectKey
-  };
 }
 
 /**

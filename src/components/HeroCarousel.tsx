@@ -16,7 +16,7 @@ export interface HeroSlideModel {
   id: string;
   type: "event" | "ad" | "memory" | "media" | "adsense";
   title: string;
-  description: string;
+  description?: string;
   image: string;
   category: string;
   date?: string;
@@ -204,7 +204,7 @@ export const HeroCarouselComponent = ({
         type: "event",
         title: "Discover Campus Events, Clubs & Festivities",
         description: "Explore tech hackathons, cultural nights, conferences, workshops, and student community gatherings happening across Lovely Professional University.",
-        image: "/defaults/events/general_default.webp",
+        image: "/defaults/events/subcategories/academics_seminar.webp",
         category: "Campus Life",
         date: "Upcoming",
         time: "All Semesters",
@@ -589,7 +589,7 @@ export const HeroCarouselComponent = ({
                     >
                       <div className="relative w-full max-w-[760px] lg:max-w-none xl:max-w-[880px] 2xl:max-w-[940px] aspect-[16/9] lg:aspect-auto lg:h-full lg:min-h-[360px] rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 group-hover/img:scale-[1.015] transition-transform duration-300">
                         <ProgressiveImage
-                          src={getResponsiveImageUrl(currentSlide.image || "/defaults/events/general_default_tablet.webp", 1200)}
+                          src={getResponsiveImageUrl(currentSlide.image || "/defaults/events/subcategories/academics_seminar.webp", 1200)}
                           alt={currentSlide.title}
                           loading={currentIndex === 0 ? "eager" : "lazy"}
                           fetchPriority={currentIndex === 0 ? "high" : "auto"}

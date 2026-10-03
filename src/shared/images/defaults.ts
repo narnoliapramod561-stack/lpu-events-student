@@ -1,15 +1,15 @@
 /**
  * defaults.ts
- * Comprehensive Default Image Asset Registry for LPU Events
- * Maps Categories and Subcategories (by UUID, Slug Key, and Display Name)
- * to dedicated production-quality 16:9 widescreen WebP assets.
+ * Authoritative Canonical Default Image Asset Registry for LPU Events
+ * Single Source of Truth: docs/OFFICIAL_TAXONOMY.md
+ * Canvas Dimensions: 1920 × 800 (2.4:1 Aspect Ratio)
+ * Location: /defaults/events/subcategories/
  */
 
 export interface SubcategoryImageMeta {
   categoryKey: string;
   subcategoryKey: string;
   webp: string;
-  jpg: string;
 }
 
 // Category UUID -> Key Mapping
@@ -55,7 +55,7 @@ export const SUBCATEGORY_UUID_MAP: Record<string, { categoryKey: string; subcate
   'ba300003-0000-0000-0000-000000000004': { categoryKey: 'innovation', subcategoryKey: 'others' },
 
   // Entrepreneurship
-  'ba400004-0000-0000-0000-000000000001': { categoryKey: 'entrepreneurship', subcategoryKey: 'b-plan' },
+  'ba400004-0000-0000-0000-000000000001': { categoryKey: 'entrepreneurship', subcategoryKey: 'b-plan-competition' },
   'ba400004-0000-0000-0000-000000000002': { categoryKey: 'entrepreneurship', subcategoryKey: 'pitch-fest' },
   'ba400004-0000-0000-0000-000000000003': { categoryKey: 'entrepreneurship', subcategoryKey: 'conclave' },
   'ba400004-0000-0000-0000-000000000004': { categoryKey: 'entrepreneurship', subcategoryKey: 'bootcamp' },
@@ -64,38 +64,32 @@ export const SUBCATEGORY_UUID_MAP: Record<string, { categoryKey: string; subcate
   'ba400004-0000-0000-0000-000000000007': { categoryKey: 'entrepreneurship', subcategoryKey: 'seminar' },
   'ba400004-0000-0000-0000-000000000008': { categoryKey: 'entrepreneurship', subcategoryKey: 'others' },
 
-  // Schools: Engineering & Tech
-  'ba500005-0000-0000-0000-000000000001': { categoryKey: 'schools', subcategoryKey: 'school-ai-emerging' },
-  'ba500005-0000-0000-0000-000000000002': { categoryKey: 'schools', subcategoryKey: 'school-bio' },
-  'ba500005-0000-0000-0000-000000000003': { categoryKey: 'schools', subcategoryKey: 'school-chemical' },
-  'ba500005-0000-0000-0000-000000000004': { categoryKey: 'schools', subcategoryKey: 'school-ca' },
-  'ba500005-0000-0000-0000-000000000005': { categoryKey: 'schools', subcategoryKey: 'school-cse' },
-  'ba500005-0000-0000-0000-000000000006': { categoryKey: 'schools', subcategoryKey: 'school-cai' },
-  'ba500005-0000-0000-0000-000000000007': { categoryKey: 'schools', subcategoryKey: 'school-eee' },
-  'ba500005-0000-0000-0000-000000000008': { categoryKey: 'schools', subcategoryKey: 'school-me' },
-
-  // Schools: Arts, Design & Architecture
-  'ba500005-0000-0000-0000-000000000009': { categoryKey: 'schools', subcategoryKey: 'school-arch' },
-  'ba500005-0000-0000-0000-000000000010': { categoryKey: 'schools', subcategoryKey: 'school-design-fashion' },
-  'ba500005-0000-0000-0000-000000000011': { categoryKey: 'schools', subcategoryKey: 'school-design-interior' },
-  'ba500005-0000-0000-0000-000000000012': { categoryKey: 'schools', subcategoryKey: 'school-design-multimedia' },
-  'ba500005-0000-0000-0000-000000000013': { categoryKey: 'schools', subcategoryKey: 'school-arts-films' },
-  'ba500005-0000-0000-0000-000000000014': { categoryKey: 'schools', subcategoryKey: 'school-arts-fine' },
-  'ba500005-0000-0000-0000-000000000015': { categoryKey: 'schools', subcategoryKey: 'school-arts-journalism' },
-  'ba500005-0000-0000-0000-000000000016': { categoryKey: 'schools', subcategoryKey: 'school-arts-social' },
-
-  // Schools: Business, Law & Management
-  'ba500005-0000-0000-0000-000000000017': { categoryKey: 'schools', subcategoryKey: 'school-business' },
-  'ba500005-0000-0000-0000-000000000018': { categoryKey: 'schools', subcategoryKey: 'school-agriculture' },
-  'ba500005-0000-0000-0000-000000000019': { categoryKey: 'schools', subcategoryKey: 'school-hotel-tourism' },
-  'ba500005-0000-0000-0000-000000000020': { categoryKey: 'schools', subcategoryKey: 'school-law' },
-
-  // Schools: Health, Education & Professional
-  'ba500005-0000-0000-0000-000000000021': { categoryKey: 'schools', subcategoryKey: 'school-medical' },
-  'ba500005-0000-0000-0000-000000000022': { categoryKey: 'schools', subcategoryKey: 'school-education' },
-  'ba500005-0000-0000-0000-000000000023': { categoryKey: 'schools', subcategoryKey: 'school-phys-ed' },
-  'ba500005-0000-0000-0000-000000000024': { categoryKey: 'schools', subcategoryKey: 'school-pharma' },
-  'ba500005-0000-0000-0000-000000000025': { categoryKey: 'schools', subcategoryKey: 'school-polytechnic' },
+  // Schools (All 25 schools map uniformly to the single generic Schools image)
+  'ba500005-0000-0000-0000-000000000001': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000002': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000003': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000004': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000005': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000006': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000007': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000008': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000009': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000010': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000011': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000012': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000013': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000014': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000015': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000016': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000017': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000018': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000019': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000020': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000021': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000022': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000023': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000024': { categoryKey: 'schools', subcategoryKey: 'schools' },
+  'ba500005-0000-0000-0000-000000000025': { categoryKey: 'schools', subcategoryKey: 'schools' },
 
   // Community Services
   'ba600006-0000-0000-0000-000000000001': { categoryKey: 'community-services', subcategoryKey: 'donation-drives' },
@@ -112,13 +106,13 @@ export const SUBCATEGORY_UUID_MAP: Record<string, { categoryKey: string; subcate
 
   // Co-Curricular
   'b4444444-4444-4444-4444-444444444444': { categoryKey: 'co-curricular', subcategoryKey: 'competitions' },
-  'ba800008-0000-0000-0000-000000000001': { categoryKey: 'co-curricular', subcategoryKey: 'skill-dev' },
+  'ba800008-0000-0000-0000-000000000001': { categoryKey: 'co-curricular', subcategoryKey: 'skill-development' },
   'ba800008-0000-0000-0000-000000000002': { categoryKey: 'co-curricular', subcategoryKey: 'certifications' },
-  'ba800008-0000-0000-0000-000000000003': { categoryKey: 'co-curricular', subcategoryKey: 'training' },
+  'ba800008-0000-0000-0000-000000000003': { categoryKey: 'co-curricular', subcategoryKey: 'training-programs' },
   'ba800008-0000-0000-0000-000000000004': { categoryKey: 'co-curricular', subcategoryKey: 'others' },
 
   // Student Clubs & Org
-  'ba900009-0000-0000-0000-000000000001': { categoryKey: 'student-clubs', subcategoryKey: 'tech-clubs' },
+  'ba900009-0000-0000-0000-000000000001': { categoryKey: 'student-clubs', subcategoryKey: 'technical-clubs' },
   'ba900009-0000-0000-0000-000000000002': { categoryKey: 'student-clubs', subcategoryKey: 'cultural-clubs' },
   'ba900009-0000-0000-0000-000000000003': { categoryKey: 'student-clubs', subcategoryKey: 'startup-clubs' },
   'ba900009-0000-0000-0000-000000000004': { categoryKey: 'student-clubs', subcategoryKey: 'literary-clubs' },
@@ -142,20 +136,46 @@ export const SUBCATEGORY_UUID_MAP: Record<string, { categoryKey: string; subcate
   'bac0000c-0000-0000-0000-000000000003': { categoryKey: 'fashion', subcategoryKey: 'others' },
 
   // Others
-  'bad0000d-0000-0000-0000-000000000001': { categoryKey: 'others', subcategoryKey: 'miscellaneous' }
+  'bad0000d-0000-0000-0000-000000000001': { categoryKey: 'others', subcategoryKey: 'miscellaneous-events' }
 };
 
 /**
+ * Normalizes a category or subcategory string key into its canonical taxonomy slug.
+ */
+function normalizeSubcategorySlug(cat: string, sub: string): string {
+  let cleanSub = String(sub).toLowerCase().trim().replace(/[\s_&]+/g, '-').replace(/-+/g, '-');
+  
+  if (cat === 'entrepreneurship' && (cleanSub === 'b-plan' || cleanSub === 'b-plan-competition')) {
+    return 'b-plan-competition';
+  }
+  if (cat === 'co-curricular') {
+    if (cleanSub === 'skill-dev' || cleanSub === 'skill-development') return 'skill-development';
+    if (cleanSub === 'training' || cleanSub === 'training-programs') return 'training-programs';
+  }
+  if (cat === 'student-clubs') {
+    if (cleanSub === 'tech-clubs' || cleanSub === 'technical-clubs') return 'technical-clubs';
+  }
+  if (cat === 'others') {
+    if (cleanSub === 'miscellaneous' || cleanSub === 'miscellaneous-events') return 'miscellaneous-events';
+  }
+  return cleanSub;
+}
+
+/**
  * Resolves the primary default image URL for any event or category/subcategory pair.
+ * Always resolves to deterministic WebP assets in /defaults/events/subcategories/
  */
 export function resolveDefaultEventImage(eventOrMeta: any): string {
-  if (!eventOrMeta) return '/defaults/events/general_default.webp';
+  if (!eventOrMeta) return '/defaults/events/subcategories/academics_seminar.webp';
 
   // 1. Direct subcategory UUID lookup
   const subId = eventOrMeta.subcategory_id;
   if (subId && SUBCATEGORY_UUID_MAP[subId]) {
     const { categoryKey, subcategoryKey } = SUBCATEGORY_UUID_MAP[subId];
-    return `/defaults/events/${categoryKey}_${subcategoryKey}.webp`;
+    if (categoryKey === 'schools') {
+      return '/defaults/events/subcategories/schools.webp';
+    }
+    return `/defaults/events/subcategories/${categoryKey}_${subcategoryKey}.webp`;
   }
 
   // 2. Direct subcategories relation key/name lookup
@@ -166,35 +186,35 @@ export function resolveDefaultEventImage(eventOrMeta: any): string {
     catKey = CATEGORY_UUID_MAP[eventOrMeta.category_id];
   }
 
-  if (catKey && subKey && typeof subKey === 'string') {
-    const cleanSub = String(subKey).toLowerCase().trim().replace(/[\s_&]+/g, '-').replace(/-+/g, '-');
-    const cleanCat = String(catKey).toLowerCase().trim().replace(/[\s_&]+/g, '-').replace(/-+/g, '-');
-    return `/defaults/events/${cleanCat}_${cleanSub}.webp`;
-  }
-
-  // 3. Category level fallback
   if (catKey && typeof catKey === 'string') {
     const cleanCat = String(catKey).toLowerCase().trim().replace(/[\s_&]+/g, '-').replace(/-+/g, '-');
-    return `/defaults/events/${cleanCat}_default.webp`;
+    if (cleanCat === 'schools') {
+      return '/defaults/events/subcategories/schools.webp';
+    }
+    if (subKey && typeof subKey === 'string') {
+      const canonicalSub = normalizeSubcategorySlug(cleanCat, subKey);
+      return `/defaults/events/subcategories/${cleanCat}_${canonicalSub}.webp`;
+    }
+    return `/defaults/events/subcategories/${cleanCat}_others.webp`;
   }
 
-  // 4. Contextual keyword heuristic fallback (prevents mismatch like Seminar graphic for Cricket)
+  // 3. Contextual keyword heuristic fallback (prevents mismatch like Seminar graphic for Cricket)
   const title = String(eventOrMeta.name || eventOrMeta.title || '').toLowerCase();
   if (/\b(cricket|football|basketball|badminton|sports|league|tournament|championship|match|matches|athletics)\b/.test(title)) {
-    return '/defaults/events/co-curricular_competitions.webp';
+    return '/defaults/events/subcategories/co-curricular_competitions.webp';
   }
   if (/\b(hackathon|coding|code|developer|ai|ml|tech|robotics)\b/.test(title)) {
-    return '/defaults/events/innovation_hackathon.webp';
+    return '/defaults/events/subcategories/innovation_hackathon.webp';
   }
   if (/\b(dance|music|singing|drama|theatre|concert|dj)\b/.test(title)) {
-    return '/defaults/events/cultural_music.webp';
+    return '/defaults/events/subcategories/cultural_music.webp';
   }
   if (/\b(workshop|masterclass|bootcamp)\b/.test(title)) {
-    return '/defaults/events/academics_workshop.webp';
+    return '/defaults/events/subcategories/academics_workshop.webp';
   }
   if (/\b(seminar|symposium|conference)\b/.test(title)) {
-    return '/defaults/events/academics_seminar.webp';
+    return '/defaults/events/subcategories/academics_seminar.webp';
   }
 
-  return '/defaults/events/general_default.webp';
+  return '/defaults/events/subcategories/academics_seminar.webp';
 }

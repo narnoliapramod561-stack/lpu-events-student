@@ -163,6 +163,11 @@ function validateImageSignature(bytes: Uint8Array): boolean {
   return false;
 }
 
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 function contextToMediaType(context: string): string {
   switch (context) {
     case "hero":
@@ -174,10 +179,6 @@ function contextToMediaType(context: string): string {
       return "EVENT_BANNER";
     case "advertisement":
       return "ADVERTISEMENT";
-    case "sponsor-logo":
-      return "SPONSOR_LOGO";
-    case "memory":
-      return "MEMORY_IMAGE";
     default:
       return "EVENT_BANNER";
   }
@@ -188,8 +189,6 @@ const ALLOWED_CONTEXTS = [
   "event-banner",
   "event-card",
   "advertisement",
-  "sponsor-logo",
-  "memory",
   "thumbnail",
   "admin-preview"
 ];
@@ -240,111 +239,50 @@ serve(async (req: Request) => {
     });
   }
 
-  // 3. Authorization: Resolve, Sync, or Auto-Provision Active Admin Profile
+  // 3. Authorization: require a provisioned, active admin identity.
   const adminClient = createClient(supabaseUrl, supabaseServiceKey);
-
-  let adminProfile: { id: string; is_active: boolean } | null = null;
-
-  // Attempt 1: Lookup by auth_user_id
-  const { data: profileByAuth } = await adminClient
+  const { data: adminProfile, error: adminProfileError } = await adminClient
     .from("admin_users")
     .select("id, is_active")
     .eq("auth_user_id", user.id)
     .maybeSingle();
-
-  if (profileByAuth) {
-    if (!profileByAuth.is_active) {
-      await adminClient.from("admin_users").update({ is_active: true }).eq("id", profileByAuth.id);
-    }
-    adminProfile = { id: profileByAuth.id, is_active: true };
+  if (adminProfileError) {
+    return new Response(JSON.stringify({ error: "AUTHORIZATION_LOOKUP_FAILED", message: "Could not verify the admin profile." }), {
+      status: 500,
+      headers: corsHeaders,
+    });
+  }
+  if (!adminProfile || !adminProfile.is_active) {
+    return new Response(JSON.stringify({ error: "FORBIDDEN", message: "An active admin profile is required." }), {
+      status: 403,
+      headers: corsHeaders,
+    });
   }
 
-  // Attempt 2: Lookup by email if not found by auth_user_id
-  if (!adminProfile && user.email) {
-    const { data: profileByEmail } = await adminClient
-      .from("admin_users")
-      .select("id, is_active, auth_user_id")
-      .eq("email", user.email)
-      .maybeSingle();
-
-    if (profileByEmail) {
-      // Auto-sync auth_user_id to current auth session
-      await adminClient
-        .from("admin_users")
-        .update({ auth_user_id: user.id, is_active: true })
-        .eq("id", profileByEmail.id);
-      adminProfile = { id: profileByEmail.id, is_active: true };
-    }
-  }
-
-  // Attempt 3: Auto-provision active admin profile for authenticated user
-  if (!adminProfile && user.email) {
-    const displayName = (user.user_metadata?.full_name || user.user_metadata?.name || user.email.split("@")[0] || "Administrator").trim();
-    const { data: newProfile, error: createErr } = await adminClient
-      .from("admin_users")
-      .insert({
-        auth_user_id: user.id,
-        email: user.email,
-        display_name: displayName,
-        is_active: true,
-      })
-      .select("id, is_active")
-      .single();
-
-    if (newProfile && !createErr) {
-      adminProfile = newProfile;
-    } else {
-      // If conflict, fetch existing
-      const { data: existing } = await adminClient
-        .from("admin_users")
-        .select("id, is_active")
-        .eq("email", user.email)
-        .maybeSingle();
-      if (existing) {
-        adminProfile = existing;
-      }
-    }
-  }
-
-  // Attempt 4: Fallback to any active administrator profile or system seed ID
-  if (!adminProfile) {
-    const { data: anyAdmin } = await adminClient
-      .from("admin_users")
-      .select("id, is_active")
-      .eq("is_active", true)
-      .limit(1)
-      .maybeSingle();
-
-    if (anyAdmin) {
-      adminProfile = anyAdmin;
-    } else {
-      adminProfile = { id: "0f159cb9-b672-499d-a9b6-d61d370342a5", is_active: true };
-    }
-  }
-
-  const effectiveAdminId = adminProfile?.id || "0f159cb9-b672-499d-a9b6-d61d370342a5";
-
-  // Check / assign Super Admin if system has no super admin or user is platform admin
-  let isSuperAdmin = true;
-  if (adminProfile?.id) {
-    const { data: superAdminRole } = await adminClient
+  const effectiveAdminId = adminProfile.id;
+  const [superAdminResult, membershipsResult] = await Promise.all([
+    adminClient
       .from("platform_admin_roles")
       .select("role")
-      .eq("admin_user_id", adminProfile.id)
+      .eq("admin_user_id", effectiveAdminId)
       .eq("role", "SUPER_ADMIN")
-      .maybeSingle();
-
-    if (!superAdminRole) {
-      const { count } = await adminClient
-        .from("platform_admin_roles")
-        .select("*", { count: "exact", head: true });
-      if (count === 0 || count === null) {
-        await adminClient
-          .from("platform_admin_roles")
-          .insert({ admin_user_id: adminProfile.id, role: "SUPER_ADMIN" });
-      }
-    }
+      .maybeSingle(),
+    adminClient
+      .from("organization_members")
+      .select("organization_id")
+      .eq("admin_user_id", effectiveAdminId)
+      .eq("role", "ORGANIZER")
+      .eq("is_active", true),
+  ]);
+  if (superAdminResult.error || membershipsResult.error) {
+    return new Response(JSON.stringify({ error: "AUTHORIZATION_LOOKUP_FAILED", message: "Could not verify upload permissions." }), {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
+
+  const isSuperAdmin = Boolean(superAdminResult.data);
+  const organizerOrganizationIds = new Set((membershipsResult.data || []).map((membership) => membership.organization_id));
 
   // 4. Parse Multipart Payload
   let formData: FormData;
@@ -370,17 +308,66 @@ serve(async (req: Request) => {
   }
 
   // Super Admin Role Enforcement for Platform Contexts
-  const platformContexts = ["hero", "advertisement", "sponsor-logo", "memory"];
-  if (platformContexts.includes(context) && !isSuperAdmin) {
+  const platformContexts = new Set(["hero", "advertisement"]);
+  const eventContexts = new Set(["event-banner", "event-card", "thumbnail", "admin-preview"]);
+  if (platformContexts.has(context) && !isSuperAdmin) {
     return new Response(JSON.stringify({ error: "FORBIDDEN", message: `Super Admin privileges required to upload media for "${context}".` }), {
       status: 403,
       headers: corsHeaders,
     });
   }
+  if (eventContexts.has(context) && !isSuperAdmin && organizerOrganizationIds.size === 0) {
+    return new Response(JSON.stringify({ error: "FORBIDDEN", message: "An active organizer membership is required for event media uploads." }), {
+      status: 403,
+      headers: corsHeaders,
+    });
+  }
 
-  // Checksum format validation (64-character SHA-256 hex string)
-  if (!/^[a-f0-9]{8,64}$/.test(checksum)) {
+  const entityId = String(formData.get("entity_id") || "").trim();
+  if (entityId && eventContexts.has(context) && !isSuperAdmin) {
+    const { data: event, error: eventError } = await adminClient
+      .from("events")
+      .select("organization_id")
+      .eq("id", entityId)
+      .maybeSingle();
+    if (eventError) {
+      return new Response(JSON.stringify({ error: "AUTHORIZATION_LOOKUP_FAILED", message: "Could not verify event ownership." }), {
+        status: 500,
+        headers: corsHeaders,
+      });
+    }
+    if (!event || !organizerOrganizationIds.has(event.organization_id)) {
+      return new Response(JSON.stringify({ error: "FORBIDDEN", message: "You do not have access to this event." }), {
+        status: 403,
+        headers: corsHeaders,
+      });
+    }
+  }
+
+  // Verify the client checksum against the original bytes before accepting derived keys.
+  if (!/^[a-f0-9]{64}$/.test(checksum)) {
     return new Response(JSON.stringify({ error: "INVALID_CHECKSUM", message: "Checksum must be a valid hex string." }), {
+      status: 400,
+      headers: corsHeaders,
+    });
+  }
+
+  const sourceFileEntry = formData.get("file_source") || formData.get("file_master");
+  if (!(sourceFileEntry instanceof File) || sourceFileEntry.size <= 0 || sourceFileEntry.size > 15 * 1024 * 1024) {
+    return new Response(JSON.stringify({ error: "INVALID_SOURCE_FILE", message: "A valid original image up to 15 MiB is required." }), {
+      status: 400,
+      headers: corsHeaders,
+    });
+  }
+  if (!["image/jpeg", "image/png", "image/webp", "image/avif"].includes(sourceFileEntry.type.toLowerCase())) {
+    return new Response(JSON.stringify({ error: "INVALID_SOURCE_MIME", message: "Unsupported source image type." }), {
+      status: 400,
+      headers: corsHeaders,
+    });
+  }
+  const sourceBytes = new Uint8Array(await sourceFileEntry.arrayBuffer());
+  if (!validateImageSignature(sourceBytes) || await sha256Hex(sourceBytes) !== checksum) {
+    return new Response(JSON.stringify({ error: "SOURCE_CHECKSUM_MISMATCH", message: "Original image validation failed." }), {
       status: 400,
       headers: corsHeaders,
     });
@@ -404,6 +391,7 @@ serve(async (req: Request) => {
     isSlot?: boolean;
     isPresentation?: boolean;
     isMaster?: boolean;
+    isPlacement?: boolean;
     contentType?: string;
   }
 
@@ -447,7 +435,7 @@ serve(async (req: Request) => {
       const width = metaVar?.width || (varName === "desktop" ? 1200 : varName === "tablet" ? 800 : 480);
       const height = metaVar?.height || (varName === "desktop" ? 630 : varName === "tablet" ? 420 : 252);
 
-      const objectKey = `optimized/${context}/v1/${hashPrefix}/${checksum}_${varName}.webp`;
+      const objectKey = `optimized/${context}/v2/${hashPrefix}/${checksum}_${varName}.webp`;
 
       variantUploads.push({
         name: varName,
@@ -470,11 +458,10 @@ serve(async (req: Request) => {
       const bytes = new Uint8Array(buffer);
       if (!validateWebPSignature(bytes)) continue;
 
-      const metaSlot = parsedMetadata?.slots?.[slotName];
-      const width = metaSlot?.width || (slotName.startsWith("banner") ? 1920 : slotName === "thumb" ? 400 : 1200);
-      const height = metaSlot?.height || (slotName.startsWith("banner") ? 800 : slotName === "thumb" ? 400 : 675);
+      const width = slotName.startsWith("banner") ? 1920 : slotName === "thumb" ? 400 : 1200;
+      const height = slotName.startsWith("banner") ? 800 : slotName === "thumb" ? 400 : 675;
       const slotContext = slotName.startsWith("card") ? "event-card" : slotName.startsWith("banner") ? "event-banner" : "thumbnail";
-      const objectKey = metaSlot?.object_key || `optimized/${slotContext}/v1/${hashPrefix}/${checksum}_${slotName}.webp`;
+      const objectKey = `optimized/${slotContext}/v2/${hashPrefix}/${checksum}_${slotName}.webp`;
 
       variantUploads.push({
         name: slotName,
@@ -489,16 +476,17 @@ serve(async (req: Request) => {
   }
 
   // V2 Pipeline: Check for master/source file (untouched original)
-  const masterFileEntry = formData.get("file_source") || formData.get("file_master");
+  const masterFileEntry = sourceFileEntry;
   if (masterFileEntry && masterFileEntry instanceof File) {
     if (masterFileEntry.size <= 15 * 1024 * 1024) {
-      const buffer = await masterFileEntry.arrayBuffer();
-      const bytes = new Uint8Array(buffer);
+      const bytes = sourceBytes;
       if (validateImageSignature(bytes)) {
-        const metaSource = parsedMetadata?.source || parsedMetadata?.master;
         const masterExt = masterFileEntry.type === "image/png" ? "png" : masterFileEntry.type === "image/webp" ? "webp" : "jpg";
-        const masterKey = metaSource?.object_key || `events/v2/${hashPrefix}/${checksum}/source.${masterExt}`;
-        const masterMime = metaSource?.mime_type || masterFileEntry.type || "image/jpeg";
+        const isEventContext = ["event-banner", "event-card", "hero"].includes(context);
+        const masterKey = isEventContext
+          ? `events/v2/${hashPrefix}/${checksum}/source.${masterExt}`
+          : `originals/v2/${context}/${hashPrefix}/${checksum}/source.${masterExt}`;
+        const masterMime = masterFileEntry.type || "image/jpeg";
 
         variantUploads.push({
           name: "source",
@@ -534,20 +522,15 @@ serve(async (req: Request) => {
       const bytes = new Uint8Array(buffer);
       if (!validateWebPSignature(bytes)) continue;
 
-      let customKey = p.defKey;
-      if (p.name === 'hero') customKey = parsedMetadata?.placement?.hero?.object_key || p.defKey;
-      else if (p.name === 'card') customKey = parsedMetadata?.placement?.card?.object_key || p.defKey;
-      else if (p.name === 'details') customKey = parsedMetadata?.placement?.details?.object_key || p.defKey;
-
       variantUploads.push({
         name: p.name,
         file: fileEntry,
         bytes,
-        objectKey: customKey,
+        objectKey: p.defKey,
         width: p.width,
         height: p.height,
-        isPlacement: true
-      } as any);
+        isPlacement: true,
+      });
     }
   }
 
@@ -562,10 +545,9 @@ serve(async (req: Request) => {
       if (!validateWebPSignature(bytes)) continue;
 
       const ratioKey = presKey.replace("_", ":");
-      const metaPres = parsedMetadata?.presentations?.[ratioKey];
-      const objectKey = metaPres?.object_key || `optimized/event-banner/v2/${hashPrefix}/${checksum}_${presKey}.webp`;
-      const width = metaPres?.width || (presKey === "16_9" ? 1600 : 1050);
-      const height = metaPres?.height || (presKey === "16_9" ? 900 : 750);
+      const objectKey = `optimized/event-banner/v2/${hashPrefix}/${checksum}_${presKey}.webp`;
+      const width = presKey === "16_9" ? 1600 : 1050;
+      const height = presKey === "16_9" ? 900 : 750;
 
       variantUploads.push({
         name: `pres_${presKey}`,
@@ -586,6 +568,19 @@ serve(async (req: Request) => {
 
   if (!desktopVariant) {
     return new Response(JSON.stringify({ error: "MISSING_PRIMARY_VARIANT", message: "Primary WebP derivative is required." }), {
+      status: 400,
+      headers: corsHeaders,
+    });
+  }
+
+  if (variantUploads.some((item) =>
+    item.objectKey.startsWith("/") ||
+    item.objectKey.includes("..") ||
+    item.objectKey.includes("\\") ||
+    !/^[A-Za-z0-9._/-]+$/.test(item.objectKey) ||
+    !item.objectKey.includes(checksum)
+  )) {
+    return new Response(JSON.stringify({ error: "INVALID_OBJECT_KEY", message: "An upload object key failed server validation." }), {
       status: 400,
       headers: corsHeaders,
     });
@@ -659,6 +654,7 @@ serve(async (req: Request) => {
 
   const slotsMetadata: Record<string, any> = {};
   const presentationsMetadata: Record<string, any> = {};
+  const placementMetadata: Record<string, any> = {};
   let masterMetadata: any = null;
 
   for (const item of variantUploads) {
@@ -679,6 +675,34 @@ serve(async (req: Request) => {
         height: item.height,
         file_size_bytes: item.bytes.length
       };
+    } else if (item.isPlacement) {
+      const placementName = (["hero", "card", "details"] as const).find((name) =>
+        item.name === name || item.name.startsWith(`${name}_`)
+      );
+      if (!placementName) continue;
+      const placement = placementMetadata[placementName] || {
+        ...(parsedMetadata?.placement?.[placementName] || {}),
+        variants: [],
+      };
+      if (item.name === placementName) {
+        Object.assign(placement, {
+          object_key: item.objectKey,
+          width: item.width,
+          height: item.height,
+          file_size_bytes: item.bytes.length,
+          public_url: `${publicBaseUrl}/${item.objectKey}`,
+        });
+      } else {
+        placement.variants.push({
+          name: item.name.slice(placementName.length + 1),
+          object_key: item.objectKey,
+          width: item.width,
+          height: item.height,
+          file_size_bytes: item.bytes.length,
+          public_url: `${publicBaseUrl}/${item.objectKey}`,
+        });
+      }
+      placementMetadata[placementName] = placement;
     } else if (item.isMaster) {
       masterMetadata = {
         object_key: item.objectKey,
@@ -691,14 +715,14 @@ serve(async (req: Request) => {
   }
 
   const finalMetadata = {
-    pipeline_version: parsedMetadata?.pipeline_version || 2,
+    pipeline_version: 2,
     context,
-    source: parsedMetadata?.source || masterMetadata,
-    placement: parsedMetadata?.placement || undefined,
-    original_size_bytes: parsedMetadata?.original_size_bytes || desktopVariant.file.size,
+    source: masterMetadata,
+    placement: Object.keys(placementMetadata).length > 0 ? placementMetadata : undefined,
+    original_size_bytes: sourceBytes.length,
     optimized_size_bytes: desktopVariant.file.size,
-    savings_percentage: parsedMetadata?.savings_percentage || 0,
-    compression_ratio: parsedMetadata?.compression_ratio || 1.0,
+    savings_percentage: Math.max(0, Number(((1 - desktopVariant.file.size / sourceBytes.length) * 100).toFixed(1))),
+    compression_ratio: Number((desktopVariant.file.size / sourceBytes.length).toFixed(3)),
     variants: variantUploads.filter(v => !v.isSlot && !v.isPresentation && !v.isMaster).map((v) => ({
       name: v.name,
       object_key: v.objectKey,
@@ -706,16 +730,16 @@ serve(async (req: Request) => {
       height: v.height,
       file_size_bytes: v.bytes.length,
     })),
-    slots: Object.keys(slotsMetadata).length > 0 ? slotsMetadata : (parsedMetadata?.slots || undefined),
-    presentations: Object.keys(presentationsMetadata).length > 0 ? presentationsMetadata : (parsedMetadata?.presentations || undefined),
-    master: masterMetadata || (parsedMetadata?.master || undefined)
+    slots: Object.keys(slotsMetadata).length > 0 ? slotsMetadata : undefined,
+    presentations: Object.keys(presentationsMetadata).length > 0 ? presentationsMetadata : undefined,
+    master: masterMetadata || undefined
   };
 
   let registeredMediaId: string | null = null;
 
-  // 1. Try dedicated SECURITY DEFINER RPC first (guarantees zero permission errors)
+  // Register ownership from the verified JWT. Only this Worker can finalize after R2 writes succeed.
   try {
-    const { data: rpcData, error: rpcErr } = await adminClient.rpc("register_uploaded_media_asset", {
+    const { data: rpcData, error: rpcErr } = await userClient.rpc("register_uploaded_media_asset", {
       p_bucket: targetBucket,
       p_object_key: primaryObjectKey,
       p_media_type: mediaType,
@@ -726,61 +750,67 @@ serve(async (req: Request) => {
       p_height: desktopVariant.height,
       p_context: context,
       p_metadata: finalMetadata,
-      p_created_by: effectiveAdminId,
     });
 
-    if (!rpcErr && rpcData?.media_id) {
-      registeredMediaId = rpcData.media_id;
-    } else if (rpcErr) {
-      console.warn("RPC register_uploaded_media_asset error, attempting direct insert fallback:", rpcErr.message);
+    if (rpcErr || !rpcData?.media_id) {
+      for (const key of completedR2Keys) await deleteObjectFromR2(r2Config, key);
+      return new Response(JSON.stringify({ error: "DATABASE_REGISTRATION_FAILED", message: "Could not register the verified upload." }), {
+        status: 500,
+        headers: corsHeaders,
+      });
     }
-  } catch (rpcEx) {
-    console.warn("RPC register_uploaded_media_asset exception:", rpcEx);
-  }
+    registeredMediaId = rpcData.media_id;
 
-  // 2. Direct insert fallback if RPC was not invoked
-  if (!registeredMediaId) {
-    const { data: mediaAsset, error: dbErr } = await adminClient
+    if (rpcData.status === "READY") {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          media_id: registeredMediaId,
+          object_key: primaryObjectKey,
+          public_url: primaryPublicUrl,
+          context,
+          storage_target: targetBucket,
+          pipeline_version: finalMetadata.pipeline_version,
+          source: finalMetadata.source,
+          placement: finalMetadata.placement,
+          variants: finalMetadata.variants,
+          slots: finalMetadata.slots,
+          presentations: finalMetadata.presentations,
+          master: finalMetadata.master,
+          deduplicated: true,
+        }),
+        { status: 200, headers: corsHeaders }
+      );
+    }
+
+    const { data: readyAsset, error: readyError } = await adminClient
       .from("media_assets")
-      .insert({
-        bucket: targetBucket,
-        object_key: primaryObjectKey,
-        media_type: mediaType,
-        mime_type: "image/webp",
-        file_size_bytes: desktopVariant.bytes.length,
-        checksum,
-        width: desktopVariant.width,
-        height: desktopVariant.height,
-        context,
-        metadata: finalMetadata,
+      .update({
         status: "READY",
-        created_by: effectiveAdminId,
         verified_at: new Date().toISOString(),
+        deleted_at: null,
       })
-      .select("id, object_key")
+      .eq("id", registeredMediaId)
+      .eq("created_by", adminProfile.id)
+      .eq("status", "UPLOADING")
+      .select("id")
       .maybeSingle();
 
-    if (mediaAsset?.id) {
-      registeredMediaId = mediaAsset.id;
-    } else {
-      console.warn("Direct insert error in media_assets:", dbErr?.message);
-      // Check if deduplication record already exists
-      const { data: existingAsset } = await adminClient
-        .from("media_assets")
-        .select("id, object_key")
-        .eq("bucket", targetBucket)
-        .eq("object_key", primaryObjectKey)
-        .maybeSingle();
-
-      if (existingAsset?.id) {
-        registeredMediaId = existingAsset.id;
-      } else {
-        return new Response(
-          JSON.stringify({ error: "DATABASE_REGISTRATION_FAILED", message: `Failed to save media metadata: ${dbErr?.message || "Database error"}` }),
-          { status: 500, headers: corsHeaders }
-        );
-      }
+    if (readyError || !readyAsset) {
+      await adminClient.from("media_assets").update({ status: "FAILED" }).eq("id", registeredMediaId).eq("status", "UPLOADING");
+      for (const key of completedR2Keys) await deleteObjectFromR2(r2Config, key);
+      return new Response(JSON.stringify({ error: "MEDIA_FINALIZATION_FAILED", message: "Could not finalize the R2-verified upload." }), {
+        status: 500,
+        headers: corsHeaders,
+      });
     }
+  } catch (registrationError) {
+    for (const key of completedR2Keys) await deleteObjectFromR2(r2Config, key);
+    console.error("Media registration/finalization failed:", registrationError);
+    return new Response(JSON.stringify({ error: "DATABASE_REGISTRATION_FAILED", message: "Could not register the verified upload." }), {
+      status: 500,
+      headers: corsHeaders,
+    });
   }
 
   // 8. Return Verified Upload Metadata

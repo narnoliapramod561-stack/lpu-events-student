@@ -253,7 +253,7 @@ export interface CategoryFeedItem {
 export interface EventFeedItem {
   id: string;
   name: string;
-  description: string;
+  description?: string;
   start_at: string;
   end_at: string;
   venue_name: string;

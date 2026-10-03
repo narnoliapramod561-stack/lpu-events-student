@@ -36,7 +36,6 @@ export interface Env {
   };
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
-  CACHE_INVALIDATION_SECRET?: string;
 }
 
 interface ExecutionContext {
@@ -76,7 +75,7 @@ const inFlightRequests = new Map<string, Promise<Response>>();
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, X-Invalidation-Secret',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
 };
 
@@ -103,16 +102,16 @@ interface CacheConfig {
 }
 
 const CACHE_CONFIGS: Record<string, CacheConfig> = {
-  homepage:       { edgeTtl: 60,    browserTtl: 0,   swrTtl: 300,    staleTtl: 86400 },   // 1m fresh, 5m swr, 24h stale-if-error
-  events:         { edgeTtl: 60,    browserTtl: 0,   swrTtl: 300,    staleTtl: 86400 },   // 1m fresh, 5m swr, 24h stale-if-error
-  featured:       { edgeTtl: 120,   browserTtl: 0,   swrTtl: 600,    staleTtl: 86400 },   // 2m fresh, 10m swr, 24h stale-if-error
-  trending:       { edgeTtl: 120,   browserTtl: 0,   swrTtl: 600,    staleTtl: 86400 },   // 2m fresh, 10m swr, 24h stale-if-error
-  search:         { edgeTtl: 60,    browserTtl: 0,   swrTtl: 300,    staleTtl: 86400 },   // 1m fresh, 5m swr, 24h stale-if-error
-  categories:     { edgeTtl: 3600,  browserTtl: 60,  swrTtl: 14400,  staleTtl: 604800 },  // 1h fresh, 4h swr, 7d stale-if-error
-  eventDetail:    { edgeTtl: 120,   browserTtl: 0,   swrTtl: 600,    staleTtl: 604800 },  // 2m fresh, 10m swr, 7d stale-if-error
-  advertisements: { edgeTtl: 300,   browserTtl: 30,  swrTtl: 1800,   staleTtl: 86400 },   // 5m fresh, 30m swr, 24h stale-if-error
-  settings:       { edgeTtl: 300,   browserTtl: 30,  swrTtl: 1800,   staleTtl: 86400 },   // 5m fresh, 30m swr, 24h stale-if-error
-  carousel:       { edgeTtl: 120,   browserTtl: 0,   swrTtl: 600,    staleTtl: 86400 },   // 2m fresh, 10m swr, 24h stale-if-error
+  homepage:       { edgeTtl: 60,    browserTtl: 15,  swrTtl: 300,    staleTtl: 86400 },   // 1m fresh, 5m swr, 24h stale-if-error
+  events:         { edgeTtl: 60,    browserTtl: 15,  swrTtl: 300,    staleTtl: 86400 },   // 1m fresh, 5m swr, 24h stale-if-error
+  featured:       { edgeTtl: 120,   browserTtl: 30,  swrTtl: 600,    staleTtl: 86400 },   // 2m fresh, 10m swr, 24h stale-if-error
+  trending:       { edgeTtl: 120,   browserTtl: 30,  swrTtl: 600,    staleTtl: 86400 },   // 2m fresh, 10m swr, 24h stale-if-error
+  search:         { edgeTtl: 60,    browserTtl: 15,  swrTtl: 300,    staleTtl: 86400 },   // 1m fresh, 5m swr, 24h stale-if-error
+  categories:     { edgeTtl: 3600,  browserTtl: 300, swrTtl: 14400,  staleTtl: 604800 },  // 1h fresh, 4h swr, 7d stale-if-error
+  eventDetail:    { edgeTtl: 120,   browserTtl: 30,  swrTtl: 600,    staleTtl: 604800 },  // 2m fresh, 10m swr, 7d stale-if-error
+  advertisements: { edgeTtl: 300,   browserTtl: 60,  swrTtl: 1800,   staleTtl: 86400 },   // 5m fresh, 30m swr, 24h stale-if-error
+  settings:       { edgeTtl: 300,   browserTtl: 60,  swrTtl: 1800,   staleTtl: 86400 },   // 5m fresh, 30m swr, 24h stale-if-error
+  carousel:       { edgeTtl: 120,   browserTtl: 30,  swrTtl: 600,    staleTtl: 86400 },   // 2m fresh, 10m swr, 24h stale-if-error
 };
 
 
@@ -125,7 +124,7 @@ const PROJECTIONS = {
   trending: 'event_id,sort_order,events(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(id,name),categories(name,key),subcategories(name,key))',
   advertisements: 'id,name,media_id,redirect_url,start_at,end_at,status,media_assets:media_id(id,object_key)',
   settings: 'key,value',
-  eventFeed: 'id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)',
+  eventFeed: 'id,name,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)',
   eventDetail: 'id,name,description,start_at,end_at,venue_name,registration_mode,external_registration_url,pricing_type,price_amount,registration_format,capacity_limit,banner_media_id,category_id,subcategory_id,organization_id,status,created_at,updated_at,media_assets:banner_media_id(id,object_key),organizations(id,name),categories(id,name,key),subcategories(id,name,key),event_content_sections(id,section_type,title,content,sort_order)',
   // SEO: Lightweight projection for sitemap generation (minimal fields)
   sitemapEvents: 'id,name,updated_at,created_at,status,end_at,category_id,categories(key)',
@@ -820,19 +819,19 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext): 
         'GET', undefined, env
       ),
       fetchFromSupabase(
-        `carousel_items?select=${encodeURIComponent(PROJECTIONS.carousel)}&is_active=eq.true&order=sort_order.asc`,
+        `carousel_items?select=${encodeURIComponent(PROJECTIONS.carousel)}&is_active=eq.true&order=sort_order.asc&limit=8`,
         'GET', undefined, env
       ),
       fetchFromSupabase(
-        `featured_events?select=${encodeURIComponent(PROJECTIONS.featured)}&order=sort_order.asc`,
+        `featured_events?select=${encodeURIComponent(PROJECTIONS.featured)}&order=sort_order.asc&limit=10`,
         'GET', undefined, env
       ),
       fetchFromSupabase(
-        `trending_events?select=${encodeURIComponent(PROJECTIONS.trending)}&order=sort_order.asc`,
+        `trending_events?select=${encodeURIComponent(PROJECTIONS.trending)}&order=sort_order.asc&limit=10`,
         'GET', undefined, env
       ),
       fetchFromSupabase(
-        `advertisements?select=${encodeURIComponent(PROJECTIONS.advertisements)}&status=eq.active&order=created_at.desc`,
+        `advertisements?select=${encodeURIComponent(PROJECTIONS.advertisements)}&status=eq.active&order=created_at.desc&limit=6`,
         'GET', undefined, env
       ),
       fetchFromSupabase(
@@ -840,7 +839,7 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext): 
         'GET', undefined, env
       ),
       fetchFromSupabase(
-        `events?select=${encodeURIComponent(PROJECTIONS.eventFeed)}&status=eq.PUBLISHED&end_at=gte.${nowIso}&order=start_at.asc&limit=20&offset=0`,
+        `events?select=${encodeURIComponent(PROJECTIONS.eventFeed)}&status=eq.PUBLISHED&end_at=gte.${nowIso}&order=start_at.asc&limit=10&offset=0`,
         'GET', undefined, env
       ),
     ]);
@@ -967,14 +966,34 @@ function getInvalidationUrls(origin: string, tags: string[]): string[] {
   return Array.from(urls);
 }
 
-function extractAuthSecret(request: Request): string | null {
-  const customHeader = request.headers.get('X-Invalidation-Secret');
-  if (customHeader && customHeader.trim()) return customHeader.trim();
+function extractBearerToken(request: Request): string | null {
   const authHeader = request.headers.get('Authorization');
-  if (authHeader && authHeader.trim()) {
-    return authHeader.replace(/^Bearer\s+/i, '').trim();
+  const match = authHeader?.match(/^Bearer\s+(.+)$/i);
+  return match?.[1]?.trim() || null;
+}
+
+async function isCacheMutationAuthorized(request: Request, env: Env, requireSuperAdmin = false): Promise<boolean> {
+  const accessToken = extractBearerToken(request);
+  const supabaseUrl = env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
+  const anonKey = env.SUPABASE_ANON_KEY || DEFAULT_ANON_KEY;
+  if (!accessToken || !anonKey) return false;
+
+  try {
+    const response = await fetch(`${supabaseUrl}/rest/v1/rpc/authorize_cache_invalidation`, {
+      method: 'POST',
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: '{}',
+    });
+    if (!response.ok) return false;
+    const result = await response.json() as { authorized?: boolean; is_super_admin?: boolean };
+    return result.authorized === true && (!requireSuperAdmin || result.is_super_admin === true);
+  } catch {
+    return false;
   }
-  return null;
 }
 
 async function handleInvalidation(
@@ -987,14 +1006,7 @@ async function handleInvalidation(
     return errorResponse('Method Not Allowed', 405);
   }
 
-  const secret = env.CACHE_INVALIDATION_SECRET;
-  const authSecret = extractAuthSecret(request);
-  const isAuthorized = (secret && authSecret === secret) ||
-    authSecret === 'lpu-cache-secret-2024' ||
-    authSecret === env.SUPABASE_ANON_KEY ||
-    authSecret === 'sb_publishable_S9KH9_RTpx1MiPwyEBWxRQ_QkJVgzsA';
-
-  if (!isAuthorized) {
+  if (!await isCacheMutationAuthorized(request, env)) {
     return errorResponse('Unauthorized invalidation request', 401);
   }
 
@@ -1958,21 +1970,11 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
     }
   } catch {}
 
-  const heroDesktopUrl = heroImageUrl || '/defaults/events/general_default_desktop.webp';
-  const heroMobileUrl = heroImageUrl
-    ? (heroImageUrl.includes('_desktop.webp')
-        ? heroImageUrl.replace('_desktop.webp', '_mobile.webp')
-        : (heroImageUrl.startsWith('/defaults/events/')
-            ? heroImageUrl.replace(/(_desktop|_tablet|_mobile)?\.webp$/, '_mobile.webp')
-            : heroImageUrl))
-    : '/defaults/events/general_default_mobile.webp';
+  const heroDesktopUrl = heroImageUrl || '/defaults/events/subcategories/academics_seminar.webp';
+  const heroMobileUrl = heroImageUrl || '/defaults/events/subcategories/academics_seminar.webp';
 
-  const heroDesktopProxy = heroDesktopUrl.startsWith('https://images.lpuevents.live/')
-    ? `/api/public/image-proxy?url=${encodeURIComponent(heroDesktopUrl)}`
-    : heroDesktopUrl;
-  const heroMobileProxy = heroMobileUrl.startsWith('https://images.lpuevents.live/')
-    ? `/api/public/image-proxy?url=${encodeURIComponent(heroMobileUrl)}`
-    : heroMobileUrl;
+  const heroDesktopProxy = heroDesktopUrl;
+  const heroMobileProxy = heroMobileUrl;
 
   const websiteJsonLd = safeJsonLd({
     '@context': 'https://schema.org',
@@ -2211,14 +2213,7 @@ export default {
 
     // 4. Cache Rebuild Endpoint
     if (url.pathname === '/api/cache/rebuild') {
-      const secret = env.CACHE_INVALIDATION_SECRET;
-      const authSecret = extractAuthSecret(request);
-      const isAuthorized = (secret && authSecret === secret) ||
-        authSecret === 'lpu-cache-secret-2024' ||
-        authSecret === env.SUPABASE_ANON_KEY ||
-        authSecret === 'sb_publishable_S9KH9_RTpx1MiPwyEBWxRQ_QkJVgzsA';
-
-      if (!isAuthorized) {
+      if (!await isCacheMutationAuthorized(request, env, true)) {
         return errorResponse('Unauthorized cache rebuild request', 401);
       }
       return handleCacheRebuild(origin, env, ctx);

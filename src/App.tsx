@@ -155,12 +155,12 @@ const normalizeEventDates = (evts: EventFeedItem[]): EventFeedItem[] => {
     .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
 };
 
-import { persistentCache } from "./shared/persistentCache";
+import { persistentCache, HOMEPAGE_CACHE_KEY } from "./shared/persistentCache";
 
 export default function App() {
   const initialBundle = useMemo(() => {
     try {
-      return persistentCache.get<any>('public:homepage');
+      return persistentCache.get<any>(HOMEPAGE_CACHE_KEY);
     } catch {
       return null;
     }
@@ -212,6 +212,8 @@ export default function App() {
   const [events, setEvents] = useState<EventFeedItem[]>(initialBundle?.events || []);
   const [eventsLoading, setEventsLoading] = useState(!initialBundle?.events?.length);
   const [visibleEventsCount, setVisibleEventsCount] = useState(10);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
+  const [hasMoreEvents, setHasMoreEvents] = useState(true);
   const [appLoading, setAppLoading] = useState(!initialBundle);
   const [isMaintenanceWarming, setIsMaintenanceWarming] = useState(false);
   const searchReqIdRef = useRef(0);
@@ -498,7 +500,7 @@ export default function App() {
           }
         }
 
-        // Happening Today events (from initial event feed)
+        // Happening Today events & initial Event Hub feed populated directly from homepage bundle
         if (bundle.events) {
           const now = new Date();
           const published = bundle.events.filter((evt: any) => evt.status === 'PUBLISHED' && !evt.deleted_at);
@@ -511,16 +513,22 @@ export default function App() {
               isEventToday(evt.start_at, evt.end_at, now)
           );
           setHappeningTodayEvents(validLive);
+          setEvents(normalized);
+          setEventsLoading(false);
+          setHasMoreEvents(normalized.length >= 10);
         }
       } catch (err) {
         console.error("Failed to load homepage data:", err);
       } finally {
         setAppLoading(false);
+        if (typeof window !== 'undefined') {
+          (window as any).__LPU_STARTUP__?.notifyCriticalReady();
+        }
       }
     }, []);
 
     // Fetch upcoming events feed dynamically based on filter states.
-    // Server fetch only executes when server-level filters (category, date, pricing) change.
+    // Server fetch only executes when server-level filters (category, date, pricing, timeline) change.
     const fetchUpcomingEvents = useCallback(async (forceFresh = false) => {
       const currentReqId = ++searchReqIdRef.current;
       setEventsLoading(true);
@@ -554,7 +562,9 @@ export default function App() {
           const validEvents = data.filter(
             (evt) => evt.status === 'PUBLISHED' && !evt.deleted_at
           );
-          setEvents(normalizeEventDates(validEvents));
+          const normalized = normalizeEventDates(validEvents);
+          setEvents(normalized);
+          setHasMoreEvents(normalized.length >= 10);
         }
       } catch (err) {
         console.error("Failed to fetch event feed:", err);
@@ -565,7 +575,63 @@ export default function App() {
       }
     }, [selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
 
-    // Initial mount: load theme and initial homepage snapshot
+    // Server-side pagination: load next increment on demand
+    const handleLoadMoreEvents = useCallback(async () => {
+      if (isLoadingMore || !hasMoreEvents) return;
+      setIsLoadingMore(true);
+      try {
+        let filters: any = {
+          offset: events.length,
+          limit: showMoreIncrement,
+        };
+        if (selectedCategory && selectedCategory !== "all") {
+          filters.category_id = selectedCategory;
+        }
+        if (selectedSubcategory) {
+          filters.subcategory_id = selectedSubcategory;
+        }
+        if (selectedPricingType !== 'ALL') {
+          filters.pricing_type = selectedPricingType;
+        }
+        if (activeScheduleFilter && activeScheduleFilter !== 'all') {
+          filters.timeline = activeScheduleFilter;
+        }
+        if (selectedDate) {
+          filters.date = selectedDate;
+        }
+
+        const { data, error } = await lpuClient.fetchEventFeed(filters);
+        if (!error && data) {
+          const valid = data.filter((evt) => evt.status === 'PUBLISHED' && !evt.deleted_at);
+          if (valid.length < showMoreIncrement) {
+            setHasMoreEvents(false);
+          }
+          setEvents((prev) => {
+            const existingIds = new Set(prev.map((e) => e.id));
+            const newItems = valid.filter((e) => !existingIds.has(e.id));
+            return normalizeEventDates([...prev, ...newItems]);
+          });
+        } else {
+          setHasMoreEvents(false);
+        }
+      } catch (err) {
+        console.error("Failed to load more events:", err);
+        setHasMoreEvents(false);
+      } finally {
+        setIsLoadingMore(false);
+      }
+    }, [events.length, showMoreIncrement, selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate, isLoadingMore, hasMoreEvents]);
+
+    // Critical readiness gate signal for instant-cached bundle
+    useEffect(() => {
+      if (initialBundle && (initialBundle.events?.length || initialBundle.carousel?.length)) {
+        if (typeof window !== 'undefined') {
+          (window as any).__LPU_STARTUP__?.notifyCriticalReady();
+        }
+      }
+    }, [initialBundle]);
+
+    // Initial mount: load theme and page title/analytics
     useEffect(() => {
       const { route } = parseCurrentRoute();
       const titles: Record<string, string> = {
@@ -601,16 +667,25 @@ export default function App() {
       if (metaTheme) {
         metaTheme.setAttribute('content', storedTheme === 'dark' ? '#1c1c1e' : '#f7f9fc');
       }
+    }, []);
 
-      loadAllData(false);
-    }, [loadAllData]);
+    // Route-aware homepage data boot: ONLY fetch bundle on home route
+    const homepageLoadedRef = useRef(false);
+    useEffect(() => {
+      if (currentView === 'home' && !homepageLoadedRef.current) {
+        homepageLoadedRef.current = true;
+        loadAllData(false);
+      }
+    }, [currentView, loadAllData]);
 
     // Realtime synchronization across Supabase Postgres CDC, Realtime Broadcast, and Storage events
     useEffect(() => {
       const handleSync = () => {
         lpuClient.invalidateClientCache('public:');
-        loadAllData(true);
-        fetchUpcomingEvents(true);
+        if (currentView === 'home') {
+          loadAllData(true);
+          fetchUpcomingEvents(true);
+        }
       };
 
       // Cross-tab storage sync (same origin) & local cache invalidation
@@ -624,7 +699,7 @@ export default function App() {
         window.removeEventListener('storage', handleStorage);
         window.removeEventListener('lpu:cache-invalidated', handleSync);
       };
-    }, [loadAllData, fetchUpcomingEvents]);
+    }, [loadAllData, fetchUpcomingEvents, currentView]);
 
     // Dynamically enable/disable Google AdSense script based on global ad toggle.
     // The AdSense script in index.html runs Google Auto Ads independently of our React ad system,
@@ -672,10 +747,18 @@ export default function App() {
       }
     }, [adSystemConfig.global_enabled, adSystemConfig?.adsense?.publisher_id]);
 
-    // Fetch upcoming events dynamically when filter states update
+    const lastFetchedFiltersRef = useRef<string>("all||ALL|all|");
+
+    // Fetch upcoming events dynamically when filter states update (skipping initial duplicate on home)
     useEffect(() => {
+      if (currentView !== 'home') return;
+      const currentFilterKey = `${selectedCategory}|${selectedSubcategory}|${selectedPricingType}|${activeScheduleFilter}|${selectedDate}`;
+      if (currentFilterKey === lastFetchedFiltersRef.current) {
+        return; // Zero duplicate request on initial home mount or unchanged filters!
+      }
+      lastFetchedFiltersRef.current = currentFilterKey;
       fetchUpcomingEvents(false);
-    }, [fetchUpcomingEvents]);
+    }, [fetchUpcomingEvents, currentView, selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
 
   const toggleTheme = useCallback(() => {
     setTheme((prevTheme) => {
@@ -833,8 +916,11 @@ export default function App() {
 
   // Paginated/Limited display list for upcoming events feed
   const displayedEvents = useMemo(() => {
-    return filteredEvents.slice(0, visibleEventsCount);
-  }, [filteredEvents, visibleEventsCount]);
+    if (isSearching) {
+      return filteredEvents.slice(0, visibleEventsCount);
+    }
+    return filteredEvents;
+  }, [filteredEvents, visibleEventsCount, isSearching]);
 
   if (isMaintenanceWarming) {
     return (
@@ -1116,14 +1202,25 @@ export default function App() {
               </div>
 
               {/* Show More upcoming events */}
-              {!isSearching && !eventsLoading && filteredEvents.length > visibleEventsCount && (
+              {!eventsLoading && (
+                isSearching
+                  ? filteredEvents.length > visibleEventsCount
+                  : hasMoreEvents
+              ) && (
                 <div className="flex justify-center -mt-4 sm:-mt-6">
                   <button
                     type="button"
-                    onClick={() => setVisibleEventsCount(prev => prev + showMoreIncrement)}
+                    disabled={isLoadingMore}
+                    onClick={() => {
+                      if (isSearching) {
+                        setVisibleEventsCount(prev => prev + showMoreIncrement);
+                      } else {
+                        handleLoadMoreEvents();
+                      }
+                    }}
                     className="glass-pill px-7 sm:px-9 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-heading font-black text-xs sm:text-sm text-gray-900 dark:text-gray-100 hover:text-primary hover:border-primary/50 cursor-pointer shadow-lg hover:scale-103 active:scale-95 transition-all touch-target border border-white/95 dark:border-white/10"
                   >
-                    View More Events
+                    {isLoadingMore ? "Loading..." : "View More Events"}
                   </button>
                 </div>
               )}

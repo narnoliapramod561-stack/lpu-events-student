@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import { getLowResPlaceholderUrl } from "../utils/images";
 
 // In-memory cache of already loaded HD image URLs to prevent re-blurring on route navigation
@@ -31,59 +31,27 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
   style,
   ...rest
 }) => {
-  const isMobile = typeof window !== 'undefined' && window.innerWidth <= 640;
   const defaultFallback = fallbackSrc !== undefined 
     ? fallbackSrc 
-    : (isMobile ? '/defaults/events/general_default_mobile.webp' : '/defaults/events/general_default_tablet.webp');
-  const isEager = loading === "eager";
-  const isCached = loadedHdImageCache.has(src) || isEager;
-  const [isHdLoaded, setIsHdLoaded] = useState<boolean>(isCached);
-  const [currentSrc, setCurrentSrc] = useState<string>(
-    isCached ? src : (lowResSrc || getLowResPlaceholderUrl(src))
-  );
+    : '/defaults/events/subcategories/academics_seminar.webp';
+  const isEager = loading === "eager" || fetchPriority === "high";
+  const isAlreadyLoaded = loadedHdImageCache.has(src) || isEager;
+  const [isHdLoaded, setIsHdLoaded] = useState<boolean>(isAlreadyLoaded);
+  const [imgSrc, setImgSrc] = useState<string>(src);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
-  useEffect(() => {
-    if (!src) return;
+  const handleImageLoad = useCallback(() => {
+    if (src) loadedHdImageCache.add(src);
+    setIsHdLoaded(true);
+    if (onLoadComplete) onLoadComplete();
+  }, [src, onLoadComplete]);
 
-    if (isEager || loadedHdImageCache.has(src)) {
-      setIsHdLoaded(true);
-      setCurrentSrc(src);
-      return;
+  const handleImageError = useCallback(() => {
+    if (defaultFallback && imgSrc !== defaultFallback) {
+      setImgSrc(defaultFallback);
     }
-
-    // Set initial instant preview
-    const placeholder = lowResSrc || getLowResPlaceholderUrl(src);
-    setCurrentSrc(placeholder);
-    setIsHdLoaded(false);
-
-    // Asynchronously pre-load Full HD image in the background
-    let isCancelled = false;
-    const hdImage = new Image();
-    hdImage.src = src;
-
-    hdImage.onload = () => {
-      if (!isCancelled) {
-        loadedHdImageCache.add(src);
-        setCurrentSrc(src);
-        setIsHdLoaded(true);
-        if (onLoadComplete) onLoadComplete();
-      }
-    };
-
-    hdImage.onerror = () => {
-      if (!isCancelled) {
-        if (defaultFallback) {
-          setCurrentSrc(defaultFallback);
-        }
-        setIsHdLoaded(true);
-      }
-    };
-
-    return () => {
-      isCancelled = true;
-    };
-  }, [src, lowResSrc, defaultFallback, onLoadComplete, isEager]);
+    setIsHdLoaded(true);
+  }, [defaultFallback, imgSrc]);
 
   const bgClass = ambientBackdrop ? "" : containerClassName.includes("bg-") ? "" : "bg-slate-900/40";
   const isContain = className.includes("object-contain");
@@ -93,50 +61,50 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
     ? containerClassName
     : `${containerClassName} overflow-hidden`;
 
+  const placeholderUrl = lowResSrc || getLowResPlaceholderUrl(src);
+
   return (
-    <div className={`${overflowSafeContainerClass} ${aspectRatioClass} ${bgClass}`}>
+    <div className={`${overflowSafeContainerClass} ${aspectRatioClass} ${bgClass}`} style={{ contain: 'layout paint' }}>
       {/* Ambient Vibrant Extension for contained/non-16:9 images (Zero black space, continuous edge flow) */}
       {ambientBackdrop && (
         <div
           aria-hidden="true"
           className="absolute inset-0 w-full h-full bg-cover bg-center blur-2xl saturate-150 brightness-105 scale-125 opacity-90 pointer-events-none transform-gpu"
-          style={{ backgroundImage: `url(${currentSrc || src})` }}
+          style={{ backgroundImage: `url(${imgSrc})`, contain: 'strict' }}
         />
       )}
 
       {/* 1. Low-Res Blurred Placeholder (Visible instantly until HD arrives, skipped for eager LCP) */}
-      {!isHdLoaded && !isEager && (
+      {!isHdLoaded && !isEager && placeholderUrl && (
         <img
-          src={lowResSrc || getLowResPlaceholderUrl(src)}
-          alt={alt}
+          src={placeholderUrl}
+          alt=""
           aria-hidden="true"
+          loading="eager"
+          decoding="async"
           onError={(e) => {
-            // Silently suppress placeholder errors without triggering heavy asset downloads
+            // Silently suppress placeholder errors
             e.currentTarget.style.display = "none";
           }}
-          className={`absolute inset-0 w-full h-full ${placeholderFit} filter blur-md transition-opacity duration-500 ease-out opacity-100 z-[2]`}
+          className={`absolute inset-0 w-full h-full ${placeholderFit} filter blur-md transition-opacity duration-300 ease-out opacity-100 z-[2]`}
           style={isFill ? { objectFit: "fill" } : undefined}
         />
       )}
 
-      {/* 2. Full HD Image (Direct paint for eager, crossfades seamlessly for lazy) */}
+      {/* 2. Full HD Image (Native direct paint with zero duplicate Image instantiation) */}
       <img
         ref={imgRef}
-        src={currentSrc}
+        src={imgSrc}
         alt={alt}
         loading={loading}
         fetchPriority={fetchPriority}
         decoding={isEager ? "sync" : "async"}
-        onError={(e) => {
-          const target = e.currentTarget;
-          if (defaultFallback && target.src !== defaultFallback) {
-            target.src = defaultFallback;
-          }
-        }}
+        onLoad={handleImageLoad}
+        onError={handleImageError}
         className={`${className} ${
           isEager
             ? "opacity-100"
-            : `transition-opacity duration-300 ease-out ${isHdLoaded ? "opacity-100" : "opacity-90"}`
+            : `transition-opacity duration-300 ease-out ${isHdLoaded ? "opacity-100" : "opacity-0"}`
         } ${ambientBackdrop ? "relative z-10 [mask-image:linear-gradient(to_right,transparent,black_2.5%,black_97.5%,transparent)]" : ""}`}
         style={{
           imageRendering: "-webkit-optimize-contrast",
@@ -148,3 +116,4 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
     </div>
   );
 };
+

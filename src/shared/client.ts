@@ -18,7 +18,7 @@ import {
   ResourceVersionItem
 } from './types';
 import { slugify } from './slug';
-import { persistentCache } from './persistentCache';
+import { persistentCache, HOMEPAGE_CACHE_KEY } from './persistentCache';
 import { registerMediaAssets } from './images/url';
 
 interface MemoryCacheEntry<T> {
@@ -298,12 +298,12 @@ export class LpuEventsClient {
       const [catsRes, subsRes, carRes, featRes, trendRes, adsRes, settRes, evtsRes] = await Promise.all([
         sb.from('categories').select('id, key, name, is_active, sort_order').eq('is_active', true).order('sort_order'),
         sb.from('subcategories').select('id, category_id, key, name, is_active, sort_order').eq('is_active', true).order('sort_order'),
-        sb.from('carousel_items').select('*, events:event_id(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key), subcategories(name, key))').eq('is_active', true).order('sort_order'),
-        sb.from('featured_events').select('*, events(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key))').order('sort_order'),
-        sb.from('trending_events').select('*, events(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key))').order('sort_order'),
-        sb.from('advertisements').select('*, media_assets:media_id(id, object_key)').eq('status', 'active'),
+        sb.from('carousel_items').select('*, events:event_id(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key), subcategories(name, key))').eq('is_active', true).order('sort_order').limit(8),
+        sb.from('featured_events').select('*, events(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key))').order('sort_order').limit(10),
+        sb.from('trending_events').select('*, events(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key))').order('sort_order').limit(10),
+        sb.from('advertisements').select('*, media_assets:media_id(id, object_key)').eq('status', 'active').limit(6),
         sb.from('global_settings').select('key, value'),
-        sb.from('events').select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)').eq('status', 'PUBLISHED').gte('end_at', nowIso).order('start_at', { ascending: true }).limit(20)
+        sb.from('events').select('id,name,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)').eq('status', 'PUBLISHED').gte('end_at', nowIso).order('start_at', { ascending: true }).limit(10)
       ]);
 
       const subMap: Record<string, any[]> = {};
@@ -372,7 +372,7 @@ export class LpuEventsClient {
    * In local dev or when forceFresh is true, fetches directly from Supabase for instant updates.
    */
   async fetchHomepageBundle(forceFresh = false): Promise<{ data: HomepageBundleData | null; error: any }> {
-    const cacheKey = 'public:homepage:bundle';
+    const cacheKey = HOMEPAGE_CACHE_KEY;
     if (forceFresh) {
       this.invalidateClientCache(cacheKey);
     }
@@ -487,17 +487,19 @@ export class LpuEventsClient {
     show_past?: boolean;
   }): Promise<EventFeedItem[] | null> {
     try {
-      const limit = Math.min(Math.max(filters?.limit ?? 20, 1), 50);
+      const limit = Math.min(Math.max(filters?.limit ?? 10, 1), 50);
       const offset = Math.max(filters?.offset ?? 0, 0);
       const catId = filters?.category_id || '';
       const subId = filters?.subcategory_id || '';
       const priceType = filters?.pricing_type || '';
+      const timeline = filters?.timeline || '';
+      const date = filters?.date || '';
       const showPast = Boolean(filters?.show_past);
 
       const sb = await this.getSupabaseClient();
       let query = sb
         .from('events')
-        .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
+        .select('id,name,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
         .eq('status', 'PUBLISHED');
 
       if (catId && catId !== 'all') {
@@ -513,6 +515,30 @@ export class LpuEventsClient {
       const nowIso = new Date().toISOString();
       if (!showPast) {
         query = query.gte('end_at', nowIso);
+      }
+
+      if (timeline) {
+        const todayStart = new Date();
+        todayStart.setHours(0, 0, 0, 0);
+        const todayEnd = new Date(todayStart);
+        todayEnd.setDate(todayEnd.getDate() + 1);
+
+        if (timeline === 'today') {
+          query = query.gte('start_at', todayStart.toISOString()).lt('start_at', todayEnd.toISOString());
+        } else if (timeline === 'tomorrow') {
+          const tomorrowStart = new Date(todayEnd);
+          const tomorrowEnd = new Date(tomorrowStart);
+          tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
+          query = query.gte('start_at', tomorrowStart.toISOString()).lt('start_at', tomorrowEnd.toISOString());
+        } else if (timeline === 'this_week' || timeline === 'this-week') {
+          const weekEnd = new Date(todayStart);
+          weekEnd.setDate(weekEnd.getDate() + 7);
+          query = query.gte('start_at', todayStart.toISOString()).lt('start_at', weekEnd.toISOString());
+        }
+      } else if (date) {
+        const dateStart = new Date(`${date}T00:00:00Z`);
+        const dateEnd = new Date(`${date}T23:59:59.999Z`);
+        query = query.gte('start_at', dateStart.toISOString()).lte('start_at', dateEnd.toISOString());
       }
 
       query = query.order('start_at', { ascending: true }).range(offset, offset + limit - 1);
@@ -540,7 +566,7 @@ export class LpuEventsClient {
     show_past?: boolean;
     force_fresh?: boolean;
   }): Promise<{ data: EventFeedItem[] | null; error: any }> {
-    const limit = Math.min(Math.max(filters?.limit ?? 20, 1), 20);
+    const limit = Math.min(Math.max(filters?.limit ?? 10, 1), 50);
     const offset = Math.max(filters?.offset ?? 0, 0);
     const catId = filters?.category_id || '';
     const subId = filters?.subcategory_id || '';
@@ -795,45 +821,21 @@ export class LpuEventsClient {
         localStorage.setItem('lpu_cache_bust', String(Date.now()));
         window.dispatchEvent(new CustomEvent('lpu:cache-invalidated', { detail: { tags } }));
 
-        let secret = '';
-        try {
-          secret = (import.meta as any).env?.VITE_CACHE_INVALIDATION_SECRET || 'lpu-cache-secret-2024';
-        } catch { /* env unavailable */ }
-
         const studentSiteUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
           ? `http://${window.location.hostname}:3000`
           : 'https://lpuevents.live';
-
-        const anonKey = (import.meta as any).env?.VITE_SUPABASE_ANON_KEY || 'sb_publishable_S9KH9_RTpx1MiPwyEBWxRQ_QkJVgzsA';
-        const headers: Record<string, string> = {
+        const { data: { session } } = await this.supabase.auth.getSession();
+        if (!session?.access_token) return;
+        const headers = {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${secret || anonKey}`,
-          'X-Invalidation-Secret': secret || anonKey,
+          'Authorization': `Bearer ${session.access_token}`,
         };
 
-        // 2. Invalidate tags across all potential paths to guarantee fresh edge responses
-        const invalidationTargets = [
-          '/api/cache/invalidate',
-          'https://lpuevents.live/api/cache/invalidate',
-          `${studentSiteUrl}/api/cache/invalidate`,
-        ];
-        invalidationTargets.forEach(endpoint => {
-          fetch(endpoint, {
-            method: 'POST',
-            headers,
-            body: JSON.stringify({ tags }),
-          }).catch(() => {});
+        await fetch(`${studentSiteUrl}/api/cache/invalidate`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ tags }),
         });
-
-        // 3. Trigger active rebuild & pre-warm
-        fetch(`${studentSiteUrl}/api/cache/rebuild`, {
-          method: 'POST',
-          headers,
-        }).catch(() => {});
-        fetch('https://lpuevents.live/api/cache/rebuild', {
-          method: 'POST',
-          headers,
-        }).catch(() => {});
       } catch {
         // Non-blocking telemetry
       }
@@ -896,20 +898,6 @@ export class LpuEventsClient {
       this._dispatchTargetedEdgeInvalidation(['events', 'homepage', `event:${id}`]);
     }
     return res;
-  }
-
-  async requestMediaUpload(mediaType: string, mimeType: string, fileSize: number): Promise<{ data: any; error: any }> {
-    return this.supabase.rpc('request_media_upload', {
-      p_media_type: mediaType,
-      p_mime_type: mimeType,
-      p_file_size_bytes: fileSize
-    });
-  }
-
-  async confirmMediaUpload(mediaId: string): Promise<{ data: any; error: any }> {
-    return this.supabase.rpc('confirm_media_upload', {
-      p_media_id: mediaId
-    });
   }
 
   // --- Super Admin Content Management RPCs ---

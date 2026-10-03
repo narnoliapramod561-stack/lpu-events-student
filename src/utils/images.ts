@@ -57,14 +57,8 @@ export function getResponsiveImageUrl(url: string, targetWidth?: number): string
           resolvedUrl = url.replace('/hero.webp', '/hero_1200w.webp');
         }
       }
-    } else if (url.includes('/optimized/') && url.endsWith('_desktop.webp')) {
-      if (effectiveWidth <= 640 || (isClient && screenWidth <= 640)) {
-        resolvedUrl = url.replace('_desktop.webp', '_mobile.webp');
-      } else if (effectiveWidth <= 1200 || (isClient && screenWidth <= 1024)) {
-        resolvedUrl = url.replace('_desktop.webp', '_tablet.webp');
-      }
     }
-    return `/api/public/image-proxy?url=${encodeURIComponent(resolvedUrl)}`;
+    return resolvedUrl;
   }
 
   return url;

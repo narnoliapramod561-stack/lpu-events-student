@@ -195,3 +195,4 @@ class PersistentCacheManager {
 }
 
 export const persistentCache = new PersistentCacheManager();
+export const HOMEPAGE_CACHE_KEY = 'public:homepage:bundle:v2';
