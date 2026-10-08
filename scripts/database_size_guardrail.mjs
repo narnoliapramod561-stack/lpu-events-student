@@ -2,6 +2,7 @@
  * scripts/database_size_guardrail.mjs
  *
  * LPU Events — Automatic Database Size Guardrail & Non-Destructive Lifecycle Maintenance
+ * Phase 4 Instrument: Operations Job Telemetry & Single-Flight Concurrency Protection
  *
  * Product Policy:
  * - Past Events: Automatically transitioned to COMPLETED when end_at < now().
@@ -64,20 +65,40 @@ async function callRpc(cleanUrl, headers, rpcName, params = {}) {
 
 async function executeStandardCleanup(cleanUrl, headers, label = 'Routine') {
   console.log(`\n[${label} Cleanup] Executing maintenance routines...`);
+  const metrics = {
+    recordsScanned: 0,
+    recordsProcessed: 0,
+    recordsDeleted: 0,
+    recordsFailed: 0,
+    details: {},
+    errors: []
+  };
 
   // 1. Audit Logs Cleanup (15 days retention)
   try {
     const delAudit = await callRpc(cleanUrl, headers, 'cleanup_old_audit_logs', { p_retention_days: AUDIT_RETENTION_DAYS });
-    console.log(`  - Audit Logs: Purged ${delAudit} record(s) older than ${AUDIT_RETENTION_DAYS} days.`);
+    const count = typeof delAudit === 'number' ? delAudit : 0;
+    metrics.recordsDeleted += count;
+    metrics.recordsScanned += count;
+    metrics.details.auditLogsPurged = count;
+    console.log(`  - Audit Logs: Purged ${count} record(s) older than ${AUDIT_RETENTION_DAYS} days.`);
   } catch (err) {
+    metrics.recordsFailed++;
+    metrics.errors.push(`Audit cleanup: ${err.message}`);
     console.warn(`  ⚠️ Audit cleanup warning: ${err.message}`);
   }
 
   // 2. Resolved Access Requests Cleanup (30 days retention)
   try {
     const delReq = await callRpc(cleanUrl, headers, 'cleanup_old_access_requests', { p_retention_days: ACCESS_REQUEST_RETENTION_DAYS });
-    console.log(`  - Access Requests: Purged ${delReq} resolved request(s) older than ${ACCESS_REQUEST_RETENTION_DAYS} days.`);
+    const count = typeof delReq === 'number' ? delReq : 0;
+    metrics.recordsDeleted += count;
+    metrics.recordsScanned += count;
+    metrics.details.accessRequestsPurged = count;
+    console.log(`  - Access Requests: Purged ${count} resolved request(s) older than ${ACCESS_REQUEST_RETENTION_DAYS} days.`);
   } catch (err) {
+    metrics.recordsFailed++;
+    metrics.errors.push(`Access requests cleanup: ${err.message}`);
     console.warn(`  ⚠️ Access requests cleanup warning: ${err.message}`);
   }
 
@@ -85,22 +106,34 @@ async function executeStandardCleanup(cleanUrl, headers, label = 'Routine') {
   try {
     const transEvents = await callRpc(cleanUrl, headers, 'cleanup_past_events', { p_batch_size: PAST_EVENT_BATCH_SIZE });
     const count = Array.isArray(transEvents) ? transEvents.length : (typeof transEvents === 'number' ? transEvents : 0);
+    metrics.recordsProcessed += count;
+    metrics.recordsScanned += count;
+    metrics.details.pastEventsTransitioned = count;
     console.log(`  - Past Events: Transitioned ${count} event(s) to COMPLETED status (end_at < now()).`);
     if (Array.isArray(transEvents) && transEvents.length > 0) {
       transEvents.forEach(e => console.log(`    • Transitioned: "${e.event_name}" (Ended: ${e.ended_at})`));
     }
   } catch (err) {
+    metrics.recordsFailed++;
+    metrics.errors.push(`Past events cleanup: ${err.message}`);
     console.warn(`  ⚠️ Past event cleanup warning: ${err.message}`);
   }
 
-  // 4. Orphan Media Cleanup (unreferenced assets older than threshold)
+  // 4. Orphan Media Cleanup (unreferenced assets transitioned to PENDING_DELETE)
   try {
     const delMedia = await callRpc(cleanUrl, headers, 'cleanup_orphaned_media_assets', { p_older_than_interval: MEDIA_ORPHAN_INTERVAL });
     const count = Array.isArray(delMedia) ? delMedia.length : (typeof delMedia === 'number' ? delMedia : 0);
-    console.log(`  - Orphan Media: Purged ${count} unreferenced media asset(s).`);
+    metrics.recordsProcessed += count;
+    metrics.recordsScanned += count;
+    metrics.details.orphanMediaFlagged = count;
+    console.log(`  - Orphan Media: Flagged ${count} unreferenced media asset(s) for deletion.`);
   } catch (err) {
+    metrics.recordsFailed++;
+    metrics.errors.push(`Orphan media cleanup: ${err.message}`);
     console.warn(`  ⚠️ Orphan media cleanup warning: ${err.message}`);
   }
+
+  return metrics;
 }
 
 async function runGuardrail() {
@@ -123,26 +156,103 @@ async function runGuardrail() {
     'Content-Type': 'application/json'
   };
 
+  // Phase 4: Operations Job Lifecycle Telemetry (Single-Flight Lock)
+  let jobRunId = null;
+  const requestId = `ops_gh_${process.env.GITHUB_RUN_ID || Date.now()}`;
+  const correlationId = process.env.GITHUB_SHA || `corr_${Date.now()}`;
+  const triggerSource = process.env.GITHUB_ACTIONS ? 'SCHEDULE' : 'MANUAL';
+
+  try {
+    const startRes = await callRpc(cleanUrl, headers, 'start_operations_job_run', {
+      p_job_key: 'database_cleanup',
+      p_trigger_source: triggerSource,
+      p_request_id: requestId,
+      p_correlation_id: correlationId,
+      p_metadata: {
+        workflow: process.env.GITHUB_WORKFLOW || 'database_cleanup',
+        run_id: process.env.GITHUB_RUN_ID || null,
+        run_number: process.env.GITHUB_RUN_NUMBER || null,
+        commit_sha: process.env.GITHUB_SHA || null
+      },
+      p_timeout_minutes: 30
+    });
+
+    if (startRes && startRes.acquired === false) {
+      console.warn(`⚠️ Single-flight lock active: ${startRes.reason} (Active Run: ${startRes.active_run_id}).`);
+      console.log('Skipping execution to avoid concurrent maintenance races.');
+      process.exit(0);
+    }
+
+    if (startRes && startRes.run_id) {
+      jobRunId = startRes.run_id;
+      console.log(`📋 Phase 4 Job Run Initialized: ${jobRunId} (Trigger: ${triggerSource})`);
+    }
+  } catch (telemetryStartErr) {
+    // Failure Isolation: Never block maintenance work merely because telemetry start write failed
+    console.warn(`⚠️ Telemetry lock acquisition warning: ${telemetryStartErr.message}`);
+  }
+
+  let cleanupMetrics = null;
+  let fatalError = null;
+
   try {
     // 1. Health check & database connection
     console.log('\n📡 Probing Supabase Health Endpoint...');
-    let healthData = null;
     try {
-      healthData = await callRpc(cleanUrl, headers, 'health_check');
+      const healthData = await callRpc(cleanUrl, headers, 'health_check');
       console.log(`  ✅ Database status: ${healthData.status || 'ONLINE'} (PostgreSQL Version: ${healthData.postgres_version || '15+'})`);
     } catch (err) {
       console.warn(`  ⚠️ health_check RPC warning: ${err.message}`);
     }
 
     // 2. Execute routine maintenance sweep
-    await executeStandardCleanup(cleanUrl, headers, 'Routine Sweep');
+    cleanupMetrics = await executeStandardCleanup(cleanUrl, headers, 'Routine Sweep');
 
     const durationMs = Date.now() - startTime;
     console.log('\n' + '='.repeat(70));
     console.log(`✅ Guardrail maintenance completed successfully in ${durationMs}ms.`);
     console.log('='.repeat(70));
-  } catch (fatalErr) {
-    console.error(`\n❌ FATAL GUARDRAIL EXCEPTION: ${fatalErr.message}`);
+  } catch (err) {
+    fatalError = err;
+    console.error(`\n❌ FATAL GUARDRAIL EXCEPTION: ${err.message}`);
+  }
+
+  // Phase 4: Finalize Job Run Telemetry Record
+  if (jobRunId) {
+    try {
+      const status = fatalError
+        ? 'FAILED'
+        : (cleanupMetrics && cleanupMetrics.errors.length > 0)
+        ? 'PARTIAL'
+        : 'COMPLETED';
+
+      const errorSummary = fatalError
+        ? fatalError.message
+        : (cleanupMetrics && cleanupMetrics.errors.length > 0)
+        ? cleanupMetrics.errors.join('; ')
+        : null;
+
+      await callRpc(cleanUrl, headers, 'finish_operations_job_run', {
+        p_run_id: jobRunId,
+        p_status: status,
+        p_records_scanned: cleanupMetrics?.recordsScanned ?? 0,
+        p_records_processed: cleanupMetrics?.recordsProcessed ?? 0,
+        p_records_deleted: cleanupMetrics?.recordsDeleted ?? 0,
+        p_records_failed: cleanupMetrics?.recordsFailed ?? (fatalError ? 1 : 0),
+        p_error_code: fatalError ? 'FATAL_EXCEPTION' : (cleanupMetrics?.errors.length ? 'SUBROUTINE_WARNING' : null),
+        p_error_summary: errorSummary,
+        p_metadata: {
+          duration_ms: Date.now() - startTime,
+          details: cleanupMetrics?.details ?? {}
+        }
+      });
+      console.log(`📋 Phase 4 Job Run Finalized: ${jobRunId} -> ${status}`);
+    } catch (telemetryFinishErr) {
+      console.warn(`⚠️ Telemetry finalization warning: ${telemetryFinishErr.message}`);
+    }
+  }
+
+  if (fatalError) {
     process.exit(1);
   }
 }
