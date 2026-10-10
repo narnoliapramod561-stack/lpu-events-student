@@ -204,7 +204,7 @@ export const HeroCarouselComponent = ({
         type: "event",
         title: "Discover Campus Events, Clubs & Festivities",
         description: "Explore tech hackathons, cultural nights, conferences, workshops, and student community gatherings happening across Lovely Professional University.",
-        image: "/defaults/events/subcategories/academics_seminar.webp",
+        image: "/defaults/hero_default.webp",
         category: "Campus Life",
         date: "Upcoming",
         time: "All Semesters",
@@ -333,10 +333,10 @@ export const HeroCarouselComponent = ({
       ref={containerRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
-      className="w-full relative rounded-[16px] sm:rounded-[34px] md:rounded-[40px] select-none group/carousel"
+      className="w-full relative rounded-[28px] sm:rounded-[34px] md:rounded-[40px] select-none group/carousel"
     >
-      {/* 1. Atmospheric Ambient Edge Glow (Vivid in both Light & Dark Mode) */}
-      <div className="hidden sm:block absolute -inset-4 sm:-inset-6 md:-inset-8 z-0 pointer-events-none opacity-90 dark:opacity-85 transition-opacity duration-700">
+      {/* 1. Atmospheric Ambient Edge Glow (Vivid in both Light & Dark Mode, Mobile & Desktop) */}
+      <div className="absolute -inset-3 sm:-inset-6 md:-inset-8 z-0 pointer-events-none opacity-90 dark:opacity-85 transition-opacity duration-700">
         <AnimatePresence mode="wait">
           <motion.div
             key={`ambient-glow-${currentIndex}`}
@@ -346,13 +346,14 @@ export const HeroCarouselComponent = ({
             transition={{ duration: 0.6 }}
             className="w-full h-full relative"
           >
-            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/40 via-amber-500/25 to-rose-500/20 blur-2xl rounded-[44px] dark:hidden" />
+            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/40 via-amber-500/25 to-rose-500/20 blur-2xl sm:blur-3xl rounded-[36px] sm:rounded-[44px] dark:hidden" />
+            <div className="hidden dark:block absolute inset-0 bg-gradient-to-tr from-orange-500/30 via-amber-500/18 to-transparent blur-2xl sm:blur-3xl rounded-[36px] sm:rounded-[44px]" />
           </motion.div>
         </AnimatePresence>
       </div>
 
-      {/* 2. Main Carousel Viewport Frame */}
-      <div className="relative z-10 w-full h-[250px] min-[390px]:h-[275px] min-[430px]:h-[295px] sm:h-auto sm:min-h-[520px] lg:h-[560px] xl:h-[580px] overflow-hidden rounded-[20px] sm:rounded-[34px] md:rounded-[40px] glass-panel shadow-[0_20px_60px_-10px_rgba(255,107,0,0.25),0_8px_25px_-5px_rgba(15,23,42,0.08)] dark:shadow-[0_24px_60px_rgba(0,0,0,0.95)] flex flex-col">
+      {/* 2. Main Carousel Viewport Frame — Precision 16:10 Golden Showcase on Mobile */}
+      <div className="relative z-10 w-full aspect-[16/10] sm:aspect-auto sm:h-auto sm:min-h-[520px] lg:h-[560px] xl:h-[580px] overflow-hidden rounded-[24px] sm:rounded-[34px] md:rounded-[40px] glass-panel border border-black/[0.08] dark:border-white/[0.14] ring-1 ring-inset ring-white/20 dark:ring-white/10 shadow-[0_20px_50px_-12px_rgba(255,107,0,0.24),0_10px_24px_-6px_rgba(15,23,42,0.08)] dark:shadow-[0_28px_70px_rgba(0,0,0,0.95)] flex flex-col">
         
         {/* Subtle Decorative Ambient Flares (Light mode only) */}
         <div className="absolute top-0 right-0 w-[420px] h-[420px] bg-gradient-to-br from-orange-500/35 via-amber-500/20 to-transparent rounded-full blur-3xl pointer-events-none z-0 hidden sm:block dark:hidden" />
@@ -399,7 +400,7 @@ export const HeroCarouselComponent = ({
                   onClick={handleAction}
                   className="sm:hidden relative w-full h-full flex-1 overflow-hidden cursor-pointer group"
                 >
-                  {/* Full Cover Stretched Slide Visual (Zero Blurred Wings, Paper Mâché Edge-to-Edge Feel) */}
+                  {/* Clean Mobile Slide Visual (Only Image, Zero Overlay Distractions) */}
                   {currentSlide.image ? (
                     <ProgressiveImage
                       src={getResponsiveImageUrl(currentSlide.image, 640)}
@@ -410,10 +411,10 @@ export const HeroCarouselComponent = ({
                       height={360}
                       ambientBackdrop={false}
                       containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
-                      className="w-full h-full object-contain object-center relative z-10"
+                      className="w-full h-full object-cover object-center relative z-10"
                     />
                   ) : (
-                    <div className="absolute inset-0 bg-gradient-to-br from-orange-950/80 via-slate-900 to-indigo-950 dark:from-black dark:via-zinc-950 dark:to-neutral-900 flex flex-col justify-center items-center px-4 text-center pb-12">
+                    <div className="absolute inset-0 bg-gradient-to-br from-orange-950/80 via-slate-900 to-indigo-950 dark:from-black dark:via-zinc-950 dark:to-neutral-900 flex flex-col justify-center items-center px-4 text-center">
                       <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-orange-500/20 text-orange-400 dark:bg-white/10 dark:text-white border border-orange-500/30 dark:border-white/15 rounded-full font-heading text-[10px] font-black uppercase tracking-wider mb-2">
                         Campus Events &amp; Festivities
                       </span>
@@ -422,46 +423,9 @@ export const HeroCarouselComponent = ({
                       </h1>
                     </div>
                   )}
+                </div>
 
-                  {/* Subtle bottom gradient only behind the floating pill */}
-                  <div className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-black/75 via-black/30 to-transparent pointer-events-none z-10" />
-
-                  {/* Floating In-Line Metadata Pill (Date • Time | Location) */}
-                  <div className="absolute inset-x-0 bottom-2.5 min-[390px]:bottom-3 z-20 px-2 flex items-center justify-center pointer-events-none">
-                    <div className="inline-flex items-center gap-2 px-3.5 py-1.5 min-[390px]:py-2 rounded-full bg-black/70 backdrop-blur-md border border-white/20 text-white shadow-xl max-w-[96%] overflow-hidden">
-                      {/* Event Date & Time */}
-                      {currentSlide.type === "event" && (currentSlide.date || currentSlide.time) && (
-                        <span className="inline-flex items-center gap-1.5 text-xs min-[390px]:text-[13px] font-bold text-white shrink-0 font-heading">
-                          <Calendar className="w-3.5 h-3.5 text-orange-400 dark:text-white shrink-0" />
-                          <span className="whitespace-nowrap">{currentSlide.date}</span>
-                          {currentSlide.time && (
-                            <span className="text-orange-300 dark:text-gray-300 whitespace-nowrap">• {currentSlide.time}</span>
-                          )}
-                        </span>
-                      )}
-
-                      {/* Divider */}
-                      {currentSlide.type === "event" && (currentSlide.date || currentSlide.time) && currentSlide.venue && (
-                        <span className="text-white/40 text-xs shrink-0 font-light">|</span>
-                      )}
-
-                      {/* Location */}
-                      {currentSlide.type === "event" && currentSlide.venue && (
-                        <span className="inline-flex items-center gap-1.5 text-xs min-[390px]:text-[13px] font-medium text-white/90 truncate min-w-0">
-                          <MapPin className="w-3.5 h-3.5 text-orange-400 shrink-0" />
-                          <span className="truncate">{currentSlide.venue}</span>
-                        </span>
-                      )}
-
-                      {/* Non-event slide fallback */}
-                      {currentSlide.type !== "event" && currentSlide.description && (
-                        <span className="text-xs min-[390px]:text-[13px] font-semibold text-white/90 truncate">
-                          {currentSlide.description}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>                {/* =========================================================
+                {/* =========================================================
                     DESKTOP SLIDE LAYOUT (sm+): Two-Zone Showcase Card
                    ========================================================= */}
                 {currentSlide.type === "event" ? (
@@ -589,15 +553,15 @@ export const HeroCarouselComponent = ({
                     >
                       <div className="relative w-full max-w-[760px] lg:max-w-none xl:max-w-[880px] 2xl:max-w-[940px] aspect-[16/9] lg:aspect-auto lg:h-full lg:min-h-[360px] rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 group-hover/img:scale-[1.015] transition-transform duration-300">
                         <ProgressiveImage
-                          src={getResponsiveImageUrl(currentSlide.image || "/defaults/events/subcategories/academics_seminar.webp", 1200)}
+                          src={getResponsiveImageUrl(currentSlide.image || "/defaults/hero_default.webp", 1200)}
                           alt={currentSlide.title}
                           loading={currentIndex === 0 ? "eager" : "lazy"}
                           fetchPriority={currentIndex === 0 ? "high" : "auto"}
                           width={1200}
                           height={675}
-                          ambientBackdrop
+                          ambientBackdrop={false}
                           containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
-                          className="w-full h-full object-contain object-center relative z-10"
+                          className="w-full h-full object-cover object-center relative z-10"
                         />
                       </div>
                     </div>
@@ -728,34 +692,6 @@ export const HeroCarouselComponent = ({
           </motion.div>
         </AnimatePresence>
 
-        {/* Mobile Edge Navigation Buttons (Back & Front, Small, Glassmorphic, Edge-Aligned) */}
-        {slides.length > 1 && (
-          <>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                paginate(-1);
-              }}
-              className="sm:hidden absolute left-0.5 min-[390px]:left-1 top-1/2 -translate-y-1/2 z-30 w-7.5 h-7.5 min-[390px]:w-8 min-[390px]:h-8 rounded-full flex items-center justify-center bg-black/60 hover:bg-black/75 active:bg-black/90 backdrop-blur-md border border-white/35 dark:border-white/25 text-white shadow-[0_4px_14px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.4)] active:scale-90 transition-transform duration-200 cursor-pointer touch-manipulation outline-none group select-none"
-              aria-label="Previous slide"
-            >
-              <ChevronLeft className="h-4 w-4 text-white drop-shadow stroke-[2.6] group-active:-translate-x-0.5 transition-transform" />
-            </button>
-
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                paginate(1);
-              }}
-              className="sm:hidden absolute right-0.5 min-[390px]:right-1 top-1/2 -translate-y-1/2 z-30 w-7.5 h-7.5 min-[390px]:w-8 min-[390px]:h-8 rounded-full flex items-center justify-center bg-black/60 hover:bg-black/75 active:bg-black/90 backdrop-blur-md border border-white/35 dark:border-white/25 text-white shadow-[0_4px_14px_rgba(0,0,0,0.5),inset_0_1px_1px_rgba(255,255,255,0.4)] active:scale-90 transition-transform duration-200 cursor-pointer touch-manipulation outline-none group select-none"
-              aria-label="Next slide"
-            >
-              <ChevronRight className="h-4 w-4 text-white drop-shadow stroke-[2.6] group-active:translate-x-0.5 transition-transform" />
-            </button>
-          </>
-        )}
       </div>
 
       {/* 3. Progress Dots — Below card on mobile, inside card on desktop (only when multiple slides) */}
@@ -785,40 +721,42 @@ export const HeroCarouselComponent = ({
           ))}
         </div>
       )}
-      {/* Mobile Dots — Below the card */}
+      {/* Mobile Dots — Below the card in a sleek frosted pill */}
       {slides.length > 1 && (
-        <div className="flex sm:hidden items-center justify-center gap-1.5 mt-2">
-          {slides.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => goToSlide(idx)}
-              aria-label={`Go to slide ${idx + 1}`}
-              className={`h-2 rounded-full transition-[width,background-color] duration-300 cursor-pointer ${
-                idx === currentIndex
-                  ? "w-5 bg-gradient-to-r from-amber-400 to-orange-500 dark:from-white/80 dark:to-white/60"
-                  : "w-2 bg-gray-400/40 dark:bg-white/25"
-              }`}
-            />
-          ))}
+        <div className="flex sm:hidden items-center justify-center mt-3.5 mb-1">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-white/[0.08] backdrop-blur-xl border border-black/[0.07] dark:border-white/[0.14] shadow-sm">
+            {slides.map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => goToSlide(idx)}
+                aria-label={`Go to slide ${idx + 1}`}
+                className={`h-1.5 rounded-full transition-[width,background-color] duration-300 cursor-pointer ${
+                  idx === currentIndex
+                    ? "w-7 bg-gradient-to-r from-[#ff6b00] via-[#ff7e29] to-[#ff954d] shadow-[0_0_10px_rgba(255,107,0,0.65)]"
+                    : "w-1.5 bg-gray-300/80 dark:bg-white/25 hover:bg-gray-400"
+                }`}
+              />
+            ))}
+          </div>
         </div>
       )}
 
-      {/* 4. Side Navigation Arrows (Positioned Directly on Outer Edges with Full Glassmorphism) */}
+      {/* 4. Side Navigation Arrows (Positioned Outside the Image Card at Extreme Screen Edges) */}
       {slides.length > 1 && (
         <>
           <button
             onClick={() => paginate(-1)}
-            className="hidden sm:flex absolute -left-3 sm:-left-4 md:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-30 w-11 sm:w-12 md:w-13 h-11 sm:h-12 md:h-13 rounded-full items-center justify-center transition-[transform,background-color,border-color,box-shadow] duration-200 cursor-pointer hover:scale-110 active:scale-95 group bg-white/75 dark:bg-white/[0.14] hover:bg-white/90 dark:hover:bg-white/[0.25] backdrop-blur-2xl border border-white/90 dark:border-white/30 shadow-[0_10px_35px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.8)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_1.5px_rgba(255,255,255,0.4)] hover:border-white dark:hover:border-white/50 touch-target outline-none focus:outline-none focus-visible:outline-none ring-0"
+            className="flex absolute -left-2 sm:-left-4 md:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-30 w-6 h-6 sm:w-12 md:w-13 sm:h-12 md:h-13 rounded-full items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 active:scale-90 group bg-white/90 dark:bg-black/60 hover:bg-white dark:hover:bg-black/85 backdrop-blur-xl border border-black/10 dark:border-white/20 shadow-md sm:shadow-[0_10px_35px_rgba(0,0,0,0.15)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.6)] touch-manipulation outline-none select-none"
             aria-label="Previous slide"
           >
-            <ChevronLeft className="h-5 w-5 md:h-6 md:w-6 text-gray-900 dark:text-white drop-shadow-sm group-hover:-translate-x-0.5 group-hover:text-primary transition-transform duration-200 stroke-[2.4]" />
+            <ChevronLeft className="h-3 w-3 sm:h-5 sm:w-5 md:h-6 md:w-6 text-gray-900 dark:text-white drop-shadow-sm group-hover:-translate-x-0.5 group-hover:text-primary transition-transform duration-200 stroke-[2.8] sm:stroke-[2.4]" />
           </button>
           <button
             onClick={() => paginate(1)}
-            className="hidden sm:flex absolute -right-3 sm:-right-4 md:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-30 w-11 sm:w-12 md:w-13 h-11 sm:h-12 md:h-13 rounded-full items-center justify-center transition-[transform,background-color,border-color,box-shadow] duration-200 cursor-pointer hover:scale-110 active:scale-95 group bg-white/75 dark:bg-white/[0.14] hover:bg-white/90 dark:hover:bg-white/[0.25] backdrop-blur-2xl border border-white/90 dark:border-white/30 shadow-[0_10px_35px_rgba(0,0,0,0.15),inset_0_1px_2px_rgba(255,255,255,0.8)] dark:shadow-[0_12px_40px_rgba(0,0,0,0.6),inset_0_1px_1.5px_rgba(255,255,255,0.4)] hover:border-white dark:hover:border-white/50 touch-target outline-none focus:outline-none focus-visible:outline-none ring-0"
+            className="flex absolute -right-2 sm:-right-4 md:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-30 w-6 h-6 sm:w-12 md:w-13 sm:h-12 md:h-13 rounded-full items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 active:scale-90 group bg-white/90 dark:bg-black/60 hover:bg-white dark:hover:bg-black/85 backdrop-blur-xl border border-black/10 dark:border-white/20 shadow-md sm:shadow-[0_10px_35px_rgba(0,0,0,0.15)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.6)] touch-manipulation outline-none select-none"
             aria-label="Next slide"
           >
-            <ChevronRight className="h-5 w-5 md:h-6 md:w-6 text-gray-900 dark:text-white drop-shadow-sm group-hover:translate-x-0.5 group-hover:text-primary transition-transform duration-200 stroke-[2.4]" />
+            <ChevronRight className="h-3 w-3 sm:h-5 sm:w-5 md:h-6 md:w-6 text-gray-900 dark:text-white drop-shadow-sm group-hover:translate-x-0.5 group-hover:text-primary transition-transform duration-200 stroke-[2.8] sm:stroke-[2.4]" />
           </button>
         </>
       )}

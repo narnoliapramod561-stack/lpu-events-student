@@ -1,132 +1,142 @@
 import React, { useState, useEffect } from 'react';
-import { RefreshCw, Server, Sparkles, ShieldCheck, Zap } from 'lucide-react';
+import { RefreshCw, Clock, ArrowUpRight } from 'lucide-react';
 import { LpuLogo } from './LpuLogo';
 
 interface MaintenanceViewProps {
   onRetry: () => void;
   message?: string;
+  estimatedResumption?: string;
   autoRetrySeconds?: number;
 }
 
 export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
   onRetry,
-  message = 'The campus event stream is currently compiling live snapshots in edge memory.',
-  autoRetrySeconds = 3
+  message,
+  estimatedResumption,
 }) => {
-  const [countdown, setCountdown] = useState(autoRetrySeconds);
   const [isRetrying, setIsRetrying] = useState(false);
 
+  // Instantly dismiss startup pre-React logo shell so this maintenance screen is displayed immediately
   useEffect(() => {
-    if (countdown <= 0) {
-      handleManualRetry();
-      return;
+    if (typeof window !== 'undefined') {
+      const startup = (window as any).__LPU_STARTUP__;
+      if (startup?.dismiss) {
+        startup.dismiss();
+      } else {
+        const shell = document.getElementById('lpu-startup-shell');
+        if (shell && shell.parentNode) {
+          shell.parentNode.removeChild(shell);
+        }
+      }
     }
-
-    const timer = setTimeout(() => {
-      setCountdown((prev) => prev - 1);
-    }, 1000);
-
-    return () => clearTimeout(timer);
-  }, [countdown]);
+  }, []);
 
   const handleManualRetry = () => {
     setIsRetrying(true);
     onRetry();
     setTimeout(() => {
       setIsRetrying(false);
-      setCountdown(autoRetrySeconds);
     }, 1200);
   };
 
+  const explanation = (message && message.trim().length > 0)
+    ? message.trim()
+    : 'We are currently making scheduled platform updates to improve your campus event experience.';
+
+  const resumption = (estimatedResumption && estimatedResumption.trim().length > 0)
+    ? estimatedResumption.trim()
+    : null;
+
   return (
-    <div className="min-h-screen bg-neutral-950 text-white flex flex-col justify-between selection:bg-orange-500/30 selection:text-orange-200">
-      {/* Top Bar */}
-      <header className="w-full px-6 py-4 flex items-center justify-between border-b border-white/10 bg-neutral-950/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="flex items-center gap-3.5">
-          <LpuLogo className="h-12 w-12 shrink-0 drop-shadow-md" />
-          <span className="text-base font-bold tracking-wide text-neutral-200">
-            LPU Events Engine
-          </span>
-        </div>
-        <div className="flex items-center gap-2 px-3 py-1 rounded-full text-xs font-medium bg-amber-500/10 border border-amber-500/20 text-amber-400">
-          <span className="w-2 h-2 rounded-full bg-amber-400 animate-ping mr-1" />
-          Cache Warming Active
+    <div className="min-h-screen w-full bg-[#090a0f] text-slate-100 flex flex-col justify-between relative overflow-hidden select-none font-sans">
+      {/* Subtle, luxurious ambient light falloff */}
+      <div 
+        aria-hidden="true" 
+        className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] sm:w-[900px] h-[500px] bg-[radial-gradient(ellipse_at_center,rgba(255,107,0,0.08),rgba(255,107,0,0.015)_50%,transparent_75%)] blur-3xl" 
+      />
+
+      {/* Top Header Navigation Bar — Logo at top-left website position */}
+      <header className="w-full border-b border-white/[0.06] bg-[#0c0d12]/60 backdrop-blur-md relative z-20">
+        <div className="mx-auto flex h-20 sm:h-[88px] max-w-[98%] items-center justify-between px-3 sm:px-4 md:px-6">
+          {/* Top-Left Brand Logo & Identity */}
+          <div className="flex items-center gap-2.5 sm:gap-3.5 select-none">
+            <LpuLogo 
+              id="navbar-brand-logo" 
+              className="h-12 w-12 sm:h-14 sm:w-14 shrink-0 drop-shadow-md" 
+            />
+            <div className="flex flex-col">
+              <div className="flex items-center text-xl sm:text-2xl font-black tracking-tight font-heading leading-tight">
+                <span className="text-white">LPU</span>
+                <span className="ml-1 text-[#ff6b00]">Events</span>
+              </div>
+              <span className="text-[10px] sm:text-[11px] font-extrabold tracking-widest text-slate-400 uppercase mt-0.5">
+                Student Directory
+              </span>
+            </div>
+          </div>
+
+          {/* Top-Right Maintenance Status Indicator */}
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 border border-amber-500/20 text-amber-300">
+            <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+            <span>Maintenance Mode</span>
+          </div>
         </div>
       </header>
 
-      {/* Main Hero Card */}
-      <main className="flex-1 flex items-center justify-center p-6">
-        <div className="max-w-xl w-full text-center relative">
-          {/* Subtle Ambient Glow */}
-          <div className="absolute -top-24 left-1/2 -translate-x-1/2 w-72 h-72 bg-gradient-to-tr from-orange-600/20 to-amber-500/20 blur-3xl rounded-full pointer-events-none" />
+      {/* Main Content Hero */}
+      <main className="w-full max-w-xl mx-auto text-center relative z-10 my-auto px-6 py-12">
+        {/* Main Headline */}
+        <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white font-heading leading-tight mb-4 sm:mb-5">
+          We’ll be back shortly.
+        </h1>
 
-          {/* Animated Core Icon */}
-          <div className="relative mx-auto w-24 h-24 mb-8 flex items-center justify-center">
-            <div className="absolute inset-0 rounded-3xl bg-gradient-to-br from-orange-500 to-amber-600 opacity-20 blur-lg animate-pulse" />
-            <div className="relative w-24 h-24 rounded-3xl bg-neutral-900 border border-white/10 flex items-center justify-center shadow-2xl">
-              <Zap className="w-10 h-10 text-orange-400 animate-bounce" />
-            </div>
-            {/* Orbiting particles */}
-            <div className="absolute -inset-2 rounded-3xl border border-orange-500/20 animate-spin" style={{ animationDuration: '8s' }} />
+        {/* Super Admin Explanation */}
+        <p className="text-base sm:text-lg text-slate-300 font-normal leading-relaxed mb-6 max-w-lg mx-auto">
+          {explanation}
+        </p>
+
+        {/* Estimated Resumption Time (if configured by admin) */}
+        {resumption && (
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs sm:text-sm text-slate-300 mb-8 font-medium">
+            <Clock className="w-3.5 h-3.5 text-[#ff6b00]" />
+            <span>Expected resumption: <strong className="text-white font-semibold">{resumption}</strong></span>
           </div>
+        )}
 
-          <h1 className="text-3xl sm:text-4xl font-extrabold tracking-tight mb-4 text-transparent bg-clip-text bg-gradient-to-r from-white via-neutral-200 to-neutral-400">
-            Optimizing Campus Stream
-          </h1>
+        {/* Reassurance text */}
+        <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-8 leading-relaxed">
+          All registered event tickets, team rosters, and student submissions remain fully secure.
+        </p>
 
-          <p className="text-neutral-400 text-sm sm:text-base leading-relaxed mb-8 max-w-md mx-auto">
-            {message} High-speed snapshot is being synthesized in the background with zero database latency.
-          </p>
-
-          {/* Diagnostics Box */}
-          <div className="bg-neutral-900/60 border border-white/10 rounded-2xl p-5 mb-8 text-left space-y-3">
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-neutral-400 flex items-center gap-1.5">
-                <Server className="w-3.5 h-3.5 text-orange-400" />
-                Edge Protection Layer
-              </span>
-              <span className="text-emerald-400 font-mono font-medium flex items-center gap-1">
-                <ShieldCheck className="w-3.5 h-3.5" /> Fail-Closed Active
-              </span>
-            </div>
-
-            <div className="flex items-center justify-between text-xs">
-              <span className="text-neutral-400 flex items-center gap-1.5">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                Live Data Invalidation
-              </span>
-              <span className="text-neutral-200 font-mono">Synchronizing</span>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="w-full bg-neutral-800 h-1.5 rounded-full overflow-hidden mt-3">
-              <div
-                className="h-full bg-gradient-to-r from-orange-500 to-amber-400 transition-all duration-1000 ease-linear rounded-full"
-                style={{ width: `${Math.max(0, (1 - countdown / autoRetrySeconds) * 100)}%` }}
-              />
-            </div>
-          </div>
-
-          {/* Action Button & Countdown */}
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button
-              onClick={handleManualRetry}
-              disabled={isRetrying}
-              className="w-full sm:w-auto px-6 py-3 rounded-xl font-medium text-sm bg-gradient-to-r from-orange-600 to-amber-600 hover:from-orange-500 hover:to-amber-500 text-white shadow-lg shadow-orange-950/50 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              <RefreshCw className={`w-4 h-4 ${isRetrying ? 'animate-spin' : ''}`} />
-              {isRetrying ? 'Checking Edge Stream...' : 'Connect Now'}
-            </button>
-            <span className="text-xs text-neutral-500 font-medium">
-              Auto-reconnecting in <span className="text-orange-400 font-mono">{countdown}s</span>
-            </span>
-          </div>
+        {/* Single Clean Action Button — Manual Only */}
+        <div className="flex justify-center">
+          <button
+            type="button"
+            onClick={handleManualRetry}
+            disabled={isRetrying}
+            className="inline-flex items-center gap-2.5 px-7 py-2.5 rounded-full text-sm font-semibold bg-white text-black hover:bg-slate-100 active:scale-98 transition-all shadow-lg hover:shadow-xl cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
+            <span>{isRetrying ? 'Checking status…' : 'Check status'}</span>
+          </button>
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="w-full py-4 text-center border-t border-white/5 text-xs text-neutral-500">
-        Lovely Professional University • Zero-Origin High Availability Architecture
+      <footer className="w-full border-t border-white/[0.05] relative z-10 px-6 py-6">
+        <div className="max-w-[98%] mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+          <div>
+            Lovely Professional University • Campus Events Hub
+          </div>
+
+          <a 
+            href="mailto:support@lpuevents.live" 
+            className="inline-flex items-center gap-1 text-slate-400 hover:text-white transition-colors"
+          >
+            <span>Urgent inquiries: support@lpuevents.live</span>
+            <ArrowUpRight className="w-3 h-3" />
+          </a>
+        </div>
       </footer>
     </div>
   );

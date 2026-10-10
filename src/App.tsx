@@ -218,6 +218,59 @@ export default function App() {
   const [isMaintenanceWarming, setIsMaintenanceWarming] = useState(false);
   const searchReqIdRef = useRef(0);
 
+  // Platform Maintenance & Campus Announcement state from global_settings
+  const [platformMaintenance, setPlatformMaintenance] = useState<{
+    isEnabled: boolean;
+    message?: string;
+    estimatedResumption?: string;
+  }>(() => {
+    if (initialBundle?.settings && Array.isArray(initialBundle.settings)) {
+      const maint = initialBundle.settings.find((s: any) => s.key === "platform_maintenance_mode");
+      if (maint) {
+        const val = maint.value;
+        if (typeof val === 'boolean') return { isEnabled: val };
+        if (typeof val === 'object' && val !== null) {
+          return {
+            isEnabled: Boolean(val.is_enabled ?? val.enabled ?? false),
+            message: val.message,
+            estimatedResumption: val.estimated_resumption
+          };
+        }
+      }
+    }
+    return { isEnabled: false };
+  });
+
+  const [campusAnnouncement, setCampusAnnouncement] = useState<{
+    isActive: boolean;
+    message: string;
+    urgency: 'info' | 'warning' | 'critical';
+    ctaLabel?: string;
+    ctaUrl?: string;
+  } | null>(() => {
+    if (initialBundle?.settings && Array.isArray(initialBundle.settings)) {
+      const banner = initialBundle.settings.find((s: any) => s.key === "site_notice_banner");
+      if (banner) {
+        const val = banner.value;
+        if (typeof val === 'string' && val.trim().length > 0) {
+          return { isActive: true, message: val, urgency: 'info' };
+        }
+        if (typeof val === 'object' && val !== null) {
+          return {
+            isActive: Boolean(val.is_active ?? true),
+            message: String(val.message || ''),
+            urgency: (val.urgency === 'warning' || val.urgency === 'critical') ? val.urgency : 'info',
+            ctaLabel: val.cta_label,
+            ctaUrl: val.cta_url
+          };
+        }
+      }
+    }
+    return null;
+  });
+
+  const [announcementDismissed, setAnnouncementDismissed] = useState(false);
+
   // Aggregated in-memory events for instant detail-view lookup
   const allAvailableEvents = useMemo(() => {
     const map = new Map<string, EventFeedItem>();
@@ -498,6 +551,42 @@ export default function App() {
               }));
             } catch {}
           }
+
+          // Check platform maintenance mode
+          const maintSetting = allSettings.find((s: any) => s.key === "platform_maintenance_mode");
+          if (maintSetting) {
+            const val = maintSetting.value;
+            if (typeof val === 'boolean') {
+              setPlatformMaintenance({ isEnabled: val });
+            } else if (typeof val === 'object' && val !== null) {
+              setPlatformMaintenance({
+                isEnabled: Boolean(val.is_enabled ?? val.enabled ?? false),
+                message: val.message,
+                estimatedResumption: val.estimated_resumption
+              });
+            }
+          }
+
+          // Check campus announcement banner
+          const bannerSetting = allSettings.find((s: any) => s.key === "site_notice_banner");
+          if (bannerSetting) {
+            const val = bannerSetting.value;
+            if (typeof val === 'string' && val.trim().length > 0) {
+              setCampusAnnouncement({
+                isActive: true,
+                message: val,
+                urgency: 'info'
+              });
+            } else if (typeof val === 'object' && val !== null) {
+              setCampusAnnouncement({
+                isActive: Boolean(val.is_active ?? true),
+                message: String(val.message || ''),
+                urgency: (val.urgency === 'warning' || val.urgency === 'critical') ? val.urgency : 'info',
+                ctaLabel: val.cta_label,
+                ctaUrl: val.cta_url
+              });
+            }
+          }
         }
 
         // Happening Today events & initial Event Hub feed populated directly from homepage bundle
@@ -700,6 +789,91 @@ export default function App() {
         window.removeEventListener('lpu:cache-invalidated', handleSync);
       };
     }, [loadAllData, fetchUpcomingEvents, currentView]);
+
+    // Live Settings Synchronization & Realtime Supabase CDC across all devices/origins
+    useEffect(() => {
+      const applySettings = (settingsRows: any[]) => {
+        if (!Array.isArray(settingsRows)) return;
+        const maint = settingsRows.find((s: any) => s.key === 'platform_maintenance_mode');
+        if (maint) {
+          const val = maint.value;
+          if (typeof val === 'boolean') {
+            setPlatformMaintenance({ isEnabled: val });
+          } else if (typeof val === 'object' && val !== null) {
+            setPlatformMaintenance({
+              isEnabled: Boolean(val.is_enabled ?? val.enabled ?? false),
+              message: val.message,
+              estimatedResumption: val.estimated_resumption
+            });
+          }
+        }
+
+        const banner = settingsRows.find((s: any) => s.key === 'site_notice_banner');
+        if (banner) {
+          const val = banner.value;
+          if (typeof val === 'string' && val.trim().length > 0) {
+            setCampusAnnouncement({ isActive: true, message: val, urgency: 'info' });
+          } else if (typeof val === 'object' && val !== null) {
+            setCampusAnnouncement({
+              isActive: Boolean(val.is_active ?? true),
+              message: String(val.message || ''),
+              urgency: (val.urgency === 'warning' || val.urgency === 'critical') ? val.urgency : 'info',
+              ctaLabel: val.cta_label,
+              ctaUrl: val.cta_url
+            });
+          }
+        }
+      };
+
+      let activeChannel: any = null;
+      let activeSb: any = null;
+
+      const fetchFreshSettings = async () => {
+        try {
+          const sb = await lpuClient.getSupabaseClient();
+          const { data: rows } = await sb
+            .from('global_settings')
+            .select('key, value')
+            .in('key', ['platform_maintenance_mode', 'site_notice_banner']);
+          if (rows) applySettings(rows);
+        } catch (e) {
+          console.warn('Realtime settings fetch:', e);
+        }
+      };
+
+      fetchFreshSettings();
+
+      const initRealtime = async () => {
+        try {
+          const sb = await lpuClient.getSupabaseClient();
+          activeSb = sb;
+          if (typeof sb.channel === 'function') {
+            activeChannel = sb
+              .channel('public:global-settings-realtime')
+              .on(
+                'postgres_changes',
+                { event: '*', schema: 'public', table: 'global_settings' },
+                () => {
+                  fetchFreshSettings();
+                }
+              )
+              .subscribe();
+          }
+        } catch (err) {
+          console.warn('Realtime channel subscription error:', err);
+        }
+      };
+
+      initRealtime();
+
+      return () => {
+        if (activeSb && activeChannel && typeof activeSb.removeChannel === 'function') {
+          try {
+            activeSb.removeChannel(activeChannel);
+          } catch {}
+        }
+      };
+    }, []);
 
     // Dynamically enable/disable Google AdSense script based on global ad toggle.
     // The AdSense script in index.html runs Google Auto Ads independently of our React ad system,
@@ -922,15 +1096,16 @@ export default function App() {
     return filteredEvents;
   }, [filteredEvents, visibleEventsCount, isSearching]);
 
-  if (isMaintenanceWarming) {
+  if (platformMaintenance.isEnabled || isMaintenanceWarming) {
     return (
       <MaintenanceView
         onRetry={() => {
           lpuClient.invalidateClientCache();
           window.location.reload();
         }}
-        message="University campus event stream is compiling into the edge memory cache. Automatic background synchronization in progress."
-        autoRetrySeconds={3}
+        message={platformMaintenance.message}
+        estimatedResumption={platformMaintenance.estimatedResumption}
+        autoRetrySeconds={platformMaintenance.isEnabled ? 20 : 5}
       />
     );
   }
@@ -987,6 +1162,41 @@ export default function App() {
       <div id="top" className="absolute top-0 left-0 h-0 w-0 pointer-events-none" />
 
       <div className="relative z-10">
+        {/* Campus Announcement Banner (Configured from Super Admin Site Controls) */}
+        {campusAnnouncement?.isActive && !announcementDismissed && (
+          <aside 
+            aria-label="Campus Announcement"
+            className={`w-full py-2.5 px-3 sm:px-6 text-xs font-semibold flex items-center justify-between gap-3 shadow-sm transition-all z-[60] relative ${
+              campusAnnouncement.urgency === 'critical'
+                ? 'bg-red-600 text-white'
+                : campusAnnouncement.urgency === 'warning'
+                ? 'bg-amber-500 text-neutral-950 font-bold'
+                : 'bg-gradient-to-r from-[#ff6b00] to-[#ff8533] text-white'
+            }`}
+          >
+            <div className="flex items-center gap-2 max-w-[92%] mx-auto overflow-hidden">
+              <span className="shrink-0 text-sm">📢</span>
+              <span className="truncate">{campusAnnouncement.message}</span>
+              {campusAnnouncement.ctaLabel && campusAnnouncement.ctaUrl && (
+                <a
+                  href={campusAnnouncement.ctaUrl}
+                  className="shrink-0 underline font-black ml-2 hover:opacity-80"
+                >
+                  {campusAnnouncement.ctaLabel} →
+                </a>
+              )}
+            </div>
+            <button
+              type="button"
+              onClick={() => setAnnouncementDismissed(true)}
+              className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 shrink-0 text-current transition-colors cursor-pointer"
+              aria-label="Dismiss banner"
+            >
+              ✕
+            </button>
+          </aside>
+        )}
+
         <Navbar
           searchQuery={searchQuery}
           onSearch={handleSearch}
@@ -1000,7 +1210,7 @@ export default function App() {
           allEvents={allAvailableEvents}
         />
 
-        <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-1 sm:px-4 md:px-6 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6 overflow-hidden">
+        <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-3 sm:px-4 md:px-6 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6 overflow-hidden">
           <Suspense fallback={
             <div className="min-h-[40vh] flex items-center justify-center">
               <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />

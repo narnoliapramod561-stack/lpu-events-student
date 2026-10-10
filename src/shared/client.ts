@@ -17,7 +17,7 @@ import {
   ResourceVersionMap,
   ResourceVersionItem
 } from './types';
-import { slugify } from './slug';
+import { slugify, extractEventId } from './slug';
 import { persistentCache, HOMEPAGE_CACHE_KEY } from './persistentCache';
 import { registerMediaAssets } from './images/url';
 
@@ -201,10 +201,16 @@ export class LpuEventsClient {
       // In browser, use relative URL if on student app (lpuevents.live or localhost:3000), otherwise use production edge URL
       let baseOrigin = 'https://lpuevents.live';
       if (typeof window !== 'undefined' && window.location) {
+        const isLocalhostOrLan =
+          window.location.hostname === 'localhost' ||
+          window.location.hostname === '127.0.0.1' ||
+          /^192\.168\./.test(window.location.hostname) ||
+          /^10\./.test(window.location.hostname) ||
+          /^172\.(1[6-9]|2[0-9]|3[0-1])\./.test(window.location.hostname);
+
         if (
           window.location.hostname === 'lpuevents.live' ||
-          (window.location.hostname === 'localhost' && window.location.port === '3000') ||
-          (window.location.hostname === '127.0.0.1' && window.location.port === '3000')
+          (isLocalhostOrLan && (window.location.port === '3000' || window.location.port === '5173'))
         ) {
           baseOrigin = '';
         }
@@ -499,7 +505,7 @@ export class LpuEventsClient {
       const sb = await this.getSupabaseClient();
       let query = sb
         .from('events')
-        .select('id,name,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
+        .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
         .eq('status', 'PUBLISHED');
 
       if (catId && catId !== 'all') {
@@ -700,45 +706,66 @@ export class LpuEventsClient {
     if (!idOrSlug) return { data: null, error: { message: 'Missing event identifier' } };
 
     const clean = idOrSlug.trim();
-    const isUuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(clean);
+    // 1. Check if clean contains or is a valid UUID
+    const extractedUuid = extractEventId(clean);
+    const isDirectUuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(clean);
+    const isExtractedUuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(extractedUuid);
+    const targetUuid = isDirectUuid ? clean : (isExtractedUuid ? extractedUuid : null);
 
     return this._fetchWithCache<Event>(`public:event:detail:${clean}`, 120_000, async () => {
-      let res: { data: Event | null; error: any };
-      if (isUuid) {
-        res = await this._fetchPublic<Event>(`events/${clean}`);
+      let res: { data: Event | null; error: any } = { data: null, error: null };
+
+      if (targetUuid) {
+        res = await this._fetchPublic<Event>(`events/${targetUuid}`);
+        if (res.data) return res;
       } else {
-        // Slug lookup: query search endpoint to find the matching event cleanly
+        // Slug lookup: query search endpoint, but ONLY accept an exact slug match
         const searchRes = await this.searchEvents(clean.replace(/-/g, ' '), { limit: 10 });
-        if (searchRes.error || !searchRes.data || searchRes.data.length === 0) {
-          res = { data: null, error: searchRes.error || { message: 'Event not found', code: 'EVENT_NOT_FOUND' } };
-        } else {
-          const match = searchRes.data.find((e) => slugify(e.name) === clean) || searchRes.data[0];
-          res = await this._fetchPublic<Event>(`events/${match.id}`);
+        if (searchRes.data && Array.isArray(searchRes.data)) {
+          const match = searchRes.data.find((e) => slugify(e.name) === clean);
+          if (match && match.id) {
+            res = await this._fetchPublic<Event>(`events/${match.id}`);
+            if (res.data) return res;
+          }
         }
       }
-
-      if (res.data) return res;
 
       // Resilient fallback directly to Supabase
       try {
         const sb = await this.getSupabaseClient();
-        let query = sb
-          .from('events')
-          .select('*, organizations(*), categories(*), subcategories(*), event_content_sections(*), media_assets:banner_media_id(id, object_key, bucket)');
-        if (isUuid) {
-          query = query.eq('id', clean);
+        if (targetUuid) {
+          const { data: sbEvent } = await sb
+            .from('events')
+            .select('*, organizations(*), categories(*), subcategories(*), event_content_sections(*), media_assets:banner_media_id(id, object_key, bucket)')
+            .eq('id', targetUuid)
+            .maybeSingle();
+          if (sbEvent) {
+            return { data: sbEvent as unknown as Event, error: null };
+          }
         } else {
-          query = query.eq('slug', clean);
-        }
-        const { data: sbEvent } = await query.maybeSingle();
-        if (sbEvent) {
-          return { data: sbEvent as unknown as Event, error: null };
+          // Find published events and match by exact slugify(name)
+          const { data: allPublished } = await sb
+            .from('events')
+            .select('id, name')
+            .eq('status', 'PUBLISHED');
+
+          const slugMatch = (allPublished || []).find((e) => slugify(e.name) === clean);
+          if (slugMatch && slugMatch.id) {
+            const { data: sbEvent } = await sb
+              .from('events')
+              .select('*, organizations(*), categories(*), subcategories(*), event_content_sections(*), media_assets:banner_media_id(id, object_key, bucket)')
+              .eq('id', slugMatch.id)
+              .maybeSingle();
+            if (sbEvent) {
+              return { data: sbEvent as unknown as Event, error: null };
+            }
+          }
         }
       } catch (sbErr) {
         console.warn('Supabase fallback for event details failed:', sbErr);
       }
 
-      return res;
+      return res.data ? res : { data: null, error: { message: 'Event not found', code: 'EVENT_NOT_FOUND' } };
     });
   }
 
@@ -1010,14 +1037,30 @@ export class LpuEventsClient {
       p_description
     });
 
+    const isRpcError = res.error || (res.data && typeof res.data === 'object' && ('code' in res.data && res.data.code >= 400));
+
     // Robust Fallback: direct table upsert if RPC had permission or transient error
-    if (res.error && p_action === 'upsert') {
+    if (isRpcError && p_action === 'upsert') {
+      let adminId: string | null = null;
+      try {
+        const { data: { user } } = await this.supabase.auth.getUser();
+        if (user?.id) {
+          const { data: au } = await this.supabase
+            .from('admin_users')
+            .select('id')
+            .eq('auth_user_id', user.id)
+            .maybeSingle();
+          adminId = au?.id || null;
+        }
+      } catch {}
+
       const { data: directData, error: directErr } = await this.supabase
         .from('global_settings')
         .upsert({
           key: (p_key || '').trim(),
           value: p_value,
           description: p_description,
+          updated_by: adminId || '0f159cb9-b672-499d-a9b6-d61d370342a5',
           updated_at: new Date().toISOString()
         }, { onConflict: 'key' })
         .select()
@@ -1025,6 +1068,15 @@ export class LpuEventsClient {
 
       if (!directErr) {
         res = { data: directData, error: null } as any;
+      }
+    } else if (isRpcError && p_action === 'delete') {
+      const { error: directErr } = await this.supabase
+        .from('global_settings')
+        .delete()
+        .eq('key', (p_key || '').trim());
+
+      if (!directErr) {
+        res = { data: { success: true }, error: null } as any;
       }
     }
 

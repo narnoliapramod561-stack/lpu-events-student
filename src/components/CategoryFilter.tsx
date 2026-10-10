@@ -351,7 +351,7 @@ export const CategoryFilterComponent = ({
                         if (onSelectPricingType) onSelectPricingType(item.id as 'ALL' | 'FREE' | 'PAID');
                       }
                     }}
-                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-transform duration-150 ${
+                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-heading font-semibold tracking-tight whitespace-nowrap shrink-0 active:scale-[0.96] transition-transform duration-150 ${
                       isSelected
                         ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                         : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
@@ -446,7 +446,7 @@ export const CategoryFilterComponent = ({
                       onSelectCategory("all");
                       onSelectSubcategory("");
                     }}
-                    className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-transform duration-150 ${
+                    className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-heading font-semibold tracking-tight whitespace-nowrap shrink-0 active:scale-[0.96] transition-transform duration-150 ${
                       selectedCategory === "all"
                         ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                         : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
@@ -472,7 +472,7 @@ export const CategoryFilterComponent = ({
                         onSelectCategory(isSelected ? "all" : cat.id);
                         onSelectSubcategory("");
                       }}
-                      className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-transform duration-150 ${
+                      className={`group flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-heading font-semibold tracking-tight whitespace-nowrap shrink-0 active:scale-[0.96] transition-transform duration-150 ${
                         isSelected
                           ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
                           : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"

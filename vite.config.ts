@@ -100,6 +100,9 @@ export default defineConfig({
     securityHeadersPlugin(),
     asyncCssPlugin()
   ],
+  define: {
+    'import.meta.env.VITE_DEV_LAN_IP': JSON.stringify(getLocalLanIp()),
+  },
   resolve: {
     alias: {
       '@lpu-events/shared': path.resolve(__dirname, fs.existsSync(path.resolve(__dirname, './src/shared')) ? './src/shared' : '../../packages/shared/src')

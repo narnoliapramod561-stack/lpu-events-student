@@ -33,7 +33,13 @@ export function getStudentEventUrl(eventId: string, eventName?: string): string 
       else if (!port) targetPort = '3000';
 
       const portSegment = targetPort ? `:${targetPort}` : '';
-      return `${protocol}//${hostname}${portSegment}/events/${segment}`;
+
+      // For scanning QR code from desktop screen using mobile device:
+      // If hostname is localhost, use LAN IP so the mobile device can reach the local dev server over Wi-Fi
+      const devLanIp = typeof import.meta !== 'undefined' ? (import.meta as any).env?.VITE_DEV_LAN_IP : undefined;
+      const targetHost = (isLocalhost && devLanIp && devLanIp !== '127.0.0.1') ? devLanIp : hostname;
+
+      return `${protocol}//${targetHost}${portSegment}/events/${segment}`;
     }
   }
 

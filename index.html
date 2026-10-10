@@ -44,7 +44,7 @@
       body {
         margin: 0;
         background-color: #f2f5f9;
-        font-family: 'Inter', system-ui, -apple-system, sans-serif;
+        font-family: 'Plus Jakarta Sans', 'Geist', 'Inter', system-ui, -apple-system, sans-serif;
         color: #0f172a;
         overflow-x: hidden;
       }
@@ -180,11 +180,11 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     
 
-    <!-- Non-Render-Blocking Google Fonts (Zero Layout Shift via display=optional) -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=optional" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=optional" media="print" onload="this.media='all'" />
+    <!-- Non-Render-Blocking Google Fonts (Zero Layout Shift via display=swap) -->
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
     <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=optional" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
     </noscript>
 
     <!-- Deferred High-Performance Analytics & Ads (Triggered on first user interaction or idle timeout) -->
@@ -378,13 +378,44 @@
 
         var startTime = Date.now();
         var MIN_VISUAL_MS = 950;
-        var MAX_SAFETY_MS = 3800;
+        var MAX_SAFETY_MS = 2500;
         var isCriticalReady = false;
         var isHandoffStarted = false;
+        var handoffAttempts = 0;
+        var MAX_HANDOFF_ATTEMPTS = 45;
+
+        function fallbackDismiss() {
+          if (isHandoffStarted) return;
+          isHandoffStarted = true;
+          state.status = 'REVEALED';
+
+          var container = document.getElementById('lpu-startup-logo-container');
+          var backdrop = document.getElementById('lpu-startup-backdrop');
+          var shell = document.getElementById('lpu-startup-shell');
+
+          if (container) {
+            container.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+            container.style.opacity = '0';
+            container.style.transform = 'scale(0.94)';
+          }
+          if (backdrop) {
+            backdrop.style.transition = 'opacity 0.35s ease, backdrop-filter 0.35s ease, -webkit-backdrop-filter 0.35s ease';
+            backdrop.style.opacity = '0';
+            backdrop.style.backdropFilter = 'blur(0px)';
+            backdrop.style.webkitBackdropFilter = 'blur(0px)';
+          }
+
+          setTimeout(function() {
+            if (shell && shell.parentNode) {
+              shell.parentNode.removeChild(shell);
+            }
+          }, 400);
+        }
 
         var state = {
           isHome: true,
           status: 'INITIAL',
+          dismiss: fallbackDismiss,
           notifyCriticalReady: function() {
             if (isCriticalReady) return;
             isCriticalReady = true;
@@ -401,20 +432,29 @@
           var backdrop = document.getElementById('lpu-startup-backdrop');
           var navEl = document.getElementById('navbar-brand-logo');
 
-          if (!container) return;
+          if (!container) {
+            fallbackDismiss();
+            return;
+          }
 
           if (!navEl) {
-            requestAnimationFrame(function() {
-              triggerHandoff();
-            });
+            handoffAttempts++;
+            if (handoffAttempts > MAX_HANDOFF_ATTEMPTS || (Date.now() - startTime) > MAX_SAFETY_MS) {
+              fallbackDismiss();
+            } else {
+              requestAnimationFrame(triggerHandoff);
+            }
             return;
           }
 
           var navRect = navEl.getBoundingClientRect();
           if (navRect.width === 0 || navRect.height === 0) {
-            requestAnimationFrame(function() {
-              triggerHandoff();
-            });
+            handoffAttempts++;
+            if (handoffAttempts > MAX_HANDOFF_ATTEMPTS || (Date.now() - startTime) > MAX_SAFETY_MS) {
+              fallbackDismiss();
+            } else {
+              requestAnimationFrame(triggerHandoff);
+            }
             return;
           }
 
@@ -427,7 +467,7 @@
           var startRect = container.getBoundingClientRect();
           var deltaX = navRect.left - startRect.left;
           var deltaY = navRect.top - startRect.top;
-          var targetScale = navRect.width / startRect.width;
+          var targetScale = navRect.width / (startRect.width || 1);
 
           // Clear CSS keyframe animation so it cannot override inline transform
           container.style.animation = 'none';
@@ -472,7 +512,11 @@
         setTimeout(function() {
           if (!isHandoffStarted) {
             isCriticalReady = true;
-            triggerHandoff();
+            if (document.getElementById('navbar-brand-logo')) {
+              triggerHandoff();
+            } else {
+              fallbackDismiss();
+            }
           }
         }, MAX_SAFETY_MS);
       })();

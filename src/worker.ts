@@ -30,12 +30,25 @@
  *   - NEVER caches admin data, auth state, or private sessions
  */
 
+export interface D1PreparedStatement {
+  bind: (...args: any[]) => D1PreparedStatement;
+  run: () => Promise<any>;
+  all: () => Promise<{ results: any[] }>;
+  first: () => Promise<any>;
+}
+
+export interface D1Database {
+  prepare: (query: string) => D1PreparedStatement;
+  exec: (query: string) => Promise<any>;
+}
+
 export interface Env {
   ASSETS: {
     fetch: (request: Request) => Promise<Response>;
   };
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
+  DB?: D1Database;
 }
 
 interface ExecutionContext {
@@ -71,10 +84,13 @@ let isRebuildingCache = false;
 // Prevents N concurrent cache misses from producing N origin requests.
 const inFlightRequests = new Map<string, Promise<Response>>();
 
+// Edge telemetry buffer for user errors (D1 edge fallback)
+const edgeErrorsBuffer: any[] = [];
+
 // ─── CORS Headers ────────────────────────────────────────────────────────────
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
 };
@@ -124,7 +140,7 @@ const PROJECTIONS = {
   trending: 'event_id,sort_order,events(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(id,name),categories(name,key),subcategories(name,key))',
   advertisements: 'id,name,media_id,redirect_url,start_at,end_at,status,media_assets:media_id(id,object_key)',
   settings: 'key,value',
-  eventFeed: 'id,name,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)',
+  eventFeed: 'id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)',
   eventDetail: 'id,name,description,start_at,end_at,venue_name,registration_mode,external_registration_url,pricing_type,price_amount,registration_format,capacity_limit,banner_media_id,category_id,subcategory_id,organization_id,status,created_at,updated_at,media_assets:banner_media_id(id,object_key),organizations(id,name),categories(id,name,key),subcategories(id,name,key),event_content_sections(id,section_type,title,content,sort_order)',
   // SEO: Lightweight projection for sitemap generation (minimal fields)
   sitemapEvents: 'id,name,updated_at,created_at,status,end_at,category_id,categories(key)',
@@ -1970,8 +1986,8 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
     }
   } catch {}
 
-  const heroDesktopUrl = heroImageUrl || '/defaults/events/subcategories/academics_seminar.webp';
-  const heroMobileUrl = heroImageUrl || '/defaults/events/subcategories/academics_seminar.webp';
+  const heroDesktopUrl = heroImageUrl || '/defaults/hero_default_desktop.webp';
+  const heroMobileUrl = heroImageUrl || '/defaults/hero_default_mobile.webp';
 
   const heroDesktopProxy = heroDesktopUrl;
   const heroMobileProxy = heroMobileUrl;
@@ -2217,6 +2233,73 @@ export default {
         return errorResponse('Unauthorized cache rebuild request', 401);
       }
       return handleCacheRebuild(origin, env, ctx);
+    }
+
+    // ─── Edge Error Telemetry Endpoints (Cloudflare D1 — 0% Supabase impact) ────
+    if (url.pathname === '/api/report-error' && request.method === 'POST') {
+      try {
+        const body = (await request.json()) as any;
+        const errRecord = {
+          id: `err_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+          error_type: body.error_type || 'SCREEN_CRASH',
+          error_message: String(body.error_message || 'Unknown error'),
+          file_path: String(body.file_path || 'Unknown file'),
+          line_number: Number(body.line_number) || 0,
+          component: String(body.component || 'Unknown component'),
+          url: String(body.url || origin),
+          user_device: String(body.user_device || 'Unknown device'),
+          last_action: String(body.last_action || 'Screen interaction'),
+          stack_trace: String(body.stack_trace || ''),
+          created_at: new Date().toISOString(),
+        };
+
+        if (env.DB) {
+          await env.DB.prepare(`
+            INSERT INTO user_errors (id, error_type, error_message, file_path, line_number, component, url, user_device, last_action, stack_trace, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).bind(
+            errRecord.id, errRecord.error_type, errRecord.error_message, errRecord.file_path, errRecord.line_number,
+            errRecord.component, errRecord.url, errRecord.user_device, errRecord.last_action, errRecord.stack_trace, errRecord.created_at
+          ).run().catch(() => {});
+        }
+
+        edgeErrorsBuffer.unshift(errRecord);
+        if (edgeErrorsBuffer.length > 100) edgeErrorsBuffer.pop();
+
+        return jsonResponse({ ok: true, id: errRecord.id }, 200);
+      } catch {
+        return jsonResponse({ ok: false }, 400);
+      }
+    }
+
+    if (url.pathname === '/api/admin/errors' && request.method === 'GET') {
+      if (env.DB) {
+        try {
+          const res = await env.DB.prepare('SELECT * FROM user_errors ORDER BY created_at DESC LIMIT 50').all();
+          if (res?.results && res.results.length > 0) {
+            return jsonResponse({ errors: res.results }, 200);
+          }
+        } catch {}
+      }
+      return jsonResponse({ errors: edgeErrorsBuffer }, 200);
+    }
+
+    if (url.pathname.startsWith('/api/admin/errors') && request.method === 'DELETE') {
+      const parts = url.pathname.split('/');
+      const targetId = parts[4];
+      if (targetId) {
+        if (env.DB) {
+          await env.DB.prepare('DELETE FROM user_errors WHERE id = ?').bind(targetId).run().catch(() => {});
+        }
+        const idx = edgeErrorsBuffer.findIndex((e: any) => e.id === targetId);
+        if (idx !== -1) edgeErrorsBuffer.splice(idx, 1);
+      } else {
+        if (env.DB) {
+          await env.DB.prepare('DELETE FROM user_errors').run().catch(() => {});
+        }
+        edgeErrorsBuffer.length = 0;
+      }
+      return jsonResponse({ ok: true }, 200);
     }
 
     // 5. Only GET and HEAD allowed for remaining public endpoints (POST for invalidation, view tracking, and search RPC)

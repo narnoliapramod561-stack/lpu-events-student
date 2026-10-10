@@ -239,7 +239,7 @@ export const HappeningTodaySliderComponent = ({
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="font-heading font-black text-base sm:text-2xl md:text-3xl text-gray-900 dark:text-white tracking-tight">
+              <h2 className="font-heading font-extrabold text-lg sm:text-2xl md:text-3xl text-gray-900 dark:text-white tracking-tight">
                 Happening Today
               </h2>
               <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5">
@@ -259,7 +259,7 @@ export const HappeningTodaySliderComponent = ({
             <button
               type="button"
               onClick={() => setIsAllTodayModalOpen(true)}
-              className="inline-flex items-center gap-1.5 text-orange-700 dark:text-white font-heading font-black text-xs hover:text-orange-800 dark:hover:text-gray-300 transition-colors cursor-pointer px-3.5 py-1.5 rounded-full bg-orange-500/10 dark:bg-white/10 hover:bg-orange-500/20 dark:hover:bg-white/15 active:scale-95 border border-orange-500/20 dark:border-white/15"
+              className="inline-flex items-center gap-1.5 text-orange-700 dark:text-white font-heading font-semibold text-xs hover:text-orange-800 dark:hover:text-gray-300 transition-colors cursor-pointer px-3.5 py-1.5 rounded-full bg-orange-500/10 dark:bg-white/10 hover:bg-orange-500/20 dark:hover:bg-white/15 active:scale-95 border border-orange-500/20 dark:border-white/15"
               aria-label={`View All ${events.length} Events Happening Today`}
             >
               <span>View All</span>
@@ -393,7 +393,7 @@ export const HappeningTodaySliderComponent = ({
                   {/* Event Name */}
                   <h3
                     title={slide.title}
-                    className="text-gray-950 dark:text-white font-heading font-black text-sm min-[400px]:text-[15px] leading-snug truncate group-hover:text-primary transition-colors tracking-tight"
+                    className="text-gray-950 dark:text-white font-heading font-bold text-sm min-[400px]:text-[15px] leading-snug truncate group-hover:text-primary transition-colors tracking-tight"
                   >
                     {slide.title}
                   </h3>
@@ -403,7 +403,7 @@ export const HappeningTodaySliderComponent = ({
                     <div className="flex items-center gap-1.5 min-w-0 flex-nowrap">
                       {/* Time Pill */}
                       {slide.type === "event" && slide.time && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-white/[0.08] text-slate-900 dark:text-white font-heading font-bold text-xs border border-slate-200/90 dark:border-white/15 shrink-0 shadow-2xs">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-white/[0.08] text-slate-800 dark:text-slate-200 font-heading font-semibold text-xs border border-slate-200/90 dark:border-white/15 shrink-0 shadow-2xs">
                           <Clock className="w-3.5 h-3.5 text-slate-500 dark:text-slate-400 shrink-0" />
                           <span>{slide.time}</span>
                         </span>
@@ -413,7 +413,7 @@ export const HappeningTodaySliderComponent = ({
                       {slide.type === "event" && slide.venue && (
                         <span
                           title={slide.venue}
-                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-white/[0.08] text-slate-900 dark:text-white font-heading font-bold text-xs border border-slate-200/90 dark:border-white/15 truncate min-w-0 max-w-[140px] min-[390px]:max-w-[170px] md:max-w-[210px] shadow-2xs"
+                          className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100/90 dark:bg-white/[0.08] text-slate-800 dark:text-slate-200 font-heading font-semibold text-xs border border-slate-200/90 dark:border-white/15 truncate min-w-0 max-w-[140px] min-[390px]:max-w-[170px] md:max-w-[210px] shadow-2xs"
                         >
                           <MapPin className="w-3.5 h-3.5 text-amber-500 dark:text-white shrink-0" />
                           <span className="truncate">{slide.venue}</span>

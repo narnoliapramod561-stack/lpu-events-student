@@ -61,11 +61,21 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
   const [event, setEvent] = useState<any | null>(initialEvent);
   const [loading, setLoading] = useState(!initialEvent);
+  const [detailsLoading, setDetailsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("about");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [bookingDisclaimerOpen, setBookingDisclaimerOpen] = useState(false);
+
+  // Synchronize internal event state when eventId or initialEvent changes
+  useEffect(() => {
+    setEvent(initialEvent);
+    if (!initialEvent) {
+      setLoading(true);
+    }
+    setActiveTab("about");
+  }, [eventId, initialEvent]);
 
   // Synchronize browser address bar with human-readable SEO slug
   useEffect(() => {
@@ -107,6 +117,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
     const loadDetails = async () => {
       if (!initialEvent) setLoading(true);
+      setDetailsLoading(true);
       setError(null);
       try {
         const { data, error: fetchErr } = await lpuClient.fetchEventDetails(eventId);
@@ -129,7 +140,10 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         if (!isMounted) return;
         if (!initialEvent) setError(err.message || "An unexpected error occurred");
       } finally {
-        if (isMounted) setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+          setDetailsLoading(false);
+        }
       }
     };
 
@@ -198,41 +212,68 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
     }
   };
 
-
   const sections = useMemo(() => {
     return Array.isArray(event?.event_content_sections)
       ? [...event.event_content_sections].sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
       : [];
   }, [event?.event_content_sections]);
 
-  // Generate clean tabs matching the wizard's sections
+  // Helper to identify if a section is an overview/about section
+  const isAboutOrOverviewSection = (sec: any) => {
+    if (!sec) return false;
+    const title = (sec.title || "").trim().toLowerCase();
+    const type = (sec.section_type || "").toUpperCase();
+    return (
+      title === "about the event" ||
+      title === "event overview" ||
+      title === "about" ||
+      title === "overview" ||
+      title === "about event" ||
+      type === "ABOUT"
+    );
+  };
+
+  // Helper to extract clean text from any content structure
+  const extractSectionText = (content: any): string => {
+    if (!content) return "";
+    if (typeof content === "string") return content.trim();
+    if (typeof content === "object") {
+      if (typeof content.text === "string") return content.text.trim();
+      if (typeof content.description === "string" && !content.items && !content.schedule) return content.description.trim();
+      if (typeof content.body === "string") return content.body.trim();
+      if (typeof content.markdown === "string") return content.markdown.trim();
+    }
+    return "";
+  };
+
+  // Generate unified, consistent tabs matching laptop and mobile seamlessly
   const tabs = useMemo(() => {
     const list: { id: string; label: string; content: any }[] = [];
 
-    const aboutSection = sections.find(
-      (s) =>
-        (s.title || "").trim().toLowerCase() === "about the event" ||
-        (s.section_type || "").toUpperCase() === "ABOUT"
-    );
+    // Find if there is an explicit overview / about section in content sections
+    const primaryAboutSection = sections.find(isAboutOrOverviewSection);
 
+    // Extract text from primaryAboutSection or fallback to event.description
+    const overviewText = extractSectionText(primaryAboutSection?.content);
+    const eventDescription = (event?.description || "").trim();
+    const finalAboutContent = overviewText || eventDescription;
+
+    // Tab 1 is ALWAYS the canonical About the Event section
     list.push({
       id: "about",
       label: "About the Event",
-      content: (aboutSection && aboutSection.content) ? aboutSection.content : (event?.description || "")
+      content: finalAboutContent,
     });
 
+    // Add all other distinct sections (Timeline, Guidelines, FAQ, Custom)
     sections.forEach((sec, idx) => {
-      const isAbout =
-        (sec.title || "").trim().toLowerCase() === "about the event" ||
-        (sec.section_type || "").toUpperCase() === "ABOUT";
+      if (isAboutOrOverviewSection(sec)) return; // Exclude duplicate overview/about section
 
-      if (!isAbout) {
-        list.push({
-          id: sec.id || `section-${idx}`,
-          label: sec.title || `Section ${idx + 1}`,
-          content: sec.content
-        });
-      }
+      list.push({
+        id: sec.id || `section-${idx}`,
+        label: sec.title || `Section ${idx + 1}`,
+        content: sec.content,
+      });
     });
 
     return list;
@@ -244,31 +285,73 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
     }
   }, [tabs, activeTab]);
 
-  // Rich section content renderer
+  // Rich section content renderer with modern bold & premium typography
   const renderSectionContent = (content: any) => {
     if (!content) {
+      if (detailsLoading) {
+        return (
+          <div className="space-y-4 py-2 animate-pulse" aria-label="Loading section content">
+            <div className="h-5 bg-black/10 dark:bg-white/10 rounded-xl w-full" />
+            <div className="h-5 bg-black/10 dark:bg-white/10 rounded-xl w-11/12" />
+            <div className="h-5 bg-black/10 dark:bg-white/10 rounded-xl w-4/5" />
+            <div className="h-5 bg-black/10 dark:bg-white/10 rounded-xl w-3/4" />
+          </div>
+        );
+      }
       return (
-        <p className="text-gray-500 dark:text-gray-400 text-sm sm:text-base italic font-normal">
+        <p className="text-gray-500 dark:text-gray-400 text-base sm:text-lg italic font-medium">
           No detailed content has been provided for this section yet.
         </p>
       );
     }
 
+    // 1. Text extracted from string or object wrapper { text: "..." }, { body: "..." }, etc.
+    let rawText: string | null = null;
     if (typeof content === "string") {
-      const lines = content.split("\n");
+      rawText = content;
+    } else if (typeof content === "object") {
+      if (typeof content.text === "string") {
+        rawText = content.text;
+      } else if (typeof content.description === "string" && !content.items && !content.schedule) {
+        rawText = content.description;
+      } else if (typeof content.body === "string") {
+        rawText = content.body;
+      } else if (typeof content.markdown === "string") {
+        rawText = content.markdown;
+      }
+    }
+
+    if (rawText !== null) {
+      const lines = rawText.split("\n");
       return (
-        <div className="space-y-4 sm:space-y-4.5 text-[15px] sm:text-base md:text-[17px] text-gray-700 dark:text-zinc-200 leading-[1.8] sm:leading-[1.85] font-normal tracking-[-0.011em] font-sans antialiased break-safe">
+        <div className="space-y-4 sm:space-y-5 text-base sm:text-lg md:text-[20px] text-gray-900 dark:text-zinc-50 leading-[1.7] sm:leading-[1.75] font-medium sm:font-semibold tracking-tight font-sans antialiased break-safe">
           {lines.map((line, i) => {
             const trimmed = line.trim();
-            if (!trimmed) return <div key={i} className="h-2" />;
+            if (!trimmed) return <div key={i} className="h-3" />;
+
+            // Headings inside markdown (e.g., ### Title or ## Title)
+            if (trimmed.startsWith("### ")) {
+              return (
+                <h4 key={i} className="font-heading font-black text-lg sm:text-xl md:text-2xl text-gray-950 dark:text-white tracking-tight pt-3 pb-1">
+                  {trimmed.replace(/^###\s*/, "")}
+                </h4>
+              );
+            }
+            if (trimmed.startsWith("## ")) {
+              return (
+                <h3 key={i} className="font-heading font-black text-xl sm:text-2xl md:text-3xl text-gray-950 dark:text-white tracking-tight pt-4 pb-1">
+                  {trimmed.replace(/^##\s*/, "")}
+                </h3>
+              );
+            }
 
             // Bullet points
             if (trimmed.startsWith("•") || trimmed.startsWith("-") || trimmed.startsWith("*")) {
               const clean = trimmed.replace(/^[-•*]\s*/, "");
               return (
-                <div key={i} className="flex items-start gap-3 sm:gap-3.5 pl-0.5">
-                  <span className="w-2 h-2 rounded-full bg-gradient-to-r from-[#FF5E00] to-[#FFA000] mt-2.5 shrink-0 shadow-[0_0_8px_rgba(255,94,0,0.4)]" />
-                  <span className="text-gray-700 dark:text-zinc-200 leading-[1.8]">{clean}</span>
+                <div key={i} className="flex items-start gap-3.5 sm:gap-4 pl-0.5">
+                  <span className="w-2.5 h-2.5 rounded-full bg-gradient-to-r from-[#FF5E00] to-[#FFA000] mt-2.5 shrink-0 shadow-[0_0_12px_rgba(255,94,0,0.5)]" />
+                  <span className="text-gray-900 dark:text-zinc-100 leading-[1.7] font-medium sm:font-semibold">{clean}</span>
                 </div>
               );
             }
@@ -277,11 +360,11 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
             if (/^\d+[\.\)]\s/.test(trimmed)) {
               const match = trimmed.match(/^(\d+[\.\)])\s*(.*)$/);
               return (
-                <div key={i} className="flex items-start gap-3 sm:gap-3.5 pl-0.5">
-                  <span className="inline-flex items-center justify-center min-w-[24px] h-[24px] px-1 rounded-lg bg-orange-500/10 dark:bg-white/10 border border-orange-500/25 dark:border-white/15 text-orange-700 dark:text-white font-heading font-bold text-xs shrink-0 mt-0.5 shadow-xs">
+                <div key={i} className="flex items-start gap-3.5 sm:gap-4 pl-0.5">
+                  <span className="inline-flex items-center justify-center min-w-[28px] h-[28px] px-1.5 rounded-xl bg-orange-500/15 dark:bg-white/12 border border-orange-500/30 dark:border-white/20 text-orange-700 dark:text-amber-300 font-heading font-black text-xs sm:text-sm shrink-0 mt-0.5 shadow-xs">
                     {match ? match[1].replace(/[\.\)]/, '') : i + 1}
                   </span>
-                  <span className="text-gray-700 dark:text-zinc-200 leading-[1.8]">{match ? match[2] : trimmed}</span>
+                  <span className="text-gray-900 dark:text-zinc-100 leading-[1.7] font-medium sm:font-semibold">{match ? match[2] : trimmed}</span>
                 </div>
               );
             }
@@ -290,41 +373,43 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
             const colonMatch = trimmed.match(/^([A-Za-z0-9\s/&-]+):(\s+.*)$/);
             if (colonMatch && colonMatch[1].length < 35) {
               return (
-                <p key={i} className="leading-[1.8]">
-                  <strong className="font-semibold text-gray-900 dark:text-white">{colonMatch[1]}:</strong>
-                  <span className="text-gray-700 dark:text-zinc-200">{colonMatch[2]}</span>
+                <p key={i} className="leading-[1.7]">
+                  <strong className="font-heading font-black text-gray-950 dark:text-white mr-1.5">{colonMatch[1]}:</strong>
+                  <span className="text-gray-900 dark:text-zinc-100 font-medium sm:font-semibold">{colonMatch[2]}</span>
                 </p>
               );
             }
 
-            return <p key={i} className="leading-[1.8]">{line}</p>;
+            return <p key={i} className="leading-[1.7] text-gray-900 dark:text-zinc-100 font-medium sm:font-semibold">{line}</p>;
           })}
         </div>
       );
     }
 
-    if (content.rules_list && Array.isArray(content.rules_list)) {
-      return (
-        <ul className="space-y-3 sm:space-y-3.5 text-[15px] sm:text-base text-gray-700 dark:text-zinc-200 font-sans">
-          {content.rules_list.map((rule: string, i: number) => (
-            <li key={i} className="flex items-start gap-3 sm:gap-3.5 p-3.5 sm:p-4 rounded-2xl bg-white/45 dark:bg-white/[0.03] border border-white/70 dark:border-white/8 shadow-xs">
-              <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-              <span className="break-safe leading-relaxed font-normal">{rule}</span>
-            </li>
-          ))}
-        </ul>
-      );
-    }
+    // 2. Schedule / Timeline items (supports content.items OR content.schedule)
+    const scheduleItems = (content.items && Array.isArray(content.items))
+      ? content.items
+      : (content.schedule && Array.isArray(content.schedule))
+        ? content.schedule
+        : null;
 
-    if (content.schedule && Array.isArray(content.schedule)) {
+    if (scheduleItems) {
       return (
-        <div className="flex flex-col gap-3 sm:gap-3.5 font-sans">
-          {content.schedule.map((item: any, i: number) => (
-            <div key={i} className="flex flex-col xs:flex-row gap-3 xs:gap-4 p-4 sm:p-4.5 rounded-2xl bg-white/50 dark:bg-white/[0.04] border border-white/80 dark:border-white/8 shadow-xs hover:border-primary/40 transition-colors">
-              <span className="font-heading font-extrabold text-primary dark:text-white text-xs sm:text-sm shrink-0 tracking-wider uppercase px-3 py-1 rounded-full bg-orange-500/10 dark:bg-white/10 border border-orange-500/20 dark:border-white/15 self-start">{item.time}</span>
+        <div className="flex flex-col gap-3.5 sm:gap-4 font-sans">
+          {scheduleItems.map((item: any, i: number) => (
+            <div key={i} className="flex flex-col xs:flex-row gap-3 xs:gap-4 p-4.5 sm:p-5 rounded-2xl bg-white/60 dark:bg-white/[0.04] border border-white/90 dark:border-white/10 shadow-xs hover:border-primary/40 transition-colors">
+              <span className="font-heading font-black text-primary dark:text-amber-300 text-xs sm:text-sm shrink-0 tracking-wider uppercase px-3.5 py-1.5 rounded-full bg-orange-500/15 dark:bg-white/10 border border-orange-500/25 dark:border-white/15 self-start">
+                {item.time || `Phase ${i + 1}`}
+              </span>
               <div className="flex flex-col">
-                <span className="font-heading font-bold text-base sm:text-lg text-gray-900 dark:text-white break-safe">{item.title || item.details}</span>
-                {item.description && <span className="text-sm text-gray-600 dark:text-zinc-300 mt-1 break-safe leading-relaxed font-normal">{item.description}</span>}
+                <span className="font-heading font-black text-lg sm:text-xl text-gray-950 dark:text-white break-safe">
+                  {item.title || item.details || item.activity}
+                </span>
+                {item.description && (
+                  <span className="text-sm sm:text-base text-gray-700 dark:text-zinc-200 mt-1 break-safe leading-relaxed font-medium">
+                    {item.description}
+                  </span>
+                )}
               </div>
             </div>
           ))}
@@ -332,12 +417,89 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
       );
     }
 
+    // 3. FAQ / Guidelines items (supports content.faqs OR content.faq)
+    const faqItems = (content.faqs && Array.isArray(content.faqs))
+      ? content.faqs
+      : (content.faq && Array.isArray(content.faq))
+        ? content.faq
+        : null;
+
+    if (faqItems) {
+      return (
+        <div className="flex flex-col gap-3.5 sm:gap-4 font-sans">
+          {faqItems.map((faq: any, i: number) => (
+            <div key={i} className="p-4.5 sm:p-5 rounded-2xl bg-white/60 dark:bg-white/[0.04] border border-white/90 dark:border-white/10 shadow-xs flex flex-col gap-2">
+              <div className="flex items-start gap-3">
+                <span className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-primary/15 dark:bg-primary/20 text-primary shrink-0 mt-0.5 font-black text-xs font-heading">
+                  Q
+                </span>
+                <span className="font-heading font-bold text-base sm:text-lg text-gray-950 dark:text-white">
+                  {faq.question || faq.q}
+                </span>
+              </div>
+              <div className="pl-9 text-sm sm:text-base text-gray-700 dark:text-zinc-200 font-medium leading-relaxed">
+                {faq.answer || faq.a}
+              </div>
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // 4. Rules list
+    const rulesList = (content.rules_list && Array.isArray(content.rules_list))
+      ? content.rules_list
+      : (content.rules && Array.isArray(content.rules))
+        ? content.rules
+        : null;
+
+    if (rulesList) {
+      return (
+        <ul className="space-y-3.5 sm:space-y-4 text-base sm:text-lg text-gray-900 dark:text-zinc-100 font-sans">
+          {rulesList.map((rule: any, i: number) => (
+            <li key={i} className="flex items-start gap-3.5 sm:gap-4 p-4 sm:p-5 rounded-2xl bg-white/60 dark:bg-white/[0.04] border border-white/90 dark:border-white/10 shadow-xs">
+              <CheckCircle2 className="h-5.5 w-5.5 text-emerald-500 shrink-0 mt-0.5" />
+              <span className="break-safe leading-relaxed font-semibold text-gray-900 dark:text-white">
+                {typeof rule === "string" ? rule : (rule.text || rule.title || JSON.stringify(rule))}
+              </span>
+            </li>
+          ))}
+        </ul>
+      );
+    }
+
+    // 5. Fallback: graceful key-value presentation instead of raw json dump
     return (
-      <div className="text-[15px] sm:text-base text-gray-700 dark:text-zinc-200 leading-relaxed whitespace-pre-line break-safe font-sans">
-        {JSON.stringify(content, null, 2)}
+      <div className="space-y-3 font-sans">
+        {Object.entries(content).map(([k, v], i) => (
+          <div key={i} className="p-4.5 sm:p-5 rounded-2xl bg-white/60 dark:bg-white/[0.04] border border-white/90 dark:border-white/10 shadow-xs">
+            <span className="text-xs uppercase tracking-wider font-heading font-black text-primary block mb-1">
+              {k.replace(/_/g, ' ')}
+            </span>
+            <span className="text-base text-gray-900 dark:text-zinc-100 font-semibold">
+              {typeof v === 'string' ? v : JSON.stringify(v)}
+            </span>
+          </div>
+        ))}
       </div>
     );
   };
+
+  const detailsConfig = adSystemConfig?.placements?.event_details;
+  const effectiveDetailsAds = useMemo(() => {
+    if (!ads || ads.length === 0) return [];
+    if (detailsConfig?.selected_ad_ids && Array.isArray(detailsConfig.selected_ad_ids)) {
+      if (detailsConfig.selected_ad_ids.length === 0) return [];
+      const ordered = detailsConfig.selected_ad_ids
+        .map((id) => ads.find((a) => a.id === id))
+        .filter(Boolean);
+      if (ordered.length > 0) return ordered;
+    }
+    return ads;
+  }, [ads, detailsConfig?.selected_ad_ids]);
+
+  const spotlight1 = effectiveDetailsAds[0] || null;
+  const spotlight2 = effectiveDetailsAds[1] || effectiveDetailsAds[0] || null;
 
   if (loading && !event) {
     return (
@@ -421,22 +583,6 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
     );
   }
 
-  const detailsConfig = adSystemConfig?.placements?.event_details;
-  const effectiveDetailsAds = useMemo(() => {
-    if (!ads || ads.length === 0) return [];
-    if (detailsConfig?.selected_ad_ids && Array.isArray(detailsConfig.selected_ad_ids)) {
-      if (detailsConfig.selected_ad_ids.length === 0) return [];
-      const ordered = detailsConfig.selected_ad_ids
-        .map((id) => ads.find((a) => a.id === id))
-        .filter(Boolean);
-      if (ordered.length > 0) return ordered;
-    }
-    return ads;
-  }, [ads, detailsConfig?.selected_ad_ids]);
-
-  const spotlight1 = effectiveDetailsAds[0] || null;
-  const spotlight2 = effectiveDetailsAds[1] || effectiveDetailsAds[0] || null;
-
   const hasExternalRegistration = Boolean(event?.external_registration_url);
   const isPaid = (event?.pricing_type === "PAID" || (typeof event?.price_amount === "number" && event.price_amount > 0)) && event?.pricing_type !== "FREE";
 
@@ -508,6 +654,15 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
           alt={`${event.name} event banner — Lovely Professional University`}
           fetchPriority="high"
         />
+
+        {/* Paid Event Badge (Top Right of Image) */}
+        {isPaid && (
+          <div className="absolute top-3 right-3 sm:top-4 sm:right-4 md:top-5 md:right-5 z-20 pointer-events-none">
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 sm:px-3.5 sm:py-1.5 rounded-full bg-black/65 dark:bg-black/75 backdrop-blur-md text-amber-300 dark:text-amber-300 border border-amber-400/35 text-[10px] sm:text-xs font-heading font-black uppercase tracking-wider shadow-lg">
+              Paid Event
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Event Title */}
@@ -602,11 +757,10 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
             </div>
 
             <div className="hidden md:block w-px bg-gradient-to-b from-transparent via-gray-200/80 dark:via-white/10 to-transparent my-4"></div>
-            <div className="block md:hidden border-t border-dashed border-gray-200/80 dark:border-white/10 mx-4"></div>
 
-            {/* Right Side: Canonical QR Code */}
-            <div className="w-auto shrink-0 md:w-56 lg:w-64 px-4 py-4 sm:p-6 flex flex-row md:flex-col items-center justify-center md:text-center gap-4 md:gap-0 bg-orange-500/[0.02] dark:bg-white/[0.01]">
-              <div className="w-24 h-24 sm:w-32 sm:h-32 bg-white rounded-xl sm:rounded-2xl p-1.5 sm:p-2 shadow-md border border-orange-500/20 flex items-center justify-center shrink-0">
+            {/* Right Side: Canonical QR Code (Desktop only: scanning mobile from mobile is redundant) */}
+            <div className="hidden md:flex shrink-0 md:w-56 lg:w-64 p-6 flex-col items-center justify-center text-center bg-orange-500/[0.02] dark:bg-white/[0.01]">
+              <div className="w-28 h-28 lg:w-32 lg:h-32 bg-white rounded-xl sm:rounded-2xl p-2 shadow-md border border-orange-500/20 flex items-center justify-center shrink-0">
                 {qrDataUrl ? (
                   <img
                     src={qrDataUrl}
@@ -620,12 +774,12 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
                 )}
               </div>
 
-              <div className="md:mt-3 flex flex-col items-start md:items-center gap-0.5">
-                <span className="font-heading font-black text-[11px] sm:text-xs uppercase tracking-wider text-primary dark:text-white flex items-center gap-1">
+              <div className="mt-3 flex flex-col items-center gap-0.5">
+                <span className="font-heading font-black text-xs uppercase tracking-wider text-primary dark:text-white flex items-center gap-1">
                   <QrCode className="h-3.5 w-3.5" />
                   Scan to View Event
                 </span>
-                <span className="text-[10px] sm:text-[11px] text-gray-500 dark:text-gray-400 font-medium">
+                <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
                   Direct mobile access
                 </span>
               </div>
@@ -663,10 +817,10 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
                   key={tab.id}
                   type="button"
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-3.5 py-2 sm:px-5 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-bold whitespace-nowrap transition-all duration-200 cursor-pointer touch-target font-heading outline-none shrink-0 tracking-wide ${
+                  className={`px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer touch-target font-heading outline-none shrink-0 tracking-tight ${
                     isActive
-                      ? "!bg-gradient-to-r !from-[#FF5E00] !to-[#FFA000] dark:!from-white/16 dark:!to-white/12 !text-white shadow-[0_4px_16px_rgba(255,94,0,0.35)] dark:shadow-none !border-transparent dark:!border dark:!border-white/20 scale-[1.01]"
-                      : "text-gray-600 dark:text-zinc-300 hover:text-primary hover:bg-black/5 dark:hover:bg-white/5 !bg-transparent border-transparent"
+                      ? "!bg-gradient-to-r !from-[#FF5E00] !to-[#FFA000] dark:!from-white/16 dark:!to-white/12 !text-white shadow-[0_4px_14px_rgba(255,94,0,0.3)] dark:shadow-none !border-transparent dark:!border dark:!border-white/20 scale-[1.01]"
+                      : "text-slate-600 dark:text-zinc-300 hover:text-primary hover:bg-black/5 dark:hover:bg-white/5 !bg-transparent border-transparent"
                   }`}
                 >
                   {tab.label}
@@ -703,37 +857,20 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
           <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
             
             {/* Left Side: Price / Registration Status */}
-            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
-              <span className="text-xl sm:text-2xl md:text-3xl font-black font-heading text-gray-900 dark:text-white tracking-tight truncate">
+            <div className="flex flex-col justify-center min-w-0">
+              <span className="text-xl sm:text-2xl md:text-3xl font-black font-heading text-gray-900 dark:text-white tracking-tight truncate leading-none">
                 {isPaid && event?.price_amount !== undefined && event?.price_amount !== null 
                   ? `₹${event.price_amount}` 
                   : (isPaid ? "Paid" : "Free")}
               </span>
-              <span className={`text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2 sm:px-2.5 py-0.5 rounded-md border shrink-0 ${
-                isPaid 
-                  ? "text-orange-800 dark:text-zinc-200 bg-orange-100 dark:bg-white/10 border-orange-300 dark:border-white/15"
-                  : "text-emerald-800 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-500/15 border-emerald-300 dark:border-emerald-500/30"
-              }`}>
-                {isPaid ? "Paid Event" : "Free Event"}
-              </span>
             </div>
 
-            {/* Right Side: Share + External Book Ticket Button */}
-            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
-              <button
-                type="button"
-                onClick={() => setShareModalOpen(true)}
-                className="px-3.5 py-2.5 sm:px-5 sm:py-3.5 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-gray-800 dark:text-gray-200 font-heading font-bold text-xs sm:text-sm transition-all flex items-center gap-1.5 border border-black/5 dark:border-white/10 cursor-pointer touch-target shadow-xs hover:border-primary/40 active:scale-95"
-                title="Share Event"
-              >
-                <Share2 className="h-3.5 w-3.5 text-primary" />
-                <span className="hidden sm:inline">Share</span>
-              </button>
-
+            {/* Right Side: External Book Ticket Button */}
+            <div className="flex items-center shrink-0">
               <button
                 type="button"
                 onClick={handleRegister}
-                className="px-6 sm:px-9 py-2.5 sm:py-3.5 rounded-full glass-btn-primary font-black text-xs sm:text-sm md:text-base transition-all duration-200 flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap touch-target font-heading shadow-md"
+                className="px-6 sm:px-9 py-2.5 sm:py-3.5 rounded-full glass-btn-primary font-black text-xs sm:text-sm md:text-base transition-all duration-200 flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap touch-target font-heading shadow-md hover:scale-[1.02] active:scale-95"
               >
                 <span>Book Ticket</span>
                 <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
