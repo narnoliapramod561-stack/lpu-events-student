@@ -232,41 +232,41 @@ export const HappeningTodaySliderComponent = ({
       className="w-full flex flex-col select-none"
     >
       {/* Section Header */}
-      <div className="flex items-center justify-between mb-3.5 sm:mb-4 px-1">
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-orange-500/15 dark:bg-white/10 text-primary dark:text-white border border-orange-500/25 dark:border-white/15 shadow-xs">
+      <div className="flex items-center justify-between mb-3.5 sm:mb-4 px-1 gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-orange-500/15 dark:bg-white/10 text-primary dark:text-white border border-orange-500/25 dark:border-white/15 shadow-xs shrink-0">
             <CalendarDays className="h-5 w-5 sm:h-6 sm:w-6" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="font-heading font-extrabold text-lg sm:text-2xl md:text-3xl text-gray-900 dark:text-white tracking-tight">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h2 className="font-heading font-extrabold text-base min-[380px]:text-lg sm:text-2xl md:text-3xl text-gray-900 dark:text-white tracking-tight whitespace-nowrap">
                 Happening Today
               </h2>
-              <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5">
+              <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 dark:bg-white/60 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-orange-500 dark:bg-white" />
               </span>
             </div>
-            <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium">
+            <p className="text-[10px] min-[380px]:text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium whitespace-nowrap truncate">
               Live schedule & campus events
             </p>
           </div>
         </div>
 
         {/* Header Controls: View All Button & Desktop Arrows */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {events.length > 0 && (
             <button
               type="button"
               onClick={() => setIsAllTodayModalOpen(true)}
-              className="inline-flex items-center gap-1.5 text-orange-700 dark:text-white font-heading font-semibold text-xs hover:text-orange-800 dark:hover:text-gray-300 transition-colors cursor-pointer px-3.5 py-1.5 rounded-full bg-orange-500/10 dark:bg-white/10 hover:bg-orange-500/20 dark:hover:bg-white/15 active:scale-95 border border-orange-500/20 dark:border-white/15"
+              className="inline-flex items-center gap-1 sm:gap-1.5 text-orange-700 dark:text-white font-heading font-semibold text-[11px] sm:text-xs hover:text-orange-800 dark:hover:text-gray-300 transition-colors cursor-pointer px-2.5 sm:px-3.5 py-1 sm:py-1.5 rounded-full bg-orange-500/10 dark:bg-white/10 hover:bg-orange-500/20 dark:hover:bg-white/15 active:scale-95 border border-orange-500/20 dark:border-white/15 shrink-0 whitespace-nowrap"
               aria-label={`View All ${events.length} Events Happening Today`}
             >
-              <span>View All</span>
-              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-orange-500/20 dark:bg-white/15 text-orange-700 dark:text-white">
+              <span className="whitespace-nowrap">View All</span>
+              <span className="text-[10px] sm:text-xs font-mono font-bold px-1.5 sm:px-2 py-0.5 rounded-full bg-orange-500/20 dark:bg-white/15 text-orange-700 dark:text-white">
                 ({events.length})
               </span>
-              <ArrowRight className="h-3.5 w-3.5" />
+              <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
             </button>
           )}
 
@@ -324,7 +324,7 @@ export const HappeningTodaySliderComponent = ({
               return (
                 <div
                   key={slide.id}
-                  className="relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-16px)/2)] md:w-[calc((100%-32px)/3)] rounded-[22px] overflow-hidden p-3.5 bg-white dark:bg-[#2c2c2e] border border-black/10 dark:border-white/10 flex flex-col items-center justify-center snap-start shadow-md"
+                  className="relative shrink-0 w-[280px] lg:w-[598px] rounded-[22px] overflow-hidden p-3.5 bg-white dark:bg-[#2c2c2e] border-0 ring-1 ring-inset ring-black/10 dark:ring-white/10 flex flex-col items-center justify-center snap-start shadow-md"
                 >
                   <AdSenseSlot
                     format="in_feed_card"
@@ -339,17 +339,20 @@ export const HappeningTodaySliderComponent = ({
               <div
                 key={slide.id}
                 onClick={handleCardClick}
-                className="group relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-16px)/2)] md:w-[calc((100%-32px)/3)] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border border-slate-200/80 dark:border-white/[0.12] bg-white dark:bg-[#2c2c2e] flex flex-col transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
+                className="group relative shrink-0 w-[280px] lg:w-[598px] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border-0 ring-1 ring-inset ring-slate-200/80 dark:ring-white/[0.12] bg-white dark:bg-[#2c2c2e] flex flex-col transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
               >
-                {/* Uniform Crisp Banner Stage (Zero Zoom, Full Visibility) */}
-                <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 bg-black/5 dark:bg-white/5">
+                {/* Uniform Crisp Banner Stage (Fixed 280x158 compact / 598x336 desktop) */}
+                <div
+                  data-image-slot="happening-today-card"
+                  className="relative w-[280px] h-[158px] lg:w-[598px] lg:h-[336px] overflow-hidden shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center"
+                >
                   {/* Full Cover Slide Banner */}
                   {slide.image ? (
                     <ProgressiveImage
                       src={slide.image}
                       alt={slide.title}
                       loading={idx < 4 ? "eager" : "lazy"}
-                      ambientBackdrop
+                      ambientBackdrop={false}
                       containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
                       className="w-full h-full object-contain object-center relative z-10"
                     />
@@ -443,10 +446,10 @@ export const HappeningTodaySliderComponent = ({
           {events.length > slides.length && (
             <div
               onClick={() => setIsAllTodayModalOpen(true)}
-              className="group relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-16px)/2)] md:w-[calc((100%-32px)/3)] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border border-orange-500/30 dark:border-white/15 bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-transparent dark:from-white/[0.08] dark:to-transparent flex flex-col justify-between transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
+              className="group relative shrink-0 w-[280px] lg:w-[598px] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border-0 ring-1 ring-inset ring-orange-500/30 dark:border-white/15 bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-transparent dark:from-white/[0.08] dark:to-transparent flex flex-col justify-between transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
             >
-              {/* Visual Header matching 16:9 banner */}
-              <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 flex flex-col items-center justify-center bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-orange-600/20 dark:from-white/10 dark:via-white/5 dark:to-white/10">
+              {/* Visual Header matching 280x158 mobile / 598x336 desktop banner */}
+              <div className="relative w-[280px] h-[158px] lg:w-[598px] lg:h-[336px] overflow-hidden shrink-0 flex flex-col items-center justify-center bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-orange-600/20 dark:from-white/10 dark:via-white/5 dark:to-white/10">
                 <div className="w-14 h-14 rounded-full bg-orange-500/20 dark:bg-white/10 border border-orange-500/40 dark:border-white/20 flex items-center justify-center mb-2 group-hover:scale-110 group-active:scale-95 transition-transform shadow-inner text-orange-700 dark:text-white">
                   <ArrowRight className="w-6 h-6" />
                 </div>
@@ -508,37 +511,48 @@ export const HappeningTodaySliderComponent = ({
               aria-labelledby="today-modal-title"
             >
               {/* Mobile Drag Bar */}
-              <div className="w-12 h-1.5 rounded-full bg-gray-300 dark:bg-white/20 mx-auto mt-2.5 sm:hidden shrink-0" />
+              <div className="w-10 h-1 rounded-full bg-gray-300 dark:bg-white/20 mx-auto mt-2.5 mb-1 sm:hidden shrink-0" />
 
               {/* Header */}
-              <div className="flex items-center justify-between px-5 sm:px-6 pt-4 pb-3.5 border-b border-black/[0.06] dark:border-white/10 shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 sm:p-2.5 rounded-xl bg-orange-500/15 dark:bg-white/10 text-orange-700 dark:text-white border border-orange-500/25 dark:border-white/15 shadow-xs">
-                    <CalendarDays className="w-5 h-5 sm:w-6 sm:h-6" />
-                  </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 id="today-modal-title" className="font-heading font-black text-lg sm:text-xl text-gray-950 dark:text-white tracking-tight">
-                        Today's Events Schedule
-                      </h3>
-                      <span className="px-2 py-0.5 rounded-full bg-orange-500/15 dark:bg-white/10 text-orange-700 dark:text-white font-mono font-bold text-xs border border-orange-500/20 dark:border-white/15">
-                        {events.length} {events.length === 1 ? "Event" : "Events"}
-                      </span>
+              <div className="px-5 sm:px-6 pt-3 sm:pt-4 pb-3.5 sm:pb-4 border-b border-black/[0.06] dark:border-white/10 shrink-0">
+                {/* Top Row: Calendar Icon on Left, 10 Events Badge + Close Button on Top Right */}
+                <div className="flex items-center justify-between mb-2.5 sm:mb-3">
+                  <div className="flex items-center gap-2">
+                    <div className="p-2 rounded-xl bg-orange-500/15 dark:bg-white/10 text-orange-600 dark:text-white border border-orange-500/25 dark:border-white/15 shadow-xs shrink-0">
+                      <CalendarDays className="w-5 h-5" />
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">
-                      {new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" }).format(new Date())} • Live campus activities
-                    </p>
+                    <span className="text-xs font-heading font-black uppercase tracking-wider text-orange-700 dark:text-orange-400">
+                      Live Schedule
+                    </span>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-orange-500/15 dark:bg-white/10 text-orange-700 dark:text-white font-heading font-bold text-xs border border-orange-500/25 dark:border-white/15 shadow-2xs whitespace-nowrap">
+                      {events.length} {events.length === 1 ? "Event" : "Events"}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setIsAllTodayModalOpen(false)}
+                      className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-600 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer shrink-0 active:scale-95"
+                      aria-label="Close modal"
+                    >
+                      <X className="w-4 h-4 sm:w-5 sm:h-5" />
+                    </button>
                   </div>
                 </div>
 
-                <button
-                  type="button"
-                  onClick={() => setIsAllTodayModalOpen(false)}
-                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer"
-                  aria-label="Close modal"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+                {/* Title & Subtitle: Positioned below top controls, large and prominent */}
+                <div>
+                  <h3
+                    id="today-modal-title"
+                    className="font-heading font-black text-xl sm:text-2xl text-gray-950 dark:text-white tracking-tight"
+                  >
+                    Today's Event Schedule
+                  </h3>
+                  <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">
+                    {new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" }).format(new Date())} • Live campus activities
+                  </p>
+                </div>
               </div>
 
               {/* Event List */}

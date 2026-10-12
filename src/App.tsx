@@ -1210,7 +1210,7 @@ export default function App() {
           allEvents={allAvailableEvents}
         />
 
-        <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-3 sm:px-4 md:px-6 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6 overflow-hidden">
+        <main className="w-full max-w-full sm:max-w-[98%] 2xl:max-w-[1920px] mx-auto px-3 sm:px-4 md:px-6 flex flex-col gap-4 sm:gap-12 mt-2 sm:mt-6 overflow-hidden">
           <Suspense fallback={
             <div className="min-h-[40vh] flex items-center justify-center">
               <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />

@@ -1,14 +1,12 @@
 /**
  * url.ts
  * Centralized Image URL & Delivery Helper for LPU Events
+ * Phase 2: Original-First Delivery with Full Legacy Compatibility
  *
- * Frontend components request images exclusively by context:
- * e.g. getOptimizedImage(event, 'event-card')
- *      getOptimizedImage(slide, 'hero')
- *      getOptimizedImage(mediaId, 'event-banner')
- *
- * Handles Cloudflare R2 public domains, immutable cache URLs,
- * responsive srcset strings, and intelligent mock/fallback images.
+ * Implements strict resolution precedence:
+ * 1. Explicit Original object reference when present and valid (new Phase 2 uploads).
+ * 2. Existing explicitly recorded source-image reference when current schema supports it.
+ * 3. Existing V1/V2 and legacy fallback logic for historical assets.
  */
 
 import { ImageContext, IMAGE_CONTEXT_CONFIGS } from './config';
@@ -28,20 +26,14 @@ export interface OptimizedSrcSetResult {
 }
 
 /**
- * Curated high-res event mock fallbacks by ID or media ID (Empty in production; default subcategory images used)
+ * Curated high-res event mock fallbacks by ID or media ID
  */
 export const EVENT_MOCK_FALLBACK_IMAGES: Record<string, string> = {};
 
-/**
- * Returns a topic-matched fallback image based on event name / description keywords
- */
 export function getKeywordFallbackImage(_nameOrText: string): string {
   return '';
 }
 
-/**
- * Resolves the base CDN / Storage URL for Cloudflare R2 Delivery
- */
 /**
  * Resolves the base CDN / Storage URL for Cloudflare R2 Delivery
  */
@@ -65,7 +57,7 @@ export function getStorageBaseUrl(_bucket?: string): string {
     }
   } catch {}
 
-  // 3. Authoritative default: Cloudflare R2 delivery domain (zero Supabase egress)
+  // 3. Authoritative default: Cloudflare R2 delivery domain
   return 'https://images.lpuevents.live';
 }
 
@@ -75,6 +67,7 @@ const EVENT_MEDIA_KEY_CACHE = new Map<string, string>();
 const MEDIA_SLOT_CACHE = new Map<string, Record<string, string>>();
 const MEDIA_PRESENTATION_CACHE = new Map<string, Record<string, string>>();
 const MEDIA_PLACEMENT_CACHE = new Map<string, Record<string, any>>();
+const MEDIA_ORIGINAL_CACHE = new Map<string, string>();
 
 /**
  * Production V2: Resolves the pre-generated placement derivative key
@@ -186,7 +179,6 @@ export function resolvePresentationFromMediaAsset(mediaAsset: any, context: Imag
 
 /**
  * Register known media assets or event media into memory cache
- * so subsequent lookups (like search results or partial records) resolve immediately.
  */
 export function registerMediaAssets(
   items: Array<{ id?: string; banner_media_id?: string; object_key?: string; media_assets?: any } | any>
@@ -209,6 +201,16 @@ export function registerMediaAssets(
         MEDIA_KEY_CACHE.set(item.id, objKey);
         EVENT_MEDIA_KEY_CACHE.set(item.id, objKey);
       }
+    }
+
+    // Phase 2 original key cache
+    const origKey = mediaAsset?.metadata?.original_object_key ||
+      (mediaAsset?.metadata?.is_original_only ? mediaAsset?.object_key : null) ||
+      mediaAsset?.metadata?.source?.object_key;
+    if (origKey) {
+      if (item.banner_media_id) MEDIA_ORIGINAL_CACHE.set(item.banner_media_id, origKey);
+      if (mediaAsset?.id) MEDIA_ORIGINAL_CACHE.set(mediaAsset.id, origKey);
+      if (item.id) MEDIA_ORIGINAL_CACHE.set(item.id, origKey);
     }
 
     // V2: Cache placements
@@ -250,8 +252,7 @@ export function registerMediaAssets(
 
 /**
  * Primary Centralized Image URL Resolver
- * Directly maps uploaded media assets from Cloudflare R2 CDN or Supabase Storage.
- * No synthetic stock photo fallbacks.
+ * Phase 2: Resolves directly to original image for new uploads, with explicit fallback precedence for legacy assets.
  */
 export function getOptimizedImage(
   source: any,
@@ -311,17 +312,33 @@ export function getOptimizedImage(
     : (source.media_assets || (Array.isArray(source.media_asset) ? source.media_asset[0] : source.media_asset));
 
   if (mediaAsset?.object_key) {
-    // V2: Try placement-based resolution first (zero-crop, fixed-ratio canvas)
+    const meta = mediaAsset.metadata || {};
+    const bucket = mediaAsset.bucket;
+
+    // --- PHASE 2 PRECEDENCE RULE 1: Original object reference when present and valid ---
+    if (meta.is_original_only || meta.original_object_key || mediaAsset.object_key.includes('/originals/')) {
+      const origKey = meta.original_object_key || mediaAsset.object_key;
+      return `${getStorageBaseUrl(bucket)}/${origKey.replace(/^\/+/, '')}`;
+    }
+
+    // --- PHASE 2 PRECEDENCE RULE 2: Explicitly recorded source-image reference in current schema ---
+    if (meta.source?.object_key) {
+      return `${getStorageBaseUrl(bucket)}/${meta.source.object_key.replace(/^\/+/, '')}`;
+    }
+    if (meta.master?.object_key) {
+      return `${getStorageBaseUrl(bucket)}/${meta.master.object_key.replace(/^\/+/, '')}`;
+    }
+
+    // --- PHASE 2 PRECEDENCE RULE 3: Legacy V2/V1 fallback logic for historical assets ---
     const placementKey = resolvePlacementFromMediaAsset(mediaAsset, context);
-    // Legacy: Try presentation-based resolution
     const presKey = !placementKey ? resolvePresentationFromMediaAsset(mediaAsset, context) : null;
-    // Legacy: Fall back to slot-based resolution
     const slotKey = !placementKey && !presKey ? resolveSlotFromMediaAsset(mediaAsset, context) : null;
     const key = placementKey || presKey || slotKey || mediaAsset.object_key;
-    const bucket = mediaAsset.bucket;
+
     if (source.banner_media_id) MEDIA_KEY_CACHE.set(source.banner_media_id, mediaAsset.object_key);
     if (source.id) EVENT_MEDIA_KEY_CACHE.set(source.id, mediaAsset.object_key);
     if (mediaAsset.id) MEDIA_KEY_CACHE.set(mediaAsset.id, mediaAsset.object_key);
+
     if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
       return key;
     }
@@ -345,69 +362,48 @@ export function getOptimizedImage(
     return `${getStorageBaseUrl(bucket)}/${key.replace(/^\/+/, '')}`;
   }
 
-  // 3b. Check registered placement & presentation & slot & media key caches
-  // V2 placements take absolute priority
+  // 3b. Check registered in-memory caches
   const cacheId = source.banner_media_id || source.id;
-  if (cacheId && MEDIA_PLACEMENT_CACHE.has(cacheId)) {
-    const pMap = MEDIA_PLACEMENT_CACHE.get(cacheId)!;
-    const pKey = pMap[context] || pMap['event-banner'] || pMap['event-card'] || pMap.hero;
-    if (pKey) {
-      return `${getStorageBaseUrl()}/${pKey.replace(/^\/+/, '')}`;
+  if (cacheId) {
+    if (MEDIA_ORIGINAL_CACHE.has(cacheId)) {
+      const origKey = MEDIA_ORIGINAL_CACHE.get(cacheId)!;
+      return `${getStorageBaseUrl()}/${origKey.replace(/^\/+/, '')}`;
     }
-  }
 
-  if (source.banner_media_id && MEDIA_PRESENTATION_CACHE.has(source.banner_media_id)) {
-    const pres = MEDIA_PRESENTATION_CACHE.get(source.banner_media_id)!;
-    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 640;
-    const presKey = (context === 'hero' || context === 'event-banner' || context === 'event-card')
-      ? (isMobile ? (pres['7:5'] || pres['16:9']) : (pres['16:9'] || pres['7:5']))
-      : (pres['16:9'] || pres['7:5']);
-    if (presKey) {
-      return `${getStorageBaseUrl()}/${presKey.replace(/^\/+/, '')}`;
+    if (MEDIA_PLACEMENT_CACHE.has(cacheId)) {
+      const pMap = MEDIA_PLACEMENT_CACHE.get(cacheId)!;
+      const pKey = pMap[context] || pMap['event-banner'] || pMap['event-card'] || pMap.hero;
+      if (pKey) {
+        return `${getStorageBaseUrl()}/${pKey.replace(/^\/+/, '')}`;
+      }
     }
-  }
 
-  if (source.id && MEDIA_PRESENTATION_CACHE.has(source.id)) {
-    const pres = MEDIA_PRESENTATION_CACHE.get(source.id)!;
-    const isMobile = typeof window !== 'undefined' && window.innerWidth <= 640;
-    const presKey = (context === 'hero' || context === 'event-banner' || context === 'event-card')
-      ? (isMobile ? (pres['7:5'] || pres['16:9']) : (pres['16:9'] || pres['7:5']))
-      : (pres['16:9'] || pres['7:5']);
-    if (presKey) {
-      return `${getStorageBaseUrl()}/${presKey.replace(/^\/+/, '')}`;
+    if (MEDIA_PRESENTATION_CACHE.has(cacheId)) {
+      const pres = MEDIA_PRESENTATION_CACHE.get(cacheId)!;
+      const isMobile = typeof window !== 'undefined' && window.innerWidth <= 640;
+      const presKey = (context === 'hero' || context === 'event-banner' || context === 'event-card')
+        ? (isMobile ? (pres['7:5'] || pres['16:9']) : (pres['16:9'] || pres['7:5']))
+        : (pres['16:9'] || pres['7:5']);
+      if (presKey) {
+        return `${getStorageBaseUrl()}/${presKey.replace(/^\/+/, '')}`;
+      }
     }
-  }
 
-  if (source.banner_media_id && MEDIA_SLOT_CACHE.has(source.banner_media_id)) {
-    const slots = MEDIA_SLOT_CACHE.get(source.banner_media_id)!;
-    const slotKey = context === 'event-card' ? (slots.card || slots.card_mobile) : (context === 'event-banner' || context === 'hero') ? (slots.banner || slots.banner_mobile) : context === 'thumbnail' ? slots.thumb : null;
-    if (slotKey) {
-      return `${getStorageBaseUrl()}/${slotKey.replace(/^\/+/, '')}`;
+    if (MEDIA_SLOT_CACHE.has(cacheId)) {
+      const slots = MEDIA_SLOT_CACHE.get(cacheId)!;
+      const slotKey = context === 'event-card' ? (slots.card || slots.card_mobile) : (context === 'event-banner' || context === 'hero') ? (slots.banner || slots.banner_mobile) : context === 'thumbnail' ? slots.thumb : null;
+      if (slotKey) {
+        return `${getStorageBaseUrl()}/${slotKey.replace(/^\/+/, '')}`;
+      }
     }
-  }
 
-  if (source.id && MEDIA_SLOT_CACHE.has(source.id)) {
-    const slots = MEDIA_SLOT_CACHE.get(source.id)!;
-    const slotKey = context === 'event-card' ? (slots.card || slots.card_mobile) : (context === 'event-banner' || context === 'hero') ? (slots.banner || slots.banner_mobile) : context === 'thumbnail' ? slots.thumb : null;
-    if (slotKey) {
-      return `${getStorageBaseUrl()}/${slotKey.replace(/^\/+/, '')}`;
+    if (MEDIA_KEY_CACHE.has(cacheId)) {
+      const key = MEDIA_KEY_CACHE.get(cacheId)!;
+      if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
+        return key;
+      }
+      return `${getStorageBaseUrl()}/${key.replace(/^\/+/, '')}`;
     }
-  }
-
-  if (source.banner_media_id && MEDIA_KEY_CACHE.has(source.banner_media_id)) {
-    const key = MEDIA_KEY_CACHE.get(source.banner_media_id)!;
-    if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
-      return key;
-    }
-    return `${getStorageBaseUrl()}/${key.replace(/^\/+/, '')}`;
-  }
-
-  if (source.id && EVENT_MEDIA_KEY_CACHE.get(source.id)) {
-    const key = EVENT_MEDIA_KEY_CACHE.get(source.id)!;
-    if (key.startsWith('http://') || key.startsWith('https://') || key.startsWith('data:') || key.startsWith('blob:')) {
-      return key;
-    }
-    return `${getStorageBaseUrl()}/${key.replace(/^\/+/, '')}`;
   }
 
   // 4. Nested relation sources (Carousel Slide / Item)
@@ -432,13 +428,13 @@ export function getOptimizedImage(
     return '';
   }
 
-  // 6. Category / Subcategory Taxonomy Fallback (Official Default WebP Images)
+  // 6. Category / Subcategory Taxonomy Fallback
   const defaultImage = resolveDefaultEventImage(source);
   if (defaultImage) {
     return defaultImage;
   }
 
-  // 6. Curated Mock / Fallback ID Map
+  // 7. Curated Mock / Fallback ID Map
   if (source.id && EVENT_MOCK_FALLBACK_IMAGES[source.id]) {
     return EVENT_MOCK_FALLBACK_IMAGES[source.id];
   }
@@ -450,7 +446,8 @@ export function getOptimizedImage(
 }
 
 /**
- * Returns responsive srcSet attributes for rich HTML picture / img tags
+ * Returns responsive srcSet attributes for rich HTML picture / img tags.
+ * For original-only images, no responsive variant URLs are constructed.
  */
 export function getOptimizedImageSrcSet(
   source: any,
@@ -458,6 +455,27 @@ export function getOptimizedImageSrcSet(
 ): OptimizedSrcSetResult {
   const config = IMAGE_CONTEXT_CONFIGS[context] || IMAGE_CONTEXT_CONFIGS['event-card'];
   const baseSrc = getOptimizedImage(source, context);
+
+  // If this is an original-only image, do not construct derivative variant URLs
+  if (
+    baseSrc.includes('/originals/') ||
+    baseSrc.includes('/source.') ||
+    baseSrc.includes('_source.') ||
+    (!baseSrc.endsWith('/card.webp') &&
+     !baseSrc.endsWith('/details.webp') &&
+     !baseSrc.endsWith('/hero.webp') &&
+     !baseSrc.includes('_card.webp') &&
+     !baseSrc.includes('_banner.webp') &&
+     !baseSrc.includes('_desktop.webp'))
+  ) {
+    return {
+      src: baseSrc,
+      srcSet: undefined,
+      sizes: undefined,
+      width: config.maxWidth,
+      height: config.maxHeight
+    };
+  }
 
   let srcSet: string | undefined = undefined;
   let sizes: string | undefined = undefined;

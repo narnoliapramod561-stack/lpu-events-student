@@ -37,7 +37,12 @@ export function getResponsiveImageUrl(url: string, targetWidth?: number): string
     return `${cleanUrl}?auto=format&fit=crop&w=${Math.max(effectiveWidth, 640)}&q=88&dpr=${dpr >= 2 ? '2' : '1'}`;
   }
 
-  // 3. Same-origin Edge CDN image proxy for instant zero-latency HTTP/2 reuse
+  // 3. Phase 2: Original image objects must NEVER be rewritten to derivative variants
+  if (url.includes('/originals/') || url.includes('/source.') || url.includes('_source.')) {
+    return url;
+  }
+
+  // 4. Same-origin Edge CDN image proxy for legacy V2 placement variants
   if (url.startsWith('https://images.lpuevents.live/')) {
     let resolvedUrl = url;
     // Serve lightweight responsive mobile/tablet WebP derivatives for V2 placements
