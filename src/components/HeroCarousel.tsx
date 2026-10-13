@@ -424,8 +424,29 @@ export const HeroCarouselComponent = ({
                   )}
                 </div>
 
+                {/* Compact/tablet information: keep the poster fluid while event details remain visible below it. */}
+                <div className="2xl:hidden w-full p-4 sm:p-5 flex flex-col gap-3 border-t border-black/[0.06] dark:border-white/[0.08] bg-white/90 dark:bg-[#090b12]/90">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="inline-flex min-w-0 items-center px-2.5 py-1 rounded-full bg-orange-500/10 dark:bg-white/10 text-orange-700 dark:text-orange-200 border border-orange-500/20 dark:border-white/10 font-heading text-[10px] font-black uppercase tracking-wider truncate">
+                      {currentSlide.category || "Campus Events"}
+                    </span>
+                    {currentSlide.isSponsored && <span className="shrink-0 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-300">Sponsored</span>}
+                  </div>
+                  <h2 className="text-lg sm:text-xl font-black font-heading text-slate-950 dark:text-white leading-tight tracking-tight line-clamp-2">{currentSlide.title}</h2>
+                  {currentSlide.description && <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed line-clamp-2">{currentSlide.description}</p>}
+                  <div className="flex items-center justify-between gap-3 pt-1">
+                    <div className="min-w-0 flex flex-col gap-1 text-xs text-slate-600 dark:text-slate-300">
+                      {(currentSlide.date || currentSlide.time) && <span className="truncate">{[currentSlide.date, currentSlide.time].filter(Boolean).join(" · ")}</span>}
+                      {currentSlide.venue && <span className="truncate">{currentSlide.venue}</span>}
+                    </div>
+                    <button type="button" onClick={handleAction} className="shrink-0 inline-flex items-center gap-2 px-4 py-2.5 rounded-full glass-btn-primary font-heading font-bold text-xs sm:text-sm shadow-md active:scale-95 transition-transform">
+                      <span>{currentSlide.ctaText || "View Details"}</span><ArrowRight className="h-4 w-4" />
+                    </button>
+                  </div>
+                </div>
+
                 {/* =========================================================
-                    DESKTOP SLIDE LAYOUT (xl+): Fixed 940x540 Showcase Card
+                    DESKTOP SLIDE LAYOUT (2xl+): Fixed 940x540 Showcase Card
                    ========================================================= */}
                 {currentSlide.type === "event" ? (
                   <div className="hidden 2xl:flex flex-row items-center justify-between h-full w-full flex-1 relative">
