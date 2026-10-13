@@ -32,7 +32,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
   const [loadState, setLoadState] = useState<"loading" | "loaded" | "error">(
     loadedHdImageCache.has(src) ? "loaded" : "loading"
   );
-  const fallbackAttemptedRef = useRef(false);
+  const fallbackAttemptedForSrcRef = useRef<string | null>(null);
   const sourcePropRef = useRef(src);
 
   // Derive source changes synchronously without confusing a chosen fallback
@@ -45,7 +45,6 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
 
   useEffect(() => {
     sourcePropRef.current = src;
-    fallbackAttemptedRef.current = false;
     setImgSrc(src);
     setLoadState(loadedHdImageCache.has(src) ? "loaded" : "loading");
   }, [src]);
@@ -58,9 +57,9 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
 
   const handleImageError = useCallback(() => {
     const canUseFallback = effectiveSrc === src && Boolean(defaultFallback) &&
-      defaultFallback !== src && !fallbackAttemptedRef.current;
+      defaultFallback !== src && fallbackAttemptedForSrcRef.current !== src;
     if (canUseFallback) {
-      fallbackAttemptedRef.current = true;
+      fallbackAttemptedForSrcRef.current = src;
       setImgSrc(defaultFallback);
       setLoadState("loading");
       return;
