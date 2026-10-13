@@ -8,7 +8,7 @@ import {
   AdSystemConfig,
   injectAdsIntoSequence 
 } from "@lpu-events/shared";
-import { getEventImage, getResponsiveImageUrl } from "../utils/images";
+import { getEventImage } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
 import { AdSenseSlot } from "./AdSenseSlot";
 
@@ -133,8 +133,8 @@ export const HeroCarouselComponent = ({
   const slides = React.useMemo<HeroSlideModel[]>(() => {
     let baseSlides: HeroSlideModel[] = [];
 
-    const isMobileViewport = typeof window !== 'undefined' && window.innerWidth <= 640;
-    const heroImageTargetWidth = isMobileViewport ? 640 : 1440;
+    // Source selection is independent of viewport width; CSS owns the frame.
+    const heroImageTargetWidth = 1440;
 
     if (carouselItems && carouselItems.length > 0) {
       for (const item of carouselItems) {
@@ -353,7 +353,7 @@ export const HeroCarouselComponent = ({
       </div>
 
       {/* 2. Main Carousel Viewport Frame — Fixed 336x250 Mobile Card, 580px Height on Desktop */}
-      <div className="relative z-10 w-[336px] h-[250px] xl:w-full xl:max-w-[1440px] 2xl:max-w-[1834px] xl:h-[580px] mx-auto overflow-hidden rounded-[24px] xl:rounded-[40px] glass-panel !border-0 xl:!border border-black/[0.08] dark:border-white/[0.14] ring-1 ring-inset ring-white/20 dark:ring-white/10 shadow-[0_20px_50px_-12px_rgba(255,107,0,0.24),0_10px_24px_-6px_rgba(15,23,42,0.08)] dark:shadow-[0_28px_70px_rgba(0,0,0,0.95)] flex flex-col shrink-0">
+      <div className="relative z-10 w-full max-w-[366px] h-auto sm:max-w-[640px] md:max-w-[768px] lg:max-w-[940px] 2xl:w-full 2xl:max-w-[1834px] 2xl:h-[580px] mx-auto overflow-hidden rounded-[24px] 2xl:rounded-[40px] glass-panel !border-0 2xl:!border border-black/[0.08] dark:border-white/[0.14] ring-1 ring-inset ring-white/20 dark:ring-white/10 shadow-[0_20px_50px_-12px_rgba(255,107,0,0.24),0_10px_24px_-6px_rgba(15,23,42,0.08)] dark:shadow-[0_28px_70px_rgba(0,0,0,0.95)] flex flex-col shrink-0">
         
         {/* Subtle Decorative Ambient Flares (Light mode only) */}
         <div className="absolute top-0 right-0 w-[420px] h-[420px] bg-gradient-to-br from-orange-500/35 via-amber-500/20 to-transparent rounded-full blur-3xl pointer-events-none z-0 hidden sm:block dark:hidden" />
@@ -399,17 +399,15 @@ export const HeroCarouselComponent = ({
                 <div
                   onClick={handleAction}
                   data-image-slot="hero-carousel-mobile"
-                  className="xl:hidden relative w-[336px] h-[250px] shrink-0 mx-auto overflow-hidden cursor-pointer group bg-black/5 dark:bg-white/5 flex items-center justify-center"
+                  className="22xl:hidden relative w-full aspect-[366/229] lg:aspect-[940/540] shrink-0 mx-auto overflow-hidden cursor-pointer group bg-black/5 dark:bg-white/5 flex items-center justify-center"
                 >
                   {/* Clean Mobile Slide Visual (Uncropped Contained Poster with Clean Background) */}
                   {currentSlide.image ? (
                     <ProgressiveImage
-                      src={getResponsiveImageUrl(currentSlide.image, 640)}
+                      src={currentSlide.image}
                       alt={currentSlide.title}
                       loading={currentIndex === 0 ? "eager" : "lazy"}
                       fetchPriority={currentIndex === 0 ? "high" : "auto"}
-                      width={336}
-                      height={250}
                       ambientBackdrop={false}
                       containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
                       className="w-full h-full object-contain object-center"
@@ -430,7 +428,7 @@ export const HeroCarouselComponent = ({
                     DESKTOP SLIDE LAYOUT (xl+): Fixed 940x540 Showcase Card
                    ========================================================= */}
                 {currentSlide.type === "event" ? (
-                  <div className="hidden xl:flex flex-row items-center justify-between h-full w-full flex-1 relative">
+                  <div className="hidden 2xl:flex flex-row items-center justify-between h-full w-full flex-1 relative">
                     {/* Seamless Full-Bleed Edge Vignette (Softened to allow subtle ambient glow through) */}
                     <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/70 to-transparent dark:from-[#060810]/72 dark:via-[#060810]/45 dark:to-transparent pointer-events-none z-0" />
 
@@ -557,7 +555,7 @@ export const HeroCarouselComponent = ({
                         className="relative w-[940px] h-[540px] shrink-0 rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 bg-black/5 dark:bg-white/5 flex items-center justify-center"
                       >
                         <ProgressiveImage
-                          src={getResponsiveImageUrl(currentSlide.image || "/defaults/hero_default.webp", 1200)}
+                          src={currentSlide.image || "/defaults/hero_default.webp"}
                           alt={currentSlide.title}
                           loading={currentIndex === 0 ? "eager" : "lazy"}
                           fetchPriority={currentIndex === 0 ? "high" : "auto"}
@@ -574,7 +572,7 @@ export const HeroCarouselComponent = ({
                   /* Memory Slide Layout (Desktop) */
                   <div
                     onClick={handleAction}
-                    className="hidden xl:flex relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex-col justify-end p-8 md:p-12 lg:p-16 pb-20"
+                    className="hidden 2xl:flex relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex-col justify-end p-8 md:p-12 lg:p-16 pb-20"
                   >
                     <ProgressiveImage
                       src={currentSlide.image}
@@ -623,7 +621,7 @@ export const HeroCarouselComponent = ({
                   /* Sponsored Advertisement Slide (Desktop) */
                   <div
                     onClick={handleAction}
-                    className="hidden xl:flex relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex-col justify-end p-8 md:p-12 lg:p-16 pb-20"
+                    className="hidden 2xl:flex relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex-col justify-end p-8 md:p-12 lg:p-16 pb-20"
                   >
                     {currentSlide.image ? (
                       <ProgressiveImage
@@ -702,7 +700,7 @@ export const HeroCarouselComponent = ({
 
       {/* 3. Progress Dots — Below card on compact (< xl), inside card on desktop (xl+) */}
       {slides.length > 1 && (
-        <div className="hidden xl:flex absolute bottom-5 left-1/2 -translate-x-1/2 z-30 items-center gap-2 px-3.5 py-1.5 rounded-full glass-pill shadow-lg border border-white/80 dark:border-white/15 pointer-events-auto max-w-fit w-auto">
+        <div className="hidden 2xl:flex absolute bottom-5 left-1/2 -translate-x-1/2 z-30 items-center gap-2 px-3.5 py-1.5 rounded-full glass-pill shadow-lg border border-white/80 dark:border-white/15 pointer-events-auto max-w-fit w-auto">
           {slides.map((_, idx) => (
             <button
               key={idx}
@@ -729,7 +727,7 @@ export const HeroCarouselComponent = ({
       )}
       {/* Mobile Dots — Below the card in a sleek frosted pill */}
       {slides.length > 1 && (
-        <div className="flex xl:hidden items-center justify-center mt-2 mb-0">
+        <div className="flex 2xl:hidden items-center justify-center mt-2 mb-0">
           <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/80 dark:bg-white/[0.08] backdrop-blur-xl border border-black/[0.07] dark:border-white/[0.14] shadow-sm">
             {slides.map((_, idx) => (
               <button
