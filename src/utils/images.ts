@@ -3,124 +3,37 @@ import { getOptimizedImage as sharedGetOptimizedImage, EVENT_MOCK_FALLBACK_IMAGE
 export const EVENT_MOCK_IMAGES: Record<string, string> = EVENT_MOCK_FALLBACK_IMAGES;
 
 /**
- * Free-Tier Cloudflare CDN & High-DPI Image Optimization Pipeline
- * Delivers razor-sharp Retina/4K clarity with zero bandwidth bloat.
+ * Display dimensions belong to CSS, not URL rewriting. Keep the canonical
+ * resolver's URL unchanged instead of guessing local or legacy derivative paths.
  */
-export function getResponsiveImageUrl(url: string, targetWidth?: number): string {
-  if (!url || typeof url !== 'string') return url;
-
-  // Detect Retina / High-DPI screens and client screen width
-  const isClient = typeof window !== 'undefined';
-  const screenWidth = isClient ? window.innerWidth : 1200;
-  const dpr = isClient ? Math.min(window.devicePixelRatio || 2, 3) : 2;
-
-  // Constrain target width by actual device screen width on client to avoid over-fetching
-  const baseTarget = targetWidth ?? (isClient ? Math.min(screenWidth, 1200) : 1080);
-  const effectiveScreenTarget = isClient && screenWidth <= 640 ? Math.min(baseTarget, screenWidth) : baseTarget;
-  const effectiveWidth = Math.round(effectiveScreenTarget * (dpr >= 1.5 ? 1.5 : 1.0));
-
-  // 1. Local default event images have mobile/tablet/desktop variants
-  if (url.startsWith('/defaults/events/') || url.startsWith('/defaults/hero_default')) {
-    const base = url.replace(/(_desktop|_tablet|_mobile)\.webp$/, '.webp');
-    if (effectiveWidth <= 640 || (isClient && screenWidth <= 640)) {
-      return base.replace('.webp', '_mobile.webp');
-    }
-    if (effectiveWidth <= 1200 || (isClient && screenWidth <= 1024)) {
-      return base.replace('.webp', '_tablet.webp');
-    }
-    return base.replace('.webp', '_desktop.webp');
-  }
-
-  // 2. Unsplash HD Auto-Upscale & Clarity Tuning
-  if (url.includes('images.unsplash.com')) {
-    const cleanUrl = url.split('?')[0];
-    return `${cleanUrl}?auto=format&fit=crop&w=${Math.max(effectiveWidth, 640)}&q=88&dpr=${dpr >= 2 ? '2' : '1'}`;
-  }
-
-  // 3. Phase 2: Original image objects must NEVER be rewritten to derivative variants
-  if (url.includes('/originals/') || url.includes('/source.') || url.includes('_source.')) {
-    return url;
-  }
-
-  // 4. Same-origin Edge CDN image proxy for legacy V2 placement variants
-  if (url.startsWith('https://images.lpuevents.live/')) {
-    let resolvedUrl = url;
-    // Serve lightweight responsive mobile/tablet WebP derivatives for V2 placements
-    if (url.includes('/events/v2/')) {
-      if (url.endsWith('/card.webp') && effectiveWidth <= 480) {
-        resolvedUrl = url.replace('/card.webp', '/card_480w.webp');
-      } else if (url.endsWith('/details.webp')) {
-        if (effectiveWidth <= 640) {
-          resolvedUrl = url.replace('/details.webp', '/details_640w.webp');
-        } else if (effectiveWidth <= 800) {
-          resolvedUrl = url.replace('/details.webp', '/details_800w.webp');
-        }
-      } else if (url.endsWith('/hero.webp')) {
-        if (effectiveWidth <= 800) {
-          resolvedUrl = url.replace('/hero.webp', '/hero_800w.webp');
-        } else if (effectiveWidth <= 1200) {
-          resolvedUrl = url.replace('/hero.webp', '/hero_1200w.webp');
-        }
-      }
-    }
-    return resolvedUrl;
-  }
-
-  return url;
+export function getResponsiveImageUrl(url: string, _targetWidth?: number): string {
+  return typeof url === 'string' ? url : '';
 }
 
 /**
- * Instant Low-Quality Image Placeholder (LQIP) Generator (0ms display, ~3KB payload)
+ * Generate a placeholder only for sources that support a genuine lightweight
+ * request. Local defaults and R2 originals have no guaranteed thumbnail.
  */
 export function getLowResPlaceholderUrl(url: string): string {
-  if (!url || typeof url !== 'string') return url;
-
-  if (url.startsWith('/defaults/events/')) {
-    return url.replace(/(_desktop|_tablet|_mobile)?\.webp$/, '_mobile.webp');
-  }
-
+  if (!url || typeof url !== 'string') return '';
   if (url.includes('images.unsplash.com')) {
     const cleanUrl = url.split('?')[0];
-    return `${cleanUrl}?auto=format&fit=crop&w=160&q=35&blur=15`;
+    return cleanUrl + '?auto=format&w=160&q=35&blur=15';
   }
-
-  return url;
+  return '';
 }
 
 /**
- * Primary HD Image Resolver with context-aware Retina dimension scaling
+ * Resolve through the shared resolver. Keep width for API compatibility, but
+ * do not mutate URLs. The shared resolver owns legacy V1/V2 and original-first
+ * source selection.
  */
-export function getEventImage(
-  event: any, 
-  context: ImageContext = 'event-card',
-  maxWidth?: number
-): string {
-  const raw = sharedGetOptimizedImage(event, context);
-  
-  const defaultWidths: Record<ImageContext, number> = {
-    hero: 1440,
-    'event-banner': 1200,
-    'event-card': 640,
-    advertisement: 1080,
-    memory: 1200,
-    thumbnail: 400,
-    'sponsor-logo': 600,
-    'admin-preview': 1080,
-  };
-
-  const targetWidth = maxWidth ?? (defaultWidths[context] || 1080);
-  return getResponsiveImageUrl(raw, targetWidth);
+export function getEventImage(event: any, context: ImageContext = 'event-card', _maxWidth?: number): string {
+  return sharedGetOptimizedImage(event, context);
 }
 
-/**
- * Instant Low-Res Placeholder Resolver
- */
-export function getEventImageLowRes(
-  event: any,
-  context: ImageContext = 'event-card'
-): string {
-  const raw = sharedGetOptimizedImage(event, context);
-  return getLowResPlaceholderUrl(raw);
+export function getEventImageLowRes(event: any, context: ImageContext = 'event-card'): string {
+  return getLowResPlaceholderUrl(sharedGetOptimizedImage(event, context));
 }
 
 export { getOptimizedImage, getOptimizedImageSrcSet, registerMediaAssets } from '@lpu-events/shared';
