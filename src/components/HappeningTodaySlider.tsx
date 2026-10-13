@@ -324,7 +324,7 @@ export const HappeningTodaySliderComponent = ({
               return (
                 <div
                   key={slide.id}
-                  className="relative shrink-0 w-[280px] lg:w-[598px] rounded-[22px] overflow-hidden p-3.5 bg-white dark:bg-[#2c2c2e] border-0 ring-1 ring-inset ring-black/10 dark:ring-white/10 flex flex-col items-center justify-center snap-start shadow-md"
+                  className="relative shrink-0 w-full max-w-[280px] lg:w-[598px] lg:max-w-none rounded-[22px] overflow-hidden p-3.5 bg-white dark:bg-[#2c2c2e] border-0 ring-1 ring-inset ring-black/10 dark:ring-white/10 flex flex-col items-center justify-center snap-start shadow-md"
                 >
                   <AdSenseSlot
                     format="in_feed_card"
@@ -339,12 +339,12 @@ export const HappeningTodaySliderComponent = ({
               <div
                 key={slide.id}
                 onClick={handleCardClick}
-                className="group relative shrink-0 w-[280px] lg:w-[598px] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border-0 ring-1 ring-inset ring-slate-200/80 dark:ring-white/[0.12] bg-white dark:bg-[#2c2c2e] flex flex-col transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
+                className="group relative shrink-0 w-full max-w-[280px] lg:w-[598px] lg:max-w-none rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border-0 ring-1 ring-inset ring-slate-200/80 dark:ring-white/[0.12] bg-white dark:bg-[#2c2c2e] flex flex-col transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
               >
                 {/* Uniform Crisp Banner Stage (Fixed 280x158 compact / 598x336 desktop) */}
                 <div
                   data-image-slot="happening-today-card"
-                  className="relative w-[280px] h-[158px] lg:w-[598px] lg:h-[336px] overflow-hidden shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center"
+                  className="relative w-full aspect-[280/158] lg:w-[598px] lg:h-[336px] overflow-hidden shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center"
                 >
                   {/* Full Cover Slide Banner */}
                   {slide.image ? (
@@ -446,10 +446,10 @@ export const HappeningTodaySliderComponent = ({
           {events.length > slides.length && (
             <div
               onClick={() => setIsAllTodayModalOpen(true)}
-              className="group relative shrink-0 w-[280px] lg:w-[598px] rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border-0 ring-1 ring-inset ring-orange-500/30 dark:border-white/15 bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-transparent dark:from-white/[0.08] dark:to-transparent flex flex-col justify-between transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
+              className="group relative shrink-0 w-full max-w-[280px] lg:w-[598px] lg:max-w-none rounded-[22px] overflow-hidden cursor-pointer snap-start shadow-[0_6px_22px_rgba(0,0,0,0.08)] dark:shadow-[0_10px_32px_rgba(0,0,0,0.5)] border-0 ring-1 ring-inset ring-orange-500/30 dark:border-white/15 bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-transparent dark:from-white/[0.08] dark:to-transparent flex flex-col justify-between transition-[transform,box-shadow] duration-200 hover:-translate-y-1 hover:shadow-lg active:scale-[0.98]"
             >
               {/* Visual Header matching 280x158 mobile / 598x336 desktop banner */}
-              <div className="relative w-[280px] h-[158px] lg:w-[598px] lg:h-[336px] overflow-hidden shrink-0 flex flex-col items-center justify-center bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-orange-600/20 dark:from-white/10 dark:via-white/5 dark:to-white/10">
+              <div className="relative w-full aspect-[280/158] lg:w-[598px] lg:h-[336px] overflow-hidden shrink-0 flex flex-col items-center justify-center bg-gradient-to-br from-orange-500/20 via-amber-500/10 to-orange-600/20 dark:from-white/10 dark:via-white/5 dark:to-white/10">
                 <div className="w-14 h-14 rounded-full bg-orange-500/20 dark:bg-white/10 border border-orange-500/40 dark:border-white/20 flex items-center justify-center mb-2 group-hover:scale-110 group-active:scale-95 transition-transform shadow-inner text-orange-700 dark:text-white">
                   <ArrowRight className="w-6 h-6" />
                 </div>
