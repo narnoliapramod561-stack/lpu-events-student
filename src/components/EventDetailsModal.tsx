@@ -56,7 +56,7 @@ export const EventDetailsModal = ({ eventId, onClose }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="relative w-[336px] lg:w-[896px] lg:max-w-[896px] max-h-[88vh] overflow-y-auto rounded-[26px] sm:rounded-[32px] !border-0 ring-1 ring-inset ring-white/95 dark:ring-white/12 glass-panel text-gray-900 dark:text-white shadow-[0_25px_70px_rgba(0,0,0,0.45)] flex flex-col hide-scrollbar animate-in zoom-in-95 duration-300 mx-auto">
+      <div className="relative w-[95vw] sm:w-full max-w-4xl max-h-[88vh] overflow-y-auto rounded-[26px] sm:rounded-[32px] border border-white/95 dark:border-white/12 glass-panel text-gray-900 dark:text-white shadow-[0_25px_70px_rgba(0,0,0,0.45)] flex flex-col hide-scrollbar animate-in zoom-in-95 duration-300">
         
         {/* Close Button */}
         <button
@@ -68,24 +68,9 @@ export const EventDetailsModal = ({ eventId, onClose }: {
         </button>
 
         {loading ? (
-          <div className="flex flex-col w-full animate-in fade-in duration-300">
-            {/* Banner Image Stage Skeleton (Fixed 336x260 compact / 896x380 desktop) */}
-            <div className="w-[336px] h-[260px] lg:w-[896px] lg:h-[380px] skeleton-base relative shrink-0 border-b border-white/80 dark:border-white/10 flex items-center justify-center">
-              <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-3 border-primary/40 border-t-primary animate-spin" />
-            </div>
-            {/* Modal Body Content Skeleton */}
-            <div className="p-4 sm:p-6 md:p-10 grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-              <div className="lg:col-span-2 space-y-4">
-                <div className="h-6 w-48 rounded-lg skeleton-base" />
-                <div className="h-4 w-full rounded-md skeleton-base" />
-                <div className="h-4 w-5/6 rounded-md skeleton-base" />
-                <div className="h-4 w-3/4 rounded-md skeleton-base" />
-              </div>
-              <div className="space-y-3">
-                <div className="h-20 w-full rounded-2xl skeleton-base" />
-                <div className="h-10 w-full rounded-xl skeleton-base" />
-              </div>
-            </div>
+          <div className="flex flex-col items-center justify-center py-20 gap-4">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-4 border-primary border-t-transparent animate-spin" />
+            <p className="text-gray-600 dark:text-on-surface-muted text-xs sm:text-sm font-bold font-heading">Loading event details...</p>
           </div>
         ) : error || !event ? (
           <div className="flex flex-col items-center justify-center py-16 p-6 text-center gap-4">
@@ -97,13 +82,10 @@ export const EventDetailsModal = ({ eventId, onClose }: {
           </div>
         ) : (
           <>
-            {/* Banner Image Stage (Fixed 336x260 compact / 896x380 desktop) */}
-            <div
-              data-image-slot="event-details-modal"
-              className="w-[336px] h-[260px] lg:w-[896px] lg:h-[380px] relative overflow-hidden border-b border-white/80 dark:border-white/10 shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center"
-            >
+            {/* Banner Image Stage */}
+            <div className="w-full h-[260px] xs:h-[290px] sm:h-[340px] md:h-[380px] relative overflow-hidden border-b border-white/80 dark:border-white/10 shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center">
               <ProgressiveImage
-                ambientBackdrop={false}
+                ambientBackdrop
                 src={getEventImage(event, 'event-banner', 1440)}
                 alt={event.name}
                 containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"

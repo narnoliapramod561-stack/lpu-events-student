@@ -516,8 +516,8 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
           <div className="h-8 w-24 rounded-full skeleton-base" />
         </div>
 
-        {/* Hero Banner Skeleton (Matching 280px mobile / 520px desktop banner dimensions) */}
-        <div className="w-full max-w-[366px] sm:max-w-none mx-auto h-[280px] xs:h-[320px] sm:h-[420px] md:h-[480px] lg:h-[520px] rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 skeleton-base relative overflow-hidden shadow-xl" />
+        {/* Hero Banner Skeleton */}
+        <div className="w-full aspect-[16/10] sm:aspect-[16/9] md:h-[460px] lg:h-[500px] rounded-[24px] sm:rounded-[30px] mb-5 sm:mb-8 skeleton-base relative overflow-hidden shadow-xl" />
 
         {/* Event Title & Organizer Skeleton */}
         <div className="mb-6 sm:mb-8 space-y-3">
@@ -644,13 +644,10 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         </div>
       </div>
 
-      {/* Hero Banner Stage (Fixed 336x280 compact / 1024x520 desktop) */}
-      <div
-        data-image-slot="event-details-banner"
-        className="w-[336px] h-[280px] xl:w-[1024px] xl:h-[520px] mx-auto shrink-0 overflow-hidden rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 relative glass-panel shadow-xl bg-black/5 dark:bg-white/5 flex items-center justify-center"
-      >
+      {/* Hero Banner Stage (Full Content Visibility with Ambient Backdrop) */}
+      <div className="w-full h-[280px] xs:h-[320px] sm:h-[420px] md:h-[480px] lg:h-[520px] overflow-hidden rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 relative glass-panel shadow-xl bg-black/5 dark:bg-white/5 flex items-center justify-center">
         <ProgressiveImage
-          ambientBackdrop={false}
+          ambientBackdrop
           className="w-full h-full object-contain object-center relative z-10"
           containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
           src={getEventImage(event, "event-banner", 1440)}

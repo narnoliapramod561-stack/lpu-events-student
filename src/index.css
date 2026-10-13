@@ -3,7 +3,6 @@
 @custom-variant dark (&:where(.dark, .dark *));
 
 @theme {
-  --breakpoint-xs: 480px;
   --color-bg: var(--color-bg-val);
   --color-surface: var(--color-surface-val);
   --color-surface-2: var(--color-surface-2-val);
