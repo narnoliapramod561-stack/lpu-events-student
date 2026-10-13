@@ -43,7 +43,7 @@ export const EventCardComponent = ({
       viewport={{ once: true, margin: "60px" }}
       transition={{ duration: 0.25, delay: Math.min((idx % 6) * 0.03, 0.15) }}
       onClick={() => onSelect(event.id, event.name)}
-      className="glass-card group flex flex-col h-full w-full max-w-[590px] shrink-0 mx-auto overflow-hidden cursor-pointer rounded-2xl sm:rounded-3xl shadow-md hover:shadow-2xl transition-[transform,box-shadow] duration-200 !border-0 ring-1 ring-inset ring-white/80 dark:ring-white/[0.08] hover:ring-primary/50 dark:hover:ring-white/20 relative hover:scale-[1.01] active:scale-[0.99]"
+      className="glass-card group flex flex-col h-full w-full max-w-[366px] sm:max-w-[590px] shrink-0 mx-auto overflow-hidden cursor-pointer rounded-2xl sm:rounded-3xl shadow-md hover:shadow-2xl transition-[transform,box-shadow] duration-200 !border-0 ring-1 ring-inset ring-white/80 dark:ring-white/[0.08] hover:ring-primary/50 dark:hover:ring-white/20 relative hover:scale-[1.01] active:scale-[0.99]"
       style={{ willChange: 'opacity, transform' }}
     >
       {/* Event Cover Image (Fixed 336x189 compact / 590x332 desktop) */}
@@ -181,7 +181,7 @@ export const AdBannerCardComponent = ({ ad }: { ad: AdvertisementFeedItem }) => 
   return (
     <article
       onClick={() => ad.redirect_url && window.open(ad.redirect_url, "_blank", "noopener,noreferrer")}
-      className="group relative flex flex-col h-full w-full max-w-[590px] shrink-0 min-h-[380px] xs:min-h-[420px] sm:min-h-[480px] overflow-hidden rounded-[20px] sm:rounded-[28px] border border-white/80 dark:border-white/10 hover:border-indigo-500/60 shadow-md hover:shadow-2xl transition-all duration-500 cursor-pointer bg-slate-900 select-none hover:scale-[1.01] active:scale-[0.99] mx-auto"
+      className="group relative flex flex-col h-full w-full max-w-[366px] sm:max-w-[590px] shrink-0 min-h-[380px] xs:min-h-[420px] sm:min-h-[480px] overflow-hidden rounded-[20px] sm:rounded-[28px] border border-white/80 dark:border-white/10 hover:border-indigo-500/60 shadow-md hover:shadow-2xl transition-all duration-500 cursor-pointer bg-slate-900 select-none hover:scale-[1.01] active:scale-[0.99] mx-auto"
     >
       {/* 1. Full-Bleed Card Visual / Cover Image */}
       <div className="absolute inset-0 w-full h-full overflow-hidden bg-slate-950">
@@ -269,7 +269,7 @@ export const AdBannerCard = React.memo(AdBannerCardComponent);
 
 export const SkeletonCard = React.memo(() => {
   return (
-    <div className="flex flex-col h-full w-full max-w-[590px] shrink-0 mx-auto rounded-[20px] sm:rounded-[28px] glass-panel overflow-hidden !border-0 ring-1 ring-inset ring-white/90 dark:ring-white/5 shadow-md">
+    <div className="flex flex-col h-full w-full max-w-[366px] sm:max-w-[590px] shrink-0 mx-auto rounded-[20px] sm:rounded-[28px] glass-panel overflow-hidden !border-0 ring-1 ring-inset ring-white/90 dark:ring-white/5 shadow-md">
       {/* Event Cover Image Skeleton (Fixed 336x189 compact / 590x332 desktop) */}
       <div className="w-full max-w-[366px] aspect-[366/206] sm:max-w-[590px] sm:aspect-[590/332] shrink-0 bg-gray-200/70 dark:bg-white/5 skeleton-base relative">
         <div className="absolute bottom-2.5 left-2.5 sm:bottom-3 sm:left-3.5 h-4 w-16 rounded-full bg-gray-300/60 dark:bg-white/10" />
@@ -444,7 +444,7 @@ export const EventGridComponent = ({
             return (
               <div 
                 key={`adsense-slot-${index}`}
-                className="w-full max-w-[590px] shrink-0 min-h-[300px] flex flex-col items-center justify-center p-2 rounded-[22px] sm:rounded-[28px] glass-panel border border-white/60 dark:border-white/10 overflow-hidden mx-auto"
+                className="w-full max-w-[366px] sm:max-w-[590px] shrink-0 min-h-[300px] flex flex-col items-center justify-center p-2 rounded-[22px] sm:rounded-[28px] glass-panel border border-white/60 dark:border-white/10 overflow-hidden mx-auto"
               >
                 <AdSenseSlot 
                   format="in_feed_card" 
