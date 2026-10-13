@@ -399,7 +399,7 @@ export const HeroCarouselComponent = ({
                 <div
                   onClick={handleAction}
                   data-image-slot="hero-carousel-mobile"
-                  className="22xl:hidden relative w-full aspect-[366/229] lg:aspect-[940/540] shrink-0 mx-auto overflow-hidden cursor-pointer group bg-black/5 dark:bg-white/5 flex items-center justify-center"
+                  className="2xl:hidden relative w-full aspect-[366/229] lg:aspect-[940/540] shrink-0 mx-auto overflow-hidden cursor-pointer group bg-black/5 dark:bg-white/5 flex items-center justify-center"
                 >
                   {/* Clean Mobile Slide Visual (Uncropped Contained Poster with Clean Background) */}
                   {currentSlide.image ? (
