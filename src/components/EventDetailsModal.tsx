@@ -56,7 +56,7 @@ export const EventDetailsModal = ({ eventId, onClose }: {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-300">
-      <div className="relative w-[336px] lg:w-[896px] lg:max-w-[896px] max-h-[88vh] overflow-y-auto rounded-[26px] sm:rounded-[32px] !border-0 ring-1 ring-inset ring-white/95 dark:ring-white/12 glass-panel text-gray-900 dark:text-white shadow-[0_25px_70px_rgba(0,0,0,0.45)] flex flex-col hide-scrollbar animate-in zoom-in-95 duration-300 mx-auto">
+      <div className="relative w-full max-w-[366px] lg:max-w-[896px] max-h-[88vh] overflow-y-auto rounded-[26px] sm:rounded-[32px] !border-0 ring-1 ring-inset ring-white/95 dark:ring-white/12 glass-panel text-gray-900 dark:text-white shadow-[0_25px_70px_rgba(0,0,0,0.45)] flex flex-col hide-scrollbar animate-in zoom-in-95 duration-300 mx-auto">
         
         {/* Close Button */}
         <button
@@ -70,7 +70,7 @@ export const EventDetailsModal = ({ eventId, onClose }: {
         {loading ? (
           <div className="flex flex-col w-full animate-in fade-in duration-300">
             {/* Banner Image Stage Skeleton (Fixed 336x260 compact / 896x380 desktop) */}
-            <div className="w-[336px] h-[260px] lg:w-[896px] lg:h-[380px] skeleton-base relative shrink-0 border-b border-white/80 dark:border-white/10 flex items-center justify-center">
+            <div className="w-full max-w-[366px] aspect-[366/260] lg:max-w-[896px] lg:aspect-[896/380] skeleton-base relative shrink-0 border-b border-white/80 dark:border-white/10 flex items-center justify-center">
               <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full border-3 border-primary/40 border-t-primary animate-spin" />
             </div>
             {/* Modal Body Content Skeleton */}
@@ -100,7 +100,7 @@ export const EventDetailsModal = ({ eventId, onClose }: {
             {/* Banner Image Stage (Fixed 336x260 compact / 896x380 desktop) */}
             <div
               data-image-slot="event-details-modal"
-              className="w-[336px] h-[260px] lg:w-[896px] lg:h-[380px] relative overflow-hidden border-b border-white/80 dark:border-white/10 shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center"
+              className="w-full max-w-[366px] aspect-[366/260] lg:max-w-[896px] lg:aspect-[896/380] relative overflow-hidden border-b border-white/80 dark:border-white/10 shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center"
             >
               <ProgressiveImage
                 ambientBackdrop={false}
