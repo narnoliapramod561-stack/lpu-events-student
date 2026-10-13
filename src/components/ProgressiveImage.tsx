@@ -33,16 +33,18 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
     loadedHdImageCache.has(src) ? "loaded" : "loading"
   );
   const fallbackAttemptedRef = useRef(false);
+  const sourcePropRef = useRef(src);
 
-  // Derive the current source synchronously so reused carousel components
-  // never render the previous slide while an effect catches up.
-  const sourceChanged = imgSrc !== src;
+  // Derive source changes synchronously without confusing a chosen fallback
+  // URL with a new src prop. This avoids a one-frame flash of the prior slide.
+  const sourceChanged = sourcePropRef.current !== src;
   const effectiveSrc = sourceChanged ? src : imgSrc;
   const effectiveState = sourceChanged
     ? (loadedHdImageCache.has(src) ? "loaded" : "loading")
     : loadState;
 
   useEffect(() => {
+    sourcePropRef.current = src;
     fallbackAttemptedRef.current = false;
     setImgSrc(src);
     setLoadState(loadedHdImageCache.has(src) ? "loaded" : "loading");
