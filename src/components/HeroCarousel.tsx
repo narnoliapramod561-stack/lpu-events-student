@@ -352,7 +352,7 @@ export const HeroCarouselComponent = ({
         </AnimatePresence>
       </div>
 
-      {/* 2. Main Carousel Viewport Frame — Fixed 336x250 Mobile Card, 580px Height on Desktop */}
+      {/* 2. Main Carousel Viewport — fluid compact poster frame; 580px desktop composition */}
       <div className="relative z-10 w-full max-w-[366px] h-auto sm:max-w-[640px] md:max-w-[768px] lg:max-w-[940px] 2xl:w-full 2xl:max-w-[1834px] 2xl:h-[580px] mx-auto overflow-hidden rounded-[24px] 2xl:rounded-[40px] glass-panel !border-0 2xl:!border border-black/[0.08] dark:border-white/[0.14] ring-1 ring-inset ring-white/20 dark:ring-white/10 shadow-[0_20px_50px_-12px_rgba(255,107,0,0.24),0_10px_24px_-6px_rgba(15,23,42,0.08)] dark:shadow-[0_28px_70px_rgba(0,0,0,0.95)] flex flex-col shrink-0">
         
         {/* Subtle Decorative Ambient Flares (Light mode only) */}
@@ -394,7 +394,7 @@ export const HeroCarouselComponent = ({
             ) : (
               <>
                 {/* =========================================================
-                    COMPACT SLIDE LAYOUT (< xl): Fixed 336x250 Contained Frame
+                    COMPACT SLIDE LAYOUT (below 2xl): fluid 366:229 poster frame
                    ========================================================= */}
                 <div
                   onClick={handleAction}
