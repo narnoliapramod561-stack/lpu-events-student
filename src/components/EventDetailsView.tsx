@@ -517,7 +517,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         </div>
 
         {/* Hero Banner Skeleton (Matching 280px mobile / 520px desktop banner dimensions) */}
-        <div className="w-full max-w-[366px] sm:max-w-none mx-auto h-[280px] xs:h-[320px] sm:h-[420px] md:h-[480px] lg:h-[520px] rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 skeleton-base relative overflow-hidden shadow-xl" />
+        <div className="w-full max-w-[366px] md:max-w-[1024px] aspect-[366/280] md:aspect-[1024/520] mx-auto rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 skeleton-base relative overflow-hidden shadow-xl" />
 
         {/* Event Title & Organizer Skeleton */}
         <div className="mb-6 sm:mb-8 space-y-3">
@@ -647,7 +647,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
       {/* Hero Banner Stage (Fixed 336x280 compact / 1024x520 desktop) */}
       <div
         data-image-slot="event-details-banner"
-        className="w-[336px] h-[280px] xl:w-[1024px] xl:h-[520px] mx-auto shrink-0 overflow-hidden rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 relative glass-panel shadow-xl bg-black/5 dark:bg-white/5 flex items-center justify-center"
+        className="w-full max-w-[366px] md:max-w-[1024px] aspect-[366/280] md:aspect-[1024/520] mx-auto shrink-0 overflow-hidden rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 relative glass-panel shadow-xl bg-black/5 dark:bg-white/5 flex items-center justify-center"
       >
         <ProgressiveImage
           ambientBackdrop={false}
