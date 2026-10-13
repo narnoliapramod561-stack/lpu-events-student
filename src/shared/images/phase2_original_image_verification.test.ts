@@ -752,6 +752,17 @@ async function runPhase2Tests() {
   const resolvedPhase2 = getOptimizedImage({ media_assets: [phase2MediaAsset] }, 'event-card');
   assert(resolvedPhase2 === 'https://images.lpuevents.live/events/originals/org_alpha/59e2/59e2b123456789.jpg', 'Rule 1: Original-only asset resolves directly to original object URL in event-card');
 
+  // Original-only metadata must win over a stale denormalized banner_url.
+  const phase2WithStaleBannerUrl = {
+    banner_url: 'https://images.lpuevents.live/events/v2/old-hash/old-event/hero.webp',
+    media_assets: [phase2MediaAsset]
+  };
+  const resolvedDespiteStaleBanner = getOptimizedImage(phase2WithStaleBannerUrl, 'hero');
+  assert(
+    resolvedDespiteStaleBanner === 'https://images.lpuevents.live/events/originals/org_alpha/59e2/59e2b123456789.jpg',
+    'Rule 1a: Original-only media metadata takes precedence over stale banner_url'
+  );
+
   const legacyV2WithSource = {
     id: 'asset-legacy-v2-with-source',
     bucket: 'lpu-events-images',
