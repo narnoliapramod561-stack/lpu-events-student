@@ -273,6 +273,30 @@ export function getOptimizedImage(
     return `${getStorageBaseUrl()}/${str.replace(/^\/+/, '')}`;
   }
 
+  // Prefer authoritative media metadata before denormalized URL fields.
+  // New original-only uploads may coexist with a stale banner_url that still
+  // points at a legacy derivative; that stale field must not override the source.
+  const preferredMediaAsset = Array.isArray(source.media_assets)
+    ? source.media_assets[0]
+    : (source.media_assets || (Array.isArray(source.media_asset) ? source.media_asset[0] : source.media_asset));
+
+  if (preferredMediaAsset?.object_key) {
+    const meta = preferredMediaAsset.metadata || {};
+    const preferredKey =
+      (meta.is_original_only || meta.original_object_key || preferredMediaAsset.object_key.includes('/originals/'))
+        ? (meta.original_object_key || preferredMediaAsset.object_key)
+        : (meta.source?.object_key || meta.master?.object_key || null);
+
+    if (preferredKey) {
+      const bucket = preferredMediaAsset.bucket;
+      if (preferredKey.startsWith('http://') || preferredKey.startsWith('https://') ||
+          preferredKey.startsWith('data:') || preferredKey.startsWith('blob:')) {
+        return preferredKey;
+      }
+      return `${getStorageBaseUrl(bucket)}/${preferredKey.replace(/^\/+/, '')}`;
+    }
+  }
+
   // 2. Direct banner_url or public_url on entity
   if (source.banner_url && typeof source.banner_url === 'string' && source.banner_url.trim()) {
     const str = source.banner_url.trim();
