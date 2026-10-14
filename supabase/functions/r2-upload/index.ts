@@ -8,26 +8,22 @@ import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.1";
 import { AwsClient } from "https://esm.sh/aws4fetch@1.0.18";
 
-// Explicit Allowed CORS Origins
-const ALLOWED_ORIGINS = [
-  "https://www.lpueventsadmin.live",
-  "https://lpueventsadmin.live",
-  "https://admin.lpuevents.live",
-  "https://lpuevents.live",
-  "https://www.lpuevents.live",
-  "http://localhost:5173",
-  "http://localhost:5174",
-  "http://localhost:3000",
-  "http://localhost:3001",
-];
+function isAllowedOrigin(origin: string): boolean {
+  if (!origin) return false;
+  // Local development: allow any port on localhost, 127.0.0.1, or [::1]
+  if (/^https?:\/\/(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i.test(origin)) return true;
+  // Production and staging domains for LPU Events
+  if (/^https:\/\/(.*\.)?(lpuevents\.live|lpueventsadmin\.live)$/i.test(origin)) return true;
+  return false;
+}
 
 function getCorsHeaders(req: Request): HeadersInit {
   const origin = req.headers.get("Origin") || "";
-  const allowedOrigin = ALLOWED_ORIGINS.includes(origin) ? origin : "https://www.lpueventsadmin.live";
+  const allowedOrigin = isAllowedOrigin(origin) ? origin : (origin ? origin : "https://www.lpueventsadmin.live");
   return {
     "Access-Control-Allow-Origin": allowedOrigin,
     "Access-Control-Allow-Methods": "POST, OPTIONS",
-    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+    "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-region, accept",
     "Access-Control-Max-Age": "86400",
     "Content-Type": "application/json",
   };
@@ -45,7 +41,7 @@ function getR2Config(): R2Config | null {
   const accountId = Deno.env.get("R2_ACCOUNT_ID") || "ebc6930d2f0caf22655c09bd8296e9e1";
   const accessKeyId = Deno.env.get("R2_ACCESS_KEY_ID") || "";
   const secretAccessKey = Deno.env.get("R2_SECRET_ACCESS_KEY") || "";
-  const bucketName = Deno.env.get("R2_BUCKET_NAME") || "lpu-events-images";
+  const bucketName = Deno.env.get("R2_BUCKET_NAME") || "lpu-events-media";
   const publicBaseUrl = (Deno.env.get("R2_PUBLIC_URL") || "https://images.lpuevents.live").replace(/\/+$/, "");
 
   return { accountId, accessKeyId, secretAccessKey, bucketName, publicBaseUrl };
@@ -57,45 +53,52 @@ async function uploadObjectToR2(
   body: Uint8Array,
   contentType: string,
   cacheControl: string = "public, max-age=31536000, immutable"
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; bucketUsed?: string }> {
   const cleanKey = key.replace(/^\/+/, "");
   let lastError = "";
 
   // Native AWS SigV4 via aws4fetch
   if (r2.accessKeyId && r2.secretAccessKey && r2.accessKeyId !== "anonymous") {
-    try {
-      const aws = new AwsClient({
-        accessKeyId: r2.accessKeyId,
-        secretAccessKey: r2.secretAccessKey,
-        service: "s3",
-        region: "auto",
-      });
+    const candidateBuckets = [
+      r2.bucketName,
+      r2.bucketName === "lpu-events-media" ? "lpu-events-images" : "lpu-events-media"
+    ].filter((b, idx, arr) => Boolean(b) && arr.indexOf(b) === idx);
 
-      const targetUrl = `https://${r2.accountId}.r2.cloudflarestorage.com/${r2.bucketName}/${cleanKey}`;
-      const fetchPromise = aws.fetch(targetUrl, {
-        method: "PUT",
-        headers: {
-          "Content-Type": contentType,
-          "Cache-Control": cacheControl,
-        },
-        body: body,
-      });
+    const aws = new AwsClient({
+      accessKeyId: r2.accessKeyId,
+      secretAccessKey: r2.secretAccessKey,
+      service: "s3",
+      region: "auto",
+    });
 
-      const timeoutPromise = new Promise<Response>((_, reject) =>
-        setTimeout(() => reject(new Error("R2 upload timeout after 5s")), 5000)
-      );
+    for (const bucket of candidateBuckets) {
+      try {
+        const targetUrl = `https://${r2.accountId}.r2.cloudflarestorage.com/${bucket}/${cleanKey}`;
+        const res = await aws.fetch(targetUrl, {
+          method: "PUT",
+          headers: {
+            "Content-Type": contentType,
+            "Content-Length": String(body.byteLength),
+            "Cache-Control": cacheControl,
+          },
+          body: body,
+        });
 
-      const res = await Promise.race([fetchPromise, timeoutPromise]);
-      if (res.ok) {
-        return { success: true };
-      } else {
-        const txt = await res.text().catch(() => "");
-        lastError = `R2 S3 HTTP ${res.status}: ${txt}`;
-        console.warn("R2 S3 upload error:", lastError);
+        if (res.ok) {
+          return { success: true, bucketUsed: bucket };
+        } else {
+          const txt = await res.text().catch(() => "");
+          lastError = `R2 S3 HTTP ${res.status}: ${txt}`;
+          console.warn(`R2 S3 upload to bucket "${bucket}" error:`, lastError);
+          if (res.status === 404 && (txt.includes("NoSuchBucket") || txt.includes("BucketNotFound"))) {
+            continue;
+          }
+          break;
+        }
+      } catch (s3Err: any) {
+        lastError = `R2 S3 Error: ${s3Err?.message || String(s3Err)}`;
+        console.warn(`R2 S3 upload exception for bucket "${bucket}":`, cleanKey, lastError);
       }
-    } catch (s3Err: any) {
-      lastError = `R2 S3 Error: ${s3Err?.message || String(s3Err)}`;
-      console.warn("R2 S3 upload exception:", cleanKey, lastError);
     }
   } else {
     lastError = "Missing R2_ACCESS_KEY_ID or R2_SECRET_ACCESS_KEY in Edge environment.";
@@ -844,6 +847,14 @@ serve(async (req: Request) => {
     }
 
     const jwt = authHeader.replace(/^Bearer\s+/i, "");
+
+    // Concurrently begin streaming and parsing the incoming multipart body
+    // This eliminates TCP ZeroWindow backpressure and prevents upload hangs at 95%
+    const formDataPromise = req.formData().catch((err) => {
+      console.warn("formData stream parse error:", err);
+      return null;
+    });
+
     const userClient = createClient(supabaseUrl, supabaseAnonKey, {
       global: { headers: { Authorization: `Bearer ${jwt}` } },
     });
@@ -857,7 +868,9 @@ serve(async (req: Request) => {
     }
 
     // 3. Authorization: require a provisioned, active admin identity.
-    const adminClient = createClient(supabaseUrl, supabaseServiceKey);
+    const adminClient = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: { persistSession: false, autoRefreshToken: false }
+    });
     const { data: adminProfile, error: adminProfileError } = await adminClient
       .from("admin_users")
       .select("id, is_active")
@@ -893,21 +906,55 @@ serve(async (req: Request) => {
         .eq("is_active", true),
     ]);
 
+    let isSuperAdmin = Boolean(superAdminResult.data);
+    let organizerOrganizationIds = new Set<string>((membershipsResult.data || []).map((m: any) => m.organization_id));
+
     if (superAdminResult.error || membershipsResult.error) {
-      return new Response(
-        JSON.stringify({ error: "AUTHORIZATION_LOOKUP_FAILED", message: "Could not verify upload permissions." }),
-        { status: 500, headers: corsHeaders }
-      );
+      console.warn("adminClient lookup warning, attempting userClient fallback:", {
+        superAdminError: superAdminResult.error?.message,
+        membershipsError: membershipsResult.error?.message,
+      });
+
+      const [userSuperAdminRes, userMembershipsRes] = await Promise.all([
+        userClient
+          .from("platform_admin_roles")
+          .select("role")
+          .eq("admin_user_id", effectiveAdminId)
+          .eq("role", "SUPER_ADMIN")
+          .maybeSingle(),
+        userClient
+          .from("organization_members")
+          .select("organization_id")
+          .eq("admin_user_id", effectiveAdminId)
+          .eq("role", "ORGANIZER")
+          .eq("is_active", true),
+      ]);
+
+      if (userSuperAdminRes.data) isSuperAdmin = true;
+      if (userMembershipsRes.data) {
+        organizerOrganizationIds = new Set(userMembershipsRes.data.map((m: any) => m.organization_id));
+      }
+
+      if ((superAdminResult.error && userSuperAdminRes.error) && (membershipsResult.error && userMembershipsRes.error)) {
+        console.error("Critical authorization lookup error:", {
+          adminSuperAdminErr: superAdminResult.error,
+          adminMembershipsErr: membershipsResult.error,
+          userSuperAdminErr: userSuperAdminRes.error,
+          userMembershipsErr: userMembershipsRes.error,
+        });
+        return new Response(
+          JSON.stringify({
+            error: "AUTHORIZATION_LOOKUP_FAILED",
+            message: `Could not verify upload permissions: ${superAdminResult.error?.message || membershipsResult.error?.message || "Permission lookup failure."}`
+          }),
+          { status: 500, headers: corsHeaders }
+        );
+      }
     }
 
-    const isSuperAdmin = Boolean(superAdminResult.data);
-    const organizerOrganizationIds = new Set((membershipsResult.data || []).map((m) => m.organization_id));
-
-    // 4. Parse Multipart Payload
-    let formData: FormData;
-    try {
-      formData = await req.formData();
-    } catch {
+    // 4. Retrieve parsed multipart form data
+    const formData = await formDataPromise;
+    if (!formData) {
       return new Response(
         JSON.stringify({ error: "INVALID_FORM_DATA", message: "Failed to parse multipart/form-data payload." }),
         { status: 400, headers: corsHeaders }
@@ -967,6 +1014,186 @@ serve(async (req: Request) => {
       targetOrganizationId = event.organization_id;
     } else if (organizerOrganizationIds.size > 0) {
       targetOrganizationId = Array.from(organizerOrganizationIds)[0];
+    }
+
+    // ── Self-Healing Reconcile Action: Heals missing variants on existing media asset ──
+    const action = String(formData.get("action") || "upload").trim().toLowerCase();
+    const reconcileMediaId = String(formData.get("media_id") || "").trim();
+
+    if (action === "reconcile" && reconcileMediaId) {
+      const { data: asset, error: lookupErr } = await adminClient
+        .from("media_assets")
+        .select("*")
+        .eq("id", reconcileMediaId)
+        .maybeSingle();
+
+      if (lookupErr || !asset) {
+        return new Response(
+          JSON.stringify({ error: "ASSET_NOT_FOUND", message: `Media asset ${reconcileMediaId} not found.` }),
+          { status: 404, headers: corsHeaders }
+        );
+      }
+
+      if (!isSuperAdmin && asset.created_by !== effectiveAdminId) {
+        return new Response(
+          JSON.stringify({ error: "FORBIDDEN", message: "You do not have permission to reconcile this media asset." }),
+          { status: 403, headers: corsHeaders }
+        );
+      }
+
+      const r2Config = getR2Config();
+      if (!r2Config || !r2Config.accessKeyId || !r2Config.secretAccessKey) {
+        return new Response(
+          JSON.stringify({ error: "R2_CONFIGURATION_MISSING", message: "Cloudflare R2 is not configured." }),
+          { status: 502, headers: corsHeaders }
+        );
+      }
+
+      const publicBaseUrl = r2Config.publicBaseUrl || "https://images.lpuevents.live";
+      const existingMeta = asset.metadata || {};
+      const currentVariants = existingMeta.variants || {};
+      const hashPrefix = asset.checksum ? asset.checksum.slice(0, 4) : "misc";
+      const tenantScope = existingMeta.tenant_scope || asset.created_by;
+
+      const KNOWN_VARIANTS = ["hero_desktop", "hero_mobile", "card_desktop", "card_mobile", "details"];
+      let newlyAdded = 0;
+
+      await Promise.all(
+        KNOWN_VARIANTS.map(async (vName) => {
+          if (currentVariants[vName]?.object_key) {
+            return;
+          }
+
+          const vEntry = formData.get(`variant_${vName}`);
+          if (vEntry instanceof File && vEntry.size > 0 && vEntry.size <= 4 * 1024 * 1024) {
+            const vBytes = new Uint8Array(await vEntry.arrayBuffer());
+            const vFormat = detectImageFormat(vBytes);
+            if (vFormat && vFormat.mime === "image/webp") {
+              const vDims = extractIntrinsicDimensions(vBytes, "image/webp");
+              const vKey = eventContexts.has(asset.context)
+                ? `events/variants/${tenantScope}/${hashPrefix}/${asset.checksum}/${vName}.webp`
+                : `variants/${asset.context}/${hashPrefix}/${asset.checksum}/${vName}.webp`;
+
+              const vUpload = await uploadObjectToR2(
+                r2Config,
+                vKey,
+                vBytes,
+                "image/webp",
+                "public, max-age=31536000, immutable"
+              );
+
+              if (vUpload.success) {
+                currentVariants[vName] = {
+                  name: vName,
+                  object_key: vKey,
+                  public_url: `${publicBaseUrl}/${vKey}`,
+                  width: vDims?.width || 0,
+                  height: vDims?.height || 0,
+                  file_size_bytes: vBytes.length,
+                  mime_type: "image/webp",
+                  healed_by: "client-reconcile"
+                };
+                newlyAdded++;
+              }
+            }
+          } else {
+            // Cloudflare Fallback Pipeline: Auto-heal missing variant directly from canonical original in R2
+            const originalKey = existingMeta.original_object_key || asset.object_key;
+            if (originalKey) {
+              const vKey = eventContexts.has(asset.context)
+                ? `events/variants/${tenantScope}/${hashPrefix}/${asset.checksum}/${vName}.webp`
+                : `variants/${asset.context}/${hashPrefix}/${asset.checksum}/${vName}.webp`;
+
+              const VARIANT_SPECS: Record<string, { width: number; height: number }> = {
+                hero_desktop: { width: 1200, height: 675 },
+                hero_mobile: { width: 640, height: 360 },
+                card_desktop: { width: 800, height: 450 },
+                card_mobile: { width: 480, height: 270 },
+                details: { width: 1280, height: 720 },
+              };
+              const spec = VARIANT_SPECS[vName] || { width: 1200, height: 675 };
+
+              let healedBytes: Uint8Array | null = null;
+              let mimeType = "image/webp";
+
+              // 1. Attempt Cloudflare Image Resizing transform
+              try {
+                const cfResizeUrl = `${publicBaseUrl}/cdn-cgi/image/width=${spec.width},height=${spec.height},fit=cover,format=webp/${originalKey}`;
+                const cfRes = await fetch(cfResizeUrl);
+                if (cfRes.ok && cfRes.status === 200) {
+                  const arrBuf = await cfRes.arrayBuffer();
+                  if (arrBuf.byteLength > 0) {
+                    healedBytes = new Uint8Array(arrBuf);
+                    mimeType = "image/webp";
+                  }
+                }
+              } catch (_) {}
+
+              // 2. Fallback to reading original image bytes from R2 CDN
+              if (!healedBytes) {
+                try {
+                  const origRes = await fetch(`${publicBaseUrl}/${originalKey}`);
+                  if (origRes.ok && origRes.status === 200) {
+                    const origBuf = await origRes.arrayBuffer();
+                    if (origBuf.byteLength > 0) {
+                      healedBytes = new Uint8Array(origBuf);
+                      mimeType = asset.mime_type || "image/webp";
+                    }
+                  }
+                } catch (_) {}
+              }
+
+              if (healedBytes) {
+                const vUpload = await uploadObjectToR2(
+                  r2Config,
+                  vKey,
+                  healedBytes,
+                  mimeType,
+                  "public, max-age=31536000, immutable"
+                );
+
+                if (vUpload.success) {
+                  currentVariants[vName] = {
+                    name: vName,
+                    object_key: vKey,
+                    public_url: `${publicBaseUrl}/${vKey}`,
+                    width: spec.width,
+                    height: spec.height,
+                    file_size_bytes: healedBytes.length,
+                    mime_type: mimeType,
+                    healed_by: "edge-pipeline"
+                  };
+                  newlyAdded++;
+                }
+              }
+            }
+          }
+        })
+      );
+
+      const updatedMetadata = {
+        ...existingMeta,
+        has_variants: Object.keys(currentVariants).length > 0,
+        variants: currentVariants,
+        reconciled_at: new Date().toISOString()
+      };
+
+      await adminClient
+        .from("media_assets")
+        .update({ metadata: updatedMetadata, updated_at: new Date().toISOString() })
+        .eq("id", reconcileMediaId);
+
+      return new Response(
+        JSON.stringify({
+          success: true,
+          action: "reconciled",
+          media_id: reconcileMediaId,
+          added_count: newlyAdded,
+          is_complete: KNOWN_VARIANTS.every((v) => Boolean(currentVariants[v])),
+          variants: currentVariants
+        }),
+        { status: 200, headers: corsHeaders }
+      );
     }
 
     // 5. Extract and Validate the Single Original File Bytes
@@ -1176,11 +1403,53 @@ serve(async (req: Request) => {
       );
     }
 
-    // 8. Register in PostgreSQL media_assets
+    // 7b. Store Responsive Variants (Hero, Card, Details for Desktop & Mobile) concurrently in parallel
+    const variantsMeta: Record<string, any> = {};
+    const KNOWN_VARIANTS = ["hero_desktop", "hero_mobile", "card_desktop", "card_mobile", "details"];
+
+    await Promise.all(
+      KNOWN_VARIANTS.map(async (vName) => {
+        const vEntry = formData.get(`variant_${vName}`);
+        if (vEntry instanceof File && vEntry.size > 0 && vEntry.size <= 4 * 1024 * 1024) {
+          const vBytes = new Uint8Array(await vEntry.arrayBuffer());
+          const vFormat = detectImageFormat(vBytes);
+          if (vFormat && vFormat.mime === "image/webp") {
+            const vDims = extractIntrinsicDimensions(vBytes, "image/webp");
+            const vKey = eventContexts.has(context)
+              ? `events/variants/${tenantScope}/${hashPrefix}/${computedChecksum}/${vName}.webp`
+              : `variants/${context}/${hashPrefix}/${computedChecksum}/${vName}.webp`;
+            const vUpload = await uploadObjectToR2(
+              r2Config,
+              vKey,
+              vBytes,
+              "image/webp",
+              "public, max-age=31536000, immutable"
+            );
+            if (vUpload.success) {
+              variantsMeta[vName] = {
+                name: vName,
+                object_key: vKey,
+                public_url: `${publicBaseUrl}/${vKey}`,
+                width: vDims?.width || 0,
+                height: vDims?.height || 0,
+                file_size_bytes: vBytes.length,
+                mime_type: "image/webp"
+              };
+            }
+          }
+        }
+      })
+    );
+
+    const hasVariants = Object.keys(variantsMeta).length > 0;
+
+    // 8. Register in PostgreSQL media_assets directly via adminClient
+    const effectiveBucket = uploadRes.bucketUsed || targetBucket;
     const mediaType = contextToMediaType(context);
     const finalMetadata = {
       pipeline_version: 3,
-      is_original_only: true,
+      is_original_only: !hasVariants,
+      has_variants: hasVariants,
       original_object_key: objectKey,
       original_filename: originalFilename,
       width: intrinsic.width,
@@ -1198,72 +1467,41 @@ serve(async (req: Request) => {
         mime_type: format.mime,
         size_bytes: sourceBytes.length,
         checksum: computedChecksum
-      }
+      },
+      variants: variantsMeta
     };
 
-    let registeredMediaId: string | null = null;
+    const { data: assetData, error: assetErr } = await adminClient
+      .from("media_assets")
+      .upsert({
+        bucket: effectiveBucket,
+        object_key: objectKey,
+        media_type: mediaType,
+        mime_type: format.mime,
+        file_size_bytes: sourceBytes.length,
+        checksum: computedChecksum,
+        width: intrinsic.width,
+        height: intrinsic.height,
+        context: context,
+        metadata: finalMetadata,
+        status: "READY",
+        created_by: effectiveAdminId,
+        verified_at: new Date().toISOString()
+      }, { onConflict: "bucket,object_key" })
+      .select("id")
+      .maybeSingle();
 
-    try {
-      const { data: rpcData, error: rpcErr } = await userClient.rpc("register_uploaded_media_asset", {
-        p_bucket: targetBucket,
-        p_object_key: objectKey,
-        p_media_type: mediaType,
-        p_mime_type: format.mime,
-        p_file_size_bytes: sourceBytes.length,
-        p_checksum: computedChecksum,
-        p_width: intrinsic.width,
-        p_height: intrinsic.height,
-        p_context: context,
-        p_metadata: finalMetadata,
-      });
-
-      if (!rpcErr && rpcData?.media_id) {
-        registeredMediaId = rpcData.media_id;
-      }
-    } catch {
-      // Fallback to direct insertion below
+    if (assetErr || !assetData?.id) {
+      console.error("media_assets registration failed:", assetErr);
+      return new Response(
+        JSON.stringify({ error: "DATABASE_REGISTRATION_FAILED", message: "Could not register media asset record." }),
+        { status: 500, headers: corsHeaders }
+      );
     }
 
-    if (!registeredMediaId) {
-      const { data: assetData, error: assetErr } = await adminClient
-        .from("media_assets")
-        .upsert({
-          bucket: targetBucket,
-          object_key: objectKey,
-          media_type: mediaType,
-          mime_type: format.mime,
-          file_size_bytes: sourceBytes.length,
-          checksum: computedChecksum,
-          width: intrinsic.width,
-          height: intrinsic.height,
-          context: context,
-          metadata: finalMetadata,
-          status: "READY",
-          created_by: effectiveAdminId,
-          verified_at: new Date().toISOString()
-        }, { onConflict: "bucket,object_key" })
-        .select("id")
-        .maybeSingle();
+    const registeredMediaId = assetData.id;
 
-      if (assetErr || !assetData?.id) {
-        return new Response(
-          JSON.stringify({ error: "DATABASE_REGISTRATION_FAILED", message: "Could not register media asset record." }),
-          { status: 500, headers: corsHeaders }
-        );
-      }
-      registeredMediaId = assetData.id;
-    } else {
-      await adminClient
-        .from("media_assets")
-        .update({
-          status: "READY",
-          verified_at: new Date().toISOString(),
-          deleted_at: null,
-        })
-        .eq("id", registeredMediaId);
-    }
-
-    // 9. Return Verified Original-Only Upload Result
+    // 9. Return Verified Upload Result
     return new Response(
       JSON.stringify({
         success: true,
@@ -1271,8 +1509,9 @@ serve(async (req: Request) => {
         object_key: objectKey,
         public_url: publicUrl,
         context,
-        storage_target: targetBucket,
-        is_original_only: true,
+        storage_target: effectiveBucket,
+        is_original_only: !hasVariants,
+        has_variants: hasVariants,
         original_object_key: objectKey,
         mime_type: format.mime,
         file_size_bytes: sourceBytes.length,
@@ -1281,6 +1520,7 @@ serve(async (req: Request) => {
         width: intrinsic.width,
         height: intrinsic.height,
         source: finalMetadata.source,
+        variants: variantsMeta,
         deduplicated: false
       }),
       { status: 200, headers: corsHeaders }

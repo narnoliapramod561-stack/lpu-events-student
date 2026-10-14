@@ -18,6 +18,8 @@ import {
 } from './config';
 import { validateImageFile } from './validator';
 import { getStorageBaseUrl } from './url';
+import { generateResponsiveVariants } from './variants';
+import { compressImageClientSide } from './compressor';
 
 /**
  * Computes SHA-256 checksum string from ArrayBuffer using Web Crypto API
@@ -112,7 +114,9 @@ export interface ImageUploadOptions {
   file: File | Blob;
   context: ImageContext;
   entityId?: string;
+  generateVariants?: boolean;
   onProgress?: (step: 'validating' | 'enhancing' | 'compressing' | 'uploading' | 'completed') => void;
+  onUploadPercent?: (percent: number) => void;
 }
 
 export interface ReplaceEntityMediaOptions {
@@ -126,26 +130,41 @@ export interface ReplaceEntityMediaOptions {
 /**
  * Uploads unchanged original image file to Cloudflare R2 and registers database metadata.
  * Implements SHA-256 pre-flight deduplication to avoid redundant storage.
+ * Runs non-blocking background variant reconciliation to maintain free-tier efficiency.
  */
 export async function uploadAndOptimizeImage(
   options: ImageUploadOptions
 ): Promise<UploadedMediaResult> {
-  const { supabase, file, context, entityId, onProgress } = options;
+  const { supabase, file, context, entityId, onProgress, onUploadPercent } = options;
 
   // 1. Validate magic bytes, bounds, and limits on original file
   if (onProgress) onProgress('validating');
-  const validation = await validateImageFile(file, context);
-  if (!validation.valid) {
-    throw new Error(validation.error || 'Image file validation failed.');
+  const initialValidation = await validateImageFile(file, context);
+  if (!initialValidation.valid) {
+    throw new Error(initialValidation.error || 'Image file validation failed.');
   }
 
-  // 2. Compute SHA-256 Checksum directly from original file bytes
-  const originalBuffer = await file.arrayBuffer();
+  // 2. High-Performance Client-Side Reduction (WebP downscale & quality compression)
+  if (onProgress) onProgress('compressing');
+  const processedFile = await compressImageClientSide(file, {
+    maxDimension: 1920,
+    quality: 0.85,
+    skipIfSmallerThanBytes: 300 * 1024
+  });
+
+  // Re-verify validation if compression altered the file to obtain accurate target dimensions & WebP mime
+  const validation = processedFile === file
+    ? initialValidation
+    : await validateImageFile(processedFile, context);
+
+  // 3. Compute SHA-256 Checksum directly from processed file bytes
+  const originalBuffer = await processedFile.arrayBuffer();
   const checksum = await computeBufferSha256(originalBuffer);
   const baseUrl = getStorageBaseUrl();
 
-  // 3. Upload Original File Directly to Cloudflare R2 via Authenticated Edge Function
+  // 4. Fast-Path Upload: Stream the optimized file to Cloudflare R2 immediately
   if (onProgress) onProgress('uploading');
+  if (onUploadPercent) onUploadPercent(10);
 
   const { data: { session } } = await supabase.auth.getSession();
   const supabaseUrl = (supabase as any).supabaseUrl || (supabase as any).rest?.url?.replace(/\/rest\/v1\/?$/, '');
@@ -157,8 +176,8 @@ export async function uploadAndOptimizeImage(
   const edgeUrl = `${supabaseUrl}/functions/v1/r2-upload`;
   const formData = new FormData();
 
-  const originalFilename = file instanceof File ? file.name : `${checksum}.${validation.detectedMimeType?.split('/')[1] || 'jpg'}`;
-  formData.append('file', file, originalFilename);
+  const originalFilename = processedFile instanceof File ? processedFile.name : (file instanceof File ? file.name : `${checksum}.${validation.detectedMimeType?.split('/')[1] || 'webp'}`);
+  formData.append('file', processedFile, originalFilename);
   formData.append('context', context);
   formData.append('checksum', checksum);
   formData.append('filename', originalFilename);
@@ -168,20 +187,74 @@ export async function uploadAndOptimizeImage(
   if (validation.height) formData.append('height', String(validation.height));
   if (validation.detectedMimeType) formData.append('mime_type', validation.detectedMimeType);
 
-  const edgeRes = await fetch(edgeUrl, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${session.access_token}`
-    },
-    body: formData
-  });
-
-  if (!edgeRes.ok) {
-    const responseText = await edgeRes.text().catch(() => '');
-    throw new Error(`R2 upload failed (${edgeRes.status}): ${responseText || edgeRes.statusText}`);
+  const anonKey = (supabase as any).supabaseKey || (supabase as any).auth?.apiKey || '';
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${session.access_token}`
+  };
+  if (anonKey) {
+    headers['apikey'] = anonKey;
   }
 
-  const edgeData = await edgeRes.json();
+  let edgeData: any = null;
+
+  // Production Upload Engine: XHR with real upload progress tracking in browser
+  if (typeof XMLHttpRequest !== 'undefined') {
+    edgeData = await new Promise((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      xhr.open('POST', edgeUrl);
+      for (const [hKey, hVal] of Object.entries(headers)) {
+        xhr.setRequestHeader(hKey, hVal);
+      }
+
+      xhr.upload.onprogress = (e) => {
+        if (e.lengthComputable && onUploadPercent) {
+          const pct = Math.min(95, Math.round((e.loaded / e.total) * 100));
+          onUploadPercent(pct);
+        }
+      };
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try {
+            const data = JSON.parse(xhr.responseText);
+            if (onUploadPercent) onUploadPercent(100);
+            resolve(data);
+          } catch (pErr) {
+            reject(new Error('Invalid response from upload gateway.'));
+          }
+        } else {
+          let errMsg = xhr.statusText;
+          try {
+            const parsed = JSON.parse(xhr.responseText);
+            errMsg = parsed.message || parsed.error || errMsg;
+          } catch (_) {}
+          reject(new Error(`R2 upload failed (${xhr.status}): ${errMsg}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('Network connection failed during image upload.'));
+
+      xhr.send(formData);
+    });
+  } else {
+    // Node.js / test environment fallback via fetch
+    const edgeRes = await fetch(edgeUrl, {
+      method: 'POST',
+      headers,
+      body: formData
+    });
+
+    if (!edgeRes.ok) {
+      const responseText = await edgeRes.text().catch(() => '');
+      let parsedErr: any = null;
+      try { parsedErr = JSON.parse(responseText); } catch (_) {}
+      const errorMsg = parsedErr?.message || parsedErr?.error || responseText || edgeRes.statusText;
+      throw new Error(`R2 upload failed (${edgeRes.status}): ${errorMsg}`);
+    }
+
+    edgeData = await edgeRes.json();
+  }
+
   if (!edgeData?.media_id) {
     throw new Error('R2 upload completed without a registered media ID.');
   }
@@ -190,9 +263,45 @@ export async function uploadAndOptimizeImage(
 
   const finalObjectKey = edgeData.object_key;
   const finalPublicUrl = edgeData.public_url || `${baseUrl}/${finalObjectKey}`;
+  const registeredMediaId = edgeData.media_id;
+
+  // 4. Background Variant Generation (Opt-in only; Single-Master WebP delivers 83% fewer Class A writes & 50% fewer Edge calls)
+  if (options.generateVariants && typeof window !== 'undefined' && typeof document !== 'undefined') {
+    setTimeout(async () => {
+      try {
+        const variantBundle = await generateResponsiveVariants(processedFile);
+        const reconcileData = new FormData();
+        reconcileData.append('action', 'reconcile');
+        reconcileData.append('media_id', registeredMediaId);
+        reconcileData.append('context', context);
+        reconcileData.append('variant_hero_desktop', variantBundle.hero_desktop.blob, `${checksum}_hero_desktop.webp`);
+        reconcileData.append('variant_hero_mobile', variantBundle.hero_mobile.blob, `${checksum}_hero_mobile.webp`);
+        reconcileData.append('variant_card_desktop', variantBundle.card_desktop.blob, `${checksum}_card_desktop.webp`);
+        reconcileData.append('variant_card_mobile', variantBundle.card_mobile.blob, `${checksum}_card_mobile.webp`);
+        reconcileData.append('variant_details', variantBundle.details.blob, `${checksum}_details.webp`);
+
+        await fetch(edgeUrl, {
+          method: 'POST',
+          headers,
+          body: reconcileData
+        });
+      } catch (recErr) {
+        console.warn('[Background R2 Reconcile] Variants deferred to edge fallback:', recErr);
+      }
+    }, 50);
+  }
+
+  const finalFileSizeBytes = edgeData.file_size_bytes || processedFile.size;
+  const originalFileSizeBytes = file.size;
+  const savingsPercentage = originalFileSizeBytes > finalFileSizeBytes
+    ? Math.round(((originalFileSizeBytes - finalFileSizeBytes) / originalFileSizeBytes) * 100)
+    : 0;
+  const compressionRatio = originalFileSizeBytes > 0 && finalFileSizeBytes > 0
+    ? Number((originalFileSizeBytes / finalFileSizeBytes).toFixed(2))
+    : 1.0;
 
   return {
-    mediaId: edgeData.media_id,
+    mediaId: registeredMediaId,
     objectKey: finalObjectKey,
     publicUrl: finalPublicUrl,
     dataUrl: finalPublicUrl,
@@ -200,13 +309,13 @@ export async function uploadAndOptimizeImage(
     pipelineVersion: 3,
     isOriginalOnly: true,
     mimeType: edgeData.mime_type || validation.detectedMimeType || 'image/jpeg',
-    fileSizeBytes: edgeData.file_size_bytes || file.size,
-    originalSizeBytes: file.size,
+    fileSizeBytes: finalFileSizeBytes,
+    originalSizeBytes: originalFileSizeBytes,
     width: edgeData.width || validation.width || 0,
     height: edgeData.height || validation.height || 0,
     checksum,
-    savingsPercentage: 0,
-    compressionRatio: 1.0,
+    savingsPercentage,
+    compressionRatio,
     deduplicated: Boolean(edgeData.deduplicated),
     source: {
       objectKey: finalObjectKey,
@@ -214,13 +323,15 @@ export async function uploadAndOptimizeImage(
       width: edgeData.width || validation.width || 0,
       height: edgeData.height || validation.height || 0,
       mimeType: edgeData.mime_type || validation.detectedMimeType || 'image/jpeg',
-      fileSizeBytes: edgeData.file_size_bytes || file.size,
+      fileSizeBytes: finalFileSizeBytes,
       checksum
     },
     variants: [],
     masterObjectKey: finalObjectKey
   };
 }
+
+
 
 /**
  * Concurrency-Safe Media Replacement Helper

@@ -315,6 +315,34 @@ export function getOptimizedImage(
     const meta = mediaAsset.metadata || {};
     const bucket = mediaAsset.bucket;
 
+    // --- PRECEDENCE RULE 0: Place-Specific Responsive Variants (Desktop vs Mobile) ---
+    if (meta.variants && typeof meta.variants === 'object' && Object.keys(meta.variants).length > 0) {
+      const isClient = typeof window !== 'undefined';
+      const screenWidth = isClient ? window.innerWidth : 1200;
+      const isMobile = options.variant === 'mobile' || (screenWidth <= 640 && options.variant !== 'desktop');
+
+      if (context === 'hero') {
+        const heroVar = isMobile
+          ? (meta.variants.hero_mobile || meta.variants.hero_desktop)
+          : (meta.variants.hero_desktop || meta.variants.hero_mobile);
+        if (heroVar?.object_key) {
+          return `${getStorageBaseUrl(bucket)}/${heroVar.object_key.replace(/^\/+/, '')}`;
+        }
+      } else if (context === 'event-card') {
+        const cardVar = isMobile
+          ? (meta.variants.card_mobile || meta.variants.card_desktop)
+          : (meta.variants.card_desktop || meta.variants.card_mobile);
+        if (cardVar?.object_key) {
+          return `${getStorageBaseUrl(bucket)}/${cardVar.object_key.replace(/^\/+/, '')}`;
+        }
+      } else if (context === 'event-banner' || context === 'admin-preview') {
+        const detailsVar = meta.variants.details || meta.variants.hero_desktop || meta.variants.card_desktop;
+        if (detailsVar?.object_key) {
+          return `${getStorageBaseUrl(bucket)}/${detailsVar.object_key.replace(/^\/+/, '')}`;
+        }
+      }
+    }
+
     // --- PHASE 2 PRECEDENCE RULE 1: Original object reference when present and valid ---
     if (meta.is_original_only || meta.original_object_key || mediaAsset.object_key.includes('/originals/')) {
       const origKey = meta.original_object_key || mediaAsset.object_key;
@@ -442,7 +470,7 @@ export function getOptimizedImage(
     return EVENT_MOCK_FALLBACK_IMAGES[source.banner_media_id];
   }
 
-  return '/defaults/events/subcategories/academics_seminar.webp';
+  return '/defaults/events/subcategories/others_miscellaneous-events.webp';
 }
 
 /**
@@ -456,7 +484,7 @@ export function getOptimizedImageSrcSet(
   const config = IMAGE_CONTEXT_CONFIGS[context] || IMAGE_CONTEXT_CONFIGS['event-card'];
   const baseSrc = getOptimizedImage(source, context);
 
-  // If this is an original-only image, do not construct derivative variant URLs
+  // If this is an original-only image without variants, do not construct derivative variant URLs
   if (
     baseSrc.includes('/originals/') ||
     baseSrc.includes('/source.') ||
@@ -466,7 +494,9 @@ export function getOptimizedImageSrcSet(
      !baseSrc.endsWith('/hero.webp') &&
      !baseSrc.includes('_card.webp') &&
      !baseSrc.includes('_banner.webp') &&
-     !baseSrc.includes('_desktop.webp'))
+     !baseSrc.includes('_desktop.webp') &&
+     !baseSrc.includes('card_desktop.webp') &&
+     !baseSrc.includes('hero_desktop.webp'))
   ) {
     return {
       src: baseSrc,
@@ -480,7 +510,15 @@ export function getOptimizedImageSrcSet(
   let srcSet: string | undefined = undefined;
   let sizes: string | undefined = undefined;
 
-  if (baseSrc.endsWith('/card.webp')) {
+  if (baseSrc.includes('card_desktop.webp')) {
+    const mobileSrc = baseSrc.replace('card_desktop.webp', 'card_mobile.webp');
+    srcSet = `${mobileSrc} 480w, ${baseSrc} 800w`;
+    sizes = `(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 800px`;
+  } else if (baseSrc.includes('hero_desktop.webp')) {
+    const mobileSrc = baseSrc.replace('hero_desktop.webp', 'hero_mobile.webp');
+    srcSet = `${mobileSrc} 640w, ${baseSrc} 1200w`;
+    sizes = `(max-width: 640px) 100vw, 1200px`;
+  } else if (baseSrc.endsWith('/card.webp')) {
     const mobileSrc = baseSrc.replace('/card.webp', '/card_480w.webp');
     srcSet = `${mobileSrc} 480w, ${baseSrc} 800w`;
     sizes = `(max-width: 640px) 100vw, (max-width: 1024px) 80vw, 800px`;

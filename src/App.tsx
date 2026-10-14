@@ -1143,19 +1143,19 @@ export default function App() {
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_100%_40%_at_50%_-5%,rgba(255,107,0,0.18),transparent_70%),radial-gradient(circle_300px_at_90%_25%,rgba(255,107,0,0.12),transparent_60%),radial-gradient(circle_300px_at_10%_45%,rgba(59,130,246,0.08),transparent_60%),radial-gradient(circle_280px_at_90%_65%,rgba(245,158,11,0.09),transparent_60%),radial-gradient(ellipse_100%_35%_at_50%_105%,rgba(255,107,0,0.14),transparent_70%)]" />
       </div>
 
-      {/* Dark Mode Premium Ambient Canvas — Warm Charcoal with Subtle Depth */}
+      {/* Dark Mode Premium Ambient Canvas — Obsidian Space with Luminous Refractive Depth */}
       <div 
         style={{ contain: 'strict' }}
         className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none hidden dark:block"
       >
-        {/* 1. Soft Silver Top Wash (creates navbar glow) */}
-        <div className="absolute -top-32 left-1/2 -translate-x-1/2 w-[900px] sm:w-[1300px] h-[500px] rounded-full bg-gradient-to-b from-white/[0.04] via-neutral-400/[0.03] to-transparent blur-[120px]" />
-        {/* 2. Warm Left Ambient (creates depth on left) */}
-        <div className="absolute top-[28%] -left-32 w-[600px] h-[600px] rounded-full bg-gradient-to-tr from-neutral-500/[0.05] via-neutral-400/[0.03] to-transparent blur-[130px]" />
-        {/* 3. Subtle Right Sheen (card-level refraction) */}
-        <div className="absolute top-[50%] -right-28 w-[650px] h-[650px] rounded-full bg-gradient-to-l from-neutral-400/[0.04] via-neutral-500/[0.03] to-transparent blur-[140px]" />
-        {/* 4. Warm Bottom Ambient (footer depth) */}
-        <div className="absolute -bottom-36 left-1/3 -translate-x-1/2 w-[750px] h-[400px] rounded-full bg-gradient-to-t from-neutral-500/[0.05] via-neutral-400/[0.025] to-transparent blur-[120px]" />
+        {/* 1. Ethereal Violet-Indigo Top Wash (creates luminous navbar refraction) */}
+        <div className="absolute -top-36 left-1/2 -translate-x-1/2 w-[900px] sm:w-[1400px] h-[520px] rounded-full bg-gradient-to-b from-indigo-500/18 via-purple-500/10 to-transparent blur-[110px]" />
+        {/* 2. Warm Amber LPU Glow (mid-right depth) */}
+        <div className="absolute top-[22%] -right-28 w-[650px] h-[650px] rounded-full bg-gradient-to-l from-[#ff6b00]/16 via-amber-500/10 to-transparent blur-[120px]" />
+        {/* 3. Deep Sapphire Horizon (mid-left depth) */}
+        <div className="absolute top-[48%] -left-32 w-[650px] h-[650px] rounded-full bg-gradient-to-tr from-blue-600/18 via-cyan-500/10 to-transparent blur-[130px]" />
+        {/* 4. Warm Ember Bottom Ambient (footer refraction) */}
+        <div className="absolute -bottom-36 left-1/3 -translate-x-1/2 w-[850px] h-[450px] rounded-full bg-gradient-to-t from-orange-500/14 via-purple-600/08 to-transparent blur-[120px]" />
       </div>
 
       {/* Scroll Top Reference Anchor */}
@@ -1210,7 +1210,7 @@ export default function App() {
           allEvents={allAvailableEvents}
         />
 
-        <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-3 sm:px-4 md:px-6 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6 overflow-hidden">
+        <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-3 sm:px-4 md:px-6 flex flex-col gap-3.5 sm:gap-12 mt-2 sm:mt-6 overflow-hidden">
           <Suspense fallback={
             <div className="min-h-[40vh] flex items-center justify-center">
               <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />

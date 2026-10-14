@@ -18,6 +18,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@types/qrcode": "^1.5.6",
     "framer-motion": "^13.1.0",
+    "liquid-gl": "^3.0.0",
     "lucide-react": "^1.31.0",
     "posthog-js": "^1.417.2",
     "qrcode": "^1.5.4",

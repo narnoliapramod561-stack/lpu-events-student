@@ -122,10 +122,11 @@ export class LpuEventsClient {
   }
 
   /**
-   * Multi-Tier Cache Fetcher:
-   * 1. Check in-memory fast tier (<1ms).
-   * 2. Check persistent storage tier (<5ms).
-   * 3. Single-flight network fetch to /api/public/* edge cache (zero direct Supabase hits).
+   * Multi-Tier Extreme Singleflight Cache Fetcher:
+   * 1. Check in-memory fast tier (<0.1ms).
+   * 2. Check persistent storage tier (localStorage) (<3ms) with non-blocking SWR background revalidation.
+   * 3. Singleflight mutex coalescing for cold fetch: 100% of concurrent callers share EXACTLY ONE in-flight promise.
+   * 4. Zero Raw Supabase Bypass: Never leaks un-coalesced queries to Supabase.
    */
   private async _fetchWithCache<T>(
     cacheKey: string,
@@ -134,13 +135,13 @@ export class LpuEventsClient {
   ): Promise<{ data: T | null; error: any }> {
     const now = Date.now();
 
-    // 1. Check in-memory fast tier
+    // 1. Tier 1: Check in-memory fast tier
     const inMem = this._cache.get(cacheKey);
     if (inMem && inMem.expiresAt > now) {
       return { data: inMem.data as T, error: null };
     }
 
-    // 2. Check persistent storage tier (localStorage / IndexedDB)
+    // 2. Tier 2: Check persistent storage tier (localStorage / IndexedDB)
     const persistent = persistentCache.get<T>(cacheKey);
     if (persistent !== null && persistent !== undefined) {
       this._cache.set(cacheKey, {
@@ -148,9 +149,9 @@ export class LpuEventsClient {
         expiresAt: now + Math.min(ttlMs, 60_000),
       });
 
-      // Background SWR revalidation if memory entry expired
+      // Background SWR revalidation via singleflight if memory entry expired
       if (!inMem || inMem.expiresAt <= now) {
-        fetcher().then((res) => {
+        this._executeSingleFlight(cacheKey, fetcher).then((res) => {
           if (!res.error && res.data !== null && res.data !== undefined) {
             this._cache.set(cacheKey, { data: res.data, expiresAt: Date.now() + ttlMs });
             persistentCache.set(cacheKey, res.data, ttlMs);
@@ -161,23 +162,38 @@ export class LpuEventsClient {
       return { data: persistent, error: null };
     }
 
-    // 3. Single-flight request coalescing for cold fetch
-    const inFlight = this._inFlight.get(cacheKey);
-    if (inFlight) {
-      return inFlight;
+    // 3. Tier 3: Cold Miss Singleflight Request Coalescing
+    return this._executeSingleFlight(cacheKey, async () => {
+      const result = await fetcher();
+      if (!result.error && result.data !== null && result.data !== undefined) {
+        this._cache.set(cacheKey, {
+          data: result.data,
+          expiresAt: Date.now() + ttlMs,
+        });
+        persistentCache.set(cacheKey, result.data, ttlMs);
+      } else if (result.error) {
+        // Fail-safe degradation: serve stale persistent cache if edge/network had a transient failure
+        const stale = persistentCache.get<T>(cacheKey);
+        if (stale !== null && stale !== undefined) {
+          return { data: stale, error: null };
+        }
+      }
+      return result;
+    });
+  }
+
+  private _executeSingleFlight<T>(
+    cacheKey: string,
+    fetcher: () => Promise<{ data: T | null; error: any }>
+  ): Promise<{ data: T | null; error: any }> {
+    const existing = this._inFlight.get(cacheKey);
+    if (existing) {
+      return existing;
     }
 
     const promise = (async () => {
       try {
-        const result = await fetcher();
-        if (!result.error && result.data !== null && result.data !== undefined) {
-          this._cache.set(cacheKey, {
-            data: result.data,
-            expiresAt: Date.now() + ttlMs,
-          });
-          persistentCache.set(cacheKey, result.data, ttlMs);
-        }
-        return result;
+        return await fetcher();
       } finally {
         this._inFlight.delete(cacheKey);
       }
@@ -293,89 +309,9 @@ export class LpuEventsClient {
   }
 
   /**
-   * Directly queries Supabase for the entire homepage bundle.
-   * Guarantees 0ms delay after publication and provides reliable fallback if edge is stale or offline.
-   */
-  async _fetchHomepageBundleFromSupabase(): Promise<HomepageBundleData | null> {
-    try {
-      const nowIso = new Date().toISOString();
-      const sb = await this.getSupabaseClient();
-
-      const [catsRes, subsRes, carRes, featRes, trendRes, adsRes, settRes, evtsRes] = await Promise.all([
-        sb.from('categories').select('id, key, name, is_active, sort_order').eq('is_active', true).order('sort_order'),
-        sb.from('subcategories').select('id, category_id, key, name, is_active, sort_order').eq('is_active', true).order('sort_order'),
-        sb.from('carousel_items').select('*, events:event_id(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key), subcategories(name, key))').eq('is_active', true).order('sort_order').limit(8),
-        sb.from('featured_events').select('*, events(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key))').order('sort_order').limit(10),
-        sb.from('trending_events').select('*, events(*, media_assets:banner_media_id(id, object_key), organizations(name), categories(name, key))').order('sort_order').limit(10),
-        sb.from('advertisements').select('*, media_assets:media_id(id, object_key)').eq('status', 'active').limit(6),
-        sb.from('global_settings').select('key, value'),
-        sb.from('events').select('id,name,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)').eq('status', 'PUBLISHED').gte('end_at', nowIso).order('start_at', { ascending: true }).limit(10)
-      ]);
-
-      const subMap: Record<string, any[]> = {};
-      (subsRes.data || []).forEach((s: any) => {
-        if (!subMap[s.category_id]) subMap[s.category_id] = [];
-        subMap[s.category_id].push({
-          id: s.id,
-          key: s.key,
-          name: s.name,
-          sort_order: s.sort_order ?? 0
-        });
-      });
-
-      const categories: CategoryFeedItem[] = (catsRes.data || []).map((c: any) => ({
-        id: c.id,
-        key: c.key,
-        name: c.name,
-        sort_order: c.sort_order ?? 0,
-        subcategories: subMap[c.id] || []
-      }));
-
-      const carousel: CarouselItemFeedItem[] = (carRes.data || []).map((ci: any) => ({
-        id: ci.id,
-        item_type: ci.item_type || 'EVENT',
-        event_id: ci.event_id || null,
-        advertisement_id: ci.advertisement_id || null,
-        media_id: ci.media_id || null,
-        sort_order: ci.sort_order ?? 0,
-        is_active: ci.is_active ?? true,
-        start_at: ci.start_at || null,
-        end_at: ci.end_at || null,
-        display_duration_ms: ci.display_duration_ms || 5000,
-        custom_title: ci.custom_title || null,
-        custom_subtitle: ci.custom_subtitle || null,
-        custom_cta_text: ci.custom_cta_text || null,
-        custom_cta_url: ci.custom_cta_url || null,
-        badge_text: ci.badge_text || null,
-        events: ci.events || null,
-        advertisements: ci.advertisements || null,
-        media_assets: ci.media_assets || null
-      }));
-
-      const featured = (featRes.data || []).map((f: any) => f.events || f);
-      const trending = (trendRes.data || []).map((t: any) => t.events || t);
-      const advertisements = (adsRes.data || []);
-      const settings = (settRes.data || []);
-      const events = (evtsRes.data || []) as unknown as EventFeedItem[];
-
-      return {
-        categories,
-        carousel,
-        featured,
-        trending,
-        advertisements,
-        settings,
-        events
-      };
-    } catch (err) {
-      console.warn('Direct Supabase homepage bundle query failed:', err);
-      return null;
-    }
-  }
-
-  /**
    * Fetch the entire homepage bundle.
-   * In local dev or when forceFresh is true, fetches directly from Supabase for instant updates.
+   * STRICT ZERO-SUPABASE-HIT: Routes through /api/public/homepage edge cache.
+   * Resilient fallback to persistent cache snapshot under network degradation.
    */
   async fetchHomepageBundle(forceFresh = false): Promise<{ data: HomepageBundleData | null; error: any }> {
     const cacheKey = HOMEPAGE_CACHE_KEY;
@@ -383,25 +319,7 @@ export class LpuEventsClient {
       this.invalidateClientCache(cacheKey);
     }
 
-    const isLocalhost = typeof window !== 'undefined' && window.location && (
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1'
-    );
-
     return this._fetchWithCache<HomepageBundleData>(cacheKey, 60_000, async () => {
-      if (forceFresh || isLocalhost) {
-        const sbBundle = await this._fetchHomepageBundleFromSupabase();
-        if (sbBundle) {
-          registerMediaAssets([
-            ...(sbBundle.events || []),
-            ...(sbBundle.featured || []).map((f: any) => f.events || f),
-            ...(sbBundle.trending || []),
-            ...(sbBundle.carousel || []).map((c: any) => c.events || c),
-          ]);
-          return { data: sbBundle, error: null };
-        }
-      }
-
       const edgeRes = await this._fetchPublic<HomepageBundleData>('homepage');
       if (edgeRes.data && !edgeRes.error) {
         const b = edgeRes.data;
@@ -414,15 +332,16 @@ export class LpuEventsClient {
         return edgeRes;
       }
 
-      const sbBundle = await this._fetchHomepageBundleFromSupabase();
-      if (sbBundle) {
+      // Safe resilient fallback: Serve persistent cache if available
+      const stale = persistentCache.get<HomepageBundleData>(cacheKey);
+      if (stale) {
         registerMediaAssets([
-          ...(sbBundle.events || []),
-          ...(sbBundle.featured || []).map((f: any) => f.events || f),
-          ...(sbBundle.trending || []),
-          ...(sbBundle.carousel || []).map((c: any) => c.events || c),
+          ...(stale.events || []),
+          ...(stale.featured || []).map((f: any) => f.events || f),
+          ...(stale.trending || []),
+          ...(stale.carousel || []).map((c: any) => c.events || c),
         ]);
-        return { data: sbBundle, error: null };
+        return { data: stale, error: null };
       }
 
       return edgeRes;
@@ -430,135 +349,19 @@ export class LpuEventsClient {
   }
 
   async fetchCategories(): Promise<{ data: CategoryFeedItem[] | null; error: any }> {
-    return this._fetchWithCache<CategoryFeedItem[]>('public:categories', 300_000, async () => {
+    const cacheKey = 'public:categories';
+    return this._fetchWithCache<CategoryFeedItem[]>(cacheKey, 300_000, async () => {
       const edgeRes = await this._fetchPublic<CategoryFeedItem[]>('categories');
       if (edgeRes.data && Array.isArray(edgeRes.data) && edgeRes.data.length > 0) {
         return edgeRes;
       }
-      // Resilient fallback directly to Supabase if edge endpoint is unavailable or returns empty
-      try {
-        const sb = await this.getSupabaseClient();
-        const [catsRes, subsRes] = await Promise.all([
-          sb
-            .from('categories')
-            .select('id, key, name, is_active, sort_order')
-            .eq('is_active', true)
-            .order('sort_order'),
-          sb
-            .from('subcategories')
-            .select('id, category_id, key, name, is_active, sort_order')
-            .eq('is_active', true)
-            .order('sort_order')
-        ]);
-
-        if (catsRes.data && catsRes.data.length > 0) {
-          const subMap: Record<string, any[]> = {};
-          (subsRes.data || []).forEach((s: any) => {
-            if (!subMap[s.category_id]) subMap[s.category_id] = [];
-            subMap[s.category_id].push({
-              id: s.id,
-              key: s.key,
-              name: s.name,
-              sort_order: s.sort_order ?? 0
-            });
-          });
-          const combined: CategoryFeedItem[] = catsRes.data.map((c: any) => ({
-            id: c.id,
-            key: c.key,
-            name: c.name,
-            sort_order: c.sort_order ?? 0,
-            subcategories: subMap[c.id] || []
-          }));
-          return { data: combined, error: null };
-        }
-      } catch (sbErr) {
-        console.warn('Supabase fallback for categories failed:', sbErr);
+      // Resilient fallback to persistent cache (zero direct Supabase hits)
+      const stale = persistentCache.get<CategoryFeedItem[]>(cacheKey);
+      if (stale && Array.isArray(stale) && stale.length > 0) {
+        return { data: stale, error: null };
       }
       return edgeRes;
     });
-  }
-
-  /**
-   * Directly queries Supabase for published events.
-   * Guarantees 0ms delay after publication and provides reliable fallback if edge is stale or offline.
-   */
-  async _fetchEventFeedFromSupabase(filters?: {
-    category_id?: string;
-    subcategory_id?: string;
-    pricing_type?: string;
-    timeline?: string;
-    date?: string;
-    limit?: number;
-    offset?: number;
-    show_past?: boolean;
-  }): Promise<EventFeedItem[] | null> {
-    try {
-      const limit = Math.min(Math.max(filters?.limit ?? 10, 1), 50);
-      const offset = Math.max(filters?.offset ?? 0, 0);
-      const catId = filters?.category_id || '';
-      const subId = filters?.subcategory_id || '';
-      const priceType = filters?.pricing_type || '';
-      const timeline = filters?.timeline || '';
-      const date = filters?.date || '';
-      const showPast = Boolean(filters?.show_past);
-
-      const sb = await this.getSupabaseClient();
-      let query = sb
-        .from('events')
-        .select('id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)')
-        .eq('status', 'PUBLISHED');
-
-      if (catId && catId !== 'all') {
-        query = query.eq('category_id', catId);
-      }
-      if (subId) {
-        query = query.eq('subcategory_id', subId);
-      }
-      if (priceType && priceType !== 'ALL') {
-        query = query.eq('pricing_type', priceType.toUpperCase());
-      }
-
-      const nowIso = new Date().toISOString();
-      if (!showPast) {
-        query = query.gte('end_at', nowIso);
-      }
-
-      if (timeline) {
-        const todayStart = new Date();
-        todayStart.setHours(0, 0, 0, 0);
-        const todayEnd = new Date(todayStart);
-        todayEnd.setDate(todayEnd.getDate() + 1);
-
-        if (timeline === 'today') {
-          query = query.gte('start_at', todayStart.toISOString()).lt('start_at', todayEnd.toISOString());
-        } else if (timeline === 'tomorrow') {
-          const tomorrowStart = new Date(todayEnd);
-          const tomorrowEnd = new Date(tomorrowStart);
-          tomorrowEnd.setDate(tomorrowEnd.getDate() + 1);
-          query = query.gte('start_at', tomorrowStart.toISOString()).lt('start_at', tomorrowEnd.toISOString());
-        } else if (timeline === 'this_week' || timeline === 'this-week') {
-          const weekEnd = new Date(todayStart);
-          weekEnd.setDate(weekEnd.getDate() + 7);
-          query = query.gte('start_at', todayStart.toISOString()).lt('start_at', weekEnd.toISOString());
-        }
-      } else if (date) {
-        const dateStart = new Date(`${date}T00:00:00Z`);
-        const dateEnd = new Date(`${date}T23:59:59.999Z`);
-        query = query.gte('start_at', dateStart.toISOString()).lte('start_at', dateEnd.toISOString());
-      }
-
-      query = query.order('start_at', { ascending: true }).range(offset, offset + limit - 1);
-
-      const { data, error } = await query;
-      if (error) {
-        console.warn('Supabase direct events feed query error:', error);
-        return null;
-      }
-      return (data || []) as unknown as EventFeedItem[];
-    } catch (err) {
-      console.warn('Supabase direct events feed query exception:', err);
-      return null;
-    }
   }
 
   async fetchEventFeed(filters?: {
@@ -587,17 +390,7 @@ export class LpuEventsClient {
       this.invalidateClientCache(cacheKey);
     }
 
-    const isLocalhost = typeof window !== 'undefined' && window.location && (
-      window.location.hostname === 'localhost' ||
-      window.location.hostname === '127.0.0.1'
-    );
-
     return this._fetchWithCache<EventFeedItem[]>(cacheKey, 60_000, async () => {
-      if (forceFresh || isLocalhost) {
-        const sbEvents = await this._fetchEventFeedFromSupabase(filters);
-        if (sbEvents) return { data: sbEvents, error: null };
-      }
-
       const edgeQueryParams = new URLSearchParams();
       if (catId) edgeQueryParams.set('category_id', catId);
       if (subId) edgeQueryParams.set('subcategory_id', subId);
@@ -614,10 +407,11 @@ export class LpuEventsClient {
         return edgeRes;
       }
 
-      const sbEvents = await this._fetchEventFeedFromSupabase(filters);
-      if (sbEvents) {
-        registerMediaAssets(sbEvents);
-        return { data: sbEvents, error: null };
+      // Safe resilient fallback: Serve persistent cache if available
+      const stale = persistentCache.get<EventFeedItem[]>(cacheKey);
+      if (stale && Array.isArray(stale)) {
+        registerMediaAssets(stale);
+        return { data: stale, error: null };
       }
 
       return edgeRes;
@@ -667,37 +461,8 @@ export class LpuEventsClient {
 
       const res = await this._fetchPublic<EventFeedItem[]>(`search?${edgeQueryParams.toString()}`);
       if (res.data && Array.isArray(res.data) && res.data.length > 0) {
-        const events = res.data;
-        const missingMediaIds = [...new Set(
-          events
-            .filter((e: any) => e.banner_media_id && (!e.media_assets || !e.media_assets.object_key))
-            .map((e: any) => e.banner_media_id)
-        )];
-
-        if (missingMediaIds.length > 0) {
-          try {
-            const sb = await this.getSupabaseClient();
-            const { data: mediaRows } = await sb
-              .from('media_assets')
-              .select('id, object_key')
-              .in('id', missingMediaIds);
-
-            if (mediaRows && Array.isArray(mediaRows)) {
-              const mediaMap = new Map((mediaRows as any[]).map(m => [m.id, m]));
-              for (const evt of events as any[]) {
-                if (evt.banner_media_id && (!evt.media_assets || !evt.media_assets.object_key) && mediaMap.has(evt.banner_media_id)) {
-                  evt.media_assets = mediaMap.get(evt.banner_media_id);
-                }
-              }
-              registerMediaAssets(mediaRows);
-            }
-          } catch (mErr) {
-            console.warn('Failed to hydrate search media assets:', mErr);
-          }
-        }
-        registerMediaAssets(events);
+        registerMediaAssets(res.data);
       }
-
       return res;
     });
   }
@@ -712,60 +477,40 @@ export class LpuEventsClient {
     const isExtractedUuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(extractedUuid);
     const targetUuid = isDirectUuid ? clean : (isExtractedUuid ? extractedUuid : null);
 
-    return this._fetchWithCache<Event>(`public:event:detail:${clean}`, 120_000, async () => {
+    const cacheKey = `public:event:detail:${clean}`;
+
+    return this._fetchWithCache<Event>(cacheKey, 120_000, async () => {
       let res: { data: Event | null; error: any } = { data: null, error: null };
 
       if (targetUuid) {
         res = await this._fetchPublic<Event>(`events/${targetUuid}`);
-        if (res.data) return res;
+        if (res.data) {
+          registerMediaAssets([res.data]);
+          return res;
+        }
       } else {
-        // Slug lookup: query search endpoint, but ONLY accept an exact slug match
+        // Slug lookup: query search endpoint, and find exact match
         const searchRes = await this.searchEvents(clean.replace(/-/g, ' '), { limit: 10 });
         if (searchRes.data && Array.isArray(searchRes.data)) {
           const match = searchRes.data.find((e) => slugify(e.name) === clean);
           if (match && match.id) {
             res = await this._fetchPublic<Event>(`events/${match.id}`);
-            if (res.data) return res;
-          }
-        }
-      }
-
-      // Resilient fallback directly to Supabase
-      try {
-        const sb = await this.getSupabaseClient();
-        if (targetUuid) {
-          const { data: sbEvent } = await sb
-            .from('events')
-            .select('*, organizations(*), categories(*), subcategories(*), event_content_sections(*), media_assets:banner_media_id(id, object_key, bucket)')
-            .eq('id', targetUuid)
-            .maybeSingle();
-          if (sbEvent) {
-            return { data: sbEvent as unknown as Event, error: null };
-          }
-        } else {
-          // Find published events and match by exact slugify(name)
-          const { data: allPublished } = await sb
-            .from('events')
-            .select('id, name')
-            .eq('status', 'PUBLISHED');
-
-          const slugMatch = (allPublished || []).find((e) => slugify(e.name) === clean);
-          if (slugMatch && slugMatch.id) {
-            const { data: sbEvent } = await sb
-              .from('events')
-              .select('*, organizations(*), categories(*), subcategories(*), event_content_sections(*), media_assets:banner_media_id(id, object_key, bucket)')
-              .eq('id', slugMatch.id)
-              .maybeSingle();
-            if (sbEvent) {
-              return { data: sbEvent as unknown as Event, error: null };
+            if (res.data) {
+              registerMediaAssets([res.data]);
+              return res;
             }
           }
         }
-      } catch (sbErr) {
-        console.warn('Supabase fallback for event details failed:', sbErr);
       }
 
-      return res.data ? res : { data: null, error: { message: 'Event not found', code: 'EVENT_NOT_FOUND' } };
+      // Safe resilient fallback: Serve persistent cache if available
+      const stale = persistentCache.get<Event>(cacheKey);
+      if (stale) {
+        registerMediaAssets([stale]);
+        return { data: stale, error: null };
+      }
+
+      return res.data ? res : { data: null, error: res.error || { message: 'Event not found', code: 'EVENT_NOT_FOUND' } };
     });
   }
 

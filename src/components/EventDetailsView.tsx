@@ -21,7 +21,8 @@ import {
   createEventSlug,
   slugify,
   generateQrDataUrl,
-  formatEventDateRange
+  formatEventDateRange,
+  resolveDefaultEventImage
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
@@ -644,13 +645,14 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         </div>
       </div>
 
-      {/* Hero Banner Stage (Full Content Visibility with Ambient Backdrop) */}
-      <div className="w-full h-[280px] xs:h-[320px] sm:h-[420px] md:h-[480px] lg:h-[520px] overflow-hidden rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 relative glass-panel shadow-xl bg-black/5 dark:bg-white/5 flex items-center justify-center">
+      {/* Hero Banner Stage (Full 16:9 Presentation Stage - Expands image to fill frame with zero color shade bars) */}
+      <div className="w-full aspect-[16/9] overflow-hidden rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 relative glass-panel shadow-xl bg-black/5 dark:bg-white/5 flex items-center justify-center">
         <ProgressiveImage
           ambientBackdrop
           className="w-full h-full object-contain object-center relative z-10"
           containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
           src={getEventImage(event, "event-banner", 1440)}
+          fallbackSrc={resolveDefaultEventImage(event)}
           alt={`${event.name} event banner — Lovely Professional University`}
           fetchPriority="high"
         />

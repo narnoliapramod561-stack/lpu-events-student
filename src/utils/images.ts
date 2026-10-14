@@ -19,16 +19,9 @@ export function getResponsiveImageUrl(url: string, targetWidth?: number): string
   const effectiveScreenTarget = isClient && screenWidth <= 640 ? Math.min(baseTarget, screenWidth) : baseTarget;
   const effectiveWidth = Math.round(effectiveScreenTarget * (dpr >= 1.5 ? 1.5 : 1.0));
 
-  // 1. Local default event images have mobile/tablet/desktop variants
-  if (url.startsWith('/defaults/events/') || url.startsWith('/defaults/hero_default')) {
-    const base = url.replace(/(_desktop|_tablet|_mobile)\.webp$/, '.webp');
-    if (effectiveWidth <= 640 || (isClient && screenWidth <= 640)) {
-      return base.replace('.webp', '_mobile.webp');
-    }
-    if (effectiveWidth <= 1200 || (isClient && screenWidth <= 1024)) {
-      return base.replace('.webp', '_tablet.webp');
-    }
-    return base.replace('.webp', '_desktop.webp');
+  // 1. Local canonical default images are standalone, deterministic WebP assets — never append phantom suffixes
+  if (url.startsWith('/defaults/')) {
+    return url;
   }
 
   // 2. Unsplash HD Auto-Upscale & Clarity Tuning
@@ -45,6 +38,19 @@ export function getResponsiveImageUrl(url: string, targetWidth?: number): string
   // 4. Same-origin Edge CDN image proxy for legacy V2 placement variants
   if (url.startsWith('https://images.lpuevents.live/')) {
     let resolvedUrl = url;
+    // Serve lightweight responsive mobile/desktop WebP derivatives for variants
+    if (url.includes('/variants/')) {
+      if (url.endsWith('hero_desktop.webp') && effectiveWidth <= 640) {
+        resolvedUrl = url.replace('hero_desktop.webp', 'hero_mobile.webp');
+      } else if (url.endsWith('hero_mobile.webp') && effectiveWidth > 640) {
+        resolvedUrl = url.replace('hero_mobile.webp', 'hero_desktop.webp');
+      } else if (url.endsWith('card_desktop.webp') && effectiveWidth <= 480) {
+        resolvedUrl = url.replace('card_desktop.webp', 'card_mobile.webp');
+      } else if (url.endsWith('card_mobile.webp') && effectiveWidth > 480) {
+        resolvedUrl = url.replace('card_mobile.webp', 'card_desktop.webp');
+      }
+    }
+
     // Serve lightweight responsive mobile/tablet WebP derivatives for V2 placements
     if (url.includes('/events/v2/')) {
       if (url.endsWith('/card.webp') && effectiveWidth <= 480) {
@@ -75,8 +81,8 @@ export function getResponsiveImageUrl(url: string, targetWidth?: number): string
 export function getLowResPlaceholderUrl(url: string): string {
   if (!url || typeof url !== 'string') return url;
 
-  if (url.startsWith('/defaults/events/')) {
-    return url.replace(/(_desktop|_tablet|_mobile)?\.webp$/, '_mobile.webp');
+  if (url.startsWith('/defaults/')) {
+    return url;
   }
 
   if (url.includes('images.unsplash.com')) {

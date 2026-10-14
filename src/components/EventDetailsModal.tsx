@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Calendar, Clock, MapPin, Users, ShieldAlert, ExternalLink } from "lucide-react";
 import { lpuClient } from "../supabase";
-import { Event, formatEventDateRange } from "@lpu-events/shared";
+import { Event, formatEventDateRange, resolveDefaultEventImage } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
 import { BookingDisclaimerModal } from "./BookingDisclaimerModal";
@@ -83,10 +83,11 @@ export const EventDetailsModal = ({ eventId, onClose }: {
         ) : (
           <>
             {/* Banner Image Stage */}
-            <div className="w-full h-[260px] xs:h-[290px] sm:h-[340px] md:h-[380px] relative overflow-hidden border-b border-white/80 dark:border-white/10 shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center">
+            <div className="w-full aspect-[16/9] relative overflow-hidden border-b border-white/80 dark:border-white/10 shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center">
               <ProgressiveImage
                 ambientBackdrop
                 src={getEventImage(event, 'event-banner', 1440)}
+                fallbackSrc={resolveDefaultEventImage(event)}
                 alt={event.name}
                 containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
                 className="w-full h-full object-contain object-center relative z-10"

@@ -15,7 +15,8 @@ import {
   generateQrDataUrl, 
   downloadQrCode,
   formatEventDateRange,
-  trackEvent 
+  trackEvent,
+  resolveDefaultEventImage
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
@@ -237,6 +238,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-slate-900/40 shrink-0 border border-white/20">
                 <ProgressiveImage
                   src={getEventImage(event, "event-card", 400)}
+                  fallbackSrc={resolveDefaultEventImage(event)}
                   alt={eventName}
                   containerClassName="w-full h-full"
                   className="w-full h-full object-cover"

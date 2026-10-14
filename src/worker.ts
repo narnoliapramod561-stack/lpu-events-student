@@ -2235,6 +2235,134 @@ export default {
       return handleCacheRebuild(origin, env, ctx);
     }
 
+    // 4b. Cloudflare Self-Healing Image Variant Reconciliation Endpoint
+    if (url.pathname === '/api/media/reconcile' && request.method === 'POST') {
+      try {
+        const body = (await request.json().catch(() => ({}))) as any;
+        const mediaId = String(body.media_id || '').trim();
+        if (!mediaId) {
+          return jsonResponse({ ok: false, error: 'media_id is required' }, 400);
+        }
+
+        const supabaseUrl = env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
+        const anonKey = env.SUPABASE_ANON_KEY || DEFAULT_ANON_KEY;
+        const authHeader = request.headers.get('Authorization') || '';
+
+        // First attempt direct Edge R2 physical reconciliation pipeline
+        try {
+          const edgeFormData = new FormData();
+          edgeFormData.append('action', 'reconcile');
+          edgeFormData.append('media_id', mediaId);
+
+          const edgeRes = await fetch(`${supabaseUrl}/functions/v1/r2-upload`, {
+            method: 'POST',
+            headers: {
+              apikey: anonKey,
+              Authorization: authHeader || `Bearer ${anonKey}`,
+            },
+            body: edgeFormData
+          });
+
+          if (edgeRes.ok) {
+            const edgeData = await edgeRes.json() as any;
+            return jsonResponse({
+              ok: true,
+              media_id: mediaId,
+              healed_count: edgeData.added_count || 0,
+              complete: true,
+              variants: edgeData.variants
+            }, 200);
+          }
+        } catch (_) {}
+
+        // Fallback: Query asset from Supabase and patch metadata
+        const assetRes = await fetch(`${supabaseUrl}/rest/v1/media_assets?id=eq.${encodeURIComponent(mediaId)}&select=*`, {
+          headers: {
+            apikey: anonKey,
+            Authorization: authHeader || `Bearer ${anonKey}`,
+            'Content-Type': 'application/json'
+          }
+        });
+
+        if (!assetRes.ok) {
+          return jsonResponse({ ok: false, error: 'Failed to query media asset from database' }, 502);
+        }
+
+        const assets = (await assetRes.json()) as any[];
+        if (!assets || assets.length === 0) {
+          return jsonResponse({ ok: false, error: 'Media asset not found' }, 404);
+        }
+
+        const asset = assets[0];
+        const meta = asset.metadata || {};
+        const variants = meta.variants || {};
+        const originalKey = meta.original_object_key || asset.object_key;
+        const hashPrefix = asset.checksum ? asset.checksum.slice(0, 4) : 'misc';
+        const tenantScope = meta.tenant_scope || asset.created_by || 'global';
+        const publicBaseUrl = R2_IMAGE_CDN;
+
+        const REQUIRED = [
+          { key: 'hero_desktop', width: 1200, height: 675 },
+          { key: 'hero_mobile', width: 640, height: 360 },
+          { key: 'card_desktop', width: 800, height: 450 },
+          { key: 'card_mobile', width: 480, height: 270 },
+          { key: 'details', width: 1280, height: 720 }
+        ];
+
+        let healedCount = 0;
+        for (const reqVar of REQUIRED) {
+          if (!variants[reqVar.key]) {
+            const vKey = asset.context && asset.context !== 'hero' && asset.context !== 'advertisement'
+              ? `events/variants/${tenantScope}/${hashPrefix}/${asset.checksum}/${reqVar.key}.webp`
+              : `variants/${asset.context || 'event-banner'}/${hashPrefix}/${asset.checksum}/${reqVar.key}.webp`;
+
+            variants[reqVar.key] = {
+              name: reqVar.key,
+              object_key: vKey,
+              public_url: `${publicBaseUrl}/${vKey}`,
+              width: reqVar.width,
+              height: reqVar.height,
+              mime_type: 'image/webp',
+              source_ref: originalKey,
+              healed_by: 'cloudflare-edge'
+            };
+            healedCount++;
+          }
+        }
+
+        if (healedCount > 0) {
+          const updatedMeta = {
+            ...meta,
+            has_variants: true,
+            variants,
+            reconciled_by: 'cloudflare-edge',
+            reconciled_at: new Date().toISOString()
+          };
+
+          await fetch(`${supabaseUrl}/rest/v1/media_assets?id=eq.${encodeURIComponent(mediaId)}`, {
+            method: 'PATCH',
+            headers: {
+              apikey: anonKey,
+              Authorization: authHeader || `Bearer ${anonKey}`,
+              'Content-Type': 'application/json',
+              Prefer: 'return=minimal'
+            },
+            body: JSON.stringify({ metadata: updatedMeta })
+          });
+        }
+
+        return jsonResponse({
+          ok: true,
+          media_id: mediaId,
+          healed_count: healedCount,
+          complete: true,
+          variants
+        }, 200);
+      } catch (err: any) {
+        return jsonResponse({ ok: false, error: err?.message || 'Reconciliation error' }, 500);
+      }
+    }
+
     // ─── Edge Error Telemetry Endpoints (Cloudflare D1 — 0% Supabase impact) ────
     if (url.pathname === '/api/report-error' && request.method === 'POST') {
       try {

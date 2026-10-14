@@ -31,26 +31,37 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
   style,
   ...rest
 }) => {
-  const defaultFallback = fallbackSrc !== undefined 
-    ? fallbackSrc 
-    : '/defaults/events/subcategories/academics_seminar.webp';
+  const defaultFallback = fallbackSrc !== undefined ? fallbackSrc : "";
   const isEager = loading === "eager" || fetchPriority === "high";
   const isAlreadyLoaded = loadedHdImageCache.has(src) || isEager;
   const [isHdLoaded, setIsHdLoaded] = useState<boolean>(isAlreadyLoaded);
   const [imgSrc, setImgSrc] = useState<string>(src);
+  const [hasFailed, setHasFailed] = useState<boolean>(false);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
+  // Sync internal state when source prop changes dynamically
+  React.useEffect(() => {
+    setImgSrc(src);
+    setHasFailed(false);
+    setIsHdLoaded(loadedHdImageCache.has(src) || isEager);
+  }, [src, isEager]);
+
   const handleImageLoad = useCallback(() => {
-    if (src) loadedHdImageCache.add(src);
+    if (imgSrc) loadedHdImageCache.add(imgSrc);
     setIsHdLoaded(true);
+    setHasFailed(false);
     if (onLoadComplete) onLoadComplete();
-  }, [src, onLoadComplete]);
+  }, [imgSrc, onLoadComplete]);
 
   const handleImageError = useCallback(() => {
     if (defaultFallback && imgSrc !== defaultFallback) {
+      // Gracefully switch to the deterministic category/subcategory default WebP
       setImgSrc(defaultFallback);
+    } else {
+      // Both primary and fallback failed; enter fallback state gracefully
+      setHasFailed(true);
+      setIsHdLoaded(true);
     }
-    setIsHdLoaded(true);
   }, [defaultFallback, imgSrc]);
 
   const bgClass = ambientBackdrop ? "" : containerClassName.includes("bg-") ? "" : "bg-slate-900/40";
@@ -65,13 +76,22 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
 
   return (
     <div className={`${overflowSafeContainerClass} ${aspectRatioClass} ${bgClass}`} style={{ contain: 'layout paint' }}>
-      {/* Ambient Vibrant Extension for contained/non-16:9 images (Zero black space, continuous edge flow) */}
+      {/* Seamless Horizon Dual-Surface Engine (100% Space Filled, Zero Black Bars, Zero Info Loss) */}
       {ambientBackdrop && (
-        <div
-          aria-hidden="true"
-          className="absolute inset-0 w-full h-full bg-cover bg-center blur-2xl saturate-150 brightness-105 scale-125 opacity-90 pointer-events-none transform-gpu"
-          style={{ backgroundImage: `url(${imgSrc})`, contain: 'strict' }}
-        />
+        <div aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          {/* Surface 1A: Overscan Horizon Dispersion (Extends 25% outside canvas to completely eliminate edge-blur fade) */}
+          <div
+            className="absolute -inset-[25%] w-[150%] h-[150%] bg-cover bg-center filter blur-3xl saturate-200 brightness-110 transform-gpu opacity-95"
+            style={{ backgroundImage: `url(${imgSrc})` }}
+          />
+          {/* Surface 1B: High-Fidelity Luminance & Texture Equalizer */}
+          <div
+            className="absolute -inset-[15%] w-[130%] h-[130%] bg-cover bg-center filter blur-xl saturate-150 brightness-100 transform-gpu opacity-45 mix-blend-overlay"
+            style={{ backgroundImage: `url(${imgSrc})` }}
+          />
+          {/* Surface 1C: Atmospheric Lighting & Edge Continuity Vignette */}
+          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/15 pointer-events-none" />
+        </div>
       )}
 
       {/* 1. Low-Res Blurred Placeholder (Visible instantly until HD arrives, skipped for eager LCP) */}
@@ -92,27 +112,35 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
       )}
 
       {/* 2. Full HD Image (Native direct paint with zero duplicate Image instantiation) */}
-      <img
-        ref={imgRef}
-        src={imgSrc}
-        alt={alt}
-        loading={loading}
-        fetchPriority={fetchPriority}
-        decoding={isEager ? "sync" : "async"}
-        onLoad={handleImageLoad}
-        onError={handleImageError}
-        className={`${className} ${
-          isEager
-            ? "opacity-100"
-            : `transition-opacity duration-300 ease-out ${isHdLoaded ? "opacity-100" : "opacity-0"}`
-        } ${ambientBackdrop ? "relative z-10 [mask-image:linear-gradient(to_right,transparent,black_2.5%,black_97.5%,transparent)]" : ""}`}
-        style={{
-          imageRendering: "-webkit-optimize-contrast",
-          ...(isFill ? { objectFit: "fill" } : {}),
-          ...style,
-        }}
-        {...rest}
-      />
+      {!hasFailed ? (
+        <img
+          ref={imgRef}
+          src={imgSrc}
+          alt={alt}
+          loading={loading}
+          fetchPriority={fetchPriority}
+          decoding={isEager ? "sync" : "async"}
+          onLoad={handleImageLoad}
+          onError={handleImageError}
+          className={`${className} ${
+            isEager
+              ? "opacity-100"
+              : `transition-opacity duration-300 ease-out ${isHdLoaded ? "opacity-100" : "opacity-0"}`
+          } ${ambientBackdrop ? "relative z-10 drop-shadow-[0_4px_16px_rgba(0,0,0,0.22)]" : ""}`}
+          style={{
+            imageRendering: "-webkit-optimize-contrast",
+            ...(isFill ? { objectFit: "fill" } : {}),
+            ...style,
+          }}
+          {...rest}
+        />
+      ) : (
+        <div className="absolute inset-0 w-full h-full bg-gradient-to-br from-slate-900 via-slate-800 to-indigo-950 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white/50">
+            <span className="font-heading font-black text-xs uppercase tracking-wider">LPU</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

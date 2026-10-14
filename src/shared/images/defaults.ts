@@ -166,7 +166,7 @@ function normalizeSubcategorySlug(cat: string, sub: string): string {
  * Always resolves to deterministic WebP assets in /defaults/events/subcategories/
  */
 export function resolveDefaultEventImage(eventOrMeta: any): string {
-  if (!eventOrMeta) return '/defaults/events/subcategories/academics_seminar.webp';
+  if (!eventOrMeta) return '/defaults/events/subcategories/others_miscellaneous-events.webp';
 
   // 1. Direct subcategory UUID lookup
   const subId = eventOrMeta.subcategory_id;
@@ -216,5 +216,5 @@ export function resolveDefaultEventImage(eventOrMeta: any): string {
     return '/defaults/events/subcategories/academics_seminar.webp';
   }
 
-  return '/defaults/events/subcategories/academics_seminar.webp';
+  return '/defaults/events/subcategories/others_miscellaneous-events.webp';
 }

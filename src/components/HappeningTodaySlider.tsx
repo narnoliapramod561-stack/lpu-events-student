@@ -6,11 +6,13 @@ import {
   AdvertisementFeedItem, 
   HappeningTodayConfig,
   AdSystemConfig,
-  injectAdsIntoSequence 
+  injectAdsIntoSequence,
+  resolveDefaultEventImage
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
 import { AdSenseSlot } from "./AdSenseSlot";
+import { LiquidGlass } from "./ui/LiquidGlass";
 
 export interface HappeningTodaySlideItem {
   type: "event" | "ad" | "adsense";
@@ -19,6 +21,7 @@ export interface HappeningTodaySlideItem {
   title: string;
   description?: string;
   image: string;
+  fallbackImage?: string;
   badge: string;
   category?: string;
   date?: string;
@@ -99,6 +102,7 @@ export const HappeningTodaySliderComponent = ({
         title: evt.name,
         description: evt.description,
         image: getEventImage(evt, "event-card", 800),
+        fallbackImage: resolveDefaultEventImage(evt),
         badge: "Happening Today",
         category: evt.categories?.name,
         date: dateString,
@@ -232,64 +236,70 @@ export const HappeningTodaySliderComponent = ({
       className="w-full flex flex-col select-none"
     >
       {/* Section Header */}
-      <div className="flex items-center justify-between mb-3.5 sm:mb-4 px-1">
-        <div className="flex items-center gap-2.5 sm:gap-3">
-          <div className="p-2 sm:p-2.5 rounded-xl sm:rounded-2xl bg-orange-500/15 dark:bg-white/10 text-primary dark:text-white border border-orange-500/25 dark:border-white/15 shadow-xs">
-            <CalendarDays className="h-5 w-5 sm:h-6 sm:w-6" />
+      <div className="flex items-center justify-between mb-2.5 sm:mb-4 px-0.5 sm:px-1 gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <div className="p-1.5 sm:p-2.5 rounded-xl sm:rounded-2xl bg-orange-500/15 dark:bg-white/10 text-primary dark:text-white border border-orange-500/25 dark:border-white/15 shadow-xs shrink-0">
+            <CalendarDays className="h-4.5 w-4.5 sm:h-6 sm:w-6" />
           </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="font-heading font-extrabold text-lg sm:text-2xl md:text-3xl text-gray-900 dark:text-white tracking-tight">
+          <div className="min-w-0">
+            <div className="flex items-center gap-1.5 sm:gap-2">
+              <h2 className="font-heading font-extrabold text-[15px] min-[375px]:text-base sm:text-2xl md:text-3xl text-gray-900 dark:text-white tracking-tight whitespace-nowrap">
                 Happening Today
               </h2>
-              <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5">
+              <span className="relative flex h-2 w-2 sm:h-2.5 sm:w-2.5 shrink-0">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 dark:bg-white/60 opacity-75" />
                 <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-orange-500 dark:bg-white" />
               </span>
             </div>
-            <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium">
+            <p className="text-[10px] min-[375px]:text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium truncate">
               Live schedule & campus events
             </p>
           </div>
         </div>
 
         {/* Header Controls: View All Button & Desktop Arrows */}
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
           {events.length > 0 && (
-            <button
+            <LiquidGlass
+              as="button"
+              preset="brand-accent"
               type="button"
               onClick={() => setIsAllTodayModalOpen(true)}
-              className="inline-flex items-center gap-1.5 text-orange-700 dark:text-white font-heading font-semibold text-xs hover:text-orange-800 dark:hover:text-gray-300 transition-colors cursor-pointer px-3.5 py-1.5 rounded-full bg-orange-500/10 dark:bg-white/10 hover:bg-orange-500/20 dark:hover:bg-white/15 active:scale-95 border border-orange-500/20 dark:border-white/15"
+              className="inline-flex items-center gap-1 sm:gap-1.5 text-orange-700 dark:text-white font-heading font-semibold text-[11px] sm:text-xs hover:text-orange-800 dark:hover:text-gray-300 transition-all cursor-pointer px-2.5 sm:px-3.5 py-1.5 rounded-full active:scale-95 whitespace-nowrap shrink-0 shadow-xs"
               aria-label={`View All ${events.length} Events Happening Today`}
             >
-              <span>View All</span>
-              <span className="text-xs font-mono font-bold px-2 py-0.5 rounded-full bg-orange-500/20 dark:bg-white/15 text-orange-700 dark:text-white">
+              <span className="whitespace-nowrap">View All</span>
+              <span className="text-[10px] sm:text-xs font-mono font-bold px-1.5 py-0.5 rounded-full bg-orange-500/20 dark:bg-white/15 text-orange-700 dark:text-white leading-none">
                 ({events.length})
               </span>
-              <ArrowRight className="h-3.5 w-3.5" />
-            </button>
+              <ArrowRight className="h-3 w-3 sm:h-3.5 sm:w-3.5 shrink-0" />
+            </LiquidGlass>
           )}
 
           {hasMultiplePages && (
             <div className="hidden md:flex items-center gap-1.5">
-              <button
+              <LiquidGlass
+                as="button"
+                preset="fluid-pill"
                 type="button"
                 onClick={() => scrollTrack("left")}
                 disabled={!canScrollLeft}
-                className="w-8 h-8 rounded-full glass-pill flex items-center justify-center cursor-pointer hover:text-primary transition-colors border border-black/10 dark:border-white/10 shadow-xs hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 disabled:opacity-25 disabled:cursor-not-allowed text-gray-800 dark:text-white"
+                className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer hover:text-primary transition-colors active:scale-95 disabled:opacity-25 disabled:cursor-not-allowed text-gray-800 dark:text-white"
                 aria-label="Scroll left"
               >
                 <ChevronLeft className="h-4.5 w-4.5" />
-              </button>
-              <button
+              </LiquidGlass>
+              <LiquidGlass
+                as="button"
+                preset="fluid-pill"
                 type="button"
                 onClick={() => scrollTrack("right")}
                 disabled={!canScrollRight}
-                className="w-8 h-8 rounded-full glass-pill flex items-center justify-center cursor-pointer hover:text-primary transition-colors border border-black/10 dark:border-white/10 shadow-xs hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 disabled:opacity-25 disabled:cursor-not-allowed text-gray-800 dark:text-white"
+                className="w-8 h-8 rounded-full flex items-center justify-center cursor-pointer hover:text-primary transition-colors active:scale-95 disabled:opacity-25 disabled:cursor-not-allowed text-gray-800 dark:text-white"
                 aria-label="Scroll right"
               >
                 <ChevronRight className="h-4.5 w-4.5" />
-              </button>
+              </LiquidGlass>
             </div>
           )}
         </div>
@@ -347,6 +357,7 @@ export const HappeningTodaySliderComponent = ({
                   {slide.image ? (
                     <ProgressiveImage
                       src={slide.image}
+                      fallbackSrc={slide.fallbackImage}
                       alt={slide.title}
                       loading={idx < 4 ? "eager" : "lazy"}
                       ambientBackdrop
@@ -362,18 +373,9 @@ export const HappeningTodaySliderComponent = ({
                     </div>
                   )}
 
-                  {/* Top Badges: Category + LIVE TODAY */}
+                  {/* Top Badges: Category & Sponsored */}
                   <div className="absolute top-2.5 left-2.5 right-2.5 z-20 flex items-center justify-between pointer-events-none">
                     <div className="flex items-center gap-1.5 flex-wrap">
-                      {slide.type === "event" && (
-                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-red-600 text-white font-heading text-[9px] font-black uppercase tracking-wider shadow-md backdrop-blur-md">
-                          <span className="relative flex h-1.5 w-1.5">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                            <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-white" />
-                          </span>
-                          LIVE TODAY
-                        </span>
-                      )}
                       {slide.type === "ad" && (
                         <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-600 text-white font-heading text-[9px] font-black uppercase tracking-wider shadow-md backdrop-blur-md">
                           Sponsored
@@ -388,12 +390,12 @@ export const HappeningTodaySliderComponent = ({
                   </div>
                 </div>
 
-                {/* Bottom Information Deck: Strictly consistent height & snug layout */}
-                <div className="p-3 min-[400px]:p-3.5 flex flex-col justify-between h-[78px] min-[400px]:h-[82px] bg-white dark:bg-[#2c2c2e] border-t border-slate-100 dark:border-white/[0.08]">
-                  {/* Event Name */}
+                {/* Bottom Information Deck: Clean single-line layout preventing title from wrapping down */}
+                <div className="px-3.5 py-3 min-[400px]:px-4 min-[400px]:py-3.5 flex flex-col justify-between h-[82px] min-[400px]:h-[86px] sm:h-[90px] bg-white dark:bg-[#2c2c2e] border-t border-slate-100 dark:border-white/[0.08]">
+                  {/* Event Name - Big & Premium Single Line (Never drops to second line) */}
                   <h3
                     title={slide.title}
-                    className="text-gray-950 dark:text-white font-heading font-bold text-sm min-[400px]:text-[15px] leading-snug truncate group-hover:text-primary transition-colors tracking-tight"
+                    className="text-gray-950 dark:text-white font-heading font-black text-base min-[390px]:text-[17px] min-[420px]:text-[18px] sm:text-[19px] leading-tight truncate whitespace-nowrap group-hover:text-primary transition-colors tracking-tight"
                   >
                     {slide.title}
                   </h3>
@@ -511,21 +513,21 @@ export const HappeningTodaySliderComponent = ({
               <div className="w-12 h-1.5 rounded-full bg-gray-300 dark:bg-white/20 mx-auto mt-2.5 sm:hidden shrink-0" />
 
               {/* Header */}
-              <div className="flex items-center justify-between px-5 sm:px-6 pt-4 pb-3.5 border-b border-black/[0.06] dark:border-white/10 shrink-0">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 sm:p-2.5 rounded-xl bg-orange-500/15 dark:bg-white/10 text-orange-700 dark:text-white border border-orange-500/25 dark:border-white/15 shadow-xs">
+              <div className="flex items-center justify-between px-4 sm:px-6 pt-3.5 sm:pt-4 pb-3 sm:pb-3.5 border-b border-black/[0.06] dark:border-white/10 shrink-0 gap-2">
+                <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                  <div className="p-1.5 sm:p-2.5 rounded-xl bg-orange-500/15 dark:bg-white/10 text-orange-700 dark:text-white border border-orange-500/25 dark:border-white/15 shadow-xs shrink-0">
                     <CalendarDays className="w-5 h-5 sm:w-6 sm:h-6" />
                   </div>
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <h3 id="today-modal-title" className="font-heading font-black text-lg sm:text-xl text-gray-950 dark:text-white tracking-tight">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5 sm:gap-2">
+                      <h3 id="today-modal-title" className="font-heading font-black text-sm sm:text-lg md:text-xl text-gray-950 dark:text-white tracking-tight whitespace-nowrap">
                         Today's Events Schedule
                       </h3>
-                      <span className="px-2 py-0.5 rounded-full bg-orange-500/15 dark:bg-white/10 text-orange-700 dark:text-white font-mono font-bold text-xs border border-orange-500/20 dark:border-white/15">
+                      <span className="px-1.5 sm:px-2 py-0.5 rounded-full bg-orange-500/15 dark:bg-white/10 text-orange-700 dark:text-white font-mono font-bold text-[10px] sm:text-xs border border-orange-500/20 dark:border-white/15 whitespace-nowrap shrink-0">
                         {events.length} {events.length === 1 ? "Event" : "Events"}
                       </span>
                     </div>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium mt-0.5">
+                    <p className="text-[11px] sm:text-xs text-gray-500 dark:text-gray-400 font-medium truncate mt-0.5">
                       {new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" }).format(new Date())} • Live campus activities
                     </p>
                   </div>
@@ -534,10 +536,10 @@ export const HappeningTodaySliderComponent = ({
                 <button
                   type="button"
                   onClick={() => setIsAllTodayModalOpen(false)}
-                  className="w-9 h-9 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer"
+                  className="w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-white/10 dark:hover:bg-white/20 text-gray-700 dark:text-gray-200 flex items-center justify-center transition-colors cursor-pointer shrink-0"
                   aria-label="Close modal"
                 >
-                  <X className="w-5 h-5" />
+                  <X className="w-4.5 h-4.5 sm:w-5 sm:h-5" />
                 </button>
               </div>
 
@@ -577,6 +579,7 @@ export const HappeningTodaySliderComponent = ({
                         <div className="relative w-20 sm:w-28 aspect-[4/3] rounded-xl overflow-hidden shrink-0 bg-gray-100 dark:bg-black/40 border border-black/5 dark:border-white/10 shadow-xs">
                           <ProgressiveImage
                             src={eventImg}
+                            fallbackSrc={resolveDefaultEventImage(evt)}
                             alt={evt.name}
                             loading={idx < 4 ? "eager" : "lazy"}
                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
@@ -607,7 +610,7 @@ export const HappeningTodaySliderComponent = ({
                             )}
                           </div>
 
-                          <h4 className="text-gray-950 dark:text-white font-heading font-black text-sm sm:text-base leading-snug line-clamp-1 group-hover:text-primary transition-colors">
+                          <h4 className="text-gray-950 dark:text-white font-heading font-black text-base sm:text-lg leading-snug line-clamp-1 group-hover:text-primary transition-colors tracking-tight">
                             {evt.name}
                           </h4>
 

@@ -12,3 +12,6 @@ export * from './cleanup';
 export * from './storage';
 export * from './defaults';
 export * from './expansion';
+export * from './variants';
+export * from './reconciler';
+export * from './compressor';

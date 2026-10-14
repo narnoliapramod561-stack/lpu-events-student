@@ -9,6 +9,7 @@ import {
   formatEventDateRange
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
+import { resolveDefaultEventImage } from "../shared/images/defaults";
 import { ProgressiveImage } from "./ProgressiveImage";
 import { AdSenseSlot } from "./AdSenseSlot";
 
@@ -22,6 +23,7 @@ export const EventCardComponent = ({
   idx?: number;
 }) => {
   const imageUrl = getEventImage(event, 'event-card', 1080);
+  const fallbackUrl = resolveDefaultEventImage(event);
   const startDate = new Date(event.start_at);
 
   // Format Date: DD/MM/YYYY or DD/MM/YYYY – DD/MM/YYYY (if multi-day)
@@ -50,6 +52,7 @@ export const EventCardComponent = ({
       <div className="w-full aspect-[16/9] relative overflow-hidden shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center">
         <ProgressiveImage
           src={imageUrl}
+          fallbackSrc={fallbackUrl}
           alt={event.name}
           loading="lazy"
           ambientBackdrop

@@ -6,11 +6,13 @@ import {
   AdvertisementFeedItem, 
   CarouselItemFeedItem, 
   AdSystemConfig,
-  injectAdsIntoSequence 
+  injectAdsIntoSequence,
+  resolveDefaultEventImage
 } from "@lpu-events/shared";
 import { getEventImage, getResponsiveImageUrl } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
 import { AdSenseSlot } from "./AdSenseSlot";
+import { LiquidGlass } from "./ui/LiquidGlass";
 
 export interface HeroSlideModel {
   id: string;
@@ -18,6 +20,7 @@ export interface HeroSlideModel {
   title: string;
   description?: string;
   image: string;
+  fallbackImage?: string;
   category: string;
   date?: string;
   time?: string;
@@ -150,6 +153,7 @@ export const HeroCarouselComponent = ({
             title: item.custom_title?.trim() || evt.name,
             description: item.custom_subtitle?.trim() || evt.description,
             image: getEventImage(evt, "hero", heroImageTargetWidth),
+            fallbackImage: resolveDefaultEventImage(evt),
             category: item.badge_text?.trim() || evt.categories?.name || "Featured Event",
             date: formatHeroDate(evt.start_at),
             time: formatHeroTime(evt.start_at),
@@ -167,6 +171,7 @@ export const HeroCarouselComponent = ({
             title: item.custom_title?.trim() || "Campus Spotlight",
             description: item.custom_subtitle?.trim() || "Featured university stories and announcements.",
             image: getEventImage(media, "hero", heroImageTargetWidth),
+            fallbackImage: "/defaults/hero_default.webp",
             category: item.badge_text?.trim() || "Spotlight",
             date: "Special",
             time: "Announcements",
@@ -188,6 +193,7 @@ export const HeroCarouselComponent = ({
         title: fe.name,
         description: fe.description,
         image: getEventImage(fe, "hero", heroImageTargetWidth),
+        fallbackImage: resolveDefaultEventImage(fe),
         category: fe.categories?.name || "Featured Event",
         date: formatHeroDate(fe.start_at),
         time: formatHeroTime(fe.start_at),
@@ -205,6 +211,7 @@ export const HeroCarouselComponent = ({
         title: "Discover Campus Events, Clubs & Festivities",
         description: "Explore tech hackathons, cultural nights, conferences, workshops, and student community gatherings happening across Lovely Professional University.",
         image: "/defaults/hero_default.webp",
+        fallbackImage: "/defaults/hero_default.webp",
         category: "Campus Life",
         date: "Upcoming",
         time: "All Semesters",
@@ -352,8 +359,8 @@ export const HeroCarouselComponent = ({
         </AnimatePresence>
       </div>
 
-      {/* 2. Main Carousel Viewport Frame — Precision 16:10 Golden Showcase on Mobile */}
-      <div className="relative z-10 w-full aspect-[16/10] sm:aspect-auto sm:h-auto sm:min-h-[520px] lg:h-[560px] xl:h-[580px] overflow-hidden rounded-[24px] sm:rounded-[34px] md:rounded-[40px] glass-panel border border-black/[0.08] dark:border-white/[0.14] ring-1 ring-inset ring-white/20 dark:ring-white/10 shadow-[0_20px_50px_-12px_rgba(255,107,0,0.24),0_10px_24px_-6px_rgba(15,23,42,0.08)] dark:shadow-[0_28px_70px_rgba(0,0,0,0.95)] flex flex-col">
+      {/* 2. Main Carousel Viewport Frame — Precision 3:2 Showcase on Mobile, Sleek Height on Desktop */}
+      <div className="relative z-10 w-full aspect-[3/2] sm:aspect-auto sm:h-auto sm:min-h-[480px] lg:h-[550px] xl:h-[570px] 2xl:h-[590px] overflow-hidden rounded-[24px] sm:rounded-[34px] md:rounded-[40px] glass-panel border border-black/[0.08] dark:border-white/[0.14] ring-1 ring-inset ring-white/20 dark:ring-white/10 shadow-[0_20px_50px_-12px_rgba(255,107,0,0.24),0_10px_24px_-6px_rgba(15,23,42,0.08)] dark:shadow-[0_28px_70px_rgba(0,0,0,0.95)] flex flex-col">
         
         {/* Subtle Decorative Ambient Flares (Light mode only) */}
         <div className="absolute top-0 right-0 w-[420px] h-[420px] bg-gradient-to-br from-orange-500/35 via-amber-500/20 to-transparent rounded-full blur-3xl pointer-events-none z-0 hidden sm:block dark:hidden" />
@@ -404,14 +411,15 @@ export const HeroCarouselComponent = ({
                   {currentSlide.image ? (
                     <ProgressiveImage
                       src={getResponsiveImageUrl(currentSlide.image, 640)}
+                      fallbackSrc={currentSlide.fallbackImage || "/defaults/hero_default.webp"}
                       alt={currentSlide.title}
                       loading={currentIndex === 0 ? "eager" : "lazy"}
                       fetchPriority={currentIndex === 0 ? "high" : "auto"}
                       width={640}
                       height={360}
-                      ambientBackdrop={false}
+                      ambientBackdrop={true}
                       containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
-                      className="w-full h-full object-cover object-center relative z-10"
+                      className="w-full h-full object-contain object-center relative z-10"
                     />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-orange-950/80 via-slate-900 to-indigo-950 dark:from-black dark:via-zinc-950 dark:to-neutral-900 flex flex-col justify-center items-center px-4 text-center">
@@ -438,10 +446,10 @@ export const HeroCarouselComponent = ({
                       variants={contentStagger}
                       initial={isFirstMountRef.current ? false : "hidden"}
                       animate="visible"
-                      className="flex flex-col justify-center p-5 sm:pl-16 sm:pr-6 md:pl-20 md:pr-8 lg:px-7 lg:py-6 xl:px-8 xl:py-8 lg:w-[42%] xl:w-[40%] flex-1 relative z-10 gap-3 sm:gap-3.5 lg:gap-4 h-full"
+                      className="flex flex-col justify-center p-5 sm:pl-12 sm:pr-6 md:pl-16 md:pr-8 lg:px-8 lg:py-6 xl:px-10 xl:py-8 lg:w-[46%] xl:w-[46%] 2xl:w-[46%] flex-1 relative z-10 gap-3 sm:gap-3 lg:gap-3.5 h-full"
                     >
                       {/* Badge & Category Pill */}
-                      <motion.div variants={contentItem} className="flex items-center gap-2 flex-wrap">
+                      <motion.div variants={contentItem} className="flex items-center gap-2 flex-wrap shrink-0">
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-orange-500/20 to-amber-500/15 text-orange-700 dark:bg-white/10 dark:text-white dark:border-white/15 dark:shadow-none border border-orange-500/35 rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-[0_0_12px_rgba(255,107,0,0.2)] backdrop-blur-md">
                           <span className="w-1.5 h-1.5 rounded-full bg-orange-500 dark:bg-white animate-pulse" />
                           Featured Event
@@ -453,20 +461,20 @@ export const HeroCarouselComponent = ({
                         )}
                       </motion.div>
 
-                      {/* Headline */}
+                      {/* Headline - shrink-0 & leading-[1.22] prevent text slicing */}
                       <motion.h1
                         variants={contentItem}
                         onClick={handleAction}
-                        className="font-black tracking-tight text-gray-900 dark:text-white font-heading cursor-pointer hover:text-primary transition-colors drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] break-safe text-2xl md:text-3xl lg:text-[32px] xl:text-[38px] leading-[1.15] line-clamp-2"
+                        className="font-black tracking-tight text-gray-900 dark:text-white font-heading cursor-pointer hover:text-primary transition-colors dark:drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] break-safe text-2xl md:text-3xl lg:text-[30px] xl:text-[36px] leading-[1.22] line-clamp-2 shrink-0"
                       >
                         {currentSlide.title}
                       </motion.h1>
 
-                      {/* Description */}
+                      {/* Description - shrink-0 prevents line 2 clipping */}
                       {currentSlide.description && (
                         <motion.p
                           variants={contentItem}
-                          className="text-gray-600 dark:text-gray-200 leading-relaxed break-safe text-xs md:text-sm lg:text-base font-medium line-clamp-2 xl:line-clamp-3 max-w-xl drop-shadow-[0_1px_8px_rgba(0,0,0,0.7)]"
+                          className="text-gray-600 dark:text-gray-200 leading-relaxed break-safe text-xs md:text-sm lg:text-base font-medium line-clamp-2 xl:line-clamp-3 max-w-xl dark:drop-shadow-[0_1px_8px_rgba(0,0,0,0.7)] shrink-0"
                         >
                           {currentSlide.date
                             ? currentSlide.description.replace(/on \d{1,2}\s+[A-Za-z]+\s+\d{4}/g, `on ${currentSlide.date}`)
@@ -478,7 +486,7 @@ export const HeroCarouselComponent = ({
                       {(currentSlide.date || currentSlide.venue || currentSlide.organizer) && (
                         <motion.div
                           variants={contentItem}
-                          className="flex flex-col rounded-[22px] sm:rounded-[26px] bg-white/65 dark:bg-white/[0.06] backdrop-blur-md border border-white/80 dark:border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-4 sm:p-5 lg:p-5.5 gap-3.5 sm:gap-4"
+                          className="flex flex-col rounded-[22px] sm:rounded-[26px] bg-white/65 dark:bg-white/[0.06] backdrop-blur-md border border-white/80 dark:border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-3.5 sm:p-4 lg:p-4.5 gap-2.5 sm:gap-3 shrink-0"
                         >
                           {/* Date & Time */}
                           {(currentSlide.date || currentSlide.time) && (
@@ -546,22 +554,23 @@ export const HeroCarouselComponent = ({
                       </motion.div>
                     </motion.div>
 
-                    {/* Hero Banner Image (Right on Desktop) - Expanded High-Impact Stage */}
+                    {/* Hero Banner Image (Right on Desktop) - Moderately Sized, Balanced Stage */}
                     <div
                       onClick={handleAction}
-                      className="relative w-full lg:w-[58%] xl:w-[60%] p-2.5 sm:p-3.5 lg:p-4 xl:p-5 flex items-center justify-center shrink-0 cursor-pointer group/img"
+                      className="relative w-full lg:w-[54%] xl:w-[54%] 2xl:w-[54%] p-3 sm:p-4 lg:p-4 xl:p-5 flex items-center justify-center shrink-0 cursor-pointer group/img"
                     >
-                      <div className="relative w-full max-w-[760px] lg:max-w-none xl:max-w-[880px] 2xl:max-w-[940px] aspect-[16/9] lg:aspect-auto lg:h-full lg:min-h-[360px] rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 group-hover/img:scale-[1.015] transition-transform duration-300">
+                      <div className="relative w-full max-w-[620px] xl:max-w-[700px] 2xl:max-w-[760px] aspect-[16/9] rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 group-hover/img:scale-[1.015] transition-transform duration-300 flex items-center justify-center">
                         <ProgressiveImage
                           src={getResponsiveImageUrl(currentSlide.image || "/defaults/hero_default.webp", 1200)}
+                          fallbackSrc={currentSlide.fallbackImage || "/defaults/hero_default.webp"}
                           alt={currentSlide.title}
                           loading={currentIndex === 0 ? "eager" : "lazy"}
                           fetchPriority={currentIndex === 0 ? "high" : "auto"}
                           width={1200}
                           height={675}
-                          ambientBackdrop={false}
+                          ambientBackdrop={true}
                           containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
-                          className="w-full h-full object-cover object-center relative z-10"
+                          className="w-full h-full object-contain object-center relative z-10"
                         />
                       </div>
                     </div>
@@ -696,7 +705,10 @@ export const HeroCarouselComponent = ({
 
       {/* 3. Progress Dots — Below card on mobile, inside card on desktop (only when multiple slides) */}
       {slides.length > 1 && (
-        <div className="hidden sm:flex absolute bottom-5 left-1/2 -translate-x-1/2 z-30 items-center gap-2 px-3.5 py-1.5 rounded-full glass-pill shadow-lg border border-white/80 dark:border-white/15 pointer-events-auto max-w-fit w-auto">
+        <LiquidGlass
+          preset="fluid-pill"
+          className="hidden sm:flex absolute bottom-5 left-1/2 -translate-x-1/2 z-30 items-center gap-2 px-3.5 py-1.5 rounded-full shadow-lg border border-white/80 dark:border-white/15 pointer-events-auto max-w-fit w-auto"
+        >
           {slides.map((_, idx) => (
             <button
               key={idx}
@@ -719,12 +731,12 @@ export const HeroCarouselComponent = ({
               )}
             </button>
           ))}
-        </div>
+        </LiquidGlass>
       )}
       {/* Mobile Dots — Below the card in a sleek frosted pill */}
       {slides.length > 1 && (
-        <div className="flex sm:hidden items-center justify-center mt-3.5 mb-1">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/80 dark:bg-white/[0.08] backdrop-blur-xl border border-black/[0.07] dark:border-white/[0.14] shadow-sm">
+        <div className="flex sm:hidden items-center justify-center mt-2 mb-0">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/80 dark:bg-white/[0.08] backdrop-blur-xl border border-black/[0.07] dark:border-white/[0.14] shadow-sm">
             {slides.map((_, idx) => (
               <button
                 key={idx}
@@ -744,20 +756,24 @@ export const HeroCarouselComponent = ({
       {/* 4. Side Navigation Arrows (Positioned Outside the Image Card at Extreme Screen Edges) */}
       {slides.length > 1 && (
         <>
-          <button
+          <LiquidGlass
+            as="button"
+            preset="fluid-pill"
             onClick={() => paginate(-1)}
-            className="flex absolute -left-2 sm:-left-4 md:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-30 w-6 h-6 sm:w-12 md:w-13 sm:h-12 md:h-13 rounded-full items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 active:scale-90 group bg-white/90 dark:bg-black/60 hover:bg-white dark:hover:bg-black/85 backdrop-blur-xl border border-black/10 dark:border-white/20 shadow-md sm:shadow-[0_10px_35px_rgba(0,0,0,0.15)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.6)] touch-manipulation outline-none select-none"
+            className="flex absolute -left-2 sm:-left-4 md:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-30 w-6 h-6 sm:w-12 md:w-13 sm:h-12 md:h-13 rounded-full items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 active:scale-90 group touch-manipulation outline-none select-none"
             aria-label="Previous slide"
           >
             <ChevronLeft className="h-3 w-3 sm:h-5 sm:w-5 md:h-6 md:w-6 text-gray-900 dark:text-white drop-shadow-sm group-hover:-translate-x-0.5 group-hover:text-primary transition-transform duration-200 stroke-[2.8] sm:stroke-[2.4]" />
-          </button>
-          <button
+          </LiquidGlass>
+          <LiquidGlass
+            as="button"
+            preset="fluid-pill"
             onClick={() => paginate(1)}
-            className="flex absolute -right-2 sm:-right-4 md:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-30 w-6 h-6 sm:w-12 md:w-13 sm:h-12 md:h-13 rounded-full items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 active:scale-90 group bg-white/90 dark:bg-black/60 hover:bg-white dark:hover:bg-black/85 backdrop-blur-xl border border-black/10 dark:border-white/20 shadow-md sm:shadow-[0_10px_35px_rgba(0,0,0,0.15)] dark:shadow-[0_4px_16px_rgba(0,0,0,0.6)] touch-manipulation outline-none select-none"
+            className="flex absolute -right-2 sm:-right-4 md:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-30 w-6 h-6 sm:w-12 md:w-13 sm:h-12 md:h-13 rounded-full items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 active:scale-90 group touch-manipulation outline-none select-none"
             aria-label="Next slide"
           >
             <ChevronRight className="h-3 w-3 sm:h-5 sm:w-5 md:h-6 md:w-6 text-gray-900 dark:text-white drop-shadow-sm group-hover:translate-x-0.5 group-hover:text-primary transition-transform duration-200 stroke-[2.8] sm:stroke-[2.4]" />
-          </button>
+          </LiquidGlass>
         </>
       )}
     </section>
