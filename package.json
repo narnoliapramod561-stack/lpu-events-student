@@ -8,8 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "cleanup:database": "node scripts/database_cleanup.mjs",
-    "guardrail:database": "node scripts/database_size_guardrail.mjs"
+    "cleanup:database": "node scripts/database_cleanup.mjs"
   },
   "dependencies": {
     "@sentry/browser": "^10.70.0",
