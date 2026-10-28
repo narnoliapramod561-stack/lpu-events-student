@@ -1,5 +1,4 @@
 import React from "react";
-import { motion } from "framer-motion";
 import { Calendar, Clock, MapPin, SearchX, RefreshCw, ArrowUpRight, ArrowRight, Megaphone, Sparkles } from "lucide-react";
 import { 
   EventFeedItem, 
@@ -16,7 +15,7 @@ import { AdSenseSlot } from "./AdSenseSlot";
 export const EventCardComponent = ({
   event,
   onSelect,
-  idx = 0,
+  idx: _idx = 0,
 }: {
   event: EventFeedItem;
   onSelect: (id: string, name?: string) => void;
@@ -39,25 +38,19 @@ export const EventCardComponent = ({
   const categoryName = (event.categories?.name || event.category_id || "CAMPUS EVENT").toUpperCase();
 
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 8 }}
-      whileInView={{ opacity: 1, y: 0 }}
-      viewport={{ once: true, margin: "60px" }}
-      transition={{ duration: 0.25, delay: Math.min((idx % 6) * 0.03, 0.15) }}
+    <article
       onClick={() => onSelect(event.id, event.name)}
       className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-2xl sm:rounded-3xl shadow-md hover:shadow-2xl transition-[transform,box-shadow] duration-200 border border-white/80 dark:border-white/[0.08] hover:border-primary/50 dark:hover:border-white/20 relative hover:scale-[1.01] active:scale-[0.99]"
-      style={{ willChange: 'opacity, transform' }}
     >
-      {/* Event Cover Image (Native 16:9 Slot Presentation with Full Content Visibility) */}
+      {/* Event Cover Image — no ambientBackdrop to prevent GPU layer explosion on cards */}
       <div className="w-full aspect-[16/9] relative overflow-hidden shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center">
         <ProgressiveImage
           src={imageUrl}
           fallbackSrc={fallbackUrl}
           alt={event.name}
           loading="lazy"
-          ambientBackdrop
           containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
-          className="w-full h-full object-contain object-center group-hover:scale-105 transition-transform duration-500 ease-out relative z-10"
+          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none z-10" />
 
@@ -95,7 +88,7 @@ export const EventCardComponent = ({
               <Calendar className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-primary dark:text-amber-400" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-neutral-400 font-heading leading-tight">
+              <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-neutral-400 font-heading leading-tight">
                 DATE
               </span>
               <span className="text-gray-900 dark:text-white font-black text-xs sm:text-sm truncate">
@@ -110,7 +103,7 @@ export const EventCardComponent = ({
               <Clock className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-amber-500 dark:text-amber-300" />
             </div>
             <div className="flex flex-col min-w-0">
-              <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-neutral-400 font-heading leading-tight">
+              <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-neutral-400 font-heading leading-tight">
                 SCHEDULE
               </span>
               <span className="text-gray-900 dark:text-white font-black text-xs sm:text-sm truncate">
@@ -126,7 +119,7 @@ export const EventCardComponent = ({
                 <MapPin className="h-3.5 w-3.5 sm:h-4.5 sm:w-4.5 text-rose-500 dark:text-rose-400" />
               </div>
               <div className="flex flex-col min-w-0">
-                <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-gray-400 dark:text-neutral-400 font-heading leading-tight">
+                <span className="text-[8px] sm:text-[10px] font-black uppercase tracking-widest text-slate-600 dark:text-neutral-400 font-heading leading-tight">
                   VENUE
                 </span>
                 <span className="text-gray-900 dark:text-white font-black text-xs sm:text-sm truncate">
@@ -162,7 +155,7 @@ export const EventCardComponent = ({
           </button>
         </div>
       </div>
-    </motion.article>
+    </article>
   );
 };
 
@@ -361,7 +354,7 @@ export const EventGridComponent = ({
         </div>
 
         <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
-          {Array.from({ length: 10 }).map((_, i) => (
+          {Array.from({ length: 9 }).map((_, i) => (
             <SkeletonCard key={i} />
           ))}
         </div>
@@ -417,8 +410,15 @@ export const EventGridComponent = ({
           <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rotate-45 bg-primary/20 border border-primary/60 dark:border-primary/80 rounded-[1px] shrink-0 ml-1.5 sm:ml-2 shadow-xs" />
         </div>
 
-        <h2 className="text-xl sm:text-3xl font-black font-heading tracking-tight text-gray-900 dark:text-white whitespace-nowrap px-1">
-          {title}
+        <h2 className="text-xl sm:text-3xl font-black font-heading tracking-tight whitespace-nowrap flex items-center gap-2 select-none">
+          <span className="glass-text-crystal">
+            {title.split(" ")[0]}
+          </span>
+          {title.split(" ").slice(1).join(" ") && (
+            <span className="glass-text-amber">
+              {title.split(" ").slice(1).join(" ")}
+            </span>
+          )}
         </h2>
 
         <div className="flex-1 flex items-center">

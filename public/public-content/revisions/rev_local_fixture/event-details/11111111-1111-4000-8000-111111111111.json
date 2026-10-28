@@ -1,0 +1,28 @@
+{
+  "id": "11111111-1111-4000-8000-111111111111",
+  "name": "LPU Annual Hackathon 2026",
+  "description": "36-hour flagship campus hackathon bringing student innovators together.",
+  "start_at": "2026-10-25T09:00:00.000Z",
+  "end_at": "2026-10-26T21:00:00.000Z",
+  "venue_name": "Block 34, Innovation Hub",
+  "registration_mode": "EXTERNAL",
+  "external_registration_url": "https://example.com/register/hackathon2026",
+  "pricing_type": "FREE",
+  "price_amount": 0,
+  "category_id": "c1000000-0000-4000-8000-000000000001",
+  "subcategory_id": "s1000000-0000-4000-8000-000000000001",
+  "banner_media_id": null,
+  "media_assets": { "id": "11111111-1111-4000-8000-111111111111", "object_key": "/defaults/card_default.webp" },
+  "organizations": { "name": "Coding Club LPU", "category": "CLUB" },
+  "categories": { "name": "Technical & Innovation" },
+  "subcategories": { "name": "Hackathons" },
+  "event_content_sections": [
+    {
+      "id": "sec-001",
+      "title": "Guidelines & Problem Statements",
+      "content": "Participants must build original solutions using modern web, mobile, or AI technologies.",
+      "sort_order": 1
+    }
+  ],
+  "status": "PUBLISHED"
+}

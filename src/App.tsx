@@ -1,14 +1,14 @@
 import { useState, useEffect, useMemo, useRef, useCallback, lazy, Suspense } from "react";
 import { Navbar } from "./components/Navbar";
 import { HeroCarousel } from "./components/HeroCarousel";
-import { HappeningTodaySlider } from "./components/HappeningTodaySlider";
-import { CategoryFilter } from "./components/CategoryFilter";
 import { EventGrid } from "./components/EventGrid";
 import { Footer } from "./components/Footer";
 import { UnifiedAdSlot } from "./components/UnifiedAdSlot";
 import { MaintenanceView } from "./components/MaintenanceView";
 import { SplashScreen } from "./components/SplashScreen";
 
+const CategoryFilter = lazy(() => import("./components/CategoryFilter").then(m => ({ default: m.CategoryFilter })));
+const HappeningTodaySlider = lazy(() => import("./components/HappeningTodaySlider").then(m => ({ default: m.HappeningTodaySlider })));
 const EventDetailsView = lazy(() => import("./components/EventDetailsView").then(m => ({ default: m.EventDetailsView })));
 const AboutUsView = lazy(() => import("./components/AboutUsView").then(m => ({ default: m.AboutUsView })));
 const PrivacyPolicyView = lazy(() => import("./components/PrivacyPolicyView").then(m => ({ default: m.PrivacyPolicyView })));
@@ -166,7 +166,29 @@ export default function App() {
     }
   }, []);
 
-  const [theme, setTheme] = useState("light");
+  const [theme, setTheme] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('theme');
+      if (saved === 'dark' || saved === 'light') return saved;
+      if (document.documentElement.classList.contains('dark')) return 'dark';
+    }
+    return 'light';
+  });
+
+  useEffect(() => {
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+    try {
+      localStorage.setItem('theme', theme);
+    } catch {}
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', theme === 'dark' ? '#1c1c1e' : '#f7f9fc');
+    }
+  }, [theme]);
   const [categories, setCategories] = useState<CategoryFeedItem[]>(
     initialBundle?.categories || OFFICIAL_PLATFORM_CATEGORIES
   );
@@ -180,14 +202,54 @@ export default function App() {
   const [carouselSlides, setCarouselSlides] = useState<CarouselItemFeedItem[]>(
     initialBundle?.carousel || []
   );
-  const [happeningTodayEvents, setHappeningTodayEvents] = useState<EventFeedItem[]>([]);
-  const [happeningTodayConfig, setHappeningTodayConfig] = useState<HappeningTodayConfig | null>(null);
-  const [adSystemConfig, setAdSystemConfig] = useState<AdSystemConfig>(
-    initialBundle?.settings ? DEFAULT_AD_SYSTEM_CONFIG : DEFAULT_AD_SYSTEM_CONFIG
-  );
+  const [happeningTodayEvents, setHappeningTodayEvents] = useState<EventFeedItem[]>(() => {
+    if (!initialBundle?.events) return [];
+    const now = new Date();
+    const published = initialBundle.events.filter((evt: any) => evt.status === 'PUBLISHED' && !evt.deleted_at);
+    const normalized = normalizeEventDates(published);
+    return normalized.filter(
+      (evt) =>
+        evt.status !== 'CANCELLED' &&
+        evt.status !== 'DELETED' &&
+        !evt.deleted_at &&
+        isEventToday(evt.start_at, evt.end_at, now)
+    );
+  });
+  const [happeningTodayConfig, setHappeningTodayConfig] = useState<HappeningTodayConfig | null>(() => {
+    if (initialBundle?.settings && Array.isArray(initialBundle.settings)) {
+      const htSetting = initialBundle.settings.find((s: any) => s.key === "happening_today_config");
+      if (htSetting) {
+        try {
+          return typeof htSetting.value === 'string'
+            ? JSON.parse(htSetting.value)
+            : htSetting.value;
+        } catch {}
+      }
+    }
+    return null;
+  });
+  const [adSystemConfig, setAdSystemConfig] = useState<AdSystemConfig>(() => {
+    if (initialBundle?.settings && Array.isArray(initialBundle.settings)) {
+      const adSysSetting = initialBundle.settings.find((s: any) => s.key === "ad_system_config");
+      if (adSysSetting) {
+        try {
+          const parsed = typeof adSysSetting.value === 'string'
+            ? JSON.parse(adSysSetting.value)
+            : adSysSetting.value;
+          return {
+            ...DEFAULT_AD_SYSTEM_CONFIG,
+            ...parsed,
+            adsense: { ...DEFAULT_AD_SYSTEM_CONFIG.adsense, ...(parsed?.adsense || {}) },
+            placements: { ...DEFAULT_AD_SYSTEM_CONFIG.placements, ...(parsed?.placements || {}) },
+          };
+        } catch {}
+      }
+    }
+    return DEFAULT_AD_SYSTEM_CONFIG;
+  });
 
   // Configurable limits (with PRD defaults)
-  const [, setLimit] = useState(10);
+  const [, setLimit] = useState(9);
   const [showMoreIncrement, setShowMoreIncrement] = useState(5);
   const [adInterval, setAdInterval] = useState(6);
 
@@ -201,6 +263,9 @@ export default function App() {
   const [activeScheduleFilter, setActiveScheduleFilter] = useState(initialFilterState.activeScheduleFilter);
   const [selectedPricingType, setSelectedPricingType] = useState<'ALL' | 'FREE' | 'PAID'>(initialFilterState.selectedPricingType);
   const [isTrendingActive, setIsTrendingActive] = useState(initialFilterState.isTrendingActive);
+  const [isCategoriesActive, setIsCategoriesActive] = useState<boolean>(
+    initialFilterState.selectedCategory !== 'all' || Boolean(initialFilterState.selectedSubcategory)
+  );
   const previousFiltersBeforeTrendingRef = useRef<{
     selectedCategory: string;
     selectedSubcategory: string;
@@ -209,9 +274,9 @@ export default function App() {
   } | null>(null);
 
   // Pagination lists & loading
-  const [events, setEvents] = useState<EventFeedItem[]>(initialBundle?.events || []);
+  const [events, setEvents] = useState<EventFeedItem[]>(() => (initialBundle?.events ? initialBundle.events.slice(0, 9) : []));
   const [eventsLoading, setEventsLoading] = useState(!initialBundle?.events?.length);
-  const [visibleEventsCount, setVisibleEventsCount] = useState(10);
+  const [visibleEventsCount, setVisibleEventsCount] = useState(9);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [hasMoreEvents, setHasMoreEvents] = useState(true);
   const [appLoading, setAppLoading] = useState(!initialBundle);
@@ -520,8 +585,8 @@ export default function App() {
           const allSettings = bundle.settings;
           const limitSetting = allSettings.find((s: any) => s.key === "initial_event_limit");
           if (limitSetting) {
-            setLimit(Number(limitSetting.value) || 10);
-            setVisibleEventsCount(Number(limitSetting.value) || 10);
+            setLimit(Number(limitSetting.value) || 9);
+            setVisibleEventsCount(Number(limitSetting.value) || 9);
           }
           const incSetting = allSettings.find((s: any) => s.key === "show_more_increment");
           if (incSetting) setShowMoreIncrement(Number(incSetting.value) || 5);
@@ -602,9 +667,9 @@ export default function App() {
               isEventToday(evt.start_at, evt.end_at, now)
           );
           setHappeningTodayEvents(validLive);
-          setEvents(normalized);
+          setEvents(normalized.slice(0, 9));
           setEventsLoading(false);
-          setHasMoreEvents(normalized.length >= 10);
+          setHasMoreEvents(normalized.length >= 9);
         }
       } catch (err) {
         console.error("Failed to load homepage data:", err);
@@ -653,7 +718,7 @@ export default function App() {
           );
           const normalized = normalizeEventDates(validEvents);
           setEvents(normalized);
-          setHasMoreEvents(normalized.length >= 10);
+          setHasMoreEvents(normalized.length >= 9);
         }
       } catch (err) {
         console.error("Failed to fetch event feed:", err);
@@ -790,6 +855,47 @@ export default function App() {
       };
     }, [loadAllData, fetchUpcomingEvents, currentView]);
 
+    // Background SWR update subscriber: reflect fresh edge data into UI without reload
+    useEffect(() => {
+      const unsubscribe = persistentCache.subscribe((key, data: any) => {
+        if (key === HOMEPAGE_CACHE_KEY && data && typeof data === 'object') {
+          if (data.categories) setCategories(data.categories);
+          if (data.advertisements) setAds(data.advertisements);
+          if (data.featured) {
+            const resolved = data.featured
+              .map((fe: any) => fe.events || fe)
+              .filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at);
+            setFeaturedEvents(normalizeEventDates(resolved));
+          }
+          if (data.trending) {
+            const valid = data.trending.filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at);
+            setTrendingEvents(normalizeEventDates(valid));
+          }
+          if (data.carousel) setCarouselSlides(data.carousel);
+          if (data.events) {
+            const now = new Date();
+            const published = data.events.filter((evt: any) => evt.status === 'PUBLISHED' && !evt.deleted_at);
+            const normalized = normalizeEventDates(published);
+            const validLive = normalized.filter(
+              (evt) =>
+                evt.status !== 'CANCELLED' &&
+                evt.status !== 'DELETED' &&
+                !evt.deleted_at &&
+                isEventToday(evt.start_at, evt.end_at, now)
+            );
+            setHappeningTodayEvents(validLive);
+            setEvents((prev) => {
+              if (selectedCategory === 'all' && !selectedSubcategory && selectedPricingType === 'ALL' && activeScheduleFilter === 'all' && !selectedDate) {
+                return normalized.slice(0, Math.max(prev.length, 9));
+              }
+              return prev;
+            });
+          }
+        }
+      });
+      return unsubscribe;
+    }, [selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
+
     // Live Settings Synchronization & Realtime Supabase CDC across all devices/origins
     useEffect(() => {
       const applySettings = (settingsRows: any[]) => {
@@ -841,8 +947,6 @@ export default function App() {
         }
       };
 
-      fetchFreshSettings();
-
       const initRealtime = async () => {
         try {
           const sb = await lpuClient.getSupabaseClient();
@@ -864,9 +968,21 @@ export default function App() {
         }
       };
 
-      initRealtime();
+      // Realtime subscription is deferred to requestIdleCallback so it never competes
+      // with critical initial rendering, early edge API, or hero banner downloads.
+      const timer = setTimeout(() => {
+        const runInit = () => {
+          initRealtime();
+        };
+        if ('requestIdleCallback' in window) {
+          (window as any).requestIdleCallback(runInit);
+        } else {
+          runInit();
+        }
+      }, 1500);
 
       return () => {
+        clearTimeout(timer);
         if (activeSb && activeChannel && typeof activeSb.removeChannel === 'function') {
           try {
             activeSb.removeChannel(activeChannel);
@@ -935,22 +1051,7 @@ export default function App() {
     }, [fetchUpcomingEvents, currentView, selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
 
   const toggleTheme = useCallback(() => {
-    setTheme((prevTheme) => {
-      const newTheme = prevTheme === "dark" ? "light" : "dark";
-      try {
-        localStorage.setItem("theme", newTheme);
-      } catch {}
-      if (newTheme === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-      const metaTheme = document.querySelector('meta[name="theme-color"]');
-      if (metaTheme) {
-        metaTheme.setAttribute('content', newTheme === 'dark' ? '#1c1c1e' : '#f7f9fc');
-      }
-      return newTheme;
-    });
+    setTheme((prevTheme) => (prevTheme === "dark" ? "light" : "dark"));
   }, []);
 
   const handleSearch = useCallback((q: string) => {
@@ -959,6 +1060,7 @@ export default function App() {
       setSelectedEventId(null);
       setCurrentView('home');
       setIsTrendingActive(false);
+      setIsCategoriesActive(false);
       setActiveScheduleFilter("all");
       if (typeof window !== 'undefined') {
         window.scrollTo({ top: 0, behavior: "smooth" });
@@ -976,6 +1078,7 @@ export default function App() {
     setActiveScheduleFilter("all");
     setSelectedPricingType("ALL");
     setIsTrendingActive(false);
+    setIsCategoriesActive(false);
   }, []);
 
   const handleGoToDashboard = useCallback(() => {
@@ -989,15 +1092,12 @@ export default function App() {
     setActiveScheduleFilter("all");
     setSelectedPricingType("ALL");
     setIsTrendingActive(false);
+    setIsCategoriesActive(false);
 
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       document.documentElement.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       document.body.scrollTo({ top: 0, left: 0, behavior: "smooth" });
-      const topEl = document.getElementById("top");
-      if (topEl) {
-        topEl.scrollIntoView({ behavior: "smooth", block: "start" });
-      }
     }
   }, [handleNavigate]);
 
@@ -1007,6 +1107,7 @@ export default function App() {
     setCurrentView('home');
     setSearchQuery("");
     setIsTrendingActive(false);
+    setIsCategoriesActive(true);
 
     if (typeof window !== 'undefined' && window.location.pathname !== '/') {
       window.history.pushState({}, '', '/');
@@ -1016,7 +1117,8 @@ export default function App() {
     setTimeout(() => {
       const el = document.getElementById("categories");
       if (el) {
-        el.scrollIntoView({ behavior: "smooth", block: "start" });
+        const topOffset = el.getBoundingClientRect().top + window.scrollY - 85;
+        window.scrollTo({ top: Math.max(0, topOffset), behavior: "smooth" });
       }
     }, 60);
   }, []);
@@ -1035,15 +1137,19 @@ export default function App() {
     }
     setSearchQuery("");
     setIsTrendingActive(true);
+    setIsCategoriesActive(false);
     setSelectedCategory("all");
     setSelectedSubcategory("");
     setSelectedDate("");
     setActiveScheduleFilter("all");
     setSelectedPricingType("ALL");
-    const el = document.getElementById("events");
-    if (el) {
-      el.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    setTimeout(() => {
+      const el = document.getElementById("events");
+      if (el) {
+        const topOffset = el.getBoundingClientRect().top + window.scrollY - 85;
+        window.scrollTo({ top: Math.max(0, topOffset), behavior: "smooth" });
+      }
+    }, 60);
   }, [isTrendingActive, selectedCategory, selectedSubcategory, selectedDate, activeScheduleFilter]);
 
   const handleSelectPricingType = useCallback((type: 'ALL' | 'FREE' | 'PAID') => {
@@ -1111,36 +1217,16 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-[#faf8f5] dark:bg-transparent text-gray-900 dark:text-gray-100 transition-colors duration-300 relative selection:bg-primary/20 selection:text-primary dark:selection:bg-white/20 dark:selection:text-white overflow-x-hidden font-sans">
+    <div className="min-h-screen bg-transparent text-gray-900 dark:text-gray-100 transition-colors duration-300 relative selection:bg-primary/20 selection:text-primary dark:selection:bg-white/20 dark:selection:text-white overflow-x-clip font-sans">
       <SplashScreen />
 
-      {/* High-Performance Fixed Ambient Light & Orange Glare Canvas (Light mode only) */}
+      {/* Global Fixed Campus Background Layer (Pure and Unaltered in Light Mode) */}
       <div 
-        style={{ contain: 'strict' }}
-        className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none hidden sm:block dark:hidden"
+        aria-hidden="true" 
+        className="fixed inset-0 pointer-events-none z-0 overflow-hidden"
       >
-        {/* 1. Golden Amber Sun Burst (Top Center-Right) */}
-        <div className="animate-blob-1 absolute -top-28 right-1/4 w-[500px] sm:w-[680px] h-[500px] sm:h-[680px] rounded-full bg-gradient-to-br from-[#ff6b00]/45 via-[#ff9500]/25 to-transparent blur-[70px] sm:blur-[110px]" />
-
-        {/* 2. Cosmic Indigo Rim Light (Top Left) */}
-        <div className="animate-blob-2 absolute -top-20 -left-20 w-[420px] sm:w-[560px] h-[420px] sm:h-[560px] rounded-full bg-gradient-to-br from-[#ff3d00]/30 via-[#ff6b00]/18 to-transparent blur-[60px] sm:blur-[95px]" />
-
-        {/* 3. Violet Cyan Horizon Sky (Mid-Left) */}
-        <div className="animate-blob-3 absolute top-[32%] -left-24 -translate-y-1/2 w-[460px] sm:w-[600px] h-[460px] sm:h-[600px] rounded-full bg-gradient-to-tr from-[#3b82f6]/28 via-[#6366f1]/20 to-transparent blur-[65px] sm:blur-[90px]" />
-
-        {/* 4. Golden Ember Sun Ribbon (Mid-Right) */}
-        <div className="animate-blob-1 absolute top-[56%] -right-20 -translate-y-1/2 w-[440px] sm:w-[580px] h-[440px] sm:h-[580px] rounded-full bg-gradient-to-l from-[#ffb800]/35 via-[#ff7700]/22 to-transparent blur-[60px] sm:blur-[85px]" />
-
-        {/* 5. Horizon Soft Warm Glow (Bottom) */}
-        <div className="animate-blob-2 absolute -bottom-24 left-1/3 -translate-x-1/2 w-[650px] sm:w-[850px] h-[420px] sm:h-[500px] rounded-full bg-gradient-to-t from-[#ff6b00]/38 via-[#ff9500]/20 to-transparent blur-[65px] sm:blur-[95px]" />
-      </div>
-
-      {/* Mobile Optical Depth Canvas (Light mode only) */}
-      <div 
-        style={{ contain: 'strict' }}
-        className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none sm:hidden dark:hidden"
-      >
-        <div className="absolute inset-0 bg-[radial-gradient(ellipse_100%_40%_at_50%_-5%,rgba(255,107,0,0.18),transparent_70%),radial-gradient(circle_300px_at_90%_25%,rgba(255,107,0,0.12),transparent_60%),radial-gradient(circle_300px_at_10%_45%,rgba(59,130,246,0.08),transparent_60%),radial-gradient(circle_280px_at_90%_65%,rgba(245,158,11,0.09),transparent_60%),radial-gradient(ellipse_100%_35%_at_50%_105%,rgba(255,107,0,0.14),transparent_70%)]" />
+        <div className="absolute inset-0 campus-bg-image" />
+        <div className="absolute inset-0 hidden dark:block dark:bg-[#0e0e12]/60 pointer-events-none" />
       </div>
 
       {/* Dark Mode Premium Ambient Canvas — Obsidian Space with Luminous Refractive Depth */}
@@ -1177,14 +1263,22 @@ export default function App() {
             <div className="flex items-center gap-2 max-w-[92%] mx-auto overflow-hidden">
               <span className="shrink-0 text-sm">📢</span>
               <span className="truncate">{campusAnnouncement.message}</span>
-              {campusAnnouncement.ctaLabel && campusAnnouncement.ctaUrl && (
-                <a
-                  href={campusAnnouncement.ctaUrl}
-                  className="shrink-0 underline font-black ml-2 hover:opacity-80"
-                >
-                  {campusAnnouncement.ctaLabel} →
-                </a>
-              )}
+              {campusAnnouncement.ctaLabel && campusAnnouncement.ctaUrl && (() => {
+                const url = campusAnnouncement.ctaUrl.trim();
+                const isExternal = /^https?:\/\//i.test(url);
+                const isSafeInternal = url.startsWith('/') && !url.startsWith('//');
+                if (!isExternal && !isSafeInternal) return null;
+                return (
+                  <a
+                    href={url}
+                    target={isExternal ? "_blank" : undefined}
+                    rel={isExternal ? "noopener noreferrer" : undefined}
+                    className="shrink-0 underline font-black ml-2 hover:opacity-80"
+                  >
+                    {campusAnnouncement.ctaLabel} →
+                  </a>
+                );
+              })()}
             </div>
             <button
               type="button"
@@ -1203,6 +1297,7 @@ export default function App() {
           theme={theme}
           onToggleTheme={toggleTheme}
           isTrendingActive={isTrendingActive}
+          isCategoriesActive={isCategoriesActive}
           onSelectTrending={handleSelectTrending}
           onSelectEvent={handleSelectEvent}
           onGoHome={handleGoToDashboard}
@@ -1315,13 +1410,15 @@ export default function App() {
                   ) : (
                     <>
                       {/* Happening Today Slider */}
-                      <HappeningTodaySlider
-                        events={happeningTodayEvents}
-                        ads={ads}
-                        config={happeningTodayConfig}
-                        adSystemConfig={adSystemConfig}
-                        onSelectEvent={handleSelectEvent}
-                      />
+                      <Suspense fallback={null}>
+                        <HappeningTodaySlider
+                          events={happeningTodayEvents}
+                          ads={ads}
+                          config={happeningTodayConfig}
+                          adSystemConfig={adSystemConfig}
+                          onSelectEvent={handleSelectEvent}
+                        />
+                      </Suspense>
 
                   {/* Ad Slot 2: Below Happening Today */}
                   {adSystemConfig?.global_enabled &&
@@ -1346,44 +1443,50 @@ export default function App() {
                   )}
 
                   {/* Categories & Filter Bar */}
-                  <div id="categories">
-                    <CategoryFilter
-                      categories={categories}
-                      selectedCategory={selectedCategory}
-                      selectedSubcategory={selectedSubcategory}
-                      onSelectCategory={(catId) => {
-                        previousFiltersBeforeTrendingRef.current = null;
-                        setIsTrendingActive(false);
-                        trackEvent('category_filter_selected', { category_id: catId });
-                        setSelectedCategory(catId);
-                      }}
-                      onSelectSubcategory={(subId) => {
-                        previousFiltersBeforeTrendingRef.current = null;
-                        setIsTrendingActive(false);
-                        trackEvent('subcategory_filter_selected', { subcategory_id: subId });
-                        setSelectedSubcategory(subId);
-                      }}
-                      selectedDate={selectedDate}
-                      onSelectDate={(date) => {
-                        previousFiltersBeforeTrendingRef.current = null;
-                        setIsTrendingActive(false);
-                        if (date) {
-                          trackEvent('date_filter_selected', { date });
-                        }
-                        setSelectedDate(date);
-                      }}
-                      activeScheduleFilter={activeScheduleFilter}
-                      onSelectScheduleFilter={(sched) => {
-                        previousFiltersBeforeTrendingRef.current = null;
-                        setIsTrendingActive(false);
-                        trackEvent('schedule_filter_selected', { schedule: sched });
-                        setActiveScheduleFilter(sched);
-                      }}
-                      selectedPricingType={selectedPricingType}
-                      onSelectPricingType={handleSelectPricingType}
-                      isTrendingActive={isTrendingActive}
-                      onSelectTrending={handleSelectTrending}
-                    />
+                  <div id="categories" className="scroll-mt-24">
+                    <Suspense fallback={
+                      <div className="w-full h-14 rounded-2xl glass-panel animate-pulse" />
+                    }>
+                      <CategoryFilter
+                        categories={categories}
+                        selectedCategory={selectedCategory}
+                        selectedSubcategory={selectedSubcategory}
+                        onSelectCategory={(catId) => {
+                          previousFiltersBeforeTrendingRef.current = null;
+                          setIsTrendingActive(false);
+                          setIsCategoriesActive(true);
+                          trackEvent('category_filter_selected', { category_id: catId });
+                          setSelectedCategory(catId);
+                        }}
+                        onSelectSubcategory={(subId) => {
+                          previousFiltersBeforeTrendingRef.current = null;
+                          setIsTrendingActive(false);
+                          setIsCategoriesActive(true);
+                          trackEvent('subcategory_filter_selected', { subcategory_id: subId });
+                          setSelectedSubcategory(subId);
+                        }}
+                        selectedDate={selectedDate}
+                        onSelectDate={(date) => {
+                          previousFiltersBeforeTrendingRef.current = null;
+                          setIsTrendingActive(false);
+                          if (date) {
+                            trackEvent('date_filter_selected', { date });
+                          }
+                          setSelectedDate(date);
+                        }}
+                        activeScheduleFilter={activeScheduleFilter}
+                        onSelectScheduleFilter={(sched) => {
+                          previousFiltersBeforeTrendingRef.current = null;
+                          setIsTrendingActive(false);
+                          trackEvent('schedule_filter_selected', { schedule: sched });
+                          setActiveScheduleFilter(sched);
+                        }}
+                        selectedPricingType={selectedPricingType}
+                        onSelectPricingType={handleSelectPricingType}
+                        isTrendingActive={isTrendingActive}
+                        onSelectTrending={handleSelectTrending}
+                      />
+                    </Suspense>
                   </div>
                 </>
               )}
@@ -1391,7 +1494,7 @@ export default function App() {
           )}
 
               {/* Event hub upcoming grid / Search Results Grid with Off-Screen Deferral */}
-              <div id="events" className="deferred-feed-section">
+              <div id="events" className="deferred-feed-section scroll-mt-24">
                 <EventGrid
                   events={displayedEvents}
                   ads={ads}
@@ -1409,31 +1512,31 @@ export default function App() {
                   }
                   searchQuery={searchQuery.trim()}
                 />
-              </div>
 
-              {/* Show More upcoming events */}
-              {!eventsLoading && (
-                isSearching
-                  ? filteredEvents.length > visibleEventsCount
-                  : hasMoreEvents
-              ) && (
-                <div className="flex justify-center -mt-4 sm:-mt-6">
-                  <button
-                    type="button"
-                    disabled={isLoadingMore}
-                    onClick={() => {
-                      if (isSearching) {
-                        setVisibleEventsCount(prev => prev + showMoreIncrement);
-                      } else {
-                        handleLoadMoreEvents();
-                      }
-                    }}
-                    className="glass-pill px-7 sm:px-9 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-heading font-black text-xs sm:text-sm text-gray-900 dark:text-gray-100 hover:text-primary hover:border-primary/50 cursor-pointer shadow-lg hover:scale-103 active:scale-95 transition-all touch-target border border-white/95 dark:border-white/10"
-                  >
-                    {isLoadingMore ? "Loading..." : "View More Events"}
-                  </button>
-                </div>
-              )}
+                {/* Show More upcoming events */}
+                {!eventsLoading && (
+                  isSearching
+                    ? filteredEvents.length > visibleEventsCount
+                    : hasMoreEvents
+                ) && (
+                  <div className="flex justify-center mt-6 sm:mt-8">
+                    <button
+                      type="button"
+                      disabled={isLoadingMore}
+                      onClick={() => {
+                        if (isSearching) {
+                          setVisibleEventsCount(prev => prev + showMoreIncrement);
+                        } else {
+                          handleLoadMoreEvents();
+                        }
+                      }}
+                      className="glass-pill px-7 sm:px-9 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-heading font-black text-xs sm:text-sm text-gray-900 dark:text-gray-100 hover:text-primary hover:border-primary/50 cursor-pointer shadow-lg hover:scale-103 active:scale-95 transition-all touch-target border border-white/95 dark:border-white/10"
+                    >
+                      {isLoadingMore ? "Loading..." : "View More Events"}
+                    </button>
+                  </div>
+                )}
+              </div>
             </>
           )}
           </Suspense>

@@ -79,10 +79,10 @@ export function getResponsiveImageUrl(url: string, targetWidth?: number): string
  * Instant Low-Quality Image Placeholder (LQIP) Generator (0ms display, ~3KB payload)
  */
 export function getLowResPlaceholderUrl(url: string): string {
-  if (!url || typeof url !== 'string') return url;
+  if (!url || typeof url !== 'string') return '';
 
   if (url.startsWith('/defaults/')) {
-    return url;
+    return '';
   }
 
   if (url.includes('images.unsplash.com')) {
@@ -90,7 +90,7 @@ export function getLowResPlaceholderUrl(url: string): string {
     return `${cleanUrl}?auto=format&fit=crop&w=160&q=35&blur=15`;
   }
 
-  return url;
+  return '';
 }
 
 /**

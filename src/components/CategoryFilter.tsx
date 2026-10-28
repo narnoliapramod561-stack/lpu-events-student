@@ -1,5 +1,4 @@
 import React, { useRef, useState, useMemo } from "react";
-import { AnimatePresence } from "framer-motion";
 import { 
   CalendarDays, 
   LayoutGrid, 
@@ -185,16 +184,16 @@ export const CategoryFilterComponent = ({
   };
 
   return (
-    <div id="categories" className="w-full flex flex-col gap-3.5 sm:gap-8">
+    <div className="w-full flex flex-col gap-3.5 sm:gap-8">
       
       {/* ======================================================== */}
       {/* 📱 MOBILE DISCOVERY SUITE (< sm) — ULTRA-PREMIUM UNIFIED  */}
       {/* ======================================================== */}
-      <div className="relative sm:hidden rounded-[28px] overflow-hidden border border-slate-200/90 dark:border-white/[0.12] bg-white/95 dark:bg-[#2c2c2e]/95 backdrop-blur-3xl shadow-[0_18px_50px_rgba(0,0,0,0.06),inset_0_1px_1px_rgba(255,255,255,0.9)] dark:shadow-[0_24px_65px_rgba(0,0,0,0.7),inset_0_1px_1px_rgba(255,255,255,0.12)]">
+      <div className="relative sm:hidden rounded-[28px] overflow-hidden glass-mobile-filter">
         
-        {/* Atmospheric Ambient Glow Mesh — Minimalist Monochrome */}
-        <div className="absolute top-0 right-0 w-80 h-44 bg-gradient-to-bl from-slate-400/[0.06] dark:from-white/[0.04] to-transparent rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-80 h-44 bg-gradient-to-tr from-slate-300/[0.06] dark:from-white/[0.03] to-transparent rounded-full blur-3xl pointer-events-none" />
+        {/* Optical Ambient Caustics Mesh */}
+        <div className="absolute -top-16 -right-16 w-60 h-60 bg-gradient-to-bl from-orange-500/18 via-amber-400/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-60 h-60 bg-gradient-to-tr from-sky-400/12 via-indigo-500/08 to-transparent rounded-full blur-3xl pointer-events-none" />
 
         <div className="relative flex flex-col">
           
@@ -202,7 +201,7 @@ export const CategoryFilterComponent = ({
           <div className="p-3.5 min-[400px]:p-4 flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-white/[0.08] border border-slate-200/80 dark:border-white/[0.12] flex items-center justify-center text-slate-800 dark:text-white shadow-2xs">
+                <div className="w-6 h-6 rounded-lg bg-white/70 dark:bg-white/10 border border-white/90 dark:border-white/15 flex items-center justify-center text-slate-800 dark:text-white shadow-2xs backdrop-blur-md">
                   <Clock className="h-3.5 w-3.5" />
                 </div>
                 <span className="text-[11px] min-[400px]:text-xs font-black text-slate-900 dark:text-white font-heading tracking-widest uppercase">
@@ -217,7 +216,7 @@ export const CategoryFilterComponent = ({
                     onSelectScheduleFilter("all");
                     onSelectDate("");
                   }}
-                  className="text-[10.5px] font-heading font-black text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/[0.08] border border-slate-200/80 dark:border-white/[0.12] active:scale-95 transition-transform"
+                  className="text-[10.5px] font-heading font-black text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/70 dark:bg-white/[0.08] border border-white/90 dark:border-white/[0.12] active:scale-95 transition-transform backdrop-blur-md"
                 >
                   <X className="h-3 w-3" />
                   <span>Clear</span>
@@ -243,10 +242,10 @@ export const CategoryFilterComponent = ({
                       onSelectDate("");
                       onSelectScheduleFilter(item.id);
                     }}
-                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-transform duration-150 ${
+                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-150 ${
                       isActive
-                        ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
-                        : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
+                        ? "glass-pill-orange text-white shadow-md"
+                        : "glass-pill-white text-slate-700 dark:text-slate-300 shadow-2xs"
                     }`}
                   >
                     {item.icon === "live" && (
@@ -265,10 +264,10 @@ export const CategoryFilterComponent = ({
                 <button
                   type="button"
                   onClick={() => openDatePicker(mobileDateInputRef)}
-                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap active:scale-[0.96] transition-transform duration-150 cursor-pointer ${
+                  className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-[11.5px] font-heading font-black whitespace-nowrap active:scale-[0.96] transition-all duration-150 cursor-pointer ${
                     selectedDate
-                      ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
-                      : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
+                      ? "glass-pill-orange text-white shadow-md"
+                      : "glass-pill-white text-slate-700 dark:text-slate-300 shadow-2xs"
                   }`}
                 >
                   <CalendarDays className={`h-3.5 w-3.5 ${selectedDate ? "text-white dark:text-white" : "text-slate-500 dark:text-slate-400"}`} />
@@ -300,14 +299,14 @@ export const CategoryFilterComponent = ({
             </div>
           </div>
 
-          {/* Luxury Hairline Divider */}
-          <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200/80 dark:via-white/[0.08] to-transparent" />
+          {/* Luxury Frosted Glass Hairline Divider */}
+          <div className="h-px w-full bg-gradient-to-r from-transparent via-white/80 dark:via-white/[0.12] to-transparent" />
 
           {/* ─── TIER 2: EVENT TYPE ─── */}
           <div className="p-3.5 min-[400px]:p-4 flex flex-col gap-2.5">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-white/[0.08] border border-slate-200/80 dark:border-white/[0.12] flex items-center justify-center text-slate-800 dark:text-white shadow-2xs">
+                <div className="w-6 h-6 rounded-lg bg-white/70 dark:bg-white/10 border border-white/90 dark:border-white/15 flex items-center justify-center text-slate-800 dark:text-white shadow-2xs backdrop-blur-md">
                   <Ticket className="h-3.5 w-3.5" />
                 </div>
                 <span className="text-[11px] min-[400px]:text-xs font-black text-slate-900 dark:text-white font-heading tracking-widest uppercase">
@@ -321,7 +320,7 @@ export const CategoryFilterComponent = ({
                   onClick={() => {
                     if (onSelectPricingType) onSelectPricingType("ALL");
                   }}
-                  className="text-[10.5px] font-heading font-black text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 px-2.5 py-1 rounded-full bg-slate-100 dark:bg-white/[0.08] border border-slate-200/80 dark:border-white/[0.12] active:scale-95 transition-transform"
+                  className="text-[10.5px] font-heading font-black text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 px-2.5 py-1 rounded-full bg-white/70 dark:bg-white/[0.08] border border-white/90 dark:border-white/[0.12] active:scale-95 transition-transform backdrop-blur-md"
                 >
                   <X className="h-3 w-3" />
                   <span>Clear</span>
@@ -351,10 +350,10 @@ export const CategoryFilterComponent = ({
                         if (onSelectPricingType) onSelectPricingType(item.id as 'ALL' | 'FREE' | 'PAID');
                       }
                     }}
-                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-heading font-semibold tracking-tight whitespace-nowrap shrink-0 active:scale-[0.96] transition-transform duration-150 ${
+                    className={`relative flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-heading font-semibold tracking-tight whitespace-nowrap shrink-0 active:scale-[0.96] transition-all duration-150 ${
                       isSelected
-                        ? "bg-slate-950 dark:bg-white/16 text-white dark:text-white shadow-[0_4px_14px_rgba(15,23,42,0.18),inset_0_1px_0_rgba(255,255,255,0.2)] dark:shadow-[0_2px_10px_rgba(0,0,0,0.35)] ring-1 ring-black/10 dark:ring-white/20 border border-transparent dark:border-white/20"
-                        : "bg-slate-100/90 dark:bg-white/[0.05] text-slate-600 dark:text-slate-300 border border-slate-200/80 dark:border-white/[0.09] hover:bg-slate-200/80 dark:hover:bg-white/[0.1] hover:text-slate-950 dark:hover:text-white shadow-2xs"
+                        ? "glass-pill-orange text-white shadow-md"
+                        : "glass-pill-white text-slate-700 dark:text-slate-300 shadow-2xs"
                     }`}
                   >
                     {item.emoji && <span>{item.emoji}</span>}
@@ -365,14 +364,14 @@ export const CategoryFilterComponent = ({
             </div>
           </div>
 
-          {/* Luxury Hairline Divider */}
-          <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-200/80 dark:via-white/[0.08] to-transparent" />
+          {/* Luxury Frosted Glass Hairline Divider */}
+          <div className="h-px w-full bg-gradient-to-r from-transparent via-white/80 dark:via-white/[0.12] to-transparent" />
 
           {/* ─── TIER 3: CATEGORIES ─── */}
           <div className="p-3.5 min-[400px]:p-4 flex flex-col gap-2.5">
             <div className="flex items-center justify-between gap-2">
               <div className="flex items-center gap-2 shrink-0">
-                <div className="w-6 h-6 rounded-lg bg-slate-100 dark:bg-white/[0.08] border border-slate-200/80 dark:border-white/[0.12] flex items-center justify-center text-slate-800 dark:text-white shadow-2xs">
+                <div className="w-6 h-6 rounded-lg bg-white/70 dark:bg-white/10 border border-white/90 dark:border-white/15 flex items-center justify-center text-slate-800 dark:text-white shadow-2xs backdrop-blur-md">
                   <Sparkles className="h-3.5 w-3.5" />
                 </div>
                 <span className="text-[11px] min-[400px]:text-xs font-black text-slate-900 dark:text-white font-heading tracking-widest uppercase">
@@ -388,7 +387,7 @@ export const CategoryFilterComponent = ({
                   value={categorySearch}
                   onChange={(e) => setCategorySearch(e.target.value)}
                   placeholder="Search categories..."
-                  className="w-full pl-8.5 pr-7 py-1.5 rounded-full bg-slate-100/90 dark:bg-white/[0.06] border border-slate-200/80 dark:border-white/[0.1] text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-slate-400 dark:focus:border-white/40 focus:ring-2 focus:ring-slate-400/20 dark:focus:ring-white/15 transition-all shadow-inner"
+                  className="w-full pl-8.5 pr-7 py-1.5 rounded-full bg-white/60 dark:bg-white/[0.08] border border-white/80 dark:border-white/15 text-xs font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:border-orange-500/50 dark:focus:border-white/40 focus:ring-2 focus:ring-orange-500/20 dark:focus:ring-white/15 transition-all shadow-inner backdrop-blur-md"
                 />
                 {categorySearch && (
                   <button
@@ -564,9 +563,17 @@ export const CategoryFilterComponent = ({
       <div className="hidden sm:flex sm:flex-col sm:gap-8 max-w-full overflow-hidden">
         {/* 1. Schedule Quick Filters */}
         <div className="w-full flex flex-col gap-3.5">
-          <div className="flex items-center justify-between">
-            <h2 className="font-heading text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-              Timeline & Schedule
+          <div className="relative flex items-center justify-between select-none">
+            <h2 className="font-heading font-black text-2xl sm:text-3xl tracking-tight leading-tight flex items-center gap-2">
+              <span className="glass-text-crystal">
+                Timeline
+              </span>
+              <span className="glass-text-amber">
+                &amp;
+              </span>
+              <span className="glass-text-amber">
+                Schedule
+              </span>
             </h2>
           </div>
 
@@ -589,13 +596,13 @@ export const CategoryFilterComponent = ({
                     onSelectDate("");
                     onSelectScheduleFilter(sched.id);
                   }}
-                  className={`flex items-center gap-2 px-5.5 py-3.5 rounded-2xl font-heading font-black text-sm cursor-pointer outline-none active:scale-[0.97] transition-transform duration-150 whitespace-nowrap touch-target shrink-0 ${
+                  className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-heading font-black text-sm cursor-pointer outline-none active:scale-[0.97] transition-all duration-200 whitespace-nowrap touch-target shrink-0 ${
                     isSelected
-                      ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white border border-white/50 shadow-[0_6px_20px_rgba(255,107,0,0.45)]"
-                      : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary hover:border-primary/50 shadow-sm"
+                      ? "glass-pill-orange text-white shadow-md"
+                      : "glass-pill-white text-[#1e293b] dark:text-gray-200 hover:text-primary hover:border-primary/50 shadow-xs"
                   }`}
                 >
-                  <SchedIcon className="h-4 w-4" />
+                  <SchedIcon className="h-4 w-4 stroke-[2.2]" />
                   <span>{sched.name}</span>
                 </button>
               );
@@ -605,13 +612,13 @@ export const CategoryFilterComponent = ({
               <button
                 type="button"
                 onClick={() => openDatePicker(dateInputRef)}
-                className={`flex items-center gap-2 px-5.5 py-3.5 rounded-2xl font-heading font-black text-sm cursor-pointer outline-none active:scale-[0.97] transition-transform duration-150 whitespace-nowrap touch-target ${
+                className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-heading font-black text-sm cursor-pointer outline-none active:scale-[0.97] transition-all duration-200 whitespace-nowrap touch-target ${
                   selectedDate
-                    ? "bg-primary/20 text-primary border border-primary/50 shadow-sm"
-                    : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary hover:border-primary/50 shadow-sm"
+                    ? "glass-pill-orange text-white shadow-md"
+                    : "glass-pill-white text-[#1e293b] dark:text-gray-200 hover:text-primary hover:border-primary/50 shadow-xs"
                 }`}
               >
-                <CalendarDays className="h-4 w-4" />
+                <CalendarDays className="h-4 w-4 stroke-[2.2]" />
                 <span>{selectedDate ? formatDisplayDate(selectedDate) : "BY DATE"}</span>
                 {selectedDate && (
                   <span
@@ -619,7 +626,7 @@ export const CategoryFilterComponent = ({
                     tabIndex={0}
                     onClick={handleClearDate}
                     onKeyDown={(e) => { if (e.key === 'Enter') handleClearDate(e as any); }}
-                    className="ml-1 hover:text-on-surface text-xs leading-none bg-primary/20 hover:bg-primary/35 rounded-full p-1 transition-colors cursor-pointer"
+                    className="ml-1 hover:text-on-surface text-xs leading-none bg-white/25 hover:bg-white/40 rounded-full p-1 transition-colors cursor-pointer"
                     title="Clear date filter"
                   >
                     <X className="h-3 w-3" />
@@ -642,9 +649,14 @@ export const CategoryFilterComponent = ({
 
         {/* 2. Event Type Filters */}
         <div className="w-full flex flex-col gap-3.5">
-          <div className="flex items-center justify-between">
-            <h2 className="font-heading text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-              Event Type
+          <div className="relative flex items-center justify-between select-none">
+            <h2 className="font-heading font-black text-2xl sm:text-3xl tracking-tight leading-tight flex items-center gap-2">
+              <span className="glass-text-crystal">
+                Event
+              </span>
+              <span className="glass-text-amber">
+                Type
+              </span>
             </h2>
           </div>
 
@@ -671,13 +683,13 @@ export const CategoryFilterComponent = ({
                       if (onSelectPricingType) onSelectPricingType(typeItem.id as "ALL" | "FREE" | "PAID");
                     }
                   }}
-                  className={`flex items-center gap-2 px-5.5 py-3.5 rounded-2xl font-heading font-black text-sm cursor-pointer outline-none active:scale-[0.97] transition-transform duration-150 whitespace-nowrap touch-target shrink-0 ${
+                  className={`flex items-center gap-2 px-5 py-3 rounded-2xl font-heading font-black text-sm cursor-pointer outline-none active:scale-[0.97] transition-all duration-200 whitespace-nowrap touch-target shrink-0 ${
                     isSelected
-                      ? "bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white border border-white/50 shadow-[0_6px_20px_rgba(255,107,0,0.45)]"
-                      : "glass-pill text-gray-800 dark:text-gray-200 hover:text-primary hover:border-primary/50 shadow-sm"
+                      ? "glass-pill-orange text-white shadow-md"
+                      : "glass-pill-white text-[#1e293b] dark:text-gray-200 hover:text-primary hover:border-primary/50 shadow-xs"
                   }`}
                 >
-                  <ItemIcon className={`h-4 w-4 ${typeItem.id === "TRENDING" ? "text-orange-500 dark:text-orange-400" : ""}`} />
+                  <ItemIcon className={`h-4 w-4 stroke-[2.2] ${typeItem.id === "TRENDING" && !isSelected ? "text-orange-500 dark:text-orange-400" : ""}`} />
                   <span>{typeItem.name}</span>
                 </button>
               );
@@ -688,12 +700,18 @@ export const CategoryFilterComponent = ({
         {/* 3. Primary Event Categories Bar & Search */}
         <div className="w-full flex flex-col gap-3.5">
           <div className="flex items-center justify-between lg:justify-start gap-4 lg:gap-6 flex-wrap">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h2 className="font-heading text-2xl font-black text-gray-900 dark:text-white flex items-center gap-2">
-                Event Categories
+            <div className="relative flex items-center gap-2.5 flex-wrap select-none">
+              <h2 className="font-heading font-black text-2xl sm:text-3xl tracking-tight leading-tight flex items-center gap-2">
+                <span className="glass-text-crystal">
+                  Event
+                </span>
+                <span className="glass-text-amber">
+                  Categories
+                </span>
               </h2>
+
               {cleanQuery && (
-                <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-primary/15 text-primary border border-primary/25 font-heading">
+                <span className="text-[11px] font-bold px-3 py-1 rounded-full bg-orange-500/15 text-orange-800 dark:text-orange-300 border border-orange-500/30 font-heading backdrop-blur-md shadow-2xs">
                   {filteredCategories.length} {filteredCategories.length === 1 ? "category" : "categories"} found
                 </span>
               )}
@@ -704,7 +722,7 @@ export const CategoryFilterComponent = ({
                     onSelectCategory("all");
                     onSelectSubcategory("");
                   }}
-                  className="text-xs font-bold text-primary hover:text-primary-dim transition-colors cursor-pointer flex items-center gap-1 px-2.5 py-1 rounded-full bg-primary/10 hover:bg-primary/20 border border-primary/25 outline-none font-heading touch-target"
+                  className="text-xs font-bold text-orange-700 dark:text-orange-300 hover:text-orange-900 dark:hover:text-white transition-colors cursor-pointer flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-orange-500/15 hover:bg-orange-500/25 border border-orange-500/30 outline-none font-heading touch-target backdrop-blur-md"
                 >
                   <span>Reset</span>
                   <X className="h-3 w-3" />
@@ -715,19 +733,19 @@ export const CategoryFilterComponent = ({
             {/* Category & Subcategory In-Memory Search Input */}
             <div className="relative w-72 md:w-80">
               <div className="relative flex items-center">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-500 dark:text-gray-400 pointer-events-none" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-500 dark:text-slate-400 pointer-events-none" />
                 <input
                   type="text"
                   value={categorySearch}
                   onChange={(e) => setCategorySearch(e.target.value)}
                   placeholder="Search categories & subcategories..."
-                  className="w-full pl-9 pr-9 py-2.5 rounded-2xl bg-white dark:bg-[#3a3a3c] text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:outline-none focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:border-slate-900 dark:focus:border-white shadow-xs transition-all"
+                  className="w-full pl-9 pr-9 py-2.5 rounded-2xl glass-pill-white text-sm font-bold text-slate-950 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 shadow-xs transition-all"
                 />
                 {categorySearch && (
                   <button
                     type="button"
                     onClick={() => setCategorySearch("")}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 p-1 rounded-full text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
                     title="Clear search"
                   >
                     <X className="h-3.5 w-3.5" />
@@ -739,7 +757,7 @@ export const CategoryFilterComponent = ({
 
           {/* Direct Matching Subcategory Instant Jump Bar */}
           {cleanQuery && directMatchingSubcategories.length > 0 && (
-            <div className="flex flex-col gap-2 p-3.5 rounded-2xl bg-white dark:bg-[#2c2c2e] border border-slate-200/90 dark:border-white/15 shadow-sm">
+            <div className="flex flex-col gap-2 p-3.5 rounded-2xl glass-title-island shadow-sm">
               <div className="flex items-center justify-between">
                 <span className="text-[11px] font-extrabold uppercase tracking-wider text-slate-900 dark:text-white flex items-center gap-1.5 font-heading">
                   <Sparkles className="h-3.5 w-3.5" />
@@ -847,8 +865,7 @@ export const CategoryFilterComponent = ({
         </div>
 
         {/* 3. Subcategories Bar */}
-        <AnimatePresence>
-          {selectedCategory !== "all" && activeCategoryData && subcategories.length > 0 && (
+        {selectedCategory !== "all" && activeCategoryData && subcategories.length > 0 && (
             <div className="w-full glass-panel rounded-3xl p-5 border border-white/95 dark:border-white/10 shadow-xl flex flex-col gap-3">
               <div className="flex items-center justify-between">
                 <h3 className="font-heading text-lg font-black text-gray-900 dark:text-white flex items-center gap-2">
@@ -925,13 +942,12 @@ export const CategoryFilterComponent = ({
               )}
             </div>
           )}
-        </AnimatePresence>
       </div>
 
     </div>
   );
 };
 
-export const CategoryFilter = CategoryFilterComponent;
-export default CategoryFilterComponent;
+export const CategoryFilter = React.memo(CategoryFilterComponent);
+export default CategoryFilter;
 

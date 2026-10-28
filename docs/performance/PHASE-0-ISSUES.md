@@ -188,6 +188,6 @@
 * **Evidence:** `App.tsx:898`: `list = searchEventsClientSide(allAvailableEvents, searchQuery.trim(), 50);`.
 * **How Verified:** Call graph tracing of `Navbar` search callbacks through `App.tsx`.
 * **Performance Impact:** Wasted server RPC code and incomplete search coverage for users searching beyond initial bundle.
-* **Correctness Impact:** High; users cannot find published events that weren't in the initial 10-event bundle.
+* **Correctness Impact:** High; users cannot find published events that weren't in the initial 9-event bundle.
 * **Confidence:** **100% (High)**
 * **Recommended Phase:** **Phase 3**

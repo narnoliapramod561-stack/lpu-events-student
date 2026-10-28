@@ -48,7 +48,7 @@ const STUDENT_SECURITY_HEADERS = {
   'Cross-Origin-Resource-Policy': 'same-origin',
   'X-Permitted-Cross-Domain-Policies': 'none',
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://www.googletagmanager.com https://*.googletagmanager.com https://*.google-analytics.com https://*.adtrafficquality.google https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://*.google.com https://www.clarity.ms https://scripts.clarity.ms https://us.i.posthog.com https://eu.i.posthog.com https://app.posthog.com https://us-assets.i.posthog.com https://pagead2.googlesyndication.com https://adservice.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://images.unsplash.com https://upload.wikimedia.org https://*.supabase.co https://api.lpuevents.live https://lpuevents.live https://images.lpuevents.live https://*.clarity.ms https://c.bing.com https://pagead2.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.google-analytics.com https://*.googletagmanager.com https://*.adtrafficquality.google https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; connect-src 'self' http://localhost:* ws://localhost:* https://*.supabase.co wss://*.supabase.co https://api.lpuevents.live wss://api.lpuevents.live https://images.lpuevents.live https://us.i.posthog.com https://eu.i.posthog.com https://app.posthog.com https://us-assets.i.posthog.com https://*.cloudflareinsights.com https://*.ingest.sentry.io https://*.sentry.io https://*.clarity.ms https://c.bing.com https://pagead2.googlesyndication.com https://adservice.google.com https://googleads.g.doubleclick.net https://*.g.doubleclick.net https://www.googletagmanager.com https://*.googletagmanager.com https://*.google-analytics.com https://www.google-analytics.com https://*.analytics.google.com https://*.google.com https://*.adtrafficquality.google https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; frame-src 'self' https://googleads.g.doubleclick.net https://*.doubleclick.net https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://www.googletagmanager.com https://*.google.com https://www.google.com https://*.adtrafficquality.google https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none';"
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://www.googletagmanager.com https://*.googletagmanager.com https://*.google-analytics.com https://*.adtrafficquality.google https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google https://*.google.com https://www.clarity.ms https://scripts.clarity.ms https://us.i.posthog.com https://eu.i.posthog.com https://app.posthog.com https://us-assets.i.posthog.com https://pagead2.googlesyndication.com https://adservice.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://images.unsplash.com https://upload.wikimedia.org https://*.supabase.co https://api.lpuevents.live https://lpuevents.live https://images.lpuevents.live https://*.clarity.ms https://c.bing.com https://pagead2.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.google-analytics.com https://*.googletagmanager.com https://*.adtrafficquality.google https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; connect-src 'self' http: ws: https://*.supabase.co wss://*.supabase.co https://api.lpuevents.live wss://api.lpuevents.live https://images.lpuevents.live https://us.i.posthog.com https://eu.i.posthog.com https://app.posthog.com https://us-assets.i.posthog.com https://*.cloudflareinsights.com https://*.ingest.sentry.io https://*.sentry.io https://*.clarity.ms https://c.bing.com https://pagead2.googlesyndication.com https://adservice.google.com https://googleads.g.doubleclick.net https://*.g.doubleclick.net https://www.googletagmanager.com https://*.googletagmanager.com https://*.google-analytics.com https://www.google-analytics.com https://*.analytics.google.com https://*.google.com https://*.adtrafficquality.google https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; frame-src 'self' https://googleads.g.doubleclick.net https://*.doubleclick.net https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://www.googletagmanager.com https://*.google.com https://www.google.com https://*.adtrafficquality.google https://ep1.adtrafficquality.google https://ep2.adtrafficquality.google; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none';"
 };
 
 function securityHeadersPlugin(): Plugin {
@@ -118,6 +118,11 @@ export default defineConfig({
         target: 'https://lpuevents.live',
         changeOrigin: true,
         secure: true,
+      },
+      '/public-content': {
+        target: 'https://images.lpuevents.live',
+        changeOrigin: true,
+        secure: true,
       }
     },
     fs: {
@@ -132,8 +137,10 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
-    sourcemap: true,
-    chunkSizeWarningLimit: 600,
+    sourcemap: false,   // Disable sourcemaps in prod to save 30-50% build size
+    cssCodeSplit: true, // Critical: split CSS by chunk so unused styles don't load
+    cssMinify: 'lightningcss', // 20-30% smaller than default esbuild CSS minifier
+    chunkSizeWarningLimit: 500,
     modulePreload: {
       resolveDependencies(_filename, deps) {
         return deps.filter((dep) => !dep.includes('sentry') && !dep.includes('posthog') && !dep.includes('supabase'));
@@ -166,6 +173,10 @@ export default defineConfig({
             }
             return 'vendor-misc';
           }
+          // Split heavy view components into their own async chunks
+          if (id.includes('HappeningTodaySlider')) return 'chunk-today-slider';
+          if (id.includes('HeroCarousel')) return 'chunk-hero-carousel';
+          if (id.includes('CategoryFilter')) return 'chunk-category-filter';
         }
       }
     }

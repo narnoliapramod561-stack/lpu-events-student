@@ -22,35 +22,35 @@ class PersistentCacheManager {
   private _listeners = new Set<CacheListener>();
 
   constructor() {
-    this._loadFromStorage();
-  }
-
-  private _loadFromStorage(): void {
-    if (typeof window === 'undefined' || !window.localStorage) return;
-    try {
-      const now = Date.now();
-      for (let i = 0; i < localStorage.length; i++) {
-        const fullKey = localStorage.key(i);
-        if (fullKey && fullKey.startsWith(this._prefix)) {
-          const raw = localStorage.getItem(fullKey);
-          if (raw) {
-            try {
-              const record: CacheRecord = JSON.parse(raw);
-              // Discard expired records
-              if (record && record.expiresAt && record.expiresAt < now) {
-                localStorage.removeItem(fullKey);
-              } else if (record && record.data !== undefined) {
-                const key = fullKey.substring(this._prefix.length);
-                this._memCache.set(key, record);
+    // Schedule lazy background cleanup of expired records during idle time
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const scheduleCleanup = () => {
+        try {
+          const now = Date.now();
+          for (let i = 0; i < localStorage.length; i++) {
+            const fullKey = localStorage.key(i);
+            if (fullKey && fullKey.startsWith(this._prefix)) {
+              const raw = localStorage.getItem(fullKey);
+              if (raw) {
+                try {
+                  const record: CacheRecord = JSON.parse(raw);
+                  if (record && record.expiresAt && record.expiresAt < now) {
+                    localStorage.removeItem(fullKey);
+                  }
+                } catch {
+                  localStorage.removeItem(fullKey);
+                }
               }
-            } catch {
-              localStorage.removeItem(fullKey);
             }
           }
-        }
+        } catch {}
+      };
+
+      if ('requestIdleCallback' in window) {
+        (window as any).requestIdleCallback(scheduleCleanup);
+      } else {
+        setTimeout(scheduleCleanup, 2000);
       }
-    } catch {
-      // Storage access blocked or restricted
     }
   }
 

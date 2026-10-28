@@ -1,0 +1,39 @@
+[
+  {
+    "id": "c1000000-0000-4000-8000-000000000001",
+    "name": "Technical & Innovation",
+    "key": "technical",
+    "sort_order": 1,
+    "subcategories": [
+      {
+        "id": "s1000000-0000-4000-8000-000000000001",
+        "name": "Hackathons",
+        "key": "hackathons",
+        "category_id": "c1000000-0000-4000-8000-000000000001",
+        "sort_order": 1
+      },
+      {
+        "id": "s1000000-0000-4000-8000-000000000002",
+        "name": "Coding Competitions",
+        "key": "coding",
+        "category_id": "c1000000-0000-4000-8000-000000000001",
+        "sort_order": 2
+      }
+    ]
+  },
+  {
+    "id": "c2000000-0000-4000-8000-000000000002",
+    "name": "Cultural & Arts",
+    "key": "cultural",
+    "sort_order": 2,
+    "subcategories": [
+      {
+        "id": "s2000000-0000-4000-8000-000000000001",
+        "name": "Music & Concerts",
+        "key": "music",
+        "category_id": "c2000000-0000-4000-8000-000000000002",
+        "sort_order": 1
+      }
+    ]
+  }
+]

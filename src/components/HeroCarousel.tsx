@@ -12,7 +12,6 @@ import {
 import { getEventImage, getResponsiveImageUrl } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
 import { AdSenseSlot } from "./AdSenseSlot";
-import { LiquidGlass } from "./ui/LiquidGlass";
 
 export interface HeroSlideModel {
   id: string;
@@ -325,10 +324,14 @@ export const HeroCarouselComponent = ({
     if (currentSlide.type === "adsense") return;
 
     if (currentSlide.ctaUrl) {
-      if (currentSlide.ctaUrl.startsWith("http")) {
-        window.open(currentSlide.ctaUrl, "_blank", "noopener,noreferrer");
+      const url = currentSlide.ctaUrl.trim();
+      // Enforce strict scheme validation to prevent javascript:, data:, and // open redirects
+      if (/^https?:\/\//i.test(url)) {
+        window.open(url, "_blank", "noopener,noreferrer");
+      } else if (url.startsWith("/") && !url.startsWith("//")) {
+        window.location.href = url;
       } else {
-        window.location.href = currentSlide.ctaUrl;
+        console.warn("[Security] Blocked potentially unsafe carousel CTA URL:", url);
       }
     } else if (currentSlide.eventId) {
       onSelectEvent(currentSlide.eventId, currentSlide.title);
@@ -342,29 +345,8 @@ export const HeroCarouselComponent = ({
       onMouseLeave={() => setIsHovered(false)}
       className="w-full relative rounded-[28px] sm:rounded-[34px] md:rounded-[40px] select-none group/carousel"
     >
-      {/* 1. Atmospheric Ambient Edge Glow (Vivid in both Light & Dark Mode, Mobile & Desktop) */}
-      <div className="absolute -inset-3 sm:-inset-6 md:-inset-8 z-0 pointer-events-none opacity-90 dark:opacity-85 transition-opacity duration-700">
-        <AnimatePresence mode="wait">
-          <motion.div
-            key={`ambient-glow-${currentIndex}`}
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
-            className="w-full h-full relative"
-          >
-            <div className="absolute inset-0 bg-gradient-to-tr from-orange-500/40 via-amber-500/25 to-rose-500/20 blur-2xl sm:blur-3xl rounded-[36px] sm:rounded-[44px] dark:hidden" />
-            <div className="hidden dark:block absolute inset-0 bg-gradient-to-tr from-orange-500/30 via-amber-500/18 to-transparent blur-2xl sm:blur-3xl rounded-[36px] sm:rounded-[44px]" />
-          </motion.div>
-        </AnimatePresence>
-      </div>
-
-      {/* 2. Main Carousel Viewport Frame — Precision 3:2 Showcase on Mobile, Sleek Height on Desktop */}
-      <div className="relative z-10 w-full aspect-[3/2] sm:aspect-auto sm:h-auto sm:min-h-[480px] lg:h-[550px] xl:h-[570px] 2xl:h-[590px] overflow-hidden rounded-[24px] sm:rounded-[34px] md:rounded-[40px] glass-panel border border-black/[0.08] dark:border-white/[0.14] ring-1 ring-inset ring-white/20 dark:ring-white/10 shadow-[0_20px_50px_-12px_rgba(255,107,0,0.24),0_10px_24px_-6px_rgba(15,23,42,0.08)] dark:shadow-[0_28px_70px_rgba(0,0,0,0.95)] flex flex-col">
-        
-        {/* Subtle Decorative Ambient Flares (Light mode only) */}
-        <div className="absolute top-0 right-0 w-[420px] h-[420px] bg-gradient-to-br from-orange-500/35 via-amber-500/20 to-transparent rounded-full blur-3xl pointer-events-none z-0 hidden sm:block dark:hidden" />
-        <div className="absolute -bottom-10 -left-10 w-96 h-96 bg-gradient-to-tr from-orange-500/25 via-amber-500/15 to-transparent rounded-full blur-3xl pointer-events-none z-0 hidden sm:block dark:hidden" />
+      {/* Main Carousel Viewport Frame — Match Mockup Glass Showcase */}
+      <div className="relative z-10 w-full aspect-[3/2] sm:aspect-auto sm:h-auto sm:min-h-[480px] lg:h-[550px] xl:h-[570px] 2xl:h-[590px] overflow-hidden rounded-[24px] sm:rounded-[34px] md:rounded-[40px] glass-hero-showcase flex flex-col">
 
         <AnimatePresence initial={false} custom={direction} mode="popLayout">
           <motion.div
@@ -438,43 +420,40 @@ export const HeroCarouselComponent = ({
                    ========================================================= */}
                 {currentSlide.type === "event" ? (
                   <div className="hidden sm:flex flex-col-reverse lg:flex-row items-stretch h-full w-full flex-1 relative">
-                    {/* Seamless Full-Bleed Edge Vignette (Softened to allow subtle ambient glow through) */}
-                    <div className="absolute inset-0 bg-gradient-to-r from-white/90 via-white/70 to-transparent dark:from-[#060810]/72 dark:via-[#060810]/45 lg:dark:via-[#060810]/25 dark:to-transparent pointer-events-none z-0" />
-
                     {/* Content Panel (Left on Desktop) */}
                     <motion.div
                       variants={contentStagger}
                       initial={isFirstMountRef.current ? false : "hidden"}
                       animate="visible"
-                      className="flex flex-col justify-center p-5 sm:pl-12 sm:pr-6 md:pl-16 md:pr-8 lg:px-8 lg:py-6 xl:px-10 xl:py-8 lg:w-[46%] xl:w-[46%] 2xl:w-[46%] flex-1 relative z-10 gap-3 sm:gap-3 lg:gap-3.5 h-full"
+                      className="flex flex-col justify-center p-5 sm:pl-10 sm:pr-4 md:pl-12 md:pr-6 lg:px-8 lg:py-6 xl:px-10 xl:py-7 lg:w-[48%] xl:w-[48%] 2xl:w-[48%] flex-1 relative z-10 gap-2.5 sm:gap-3 lg:gap-3.5 h-full"
                     >
                       {/* Badge & Category Pill */}
                       <motion.div variants={contentItem} className="flex items-center gap-2 flex-wrap shrink-0">
-                        <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-gradient-to-r from-orange-500/20 to-amber-500/15 text-orange-700 dark:bg-white/10 dark:text-white dark:border-white/15 dark:shadow-none border border-orange-500/35 rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-[0_0_12px_rgba(255,107,0,0.2)] backdrop-blur-md">
-                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 dark:bg-white animate-pulse" />
+                        <span className="inline-flex items-center gap-2 px-3 py-1 bg-white/60 dark:bg-white/14 text-[#c2410c] dark:text-orange-400 border border-white/80 dark:border-white/20 rounded-full font-heading text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-2xs backdrop-blur-md">
+                          <span className="w-1.5 h-1.5 rounded-full bg-[#ea580c] dark:bg-orange-400" />
                           Featured Event
                         </span>
                         {currentSlide.category && (
-                          <span className="text-gray-700 dark:text-gray-300 text-xs font-black uppercase tracking-wide font-heading">
+                          <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-black uppercase tracking-wide font-heading text-slate-800 dark:text-slate-200">
                             • {currentSlide.category}
                           </span>
                         )}
                       </motion.div>
 
-                      {/* Headline - shrink-0 & leading-[1.22] prevent text slicing */}
+                      {/* Headline - High contrast bold slate with subtle luminous lift */}
                       <motion.h1
                         variants={contentItem}
                         onClick={handleAction}
-                        className="font-black tracking-tight text-gray-900 dark:text-white font-heading cursor-pointer hover:text-primary transition-colors dark:drop-shadow-[0_2px_12px_rgba(0,0,0,0.85)] break-safe text-2xl md:text-3xl lg:text-[30px] xl:text-[36px] leading-[1.22] line-clamp-2 shrink-0"
+                        className="font-black tracking-tight text-[#0f172a] dark:text-white font-heading cursor-pointer hover:text-primary transition-colors text-2xl md:text-3xl lg:text-[32px] xl:text-[36px] leading-[1.22] line-clamp-2 shrink-0 drop-shadow-[0_1px_2px_rgba(255,255,255,0.7)] dark:drop-shadow-none"
                       >
                         {currentSlide.title}
                       </motion.h1>
 
-                      {/* Description - shrink-0 prevents line 2 clipping */}
+                      {/* Description - High contrast relaxed slate */}
                       {currentSlide.description && (
                         <motion.p
                           variants={contentItem}
-                          className="text-gray-600 dark:text-gray-200 leading-relaxed break-safe text-xs md:text-sm lg:text-base font-medium line-clamp-2 xl:line-clamp-3 max-w-xl dark:drop-shadow-[0_1px_8px_rgba(0,0,0,0.7)] shrink-0"
+                          className="text-[#1e293b] dark:text-slate-200 leading-relaxed text-xs md:text-sm lg:text-[14.5px] font-bold line-clamp-2 xl:line-clamp-3 max-w-xl shrink-0"
                         >
                           {currentSlide.date
                             ? currentSlide.description.replace(/on \d{1,2}\s+[A-Za-z]+\s+\d{4}/g, `on ${currentSlide.date}`)
@@ -482,23 +461,23 @@ export const HeroCarouselComponent = ({
                         </motion.p>
                       )}
 
-                      {/* Schedule & Venue Card */}
+                      {/* Schedule & Venue Frosted Card (Balanced Frosted Glass) */}
                       {(currentSlide.date || currentSlide.venue || currentSlide.organizer) && (
                         <motion.div
                           variants={contentItem}
-                          className="flex flex-col rounded-[22px] sm:rounded-[26px] bg-white/65 dark:bg-white/[0.06] backdrop-blur-md border border-white/80 dark:border-white/10 shadow-[0_4px_20px_rgba(0,0,0,0.04)] p-3.5 sm:p-4 lg:p-4.5 gap-2.5 sm:gap-3 shrink-0"
+                          className="flex flex-col rounded-2xl sm:rounded-3xl bg-white/55 dark:bg-white/[0.09] backdrop-blur-lg border border-white/85 dark:border-white/15 shadow-[0_4px_24px_rgba(15,23,42,0.05),inset_0_1px_1.5px_rgba(255,255,255,0.8)] p-3 sm:p-4 lg:p-4.5 gap-2 sm:gap-2.5 shrink-0"
                         >
                           {/* Date & Time */}
                           {(currentSlide.date || currentSlide.time) && (
-                            <div className="flex items-center gap-3 sm:gap-3.5">
-                              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 bg-orange-500/15 dark:bg-white/10 text-orange-700 dark:text-white border border-orange-500/25 dark:border-white/10 shadow-xs">
-                                <Calendar className="h-5 w-5 sm:h-6 sm:w-6 text-orange-700 dark:text-white stroke-[2.2]" />
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-orange-500/15 dark:bg-orange-500/20 text-[#ea580c] dark:text-orange-400 border border-orange-300/40 dark:border-orange-500/30 shadow-2xs">
+                                <Calendar className="h-5 w-5 text-[#ea580c] dark:text-orange-400 stroke-[2.2]" />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-[10.5px] sm:text-[11px] uppercase font-black tracking-wider text-orange-700 dark:text-gray-400 font-heading">
+                                <span className="text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#ea580c] dark:text-orange-400 font-heading">
                                   Date & Time
                                 </span>
-                                <span className="font-black font-heading text-gray-900 dark:text-white tracking-tight text-sm sm:text-base xl:text-lg truncate">
+                                <span className="font-black font-heading text-[#0f172a] dark:text-white tracking-tight text-xs sm:text-sm truncate">
                                   {currentSlide.date}
                                   {currentSlide.time ? ` • ${currentSlide.time}` : ""}
                                 </span>
@@ -508,15 +487,15 @@ export const HeroCarouselComponent = ({
 
                           {/* Venue */}
                           {currentSlide.venue && (
-                            <div className="flex items-center gap-3 sm:gap-3.5">
-                              <div className="w-11 h-11 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 bg-amber-500/15 dark:bg-white/10 text-amber-600 dark:text-white border border-amber-500/25 dark:border-white/10 shadow-xs">
-                                <MapPin className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600 dark:text-white stroke-[2.2]" />
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-orange-500/15 dark:bg-amber-500/20 text-[#ea580c] dark:text-amber-400 border border-orange-300/40 dark:border-amber-500/30 shadow-2xs">
+                                <MapPin className="h-5 w-5 text-[#ea580c] dark:text-amber-400 stroke-[2.2]" />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-xs uppercase font-bold tracking-wider text-amber-600 dark:text-white font-heading">
+                                <span className="text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#ea580c] dark:text-amber-400 font-heading">
                                   Venue
                                 </span>
-                                <span className="text-xs sm:text-sm xl:text-base font-bold text-gray-800 dark:text-gray-100 truncate">
+                                <span className="text-xs sm:text-sm font-bold text-[#0f172a] dark:text-gray-100 truncate">
                                   {currentSlide.venue}
                                 </span>
                               </div>
@@ -525,16 +504,16 @@ export const HeroCarouselComponent = ({
 
                           {/* Organizer */}
                           {currentSlide.organizer && (
-                            <div className="flex items-center gap-3 sm:gap-3.5">
-                              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl flex items-center justify-center shrink-0 bg-blue-500/15 dark:bg-blue-500/25 text-blue-600 dark:text-blue-400 border border-blue-500/25 shadow-xs">
-                                <Users className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-blue-600 dark:text-blue-400 stroke-[2.2]" />
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-blue-500/15 dark:bg-blue-500/20 text-[#2563eb] dark:text-blue-400 border border-blue-300/40 dark:border-blue-500/30 shadow-2xs">
+                                <Users className="h-4.5 w-4.5 text-[#2563eb] dark:text-blue-400 stroke-[2.2]" />
                               </div>
                               <div className="flex flex-col min-w-0">
-                                <span className="text-[10px] uppercase font-black tracking-wider text-blue-600 dark:text-blue-400 font-heading">
+                                <span className="text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#2563eb] dark:text-blue-400 font-heading">
                                   Organized By
                                 </span>
                                 <span className="text-xs sm:text-sm font-semibold text-gray-700 dark:text-gray-300 truncate">
-                                  <span className="text-gray-900 dark:text-white font-black">{currentSlide.organizer}</span>
+                                  <span className="text-[#0f172a] dark:text-white font-black">{currentSlide.organizer}</span>
                                 </span>
                               </div>
                             </div>
@@ -542,36 +521,63 @@ export const HeroCarouselComponent = ({
                         </motion.div>
                       )}
 
-                      {/* Primary Action Button */}
-                      <motion.div variants={contentItem} className="flex items-center gap-3">
+                      {/* Primary Action Button (Glossy Orange Pill with Arrow in Circle) */}
+                      <motion.div variants={contentItem} className="flex items-center gap-3 pt-1">
                         <button
                           onClick={handleAction}
-                          className="relative group overflow-hidden flex items-center gap-2.5 px-8 sm:px-9 py-3 sm:py-3.5 rounded-full glass-btn-primary font-black cursor-pointer touch-target font-heading text-sm md:text-base transition-transform duration-150 shadow-md hover:shadow-xl active:scale-[0.98]"
+                          className="relative group overflow-hidden flex items-center gap-3 px-7 sm:px-8 py-3 rounded-2xl glass-btn-primary font-black cursor-pointer font-heading text-sm md:text-base hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-lg"
                         >
                           <span className="relative z-10">{currentSlide.ctaText || "View Details"}</span>
-                          <ArrowRight className="relative z-10 h-4 w-4 group-hover:translate-x-1 transition-transform duration-300" />
+                          <span className="relative z-10 w-6 h-6 rounded-full bg-white/25 flex items-center justify-center text-white group-hover:translate-x-1 transition-transform duration-200">
+                            <ArrowRight className="h-3.5 w-3.5 stroke-[2.5]" />
+                          </span>
                         </button>
                       </motion.div>
                     </motion.div>
 
-                    {/* Hero Banner Image (Right on Desktop) - Moderately Sized, Balanced Stage */}
+                    {/* Hero Banner Image (Right on Desktop) - Apple VisionOS Floating Display Glass */}
                     <div
                       onClick={handleAction}
-                      className="relative w-full lg:w-[54%] xl:w-[54%] 2xl:w-[54%] p-3 sm:p-4 lg:p-4 xl:p-5 flex items-center justify-center shrink-0 cursor-pointer group/img"
+                      className="relative w-full lg:w-[52%] xl:w-[52%] 2xl:w-[52%] p-3 sm:p-5 lg:p-6 flex items-center justify-center shrink-0 cursor-pointer group/img"
                     >
-                      <div className="relative w-full max-w-[620px] xl:max-w-[700px] 2xl:max-w-[760px] aspect-[16/9] rounded-2xl lg:rounded-3xl overflow-hidden shadow-2xl border border-white/85 dark:border-white/10 group-hover/img:scale-[1.015] transition-transform duration-300 flex items-center justify-center">
-                        <ProgressiveImage
-                          src={getResponsiveImageUrl(currentSlide.image || "/defaults/hero_default.webp", 1200)}
-                          fallbackSrc={currentSlide.fallbackImage || "/defaults/hero_default.webp"}
-                          alt={currentSlide.title}
-                          loading={currentIndex === 0 ? "eager" : "lazy"}
-                          fetchPriority={currentIndex === 0 ? "high" : "auto"}
-                          width={1200}
-                          height={675}
-                          ambientBackdrop={true}
-                          containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
-                          className="w-full h-full object-contain object-center relative z-10"
-                        />
+                      {/* Ambient Volumetric Backlight Glow behind the Glass Display */}
+                      <div 
+                        aria-hidden="true"
+                        className="absolute inset-4 sm:inset-6 rounded-3xl bg-gradient-to-br from-[#ea580c]/25 via-amber-500/15 to-transparent blur-2xl pointer-events-none -z-10 group-hover/img:scale-105 group-hover/img:from-[#ea580c]/35 transition-all duration-500" 
+                      />
+
+                      <div className="relative w-full max-w-[620px] xl:max-w-[700px] 2xl:max-w-[760px] aspect-[16/9] glass-image-frame flex items-center justify-center">
+                        <div className="glass-image-canvas">
+                          <ProgressiveImage
+                            src={getResponsiveImageUrl(currentSlide.image || "/defaults/hero_default.webp", 1200)}
+                            fallbackSrc={currentSlide.fallbackImage || "/defaults/hero_default.webp"}
+                            alt={currentSlide.title}
+                            loading={currentIndex === 0 ? "eager" : "lazy"}
+                            fetchPriority={currentIndex === 0 ? "high" : "auto"}
+                            width={1200}
+                            height={675}
+                            containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
+                            className="w-full h-full object-cover object-center relative z-10"
+                          />
+
+                          {/* In-Image Floating Glass Indicator Pill (Matching Mockup) */}
+                          {slides.length > 1 && (
+                            <div className="absolute bottom-3.5 left-3.5 z-20 pointer-events-none">
+                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/55 backdrop-blur-md border border-white/25 shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
+                                {slides.map((_, dotIdx) => (
+                                  <span
+                                    key={dotIdx}
+                                    className={`h-1.5 rounded-full transition-all duration-300 ${
+                                      dotIdx === currentIndex
+                                        ? "w-4 bg-gradient-to-r from-[#ff7f24] to-[#ea580c] shadow-[0_0_8px_rgba(234,88,12,0.9)]"
+                                        : "w-1.5 bg-white/45"
+                                    }`}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -703,78 +709,47 @@ export const HeroCarouselComponent = ({
 
       </div>
 
-      {/* 3. Progress Dots — Below card on mobile, inside card on desktop (only when multiple slides) */}
+      {/* 3. Side Navigation Arrows (< and >) Centered on Card Outer Edges */}
       {slides.length > 1 && (
-        <LiquidGlass
-          preset="fluid-pill"
-          className="hidden sm:flex absolute bottom-5 left-1/2 -translate-x-1/2 z-30 items-center gap-2 px-3.5 py-1.5 rounded-full shadow-lg border border-white/80 dark:border-white/15 pointer-events-auto max-w-fit w-auto"
-        >
-          {slides.map((_, idx) => (
-            <button
-              key={idx}
-              onClick={() => goToSlide(idx)}
-              aria-label={`Go to slide ${idx + 1}`}
-              className="group relative h-2 rounded-full overflow-hidden cursor-pointer bg-gray-400/40 dark:bg-white/20 transition-[width,transform] duration-300 hover:scale-110"
-              style={{ width: idx === currentIndex ? "20px" : "5px" }}
-            >
-              {idx === currentIndex && (
-                <motion.div
-                  layoutId="heroActiveProgress"
-                  className="absolute inset-0 bg-gradient-to-r from-amber-400 to-orange-500 dark:from-white/80 dark:to-white/60 rounded-full shadow-[0_0_8px_rgba(255,107,0,0.8)] dark:shadow-[0_0_6px_rgba(255,255,255,0.25)]"
-                  initial={{ width: 0 }}
-                  animate={{ width: "100%" }}
-                  transition={{
-                    duration: isHovered ? 0 : (slides[currentIndex]?.duration || 5000) / 1000,
-                    ease: "linear",
-                  }}
-                />
-              )}
-            </button>
-          ))}
-        </LiquidGlass>
+        <>
+          <button
+            type="button"
+            onClick={() => paginate(-1)}
+            className="flex absolute -left-2.5 sm:-left-4 md:-left-5 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 rounded-full items-center justify-center bg-white/70 dark:bg-white/15 backdrop-blur-md border border-white/85 dark:border-white/25 shadow-md text-slate-700 dark:text-white hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer touch-manipulation outline-none"
+            aria-label="Previous slide"
+          >
+            <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.5]" />
+          </button>
+          <button
+            type="button"
+            onClick={() => paginate(1)}
+            className="flex absolute -right-2.5 sm:-right-4 md:-right-5 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 rounded-full items-center justify-center bg-white/70 dark:bg-white/15 backdrop-blur-md border border-white/85 dark:border-white/25 shadow-md text-slate-700 dark:text-white hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer touch-manipulation outline-none"
+            aria-label="Next slide"
+          >
+            <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.5]" />
+          </button>
+        </>
       )}
-      {/* Mobile Dots — Below the card in a sleek frosted pill */}
+
+      {/* 4. Progress Dots — Centered Below the Card in Frosted Glass Capsule */}
       {slides.length > 1 && (
-        <div className="flex sm:hidden items-center justify-center mt-2 mb-0">
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/80 dark:bg-white/[0.08] backdrop-blur-xl border border-black/[0.07] dark:border-white/[0.14] shadow-sm">
+        <div className="flex items-center justify-center mt-3 sm:mt-4 mb-0">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/65 dark:bg-white/12 backdrop-blur-md border border-white/85 dark:border-white/20 shadow-xs">
             {slides.map((_, idx) => (
               <button
                 key={idx}
+                type="button"
                 onClick={() => goToSlide(idx)}
                 aria-label={`Go to slide ${idx + 1}`}
-                className={`h-1.5 rounded-full transition-[width,background-color] duration-300 cursor-pointer ${
+                className={`h-2 rounded-full transition-[width,background-color] duration-300 cursor-pointer ${
                   idx === currentIndex
-                    ? "w-7 bg-gradient-to-r from-[#ff6b00] via-[#ff7e29] to-[#ff954d] shadow-[0_0_10px_rgba(255,107,0,0.65)]"
-                    : "w-1.5 bg-gray-300/80 dark:bg-white/25 hover:bg-gray-400"
+                    ? "w-6 bg-gradient-to-r from-[#ff7a18] to-[#ea580c] shadow-[0_0_8px_rgba(234,88,12,0.5)]"
+                    : "w-2 bg-slate-300 dark:bg-white/25 hover:bg-slate-400"
                 }`}
               />
             ))}
           </div>
         </div>
-      )}
-
-      {/* 4. Side Navigation Arrows (Positioned Outside the Image Card at Extreme Screen Edges) */}
-      {slides.length > 1 && (
-        <>
-          <LiquidGlass
-            as="button"
-            preset="fluid-pill"
-            onClick={() => paginate(-1)}
-            className="flex absolute -left-2 sm:-left-4 md:-left-5 lg:-left-6 top-1/2 -translate-y-1/2 z-30 w-6 h-6 sm:w-12 md:w-13 sm:h-12 md:h-13 rounded-full items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 active:scale-90 group touch-manipulation outline-none select-none"
-            aria-label="Previous slide"
-          >
-            <ChevronLeft className="h-3 w-3 sm:h-5 sm:w-5 md:h-6 md:w-6 text-gray-900 dark:text-white drop-shadow-sm group-hover:-translate-x-0.5 group-hover:text-primary transition-transform duration-200 stroke-[2.8] sm:stroke-[2.4]" />
-          </LiquidGlass>
-          <LiquidGlass
-            as="button"
-            preset="fluid-pill"
-            onClick={() => paginate(1)}
-            className="flex absolute -right-2 sm:-right-4 md:-right-5 lg:-right-6 top-1/2 -translate-y-1/2 z-30 w-6 h-6 sm:w-12 md:w-13 sm:h-12 md:h-13 rounded-full items-center justify-center transition-all duration-200 cursor-pointer hover:scale-110 active:scale-90 group touch-manipulation outline-none select-none"
-            aria-label="Next slide"
-          >
-            <ChevronRight className="h-3 w-3 sm:h-5 sm:w-5 md:h-6 md:w-6 text-gray-900 dark:text-white drop-shadow-sm group-hover:translate-x-0.5 group-hover:text-primary transition-transform duration-200 stroke-[2.8] sm:stroke-[2.4]" />
-          </LiquidGlass>
-        </>
       )}
     </section>
   );

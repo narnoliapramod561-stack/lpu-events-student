@@ -73,6 +73,13 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
     : `${containerClassName} overflow-hidden`;
 
   const placeholderUrl = lowResSrc || getLowResPlaceholderUrl(src);
+  const hasDistinctPlaceholder = Boolean(
+    placeholderUrl && 
+    placeholderUrl !== imgSrc && 
+    !isAlreadyLoaded && 
+    !isHdLoaded && 
+    !isEager
+  );
 
   return (
     <div className={`${overflowSafeContainerClass} ${aspectRatioClass} ${bgClass}`} style={{ contain: 'layout paint' }}>
@@ -94,13 +101,13 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
         </div>
       )}
 
-      {/* 1. Low-Res Blurred Placeholder (Visible instantly until HD arrives, skipped for eager LCP) */}
-      {!isHdLoaded && !isEager && placeholderUrl && (
+      {/* 1. Low-Res Blurred Placeholder (Only rendered if a distinct low-res version exists) */}
+      {hasDistinctPlaceholder && (
         <img
           src={placeholderUrl}
           alt=""
           aria-hidden="true"
-          loading="eager"
+          loading={loading}
           decoding="async"
           onError={(e) => {
             // Silently suppress placeholder errors
@@ -111,7 +118,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
         />
       )}
 
-      {/* 2. Full HD Image (Native direct paint with zero duplicate Image instantiation) */}
+      {/* 2. Full HD Image (Always decoded asynchronously to prevent main-thread hitching) */}
       {!hasFailed ? (
         <img
           ref={imgRef}
@@ -119,7 +126,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
           alt={alt}
           loading={loading}
           fetchPriority={fetchPriority}
-          decoding={isEager ? "sync" : "async"}
+          decoding="async"
           onLoad={handleImageLoad}
           onError={handleImageError}
           className={`${className} ${

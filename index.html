@@ -43,25 +43,31 @@
     <style>
       body {
         margin: 0;
-        background-color: #f2f5f9;
+        background-color: transparent;
         font-family: 'Plus Jakarta Sans', 'Geist', 'Inter', system-ui, -apple-system, sans-serif;
         color: #0f172a;
-        overflow-x: hidden;
+        overflow-x: clip;
       }
       .dark body, html.dark body {
         background-color: #1c1c1e;
         color: #f5f5f7;
       }
       .glass-nav {
-        background: rgba(255, 255, 255, 0.62);
-        backdrop-filter: blur(28px) saturate(210%) brightness(105%);
-        -webkit-backdrop-filter: blur(28px) saturate(210%) brightness(105%);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.7);
+        position: sticky;
+        top: 0;
+        z-index: 50;
+        background: rgba(255, 255, 255, 0.40);
+        backdrop-filter: blur(36px) saturate(200%) brightness(103%);
+        -webkit-backdrop-filter: blur(36px) saturate(200%) brightness(103%);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.45);
       }
       .dark .glass-nav, html.dark .glass-nav {
+        position: sticky;
+        top: 0;
+        z-index: 50;
         background: rgba(22, 22, 26, 0.65);
-        backdrop-filter: blur(32px) saturate(210%) brightness(108%);
-        -webkit-backdrop-filter: blur(32px) saturate(210%) brightness(108%);
+        backdrop-filter: blur(36px) saturate(200%) brightness(108%);
+        -webkit-backdrop-filter: blur(36px) saturate(200%) brightness(108%);
         border-bottom: 1px solid rgba(255, 255, 255, 0.12);
       }
       .glass-panel {
@@ -105,9 +111,9 @@
         max-width: 78vw;
         max-height: 44vh;
         z-index: 10000;
-        transform-origin: top left;
+        transform-origin: center center;
         filter: drop-shadow(0 16px 40px rgba(230,81,0,0.24));
-        animation: shell-enter 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        animation: shell-enter 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
       }
       @media (min-width: 640px) {
         #lpu-startup-logo-container {
@@ -125,62 +131,148 @@
         height: 100%;
         display: block;
       }
+      #lpu-startup-svg circle, #lpu-startup-svg g, #lpu-startup-svg text, #lpu-startup-svg line {
+        transform-box: view-box;
+      }
       #lpu-startup-sheen {
         position: absolute;
         inset: 0;
-        width: 35%;
+        width: 40%;
         height: 100%;
         border-radius: 9999px;
-        transform: skewX(-12deg);
-        background: linear-gradient(to right, transparent, rgba(255,255,255,0.35), transparent);
+        transform: skewX(-14deg);
+        background: linear-gradient(to right, transparent, rgba(255,255,255,0.45), transparent);
         pointer-events: none;
         opacity: 0;
-        animation: shell-sheen 0.38s ease-in-out 0.72s forwards;
+        animation: shell-sheen 0.85s cubic-bezier(0.4, 0, 0.2, 1) 1.20s forwards;
+        will-change: transform, opacity;
       }
       @keyframes shell-enter {
-        0% { opacity: 0; transform: scale(0.9); }
+        0% { opacity: 0; transform: scale(0.92); }
         100% { opacity: 1; transform: scale(1); }
       }
       @keyframes shell-sheen {
-        0% { transform: translateX(-120%) skewX(-12deg); opacity: 0; }
-        50% { opacity: 0.32; }
-        100% { transform: translateX(180%) skewX(-12deg); opacity: 0; }
+        0% { transform: translateX(-140%) skewX(-14deg); opacity: 0; }
+        35% { opacity: 0.45; }
+        70% { opacity: 0.45; }
+        100% { transform: translateX(220%) skewX(-14deg); opacity: 0; }
       }
-      .shell-c1 { transform-origin: 208px 280px; animation: shell-c1-anim 0.45s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
-      .shell-c2 { transform-origin: 224px 224px; animation: shell-c2-anim 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.05s forwards; }
-      .shell-c3 { transform-origin: 306px 222px; animation: shell-c3-anim 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.04s forwards; }
-      .shell-c4 { transform-origin: 324px 274px; animation: shell-c4-anim 0.42s cubic-bezier(0.16, 1, 0.3, 1) 0.08s forwards; }
-      .shell-c5 { transform-origin: 332px 246px; animation: shell-c5-anim 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.10s forwards; }
-      .shell-c6 { transform-origin: 256px 256px; animation: shell-c6-anim 0.45s cubic-bezier(0.16, 1, 0.3, 1) 0.12s forwards; }
-      @keyframes shell-c1-anim { 0% { transform: translate(-6px, 4px) scale(0.98); } 100% { transform: translate(0, 0) scale(1); } }
-      @keyframes shell-c2-anim { 0% { transform: translate(-4px, -4px) scale(0.98); } 100% { transform: translate(0, 0) scale(1); } }
-      @keyframes shell-c3-anim { 0% { transform: translate(5px, -4px) scale(0.98); } 100% { transform: translate(0, 0) scale(1); } }
-      @keyframes shell-c4-anim { 0% { transform: translate(5px, 4px) scale(0.98); } 100% { transform: translate(0, 0) scale(1); } }
-      @keyframes shell-c5-anim { 0% { transform: translate(3px, 0) scale(0.98); } 100% { transform: translate(0, 0) scale(1); } }
-      @keyframes shell-c6-anim { 0% { transform: scale(0.96); opacity: 0.8; } 100% { transform: scale(1); opacity: 0.96; } }
+      .shell-c1 { transform-origin: 208px 280px; animation: shell-c1-anim 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.04s forwards; will-change: transform, opacity; }
+      .shell-c2 { transform-origin: 224px 224px; animation: shell-c2-anim 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.08s forwards; will-change: transform, opacity; }
+      .shell-c3 { transform-origin: 306px 222px; animation: shell-c3-anim 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.12s forwards; will-change: transform, opacity; }
+      .shell-c4 { transform-origin: 324px 274px; animation: shell-c4-anim 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.16s forwards; will-change: transform, opacity; }
+      .shell-c5 { transform-origin: 332px 246px; animation: shell-c5-anim 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.20s forwards; will-change: transform, opacity; }
+      .shell-c6 { transform-origin: 256px 256px; animation: shell-c6-anim 0.62s cubic-bezier(0.22, 1, 0.36, 1) 0.24s forwards; will-change: transform, opacity; }
+      @keyframes shell-c1-anim { 0% { transform: translate(-3px, 2px) scale(0.95); opacity: 0.3; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+      @keyframes shell-c2-anim { 0% { transform: translate(-2px, -2px) scale(0.95); opacity: 0.3; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+      @keyframes shell-c3-anim { 0% { transform: translate(2px, -2px) scale(0.95); opacity: 0.3; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+      @keyframes shell-c4-anim { 0% { transform: translate(2px, 2px) scale(0.95); opacity: 0.3; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+      @keyframes shell-c5-anim { 0% { transform: translate(2px, 0) scale(0.95); opacity: 0.3; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
+      @keyframes shell-c6-anim { 0% { transform: scale(0.94); opacity: 0.3; } 100% { transform: scale(1); opacity: 0.96; } }
 
-      .shell-anim-lpu-clip { transform-origin: 256px 230px; animation: shell-clip-anim 0.40s cubic-bezier(0.16, 1, 0.3, 1) 0.28s forwards; transform: scaleY(0); }
-      .shell-anim-lpu-text { animation: shell-text-anim 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.28s forwards; opacity: 0; transform: translateY(6px); }
-      .shell-connector-pill { animation: shell-fade 0.25s cubic-bezier(0.16, 1, 0.3, 1) 0.34s forwards; opacity: 0; }
-      .shell-dot-left { transform-origin: 178px 268px; animation: shell-scale 0.20s cubic-bezier(0.16, 1, 0.3, 1) 0.36s forwards; transform: scale(0); }
-      .shell-connector-line { stroke-dasharray: 144; stroke-dashoffset: 144; animation: shell-draw-line 0.28s cubic-bezier(0.16, 1, 0.3, 1) 0.40s forwards; }
-      .shell-dot-right { transform-origin: 334px 268px; animation: shell-scale 0.20s cubic-bezier(0.16, 1, 0.3, 1) 0.62s forwards; transform: scale(0); }
-      .shell-anim-events-clip { transform-origin: 256px 320px; animation: shell-clip-anim 0.38s cubic-bezier(0.16, 1, 0.3, 1) 0.45s forwards; transform: scaleY(0); }
-      .shell-anim-events-text { animation: shell-text-anim 0.36s cubic-bezier(0.16, 1, 0.3, 1) 0.45s forwards; opacity: 0; transform: translateY(6px); }
+      /* GPU-Accelerated Unified Typography Cascade (Zero clip-path re-rasterization jank) */
+      .shell-anim-lpu-group {
+        transform-origin: 256px 228px;
+        animation: shell-fade-slide-lpu 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.22s forwards;
+        opacity: 0;
+        transform: translateY(8px);
+        will-change: transform, opacity;
+      }
+      .shell-anim-connector-group {
+        animation: shell-fade 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.28s forwards;
+        opacity: 0;
+        will-change: opacity;
+      }
+      .shell-connector-pill {
+        animation: shell-fade 0.40s cubic-bezier(0.22, 1, 0.36, 1) 0.28s forwards;
+        opacity: 0;
+      }
+      .shell-dot-left {
+        transform-origin: 178px 268px;
+        animation: shell-scale 0.30s cubic-bezier(0.22, 1, 0.36, 1) 0.28s forwards;
+        transform: scale(0);
+        will-change: transform;
+      }
+      .shell-connector-line {
+        stroke-dasharray: 144;
+        stroke-dashoffset: 144;
+        animation: shell-draw-line 0.40s cubic-bezier(0.22, 1, 0.36, 1) 0.32s forwards;
+        will-change: stroke-dashoffset;
+      }
+      .shell-dot-right {
+        transform-origin: 334px 268px;
+        animation: shell-scale 0.30s cubic-bezier(0.22, 1, 0.36, 1) 0.60s forwards;
+        transform: scale(0);
+        will-change: transform;
+      }
+      .shell-anim-events-group {
+        transform-origin: 256px 323px;
+        animation: shell-fade-slide-events 0.54s cubic-bezier(0.22, 1, 0.36, 1) 0.30s forwards;
+        opacity: 0;
+        transform: translateY(6px);
+        will-change: transform, opacity;
+      }
 
-      @keyframes shell-clip-anim { 0% { transform: scaleY(0); } 100% { transform: scaleY(1); } }
-      @keyframes shell-text-anim { 0% { opacity: 0; transform: translateY(6px); } 100% { opacity: 1; transform: translateY(0); } }
+      @keyframes shell-fade-slide-lpu {
+        0% { opacity: 0; transform: translateY(8px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
+      @keyframes shell-fade-slide-events {
+        0% { opacity: 0; transform: translateY(6px); }
+        100% { opacity: 1; transform: translateY(0); }
+      }
       @keyframes shell-fade { 0% { opacity: 0; } 100% { opacity: 1; } }
       @keyframes shell-scale { 0% { transform: scale(0); } 100% { transform: scale(1); } }
       @keyframes shell-draw-line { 0% { stroke-dashoffset: 144; } 100% { stroke-dashoffset: 0; } }
     </style>
     
-    <!-- Preconnect to CDNs for Lowest LCP Latency -->
     <link rel="preconnect" href="https://images.lpuevents.live" crossorigin />
     <link rel="dns-prefetch" href="https://images.lpuevents.live" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    
+    <link rel="preconnect" href="https://nhjphyqiqhmxdhppljap.supabase.co" crossorigin />
+    <link rel="dns-prefetch" href="https://nhjphyqiqhmxdhppljap.supabase.co" />
+    <link rel="preconnect" href="https://lpuevents.live" crossorigin />
+    <link rel="dns-prefetch" href="https://lpuevents.live" />
+
+    <!-- Ultra-Low Latency Early Edge Prefetch: runs in parallel with JS downloading -->
+    <script>
+      (function() {
+        try {
+          var p = window.location.pathname.toLowerCase();
+          var isHome = p === '/' || p === '' || window.location.search.indexOf('page=home') !== -1;
+          if (isHome) {
+            window.__PREFETCHED_HOMEPAGE__ = fetch('/api/public/homepage', {
+              headers: { 'Accept': 'application/json' }
+            }).then(function(res) {
+              return res.ok ? res.json() : null;
+            }).then(function(data) {
+              if (data) {
+                try {
+                  var firstSlide = (data.carousel && data.carousel[0]) || (data.featured && data.featured[0]);
+                  var imgUrl = null;
+                  if (firstSlide) {
+                    var evt = firstSlide.events || firstSlide;
+                    var mediaId = evt.banner_media_id || (evt.media_assets && evt.media_assets.id);
+                    if (mediaId) {
+                      imgUrl = 'https://images.lpuevents.live/public-content/' + mediaId + '.webp';
+                    } else if (firstSlide.custom_image_url) {
+                      imgUrl = firstSlide.custom_image_url;
+                    }
+                  }
+                  if (imgUrl) {
+                    var preloadImg = new Image();
+                    if ('fetchPriority' in preloadImg) preloadImg.fetchPriority = 'high';
+                    preloadImg.src = imgUrl;
+                  }
+                } catch(e) {}
+              }
+              return data;
+            }).catch(function() { return null; });
+          }
+        } catch(e) {}
+      })();
+    </script>
 
     <!-- Non-Render-Blocking Google Fonts (Zero Layout Shift via display=swap) -->
     <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
@@ -306,12 +398,6 @@
             <filter id="shell-text-shadow" x="-20%" y="-20%" width="140%" height="140%">
               <feDropShadow dx="0" dy="2.5" stdDeviation="3" flood-color="#000000" flood-opacity="0.45" />
             </filter>
-            <clipPath id="shell-lpu-clip">
-              <rect class="shell-anim-lpu-clip" x="80" y="130" width="352" height="120" />
-            </clipPath>
-            <clipPath id="shell-events-clip">
-              <rect class="shell-anim-events-clip" x="80" y="290" width="352" height="60" />
-            </clipPath>
           </defs>
 
           <!-- Circular glass layers -->
@@ -324,23 +410,23 @@
             <circle class="shell-c6" cx="256" cy="256" r="168" fill="url(#shell-dark-glass)" stroke="url(#shell-rim-sheen)" stroke-width="1.5" />
           </g>
 
-          <!-- Typography -->
+          <!-- Typography: Unified GPU-Composited Cascade -->
           <g style="transform-origin: 256px 268px">
-            <g clip-path="url(#shell-lpu-clip)">
-              <text class="shell-anim-lpu-text" x="256" y="228" text-anchor="middle" filter="url(#shell-text-shadow)" style="font-family: 'Outfit', 'Inter', -apple-system, sans-serif; font-weight: 900; font-size: 106px; fill: #ffffff; letter-spacing: 5px;">
+            <g class="shell-anim-lpu-group">
+              <text x="256" y="228" text-anchor="middle" filter="url(#shell-text-shadow)" style="font-family: 'Outfit', 'Inter', -apple-system, sans-serif; font-weight: 900; font-size: 106px; fill: #ffffff; letter-spacing: 5px;">
                 LPU
               </text>
             </g>
 
-            <g>
+            <g class="shell-anim-connector-group">
               <rect class="shell-connector-pill" x="162" y="257" width="188" height="22" rx="11" fill="rgba(255, 255, 255, 0.14)" stroke="rgba(255, 255, 255, 0.18)" stroke-width="1" />
               <circle class="shell-dot-left" cx="178" cy="268" r="5.5" fill="#ffffff" filter="url(#shell-text-shadow)" />
               <line class="shell-connector-line" x1="184" y1="268" x2="328" y2="268" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" filter="url(#shell-text-shadow)" />
               <circle class="shell-dot-right" cx="334" cy="268" r="5.5" fill="#ffffff" filter="url(#shell-text-shadow)" />
             </g>
 
-            <g clip-path="url(#shell-events-clip)">
-              <text class="shell-anim-events-text" x="256" y="323" text-anchor="middle" filter="url(#shell-text-shadow)" style="font-family: 'Outfit', 'Inter', -apple-system, sans-serif; font-weight: 800; font-size: 35px; fill: #ffffff; letter-spacing: 13px;">
+            <g class="shell-anim-events-group">
+              <text x="256" y="323" text-anchor="middle" filter="url(#shell-text-shadow)" style="font-family: 'Outfit', 'Inter', -apple-system, sans-serif; font-weight: 800; font-size: 35px; fill: #ffffff; letter-spacing: 13px;">
                 EVENTS
               </text>
             </g>
@@ -379,12 +465,14 @@
         }
 
         var startTime = Date.now();
-        var MIN_VISUAL_MS = 950;
-        var MAX_SAFETY_MS = 2500;
+        // High-Velocity Brand Assembly:
+        // Always display the full, fluid logo animation on every reload before docking into navbar.
+        var MIN_VISUAL_MS = 650;
+        var MAX_SAFETY_MS = 1600;
         var isCriticalReady = false;
         var isHandoffStarted = false;
         var handoffAttempts = 0;
-        var MAX_HANDOFF_ATTEMPTS = 45;
+        var MAX_HANDOFF_ATTEMPTS = 50;
 
         function fallbackDismiss() {
           if (isHandoffStarted) return;
@@ -396,12 +484,12 @@
           var shell = document.getElementById('lpu-startup-shell');
 
           if (container) {
-            container.style.transition = 'opacity 0.35s ease, transform 0.35s ease';
+            container.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
             container.style.opacity = '0';
-            container.style.transform = 'scale(0.94)';
+            container.style.transform = 'scale(0.95)';
           }
           if (backdrop) {
-            backdrop.style.transition = 'opacity 0.35s ease, backdrop-filter 0.35s ease, -webkit-backdrop-filter 0.35s ease';
+            backdrop.style.transition = 'opacity 0.25s ease, backdrop-filter 0.25s ease, -webkit-backdrop-filter 0.25s ease';
             backdrop.style.opacity = '0';
             backdrop.style.backdropFilter = 'blur(0px)';
             backdrop.style.webkitBackdropFilter = 'blur(0px)';
@@ -411,7 +499,7 @@
             if (shell && shell.parentNode) {
               shell.parentNode.removeChild(shell);
             }
-          }, 400);
+          }, 260);
         }
 
         var state = {
@@ -475,21 +563,21 @@
           container.style.animation = 'none';
           void container.offsetWidth;
 
-          // Smooth shared-element FLIP transition into navbar slot
+          // Smooth, cinematic shared-element FLIP transition into navbar slot
           container.style.transformOrigin = 'top left';
-          container.style.transition = 'transform 0.75s cubic-bezier(0.16, 1, 0.3, 1), filter 0.75s cubic-bezier(0.16, 1, 0.3, 1)';
+          container.style.transition = 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), filter 0.38s cubic-bezier(0.22, 1, 0.36, 1)';
           container.style.transform = 'translate(' + deltaX + 'px, ' + deltaY + 'px) scale(' + targetScale + ')';
           container.style.filter = 'drop-shadow(0 2px 8px rgba(0,0,0,0.18))';
 
           // Fade out blur backdrop as logo approaches docked position
           setTimeout(function() {
             if (backdrop) {
-              backdrop.style.transition = 'opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.35s ease, -webkit-backdrop-filter 0.35s ease';
+              backdrop.style.transition = 'opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1), backdrop-filter 0.28s ease, -webkit-backdrop-filter 0.28s ease';
               backdrop.style.opacity = '0';
               backdrop.style.backdropFilter = 'blur(0px)';
               backdrop.style.webkitBackdropFilter = 'blur(0px)';
             }
-          }, 420);
+          }, 100);
 
           // Clean handoff to real navbar logo
           setTimeout(function() {
@@ -497,7 +585,7 @@
             if (navEl) navEl.style.opacity = '1';
             var s = document.getElementById('lpu-startup-shell');
             if (s && s.parentNode) s.parentNode.removeChild(s);
-          }, 780);
+          }, 390);
         }
 
         function checkAndTriggerHandoff() {

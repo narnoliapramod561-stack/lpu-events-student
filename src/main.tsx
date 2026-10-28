@@ -72,3 +72,8 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
   </React.StrictMode>,
 );
 
+// Register High-Performance PWA Service Worker Client Cache
+import('./serviceWorkerRegistration').then(({ registerServiceWorker }) => {
+  registerServiceWorker();
+});
+

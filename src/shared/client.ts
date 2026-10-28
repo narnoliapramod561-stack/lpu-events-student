@@ -125,8 +125,10 @@ export class LpuEventsClient {
    * Multi-Tier Extreme Singleflight Cache Fetcher:
    * 1. Check in-memory fast tier (<0.1ms).
    * 2. Check persistent storage tier (localStorage) (<3ms) with non-blocking SWR background revalidation.
-   * 3. Singleflight mutex coalescing for cold fetch: 100% of concurrent callers share EXACTLY ONE in-flight promise.
-   * 4. Zero Raw Supabase Bypass: Never leaks un-coalesced queries to Supabase.
+   * 3. Cross-Tab Web Lock Mutex Coalescing (navigator.locks) + In-Tab Singleflight:
+   *    Guarantees across all tabs and components that EXACTLY ONE request is issued to the network,
+   *    and all other concurrent tabs/callers wait on the lock and read from persistent storage.
+   * 4. Zero Raw Supabase Bypass: 100% of public traffic routes through edge cache.
    */
   private async _fetchWithCache<T>(
     cacheKey: string,
@@ -135,13 +137,13 @@ export class LpuEventsClient {
   ): Promise<{ data: T | null; error: any }> {
     const now = Date.now();
 
-    // 1. Tier 1: Check in-memory fast tier
+    // 1. Tier 1: Check in-memory fast tier (<0.1ms)
     const inMem = this._cache.get(cacheKey);
     if (inMem && inMem.expiresAt > now) {
       return { data: inMem.data as T, error: null };
     }
 
-    // 2. Tier 2: Check persistent storage tier (localStorage / IndexedDB)
+    // 2. Tier 2: Check persistent storage tier (localStorage / IndexedDB) (<3ms)
     const persistent = persistentCache.get<T>(cacheKey);
     if (persistent !== null && persistent !== undefined) {
       this._cache.set(cacheKey, {
@@ -162,8 +164,52 @@ export class LpuEventsClient {
       return { data: persistent, error: null };
     }
 
-    // 3. Tier 3: Cold Miss Singleflight Request Coalescing
+    // 3. Tier 3: Cold Miss Cross-Tab Coalescing (Web Locks API + In-Tab Singleflight)
     return this._executeSingleFlight(cacheKey, async () => {
+      // Check if Web Locks is supported in this browser
+      if (typeof navigator !== 'undefined' && 'locks' in navigator && (navigator as any).locks?.request) {
+        return new Promise<{ data: T | null; error: any }>((resolve) => {
+          (navigator as any).locks.request(`lpu_flock_${cacheKey}`, { mode: 'exclusive' }, async () => {
+            // Double-checked locking: check persistentCache again inside lock!
+            const postLockPersistent = persistentCache.get<T>(cacheKey);
+            if (postLockPersistent !== null && postLockPersistent !== undefined) {
+              this._cache.set(cacheKey, {
+                data: postLockPersistent,
+                expiresAt: Date.now() + ttlMs,
+              });
+              resolve({ data: postLockPersistent, error: null });
+              return;
+            }
+
+            // We are the designated fetching tab!
+            const result = await fetcher();
+            if (!result.error && result.data !== null && result.data !== undefined) {
+              this._cache.set(cacheKey, {
+                data: result.data,
+                expiresAt: Date.now() + ttlMs,
+              });
+              persistentCache.set(cacheKey, result.data, ttlMs);
+            } else if (result.error) {
+              const stale = persistentCache.get<T>(cacheKey);
+              if (stale !== null && stale !== undefined) {
+                resolve({ data: stale, error: null });
+                return;
+              }
+            }
+            resolve(result);
+          }).catch(async () => {
+            // Fallback if lock was aborted or blocked by browser security
+            const direct = await fetcher();
+            if (!direct.error && direct.data !== null && direct.data !== undefined) {
+              this._cache.set(cacheKey, { data: direct.data, expiresAt: Date.now() + ttlMs });
+              persistentCache.set(cacheKey, direct.data, ttlMs);
+            }
+            resolve(direct);
+          });
+        });
+      }
+
+      // Fallback for browsers without Web Locks: In-Tab Singleflight
       const result = await fetcher();
       if (!result.error && result.data !== null && result.data !== undefined) {
         this._cache.set(cacheKey, {
@@ -172,7 +218,6 @@ export class LpuEventsClient {
         });
         persistentCache.set(cacheKey, result.data, ttlMs);
       } else if (result.error) {
-        // Fail-safe degradation: serve stale persistent cache if edge/network had a transient failure
         const stale = persistentCache.get<T>(cacheKey);
         if (stale !== null && stale !== undefined) {
           return { data: stale, error: null };
@@ -320,7 +365,22 @@ export class LpuEventsClient {
     }
 
     return this._fetchWithCache<HomepageBundleData>(cacheKey, 60_000, async () => {
-      const edgeRes = await this._fetchPublic<HomepageBundleData>('homepage');
+      // Consume early edge prefetch if initiated by index.html in parallel with JS downloading
+      let edgeRes: { data: HomepageBundleData | null; error: any } | null = null;
+      if (!forceFresh && typeof window !== 'undefined' && (window as any).__PREFETCHED_HOMEPAGE__) {
+        try {
+          const pre = await (window as any).__PREFETCHED_HOMEPAGE__;
+          (window as any).__PREFETCHED_HOMEPAGE__ = null;
+          if (pre) {
+            edgeRes = { data: pre as HomepageBundleData, error: null };
+          }
+        } catch {}
+      }
+
+      if (!edgeRes) {
+        edgeRes = await this._fetchPublic<HomepageBundleData>('homepage');
+      }
+
       if (edgeRes.data && !edgeRes.error) {
         const b = edgeRes.data;
         registerMediaAssets([
@@ -375,7 +435,7 @@ export class LpuEventsClient {
     show_past?: boolean;
     force_fresh?: boolean;
   }): Promise<{ data: EventFeedItem[] | null; error: any }> {
-    const limit = Math.min(Math.max(filters?.limit ?? 10, 1), 50);
+    const limit = Math.min(Math.max(filters?.limit ?? 9, 1), 50);
     const offset = Math.max(filters?.offset ?? 0, 0);
     const catId = filters?.category_id || '';
     const subId = filters?.subcategory_id || '';

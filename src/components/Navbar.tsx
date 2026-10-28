@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { searchEventsClientSide } from "../shared/clientSearch";
 import type { EventFeedItem } from "@lpu-events/shared";
 import { LpuLogo } from "./LpuLogo";
-import { LiquidGlass } from "./ui/LiquidGlass";
 
 export const SearchAutocompleteComponent = ({ 
   suggestions, 
@@ -84,6 +83,7 @@ export const NavbarComponent = ({
   theme, 
   onToggleTheme,
   isTrendingActive = false,
+  isCategoriesActive = false,
   onSelectTrending,
   onSelectEvent,
   onGoHome,
@@ -95,6 +95,7 @@ export const NavbarComponent = ({
   theme: string;
   onToggleTheme: () => void;
   isTrendingActive?: boolean;
+  isCategoriesActive?: boolean;
   onSelectTrending?: () => void;
   onSelectEvent?: (id: string, name?: string) => void;
   onGoHome?: () => void;
@@ -215,9 +216,10 @@ export const NavbarComponent = ({
   const handleNavigate = (hash?: string) => {
     setMobileMenuOpen(false);
     if (hash) {
-      const el = document.querySelector(hash);
+      const el = document.querySelector(hash) as HTMLElement | null;
       if (el) {
-        el.scrollIntoView({ behavior: "smooth" });
+        const topOffset = el.getBoundingClientRect().top + window.scrollY - 85;
+        window.scrollTo({ top: Math.max(0, topOffset), behavior: "smooth" });
       }
     } else {
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -225,36 +227,27 @@ export const NavbarComponent = ({
   };
 
   return (
-    <LiquidGlass
-      as="nav"
-      preset="floating-island"
-      className="sticky top-0 z-50 w-full glass-nav transition-all duration-300"
-    >
-      <div className="mx-auto flex h-20 sm:h-[88px] max-w-[98%] items-center justify-between px-3 sm:px-4 md:px-6">
+    <header className="sticky top-0 z-50 w-full glass-nav transition-all duration-300">
+      <div className="mx-auto flex h-18 sm:h-20 max-w-[98%] items-center justify-between px-3 sm:px-4 md:px-6">
         
         {/* Brand Logo & Title */}
         <div 
-          className="flex items-center gap-2.5 sm:gap-3.5 cursor-pointer shrink-0 group select-none" 
+          className="flex items-center gap-2.5 sm:gap-3 cursor-pointer shrink-0 group select-none" 
           onClick={handleBrandClick}
           title="Go to Student Dashboard"
         >
-          <LpuLogo id="navbar-brand-logo" className="h-13 w-13 sm:h-[64px] sm:w-[64px] md:h-[74px] md:w-[74px] shrink-0 drop-shadow-md group-hover:scale-105 transition-transform" />
-          <div className="flex flex-col">
-            <div className="flex items-center text-xl sm:text-2xl md:text-[27px] font-black tracking-tight font-heading leading-tight">
-              <span className="text-gray-900 dark:text-white group-hover:text-primary transition-colors">LPU</span>
-              <span className="ml-1.5 text-primary">Events</span>
-            </div>
-            <span className="hidden xs:inline-block text-[9px] sm:text-[10px] md:text-[11px] font-extrabold tracking-[0.2em] sm:tracking-[0.22em] text-gray-500 dark:text-gray-400 uppercase font-heading mt-0.5">
-              Student Directory
-            </span>
+          <LpuLogo id="navbar-brand-logo" className="h-11 w-11 sm:h-12 sm:w-12 md:h-14 md:w-14 shrink-0 drop-shadow-sm group-hover:scale-105 transition-transform" />
+          <div className="flex items-center text-xl sm:text-2xl md:text-[25px] font-black tracking-tight font-heading leading-tight">
+            <span className="text-[#0f172a] dark:text-white group-hover:text-primary transition-colors">LPU</span>
+            <span className="ml-1.5 text-[#ea580c] dark:text-[#ff7f24]">Events</span>
           </div>
         </div>
 
         {/* Desktop Centered Search Bar (Hidden on mobile/tablet < md) */}
         <div ref={containerRef} className="hidden md:block relative flex-1 max-w-md mx-4 lg:mx-8">
           <div className="relative w-full">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500 pointer-events-none">
-              <Search className="h-4.5 w-4.5" />
+            <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-400 pointer-events-none">
+              <Search className="h-4 w-4 stroke-[2.2]" />
             </span>
             <input
               type="text"
@@ -263,16 +256,20 @@ export const NavbarComponent = ({
               onKeyDown={handleKeyDown}
               onFocus={() => setShowSuggestions(true)}
               placeholder="Search events, clubs, venues..."
-              className="h-11 w-full rounded-2xl bg-white dark:bg-[#3a3a3c] pl-10 pr-9 text-sm font-semibold text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-slate-200/90 dark:border-white/15 focus:bg-white dark:focus:bg-[#3a3a3c] focus:border-slate-900 dark:focus:border-white focus:ring-2 focus:ring-slate-900/10 dark:focus:ring-white/10 focus:outline-none transition-colors duration-150 shadow-xs"
+              className="h-10.5 w-full rounded-full bg-white/50 dark:bg-white/10 backdrop-blur-xl pl-10 pr-13 text-sm font-semibold text-[#0f172a] dark:text-white placeholder:text-slate-400 dark:placeholder:text-slate-500 border border-white/85 dark:border-white/15 focus:bg-white/90 dark:focus:bg-[#2c2c2e] focus:border-[#ea580c]/60 dark:focus:border-white/40 focus:ring-2 focus:ring-[#ea580c]/15 focus:outline-none transition-all duration-200 shadow-[0_2px_12px_rgba(15,23,42,0.03),inset_0_1px_1.5px_rgba(255,255,255,0.7)]"
             />
-            {localSearch && (
+            {localSearch ? (
               <button
                 onClick={handleClearSearch}
                 aria-label="Clear search"
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs bg-slate-100 dark:bg-white/10 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer transition-colors"
+                className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-700 dark:hover:text-white text-xs bg-slate-100 dark:bg-white/10 rounded-full w-5 h-5 flex items-center justify-center cursor-pointer transition-colors"
               >
                 ✕
               </button>
+            ) : (
+              <span className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10.5px] font-bold text-slate-500 dark:text-slate-400 bg-white/60 dark:bg-white/12 border border-white/80 dark:border-white/15 px-1.5 py-0.5 rounded-md pointer-events-none tracking-tight shadow-2xs">
+                ⌘K
+              </span>
             )}
 
             <SearchAutocomplete
@@ -285,17 +282,17 @@ export const NavbarComponent = ({
         </div>
 
         {/* Right Action Icons & Navigation */}
-        <div className="flex items-center gap-2 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-3">
           
           {/* Desktop Navigation Links */}
-          <div className="hidden lg:flex items-center gap-2.5 text-sm font-bold font-heading">
+          <div className="hidden lg:flex items-center gap-2 text-sm font-bold font-heading relative z-20 pointer-events-auto">
             <button 
               type="button"
               onClick={handleBrandClick} 
-              className={`transition-transform duration-150 cursor-pointer font-bold rounded-full px-4 py-2 select-none ${
-                !isTrendingActive && !searchQuery
-                  ? "glass-pill-active font-black scale-105"
-                  : "glass-pill text-gray-700 dark:text-gray-200 hover:text-primary"
+              className={`transition-all duration-200 cursor-pointer font-bold rounded-full px-5 py-2 select-none pointer-events-auto ${
+                !isTrendingActive && !isCategoriesActive && !searchQuery
+                  ? "glass-pill-orange text-white shadow-md"
+                  : "glass-pill-white text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white"
               }`}
               title="Go to Student Dashboard"
             >
@@ -310,7 +307,11 @@ export const NavbarComponent = ({
                   handleNavigate("#categories");
                 }
               }} 
-              className="glass-pill text-gray-700 dark:text-gray-200 hover:text-primary transition-transform duration-150 cursor-pointer font-bold rounded-full px-4 py-2 select-none"
+              className={`transition-all duration-200 cursor-pointer font-bold rounded-full px-5 py-2 select-none pointer-events-auto ${
+                isCategoriesActive && !isTrendingActive
+                  ? "glass-pill-orange text-white shadow-md"
+                  : "glass-pill-white text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white"
+              }`}
             >
               Categories
             </button>
@@ -320,10 +321,10 @@ export const NavbarComponent = ({
                 if (onSelectTrending) onSelectTrending();
                 handleNavigate("#events");
               }}
-              className={`transition-transform duration-150 cursor-pointer font-bold flex items-center gap-1.5 rounded-full px-4 py-2 select-none ${
+              className={`transition-all duration-200 cursor-pointer font-bold flex items-center gap-1.5 rounded-full px-5 py-2 select-none pointer-events-auto ${
                 isTrendingActive
-                  ? "glass-pill-active font-black scale-105"
-                  : "glass-pill text-gray-700 dark:text-gray-200 hover:text-primary"
+                  ? "glass-pill-orange text-white shadow-md"
+                  : "glass-pill-white text-slate-800 dark:text-slate-200 hover:text-slate-950 dark:hover:text-white"
               }`}
             >
               <span>🔥</span>
@@ -343,8 +344,8 @@ export const NavbarComponent = ({
                 }
               }}
               aria-label="Toggle mobile search"
-              className={`flex md:hidden h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary active:scale-95 transition-transform duration-150 cursor-pointer ${
-                mobileSearchOpen || localSearch ? "glass-pill-active" : ""
+              className={`flex md:hidden h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill-white active:scale-95 transition-transform duration-150 cursor-pointer ${
+                mobileSearchOpen || localSearch ? "glass-pill-orange text-white" : ""
               }`}
             >
               <Search className="h-4.5 w-4.5" />
@@ -352,11 +353,12 @@ export const NavbarComponent = ({
 
             {/* Theme Toggle Button */}
             <button
+              type="button"
               onClick={onToggleTheme}
               aria-label="Toggle light/dark mode"
-              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary hover:scale-105 active:scale-95 transition-transform duration-150 cursor-pointer"
+              className="flex h-9.5 w-9.5 sm:h-10 sm:w-10 items-center justify-center rounded-full glass-pill-white hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer pointer-events-auto select-none"
             >
-              {theme === "dark" ? <Sun className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-white" /> : <Moon className="h-4.5 w-4.5 sm:h-5 sm:w-5 text-indigo-600" />}
+              {theme === "dark" ? <Sun className="h-4.5 w-4.5 text-amber-400 pointer-events-none" /> : <Moon className="h-4.5 w-4.5 text-indigo-600 stroke-[2.2] pointer-events-none" />}
             </button>
 
             {/* Mobile Menu Hamburger Button */}
@@ -443,7 +445,11 @@ export const NavbarComponent = ({
                 <button
                   type="button"
                   onClick={handleBrandClick}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 dark:hover:bg-white/10 hover:text-primary dark:hover:text-white transition-colors text-left min-h-[44px] cursor-pointer font-bold focus:outline-none"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors text-left min-h-[44px] cursor-pointer font-bold focus:outline-none ${
+                    !isTrendingActive && !isCategoriesActive && !searchQuery
+                      ? "bg-orange-500/20 text-primary dark:bg-white/15 dark:text-white font-black border border-orange-500/30 dark:border-white/20"
+                      : "text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 dark:hover:bg-white/10 hover:text-primary dark:hover:text-white"
+                  }`}
                   title="Go to Student Dashboard"
                 >
                   <Home className="h-4.5 w-4.5 text-primary" />
@@ -460,7 +466,11 @@ export const NavbarComponent = ({
                       handleNavigate("#categories");
                     }
                   }}
-                  className="flex items-center gap-3 px-4 py-3 rounded-2xl text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 dark:hover:bg-white/10 hover:text-primary dark:hover:text-white transition-colors text-left min-h-[44px] cursor-pointer font-bold focus:outline-none"
+                  className={`flex items-center gap-3 px-4 py-3 rounded-2xl transition-colors text-left min-h-[44px] cursor-pointer font-bold focus:outline-none ${
+                    isCategoriesActive && !isTrendingActive
+                      ? "bg-orange-500/20 text-primary dark:bg-white/15 dark:text-white font-black border border-orange-500/30 dark:border-white/20"
+                      : "text-gray-800 dark:text-gray-100 hover:bg-orange-500/10 dark:hover:bg-white/10 hover:text-primary dark:hover:text-white"
+                  }`}
                 >
                   <LayoutGrid className="h-4.5 w-4.5 text-primary" />
                   <span>Event Categories</span>
@@ -553,7 +563,7 @@ export const NavbarComponent = ({
           </>
         )}
       </AnimatePresence>
-    </LiquidGlass>
+    </header>
   );
 };
 
