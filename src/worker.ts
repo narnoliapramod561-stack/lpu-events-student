@@ -15,7 +15,7 @@
  *   - Strict Temporal Filtering: Only status = 'PUBLISHED' and end_at >= now()
  *   - Response size guards (200 KB max)
  *   - Parameter allowlists prevent cache-key explosion
- *   - Security: Reject auth/cookie headers on public endpoints
+ *   - Security: Restrict disallowed authorization headers on public endpoints while permitting standard browser cookies
  *   - Authenticated cache invalidation with proactive warming
  *
  * SEO Engine:
@@ -379,16 +379,15 @@ async function fetchFromSupabase(
 
 // ─── Security Check for Public Endpoints ─────────────────────────────────────
 
-function isPublicRequestSafe(request: Request): { safe: boolean; reason?: string } {
+export function isPublicRequestSafe(request: Request): { safe: boolean; reason?: string } {
   const authHeader = request.headers.get('Authorization');
   if (authHeader && !authHeader.startsWith('Bearer sb_')) {
     return { safe: false, reason: 'Authorization header not permitted on public endpoints' };
   }
 
-  const cookie = request.headers.get('Cookie');
-  if (cookie && (cookie.includes('sb-') || cookie.includes('supabase-auth') || cookie.includes('session'))) {
-    return { safe: false, reason: 'Auth cookies not permitted on public endpoints' };
-  }
+  // Note: Standard browser cookies (session, analytics, Supabase auth) are permitted
+  // on public endpoints and are never forwarded to Supabase origin requests or used
+  // to personalize public edge caches.
 
   return { safe: true };
 }

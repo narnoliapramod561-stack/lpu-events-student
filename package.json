@@ -8,6 +8,7 @@
     "build": "tsc && vite build",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
+    "test:security": "node --experimental-strip-types --test tests/public_request_security.test.mjs",
     "cleanup:database": "node scripts/database_cleanup.mjs"
   },
   "dependencies": {
