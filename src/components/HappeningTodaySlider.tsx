@@ -68,7 +68,7 @@ export const HappeningTodaySliderComponent = ({
   // Lock body scroll when the Today's Events modal is open
   useEffect(() => {
     if (isAllTodayModalOpen) {
-      const prevOverflow = document.body.style.overflow;
+      const prevOverflow = document.body.style.overflow === "hidden" ? "" : document.body.style.overflow;
       document.body.style.overflow = "hidden";
       const handleKeyDown = (e: KeyboardEvent) => {
         if (e.key === "Escape") setIsAllTodayModalOpen(false);
@@ -80,6 +80,13 @@ export const HappeningTodaySliderComponent = ({
       };
     }
   }, [isAllTodayModalOpen]);
+
+  // Guaranteed scroll lock cleanup on unmount
+  useEffect(() => {
+    return () => {
+      document.body.style.overflow = "";
+    };
+  }, []);
 
   const slides = React.useMemo<HappeningTodaySlideItem[]>(() => {
     const limitedEvents = events.slice(0, 10);
@@ -335,7 +342,7 @@ export const HappeningTodaySliderComponent = ({
 
         <div
           ref={trackRef}
-          className="w-full overflow-x-auto overflow-y-hidden hide-scrollbar snap-x snap-mandatory flex items-stretch gap-3.5 sm:gap-4.5 px-0.5 py-2 touch-pan-x overscroll-x-contain scroll-smooth"
+          className="w-full overflow-x-auto hide-scrollbar snap-x snap-mandatory flex items-stretch gap-3.5 sm:gap-4.5 px-0.5 py-2 [touch-action:pan-x_pan-y] overscroll-x-contain scroll-smooth"
         >
           {slides.map((slide, idx) => {
             const handleCardClick = () => {
@@ -374,7 +381,7 @@ export const HappeningTodaySliderComponent = ({
               <div
                 key={slide.id}
                 onClick={handleCardClick}
-                className="group relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-18px)/2)] md:w-[calc((100%-36px)/3)] rounded-[24px] overflow-hidden cursor-pointer snap-start glass-event-card flex flex-col active:scale-[0.98]"
+                className="group relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-18px)/2)] md:w-[calc((100%-36px)/3)] rounded-[24px] overflow-hidden cursor-pointer snap-start glass-event-card flex flex-col sm:active:scale-[0.98]"
               >
                 {/* Uniform Crisp Banner Stage (Zero Zoom, Full Visibility) */}
                 <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 bg-black/5 dark:bg-white/5">
@@ -387,7 +394,7 @@ export const HappeningTodaySliderComponent = ({
                       loading={idx < 4 ? "eager" : "lazy"}
                       ambientBackdrop
                       containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
-                      className="w-full h-full object-contain object-center relative z-10 transition-transform duration-300 group-hover:scale-[1.02]"
+                      className="w-full h-full object-contain object-center relative z-10 sm:transition-transform sm:duration-300 sm:group-hover:scale-[1.02]"
                     />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 flex flex-col items-center justify-center p-4">

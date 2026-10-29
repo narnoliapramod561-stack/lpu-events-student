@@ -103,14 +103,18 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
 
   return (
     <div className={`${overflowSafeContainerClass} ${aspectRatioClass} ${bgClass}`}>
-      {/* Optimized Ambient Backdrop Surface — High visual fidelity with low VRAM footprint */}
+      {/* Optimized Ambient Backdrop Surface — High visual fidelity on desktop, clean lightweight surface on mobile */}
       {ambientBackdrop && (
         <div aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none z-0">
+          {/* Mobile: Clean lightweight backdrop without expensive blur/saturation/duplicated image layers */}
+          <div className="sm:hidden absolute inset-0 bg-slate-900/30 dark:bg-black/40 pointer-events-none" />
+
+          {/* Desktop: Rich Ambient Refractive Backdrop */}
           <div
-            className="absolute -inset-[15%] w-[130%] h-[130%] bg-cover bg-center filter blur-xl saturate-150 brightness-105 opacity-80"
+            className="hidden sm:block absolute -inset-[15%] w-[130%] h-[130%] bg-cover bg-center filter blur-xl saturate-150 brightness-105 opacity-80"
             style={{ backgroundImage: `url(${imgSrc})` }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/20 pointer-events-none" />
+          <div className="hidden sm:block absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/20 pointer-events-none" />
         </div>
       )}
 
@@ -141,7 +145,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
           decoding="async"
           onLoad={handleImageLoad}
           onError={handleImageError}
-          className={`${className} opacity-100 ${ambientBackdrop ? "relative z-10 drop-shadow-[0_4px_16px_rgba(0,0,0,0.22)]" : ""}`}
+          className={`${className} opacity-100 ${ambientBackdrop ? "relative z-10 sm:drop-shadow-[0_4px_16px_rgba(0,0,0,0.22)]" : ""}`}
           style={{
             imageRendering: "-webkit-optimize-contrast",
             ...(isFill ? { objectFit: "fill" } : {}),

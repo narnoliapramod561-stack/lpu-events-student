@@ -40,7 +40,7 @@ export const EventCardComponent = ({
   return (
     <article
       onClick={() => onSelect(event.id, event.name)}
-      className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-2xl sm:rounded-3xl shadow-md hover:shadow-2xl transition-[transform,box-shadow] duration-200 border border-white/80 dark:border-white/[0.08] hover:border-primary/50 dark:hover:border-white/20 relative hover:scale-[1.01] active:scale-[0.99]"
+      className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-2xl sm:rounded-3xl shadow-md hover:shadow-2xl transition-[transform,box-shadow] duration-200 border border-white/80 dark:border-white/[0.08] hover:border-primary/50 dark:hover:border-white/20 relative sm:hover:scale-[1.01] sm:active:scale-[0.99]"
     >
       {/* Event Cover Image — no ambientBackdrop to prevent GPU layer explosion on cards */}
       <div className="w-full aspect-[16/9] relative overflow-hidden shrink-0 bg-black/5 dark:bg-white/5 flex items-center justify-center">
@@ -50,7 +50,7 @@ export const EventCardComponent = ({
           alt={event.name}
           loading="lazy"
           containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
-          className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-500 ease-out"
+          className="w-full h-full object-cover object-center sm:group-hover:scale-105 sm:transition-transform sm:duration-500 ease-out"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none z-10" />
 
@@ -174,7 +174,7 @@ export const AdBannerCardComponent = ({ ad }: { ad: AdvertisementFeedItem }) => 
   return (
     <article
       onClick={() => ad.redirect_url && window.open(ad.redirect_url, "_blank", "noopener,noreferrer")}
-      className="group relative flex flex-col h-full min-h-[380px] xs:min-h-[420px] sm:min-h-[480px] overflow-hidden rounded-[20px] sm:rounded-[28px] border border-white/80 dark:border-white/10 hover:border-indigo-500/60 shadow-md hover:shadow-2xl transition-all duration-500 cursor-pointer bg-slate-900 select-none hover:scale-[1.01] active:scale-[0.99]"
+      className="group relative flex flex-col h-full min-h-[380px] xs:min-h-[420px] sm:min-h-[480px] overflow-hidden rounded-[20px] sm:rounded-[28px] border border-white/80 dark:border-white/10 hover:border-indigo-500/60 shadow-md hover:shadow-2xl transition-all duration-500 cursor-pointer bg-slate-900 select-none sm:hover:scale-[1.01] sm:active:scale-[0.99]"
     >
       {/* 1. Full-Bleed Card Visual / Cover Image */}
       <div className="absolute inset-0 w-full h-full overflow-hidden bg-slate-950">
@@ -184,7 +184,7 @@ export const AdBannerCardComponent = ({ ad }: { ad: AdvertisementFeedItem }) => 
             alt={ad.name}
             loading="lazy"
             fallbackSrc=""
-            className="w-full h-full object-cover group-hover:scale-108 transition-transform duration-700 ease-out"
+            className="w-full h-full object-cover sm:group-hover:scale-108 sm:transition-transform sm:duration-700 ease-out"
           />
         ) : (
           <div className="w-full h-full bg-gradient-to-br from-slate-950 via-indigo-950 to-purple-950 flex flex-col items-center justify-center p-6 relative overflow-hidden">

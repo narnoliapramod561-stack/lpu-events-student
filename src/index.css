@@ -684,6 +684,7 @@
     0 6px 16px -2px rgba(15, 23, 42, 0.05),
     inset 0 1.5px 2px 0 rgba(255, 255, 255, 1),
     inset 0 -1px 1px 0 rgba(0, 0, 0, 0.03) !important;
+  contain: layout style;
 }
 
 .dark .glass-mobile-filter {
@@ -699,6 +700,7 @@
   box-shadow: 
     0 28px 70px -12px rgba(0, 0, 0, 0.65),
     inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.18) !important;
+  contain: layout style;
 }
 
 /* Apple VisionOS Translucent Event Card System */
@@ -1479,6 +1481,12 @@
   overscroll-behavior-x: contain;
 }
 
+/* Multi-axis panning utility for horizontal rails allowing parent vertical scrolling */
+.touch-pan-both,
+[touch-action="pan-x pan-y"] {
+  touch-action: pan-x pan-y;
+}
+
 .sleek-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(148, 163, 184, 0.4) transparent;
@@ -1814,8 +1822,14 @@ html.dark body {
 
   /* Disable heavy pseudo-element radial gradients on mobile */
   .glass-panel::before,
-  .glass-card::before {
+  .glass-card::before,
+  .glass-event-card::before {
     display: none !important;
+  }
+
+  /* Disable will-change layer promotion on campus background on mobile to prevent scroll jitter */
+  .campus-bg-image {
+    will-change: auto !important;
   }
 
   /* Disable continuous infinite background rotation on mobile */
@@ -1910,7 +1924,7 @@ html.dark body {
   background-size: cover;
   background-repeat: no-repeat;
   background-position: center 50%;
-  will-change: transform;
+  will-change: auto;
 }
 
 @media (min-width: 640px) {

@@ -1300,6 +1300,7 @@ export default function App() {
       {/* Global Fixed Campus Background Layer (Pure and Unaltered in Light Mode) */}
       <div 
         aria-hidden="true" 
+        style={{ contain: 'strict' }}
         className="fixed inset-0 pointer-events-none z-0 overflow-hidden"
       >
         <div className="absolute inset-0 campus-bg-image" />

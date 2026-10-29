@@ -810,7 +810,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
       {/* Section Navigation Tabs (Unified Parent Glass Container) */}
       {tabs.length > 0 && (
-        <div className="w-full overflow-x-auto hide-scrollbar mb-4 sm:mb-6 select-none touch-pan-x">
+        <div className="w-full overflow-x-auto hide-scrollbar mb-4 sm:mb-6 select-none [touch-action:pan-x_pan-y]">
           <div className="inline-flex glass-tabs-container p-1 sm:p-1.5 rounded-xl sm:rounded-2xl gap-1 sm:gap-1.5 min-w-full sm:min-w-0 border border-white/80 dark:border-white/10 shadow-xs">
             {tabs.map((tab) => {
               const isActive = activeTab === tab.id;

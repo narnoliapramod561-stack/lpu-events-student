@@ -225,7 +225,7 @@ export const CategoryFilterComponent = ({
             </div>
 
             {/* Timeline Pills */}
-            <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 -mx-0.5 px-0.5 select-none items-center touch-pan-x">
+            <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 -mx-0.5 px-0.5 select-none items-center [touch-action:pan-x_pan-y]">
               {[
                 { id: "all", label: "All", icon: null },
                 { id: "today", label: "Today", icon: "live" },
@@ -329,7 +329,7 @@ export const CategoryFilterComponent = ({
             </div>
 
             {/* Event Type Pills */}
-            <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 -mx-0.5 px-0.5 select-none items-center touch-pan-x">
+            <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 -mx-0.5 px-0.5 select-none items-center [touch-action:pan-x_pan-y]">
               {[
                 { id: "ALL", label: "All" },
                 { id: "FREE", label: "Free" },
@@ -437,7 +437,7 @@ export const CategoryFilterComponent = ({
 
             {/* Category chips row */}
             {filteredCategories.length > 0 ? (
-              <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 -mx-0.5 px-0.5 select-none items-center touch-pan-x">
+              <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 -mx-0.5 px-0.5 select-none items-center [touch-action:pan-x_pan-y]">
                 {!cleanQuery && (
                   <button
                     type="button"
@@ -515,7 +515,7 @@ export const CategoryFilterComponent = ({
                     </button>
                   )}
                 </div>
-                <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 select-none items-center touch-pan-x">
+                <div className="flex gap-1.5 overflow-x-auto hide-scrollbar py-0.5 select-none items-center [touch-action:pan-x_pan-y]">
                   <button
                     type="button"
                     onClick={() => onSelectSubcategory("")}
@@ -578,7 +578,7 @@ export const CategoryFilterComponent = ({
           </div>
 
           {/* Timeline Pills */}
-          <div className="flex gap-3 overflow-x-auto hide-scrollbar py-1 select-none items-center touch-pan-x">
+          <div className="flex gap-3 overflow-x-auto hide-scrollbar py-1 select-none items-center [touch-action:pan-x_pan-y]">
             {[
               { id: "all", name: "ALL", icon: LayoutGrid },
               { id: "today", name: "TODAY", icon: Calendar },
@@ -661,7 +661,7 @@ export const CategoryFilterComponent = ({
           </div>
 
           {/* Event Type Pills */}
-          <div className="flex gap-3 overflow-x-auto hide-scrollbar py-1 select-none items-center touch-pan-x">
+          <div className="flex gap-3 overflow-x-auto hide-scrollbar py-1 select-none items-center [touch-action:pan-x_pan-y]">
             {[
               { id: "ALL", name: "ALL", icon: LayoutGrid },
               { id: "FREE", name: "FREE", icon: Sparkles },
@@ -765,7 +765,7 @@ export const CategoryFilterComponent = ({
                 </span>
                 <span className="text-[10px] text-gray-500 dark:text-gray-400">Click to jump directly</span>
               </div>
-              <div className="flex gap-2 overflow-x-auto hide-scrollbar py-1 select-none items-center touch-pan-x">
+              <div className="flex gap-2 overflow-x-auto hide-scrollbar py-1 select-none items-center [touch-action:pan-x_pan-y]">
                 {directMatchingSubcategories.map(({ category, subcategory }) => {
                   const isSubSelected = selectedCategory === category.id && selectedSubcategory === subcategory.id;
                   const SubIcon = getCategoryIcon(subcategory.key || subcategory.name);
@@ -795,7 +795,7 @@ export const CategoryFilterComponent = ({
 
           {/* Scrollable Category Pills */}
           {filteredCategories.length > 0 ? (
-            <div className="flex gap-3 overflow-x-auto hide-scrollbar py-2 select-none items-center touch-pan-x [mask-image:linear-gradient(to_right,black_90%,transparent)]">
+            <div className="flex gap-3 overflow-x-auto hide-scrollbar py-2 select-none items-center [touch-action:pan-x_pan-y] [mask-image:linear-gradient(to_right,black_90%,transparent)]">
               {/* "ALL" Category Pill */}
               {!cleanQuery && (
                 <button
@@ -893,7 +893,7 @@ export const CategoryFilterComponent = ({
 
               {/* Scrollable Subcategory Pills */}
               {filteredActiveSubcategories.length > 0 ? (
-                <div className="flex gap-3.5 overflow-x-auto hide-scrollbar py-2 px-1 select-none items-center touch-pan-x">
+                <div className="flex gap-3.5 overflow-x-auto hide-scrollbar py-2 px-1 select-none items-center [touch-action:pan-x_pan-y]">
                   {/* "ALL" Reset Pill */}
                   <button
                     type="button"
