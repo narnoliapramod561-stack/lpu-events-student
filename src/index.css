@@ -1828,10 +1828,9 @@ html.dark body {
     will-change: auto !important;
   }
 
-  /* Offscreen feed section deferred layout and paint */
+  /* Feed section layout stabilization - eliminate scroll-induced layout jumps and content eviction */
   .deferred-feed-section {
-    content-visibility: auto;
-    contain-intrinsic-size: auto none auto 500px;
+    contain: style;
   }
 }
 

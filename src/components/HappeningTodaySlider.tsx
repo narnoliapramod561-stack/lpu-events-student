@@ -48,10 +48,22 @@ export const HappeningTodaySliderComponent = ({
   onSelectEvent,
 }: HappeningTodaySliderProps) => {
   const [isHovered, setIsHovered] = useState(false);
+  const [isInView, setIsInView] = useState(true);
   const [isAllTodayModalOpen, setIsAllTodayModalOpen] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
   const trackRef = useRef<HTMLDivElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    const el = sectionRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsInView(entry.isIntersecting);
+    }, { threshold: 0.05 });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, []);
 
   // Lock body scroll when the Today's Events modal is open
   useEffect(() => {
@@ -198,10 +210,10 @@ export const HappeningTodaySliderComponent = ({
     });
   }, []);
 
-  // Auto advance smoothly on desktop view when not hovered
+  // Auto advance smoothly on desktop view when not hovered and in view
   useEffect(() => {
     const isAutoAdvance = config?.auto_advance !== false;
-    if (slides.length <= 1 || isHovered || !isAutoAdvance) return;
+    if (slides.length <= 1 || isHovered || !isInView || !isAutoAdvance) return;
 
     if (typeof window !== "undefined" && window.innerWidth < 768) {
       return;
@@ -222,7 +234,7 @@ export const HappeningTodaySliderComponent = ({
     }, duration);
 
     return () => clearInterval(timer);
-  }, [slides.length, isHovered, config?.auto_advance, config?.slide_duration_ms]);
+  }, [slides.length, isHovered, isInView, config?.auto_advance, config?.slide_duration_ms]);
 
   if (slides.length === 0 && events.length === 0) return null;
 
@@ -230,6 +242,7 @@ export const HappeningTodaySliderComponent = ({
 
   return (
     <section
+      ref={sectionRef}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
       className="w-full relative select-none"

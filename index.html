@@ -144,7 +144,7 @@
         background: linear-gradient(to right, transparent, rgba(255,255,255,0.45), transparent);
         pointer-events: none;
         opacity: 0;
-        animation: shell-sheen 0.85s cubic-bezier(0.4, 0, 0.2, 1) 1.20s forwards;
+        animation: shell-sheen 0.55s cubic-bezier(0.4, 0, 0.2, 1) 0.22s forwards;
         will-change: transform, opacity;
       }
       @keyframes shell-enter {
@@ -157,12 +157,12 @@
         70% { opacity: 0.45; }
         100% { transform: translateX(220%) skewX(-14deg); opacity: 0; }
       }
-      .shell-c1 { transform-origin: 208px 280px; animation: shell-c1-anim 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.04s forwards; will-change: transform, opacity; }
-      .shell-c2 { transform-origin: 224px 224px; animation: shell-c2-anim 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.08s forwards; will-change: transform, opacity; }
-      .shell-c3 { transform-origin: 306px 222px; animation: shell-c3-anim 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.12s forwards; will-change: transform, opacity; }
-      .shell-c4 { transform-origin: 324px 274px; animation: shell-c4-anim 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.16s forwards; will-change: transform, opacity; }
-      .shell-c5 { transform-origin: 332px 246px; animation: shell-c5-anim 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.20s forwards; will-change: transform, opacity; }
-      .shell-c6 { transform-origin: 256px 256px; animation: shell-c6-anim 0.62s cubic-bezier(0.22, 1, 0.36, 1) 0.24s forwards; will-change: transform, opacity; }
+      .shell-c1 { transform-origin: 208px 280px; animation: shell-c1-anim 0.46s cubic-bezier(0.22, 1, 0.36, 1) 0.00s forwards; will-change: transform, opacity; }
+      .shell-c2 { transform-origin: 224px 224px; animation: shell-c2-anim 0.46s cubic-bezier(0.22, 1, 0.36, 1) 0.03s forwards; will-change: transform, opacity; }
+      .shell-c3 { transform-origin: 306px 222px; animation: shell-c3-anim 0.46s cubic-bezier(0.22, 1, 0.36, 1) 0.06s forwards; will-change: transform, opacity; }
+      .shell-c4 { transform-origin: 324px 274px; animation: shell-c4-anim 0.46s cubic-bezier(0.22, 1, 0.36, 1) 0.09s forwards; will-change: transform, opacity; }
+      .shell-c5 { transform-origin: 332px 246px; animation: shell-c5-anim 0.46s cubic-bezier(0.22, 1, 0.36, 1) 0.12s forwards; will-change: transform, opacity; }
+      .shell-c6 { transform-origin: 256px 256px; animation: shell-c6-anim 0.50s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards; will-change: transform, opacity; }
       @keyframes shell-c1-anim { 0% { transform: translate(-3px, 2px) scale(0.95); opacity: 0.3; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
       @keyframes shell-c2-anim { 0% { transform: translate(-2px, -2px) scale(0.95); opacity: 0.3; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
       @keyframes shell-c3-anim { 0% { transform: translate(2px, -2px) scale(0.95); opacity: 0.3; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
@@ -173,41 +173,41 @@
       /* GPU-Accelerated Unified Typography Cascade (Zero clip-path re-rasterization jank) */
       .shell-anim-lpu-group {
         transform-origin: 256px 228px;
-        animation: shell-fade-slide-lpu 0.58s cubic-bezier(0.22, 1, 0.36, 1) 0.22s forwards;
+        animation: shell-fade-slide-lpu 0.48s cubic-bezier(0.22, 1, 0.36, 1) 0.12s forwards;
         opacity: 0;
         transform: translateY(8px);
         will-change: transform, opacity;
       }
       .shell-anim-connector-group {
-        animation: shell-fade 0.45s cubic-bezier(0.22, 1, 0.36, 1) 0.28s forwards;
+        animation: shell-fade 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.16s forwards;
         opacity: 0;
         will-change: opacity;
       }
       .shell-connector-pill {
-        animation: shell-fade 0.40s cubic-bezier(0.22, 1, 0.36, 1) 0.28s forwards;
+        animation: shell-fade 0.32s cubic-bezier(0.22, 1, 0.36, 1) 0.16s forwards;
         opacity: 0;
       }
       .shell-dot-left {
         transform-origin: 178px 268px;
-        animation: shell-scale 0.30s cubic-bezier(0.22, 1, 0.36, 1) 0.28s forwards;
+        animation: shell-scale 0.25s cubic-bezier(0.22, 1, 0.36, 1) 0.16s forwards;
         transform: scale(0);
         will-change: transform;
       }
       .shell-connector-line {
         stroke-dasharray: 144;
         stroke-dashoffset: 144;
-        animation: shell-draw-line 0.40s cubic-bezier(0.22, 1, 0.36, 1) 0.32s forwards;
+        animation: shell-draw-line 0.32s cubic-bezier(0.22, 1, 0.36, 1) 0.18s forwards;
         will-change: stroke-dashoffset;
       }
       .shell-dot-right {
         transform-origin: 334px 268px;
-        animation: shell-scale 0.30s cubic-bezier(0.22, 1, 0.36, 1) 0.60s forwards;
+        animation: shell-scale 0.25s cubic-bezier(0.22, 1, 0.36, 1) 0.38s forwards;
         transform: scale(0);
         will-change: transform;
       }
       .shell-anim-events-group {
         transform-origin: 256px 323px;
-        animation: shell-fade-slide-events 0.54s cubic-bezier(0.22, 1, 0.36, 1) 0.30s forwards;
+        animation: shell-fade-slide-events 0.46s cubic-bezier(0.22, 1, 0.36, 1) 0.18s forwards;
         opacity: 0;
         transform: translateY(6px);
         will-change: transform, opacity;
@@ -275,10 +275,10 @@
     </script>
 
     <!-- Non-Render-Blocking Google Fonts (Zero Layout Shift via display=swap) -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" media="print" onload="this.media='all'" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" media="print" onload="this.media='all'" />
     <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=Inter:wght@400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" />
     </noscript>
 
     <!-- Deferred High-Performance Analytics & Ads (Triggered on first user interaction or idle timeout) -->
@@ -291,31 +291,59 @@
         if (analyticsInitialized) return;
         analyticsInitialized = true;
 
-        var events = ['pointerdown', 'touchstart', 'scroll', 'keydown'];
-        events.forEach(function(e) {
-          window.removeEventListener(e, loadAnalytics, { passive: true });
+        ['pointerdown', 'touchstart', 'scroll', 'keydown'].forEach(function(e) {
+          window.removeEventListener(e, onUserInteract, { passive: true });
         });
 
-        // Load GTM
-        (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-        new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-        j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-        'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-        })(window,document,'script','dataLayer','GTM-5XHHNRKM');
+        var execLoad = function() {
+          // Load GTM
+          (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+          new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+          j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+          'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+          })(window,document,'script','dataLayer','GTM-5XHHNRKM');
 
-        // Load gtag.js
-        var gtScript = document.createElement('script');
-        gtScript.async = true;
-        gtScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-HXC7S26FSN';
-        document.head.appendChild(gtScript);
-        gtag('js', new Date());
-        gtag('config', 'G-HXC7S26FSN');
+          // Load gtag.js
+          var gtScript = document.createElement('script');
+          gtScript.async = true;
+          gtScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-HXC7S26FSN';
+          document.head.appendChild(gtScript);
+          gtag('js', new Date());
+          gtag('config', 'G-HXC7S26FSN');
+        };
+
+        if ('requestIdleCallback' in window) {
+          window.requestIdleCallback(execLoad, { timeout: 2000 });
+        } else {
+          setTimeout(execLoad, 50);
+        }
       }
 
-      var interactionEvents = ['pointerdown', 'touchstart', 'scroll', 'keydown'];
-      interactionEvents.forEach(function(e) {
-        window.addEventListener(e, loadAnalytics, { passive: true, once: true });
+      function onUserInteract(e) {
+        if (e && e.type === 'scroll') {
+          // Defer to idle callback so scroll remains 60/120fps smooth
+          if ('requestIdleCallback' in window) {
+            window.requestIdleCallback(loadAnalytics, { timeout: 2500 });
+          } else {
+            setTimeout(loadAnalytics, 1500);
+          }
+          return;
+        }
+        loadAnalytics();
+      }
+
+      ['pointerdown', 'touchstart', 'scroll', 'keydown'].forEach(function(e) {
+        window.addEventListener(e, onUserInteract, { passive: true, once: true });
       });
+
+      // Background fallback so analytics runs after 3.5s even with zero interaction
+      setTimeout(function() {
+        if (!analyticsInitialized && 'requestIdleCallback' in window) {
+          window.requestIdleCallback(loadAnalytics, { timeout: 1000 });
+        } else if (!analyticsInitialized) {
+          loadAnalytics();
+        }
+      }, 3500);
     </script>
 
     <!-- Primary SEO Metadata -->
@@ -465,14 +493,34 @@
         }
 
         var startTime = Date.now();
-        // High-Velocity Brand Assembly:
-        // Always display the full, fluid logo animation on every reload before docking into navbar.
-        var MIN_VISUAL_MS = 650;
-        var MAX_SAFETY_MS = 1600;
+        var MAX_SAFETY_MS = 850;
         var isCriticalReady = false;
+        var isAnimationComplete = false;
         var isHandoffStarted = false;
         var handoffAttempts = 0;
-        var MAX_HANDOFF_ATTEMPTS = 50;
+        var MAX_HANDOFF_ATTEMPTS = 45;
+
+        function checkAndTriggerHandoff() {
+          // Immediately hand off once the full logo sequence completes OR data is ready
+          triggerHandoff();
+        }
+
+        // Coordinate with the actual completion of the logo sheen sweep (~780ms)
+        var sheenEl = document.getElementById('lpu-startup-sheen');
+        if (sheenEl) {
+          sheenEl.addEventListener('animationend', function() {
+            isAnimationComplete = true;
+            checkAndTriggerHandoff();
+          }, { once: true });
+        }
+
+        // Guaranteed animation fallback so user NEVER waits for slow network
+        setTimeout(function() {
+          if (!isHandoffStarted) {
+            isAnimationComplete = true;
+            checkAndTriggerHandoff();
+          }
+        }, 820);
 
         function fallbackDismiss() {
           if (isHandoffStarted) return;
@@ -588,19 +636,10 @@
           }, 390);
         }
 
-        function checkAndTriggerHandoff() {
-          var elapsed = Date.now() - startTime;
-          if (elapsed >= MIN_VISUAL_MS && isCriticalReady) {
-            triggerHandoff();
-          } else if (isCriticalReady) {
-            setTimeout(function() {
-              triggerHandoff();
-            }, Math.max(0, MIN_VISUAL_MS - elapsed));
-          }
-        }
-
+        // Hard safety timeout so slow networks or late APIs never block the site indefinitely
         setTimeout(function() {
           if (!isHandoffStarted) {
+            isAnimationComplete = true;
             isCriticalReady = true;
             if (document.getElementById('navbar-brand-logo')) {
               triggerHandoff();

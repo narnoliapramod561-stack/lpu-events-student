@@ -364,7 +364,7 @@ export class LpuEventsClient {
       this.invalidateClientCache(cacheKey);
     }
 
-    return this._fetchWithCache<HomepageBundleData>(cacheKey, 60_000, async () => {
+    return this._fetchWithCache<HomepageBundleData>(cacheKey, 1800_000, async () => {
       // Consume early edge prefetch if initiated by index.html in parallel with JS downloading
       let edgeRes: { data: HomepageBundleData | null; error: any } | null = null;
       if (!forceFresh && typeof window !== 'undefined' && (window as any).__PREFETCHED_HOMEPAGE__) {

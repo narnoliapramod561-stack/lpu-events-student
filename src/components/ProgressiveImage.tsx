@@ -1,8 +1,18 @@
 import React, { useState, useRef, useCallback } from "react";
 import { getLowResPlaceholderUrl } from "../utils/images";
 
-// In-memory cache of already loaded HD image URLs to prevent re-blurring on route navigation
+// Bounded in-memory cache of already loaded HD image URLs to prevent re-blurring on scroll/route navigation
+const MAX_IMAGE_CACHE_ENTRIES = 300;
 const loadedHdImageCache = new Set<string>();
+
+const recordLoadedImage = (url: string) => {
+  if (!url) return;
+  if (loadedHdImageCache.size >= MAX_IMAGE_CACHE_ENTRIES) {
+    const firstKey = loadedHdImageCache.values().next().value;
+    if (firstKey) loadedHdImageCache.delete(firstKey);
+  }
+  loadedHdImageCache.add(url);
+};
 
 export interface ProgressiveImageProps extends React.ImgHTMLAttributes<HTMLImageElement> {
   src: string;
@@ -39,15 +49,25 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
   const [hasFailed, setHasFailed] = useState<boolean>(false);
   const imgRef = useRef<HTMLImageElement | null>(null);
 
-  // Sync internal state when source prop changes dynamically
+  // Sync internal state only when the image source truly changes
   React.useEffect(() => {
-    setImgSrc(src);
-    setHasFailed(false);
-    setIsHdLoaded(loadedHdImageCache.has(src) || isEager);
-  }, [src, isEager]);
+    if (src !== imgSrc) {
+      setImgSrc(src);
+      setHasFailed(false);
+      setIsHdLoaded(loadedHdImageCache.has(src) || isEager);
+    }
+  }, [src, isEager, imgSrc]);
+
+  // If the browser already has the image decoded into memory, mark ready immediately
+  React.useLayoutEffect(() => {
+    if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+      recordLoadedImage(imgSrc);
+      setIsHdLoaded(true);
+    }
+  }, [imgSrc]);
 
   const handleImageLoad = useCallback(() => {
-    if (imgSrc) loadedHdImageCache.add(imgSrc);
+    if (imgSrc) recordLoadedImage(imgSrc);
     setIsHdLoaded(true);
     setHasFailed(false);
     if (onLoadComplete) onLoadComplete();
@@ -82,27 +102,20 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
   );
 
   return (
-    <div className={`${overflowSafeContainerClass} ${aspectRatioClass} ${bgClass}`} style={{ contain: 'layout paint' }}>
-      {/* Seamless Horizon Dual-Surface Engine (100% Space Filled, Zero Black Bars, Zero Info Loss) */}
+    <div className={`${overflowSafeContainerClass} ${aspectRatioClass} ${bgClass}`}>
+      {/* Optimized Ambient Backdrop Surface — High visual fidelity with low VRAM footprint */}
       {ambientBackdrop && (
         <div aria-hidden="true" className="absolute inset-0 overflow-hidden pointer-events-none z-0">
-          {/* Surface 1A: Overscan Horizon Dispersion (Extends 25% outside canvas to completely eliminate edge-blur fade) */}
           <div
-            className="absolute -inset-[25%] w-[150%] h-[150%] bg-cover bg-center filter blur-3xl saturate-200 brightness-110 transform-gpu opacity-95"
+            className="absolute -inset-[15%] w-[130%] h-[130%] bg-cover bg-center filter blur-xl saturate-150 brightness-105 opacity-80"
             style={{ backgroundImage: `url(${imgSrc})` }}
           />
-          {/* Surface 1B: High-Fidelity Luminance & Texture Equalizer */}
-          <div
-            className="absolute -inset-[15%] w-[130%] h-[130%] bg-cover bg-center filter blur-xl saturate-150 brightness-100 transform-gpu opacity-45 mix-blend-overlay"
-            style={{ backgroundImage: `url(${imgSrc})` }}
-          />
-          {/* Surface 1C: Atmospheric Lighting & Edge Continuity Vignette */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 via-transparent to-black/15 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/20 pointer-events-none" />
         </div>
       )}
 
-      {/* 1. Low-Res Blurred Placeholder (Only rendered if a distinct low-res version exists) */}
-      {hasDistinctPlaceholder && (
+      {/* 1. Low-Res Blurred Placeholder (Only rendered before HD is ready) */}
+      {hasDistinctPlaceholder && !isHdLoaded && (
         <img
           src={placeholderUrl}
           alt=""
@@ -110,15 +123,14 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
           loading={loading}
           decoding="async"
           onError={(e) => {
-            // Silently suppress placeholder errors
             e.currentTarget.style.display = "none";
           }}
-          className={`absolute inset-0 w-full h-full ${placeholderFit} filter blur-md transition-opacity duration-300 ease-out opacity-100 z-[2]`}
+          className={`absolute inset-0 w-full h-full ${placeholderFit} filter blur-md opacity-100 z-[2]`}
           style={isFill ? { objectFit: "fill" } : undefined}
         />
       )}
 
-      {/* 2. Full HD Image (Always decoded asynchronously to prevent main-thread hitching) */}
+      {/* 2. Full HD Image — Stable zero-flicker native async decode */}
       {!hasFailed ? (
         <img
           ref={imgRef}
@@ -129,11 +141,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
           decoding="async"
           onLoad={handleImageLoad}
           onError={handleImageError}
-          className={`${className} ${
-            isEager
-              ? "opacity-100"
-              : `transition-opacity duration-300 ease-out ${isHdLoaded ? "opacity-100" : "opacity-0"}`
-          } ${ambientBackdrop ? "relative z-10 drop-shadow-[0_4px_16px_rgba(0,0,0,0.22)]" : ""}`}
+          className={`${className} opacity-100 ${ambientBackdrop ? "relative z-10 drop-shadow-[0_4px_16px_rgba(0,0,0,0.22)]" : ""}`}
           style={{
             imageRendering: "-webkit-optimize-contrast",
             ...(isFill ? { objectFit: "fill" } : {}),

@@ -54,7 +54,7 @@ class PersistentCacheManager {
     }
   }
 
-  public get<T>(key: string, maxAgeMs?: number): T | null {
+  public get<T>(key: string, maxAgeMs?: number, allowStale = true): T | null {
     // 1. Fast in-memory check
     let record = this._memCache.get(key);
     const now = Date.now();
@@ -76,14 +76,14 @@ class PersistentCacheManager {
 
     if (!record) return null;
 
-    // Check expiration
-    if (record.expiresAt && record.expiresAt < now) {
+    // Stale-While-Revalidate: serve cached snapshot for instant hydration
+    if (record.expiresAt && record.expiresAt < now && !allowStale) {
       this.delete(key);
       return null;
     }
 
     // Check optional maxAge
-    if (maxAgeMs && (now - record.storedAt) > maxAgeMs) {
+    if (maxAgeMs && (now - record.storedAt) > maxAgeMs && !allowStale) {
       return null;
     }
 

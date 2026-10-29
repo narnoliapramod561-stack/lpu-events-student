@@ -125,11 +125,19 @@ export const HeroCarouselComponent = ({
 }) => {
   const [[currentIndex, direction], setPage] = useState<[number, number]>([0, 0]);
   const [isHovered, setIsHovered] = useState(false);
+  const [isInView, setIsInView] = useState(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const isFirstMountRef = useRef(true);
 
   useEffect(() => {
     isFirstMountRef.current = false;
+    const el = containerRef.current;
+    if (!el || typeof IntersectionObserver === 'undefined') return;
+    const observer = new IntersectionObserver(([entry]) => {
+      setIsInView(entry.isIntersecting);
+    }, { threshold: 0.05 });
+    observer.observe(el);
+    return () => observer.disconnect();
   }, []);
 
   const slides = React.useMemo<HeroSlideModel[]>(() => {
@@ -306,7 +314,7 @@ export const HeroCarouselComponent = ({
   };
 
   useEffect(() => {
-    if (slides.length <= 1 || isHovered) return;
+    if (slides.length <= 1 || isHovered || !isInView) return;
 
     const currentDuration = slides[currentIndex]?.duration || 5000;
     const timer = setTimeout(() => {
@@ -314,7 +322,7 @@ export const HeroCarouselComponent = ({
     }, currentDuration);
 
     return () => clearTimeout(timer);
-  }, [slides, currentIndex, isHovered, paginate]);
+  }, [slides, currentIndex, isHovered, isInView, paginate]);
 
   if (slides.length === 0) return null;
 

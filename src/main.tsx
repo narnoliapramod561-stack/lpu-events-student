@@ -35,20 +35,36 @@ const initDeferredTelemetry = async () => {
 };
 
 if (typeof window !== 'undefined') {
-  const triggerTelemetry = () => {
-    ['pointerdown', 'touchstart', 'scroll', 'keydown'].forEach((e) => {
-      window.removeEventListener(e, triggerTelemetry);
+  const triggerTelemetry = (e?: Event) => {
+    ['pointerdown', 'touchstart', 'keydown'].forEach((ev) => {
+      window.removeEventListener(ev, triggerTelemetry);
     });
+    window.removeEventListener('scroll', onScrollTelemetry);
+    const timeout = e && e.type === 'scroll' ? 3500 : 1500;
     if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(initDeferredTelemetry);
+      (window as any).requestIdleCallback(initDeferredTelemetry, { timeout });
     } else {
-      setTimeout(initDeferredTelemetry, 100);
+      setTimeout(initDeferredTelemetry, timeout);
     }
   };
 
-  ['pointerdown', 'touchstart', 'scroll', 'keydown'].forEach((e) => {
+  const onScrollTelemetry = () => {
+    triggerTelemetry({ type: 'scroll' } as Event);
+  };
+
+  ['pointerdown', 'touchstart', 'keydown'].forEach((e) => {
     window.addEventListener(e, triggerTelemetry, { once: true, passive: true });
   });
+  window.addEventListener('scroll', onScrollTelemetry, { once: true, passive: true });
+
+  // Background fallback
+  setTimeout(() => {
+    if ('requestIdleCallback' in window) {
+      (window as any).requestIdleCallback(initDeferredTelemetry, { timeout: 2000 });
+    } else {
+      initDeferredTelemetry();
+    }
+  }, 4500);
 
   window.addEventListener('error', initDeferredTelemetry, { once: true });
   window.addEventListener('unhandledrejection', initDeferredTelemetry, { once: true });

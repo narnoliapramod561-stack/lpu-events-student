@@ -29,7 +29,7 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onGoToCategories }) 
   return (
     <footer
       aria-label="Site Footer"
-      className="mt-12 sm:mt-20 glass-panel deferred-feed-section border-t border-white/95 dark:border-white/10 text-gray-700 dark:text-on-surface-variant transition-colors duration-300 shadow-[0_-15px_40px_rgba(15,23,42,0.06)]"
+      className="mt-12 sm:mt-20 glass-panel border-t border-white/95 dark:border-white/10 text-gray-700 dark:text-on-surface-variant transition-colors duration-300 shadow-[0_-15px_40px_rgba(15,23,42,0.06)]"
     >
       <div className="max-w-[98%] mx-auto px-4 sm:px-6 md:px-8 py-8 sm:py-12 flex flex-col md:grid md:grid-cols-12 gap-8 md:gap-12">
         {/* Column 1: Branding & Mission (Desktop: 6 Columns) */}

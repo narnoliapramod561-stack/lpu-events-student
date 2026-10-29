@@ -388,19 +388,19 @@ export const EventGridComponent = ({
     );
   }
 
-  // Inject Advertisements into Grid Sequence
-  const placementConfig = adSystemConfig?.placements?.event_hub || {
+  // Inject Advertisements into Grid Sequence (Memoized to prevent unnecessary card re-evaluations)
+  const placementConfig = React.useMemo(() => adSystemConfig?.placements?.event_hub || {
     enabled: true,
-    provider: 'direct',
+    provider: 'direct' as const,
     frequency: adInterval,
     max_ads: 6,
     ad_unit_id: '8059587837',
-  };
+  }, [adSystemConfig?.placements?.event_hub, adInterval]);
 
-  const gridSequence = injectAdsIntoSequence(events, ads, placementConfig, {
+  const gridSequence = React.useMemo(() => injectAdsIntoSequence(events, ads, placementConfig, {
     global_enabled: adSystemConfig?.global_enabled,
     remaining_global_quota: adSystemConfig?.max_ads_per_page,
-  });
+  }), [events, ads, placementConfig, adSystemConfig?.global_enabled, adSystemConfig?.max_ads_per_page]);
 
   return (
     <section className="w-full">

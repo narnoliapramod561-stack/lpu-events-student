@@ -7,8 +7,8 @@ import { UnifiedAdSlot } from "./components/UnifiedAdSlot";
 import { MaintenanceView } from "./components/MaintenanceView";
 import { SplashScreen } from "./components/SplashScreen";
 
-const CategoryFilter = lazy(() => import("./components/CategoryFilter").then(m => ({ default: m.CategoryFilter })));
-const HappeningTodaySlider = lazy(() => import("./components/HappeningTodaySlider").then(m => ({ default: m.HappeningTodaySlider })));
+import { CategoryFilter } from "./components/CategoryFilter";
+import { HappeningTodaySlider } from "./components/HappeningTodaySlider";
 const EventDetailsView = lazy(() => import("./components/EventDetailsView").then(m => ({ default: m.EventDetailsView })));
 const AboutUsView = lazy(() => import("./components/AboutUsView").then(m => ({ default: m.AboutUsView })));
 const PrivacyPolicyView = lazy(() => import("./components/PrivacyPolicyView").then(m => ({ default: m.PrivacyPolicyView })));
@@ -355,6 +355,11 @@ export default function App() {
   // Track scroll position before navigating away from home to restore on back
   const previousScrollPosRef = useRef<number>(0);
 
+  const allAvailableEventsRef = useRef(allAvailableEvents);
+  useEffect(() => {
+    allAvailableEventsRef.current = allAvailableEvents;
+  }, [allAvailableEvents]);
+
   // Universal Navigation Handler for static pages
   const handleNavigate = useCallback((route: 'home' | 'about' | 'privacy' | 'terms' | 'contact') => {
     setSelectedEventId(null);
@@ -378,7 +383,7 @@ export default function App() {
     }
   }, []);
 
-  // Event Selection Handler
+  // Event Selection Handler (Stable identity across renders)
   const handleSelectEvent = useCallback((id: string | null, name?: string) => {
     if (id) {
       const cleanId = extractEventId(id);
@@ -388,7 +393,7 @@ export default function App() {
 
       let eventName = name;
       if (!eventName) {
-        const found = allAvailableEvents.find(e => e.id === cleanId || slugify(e.name) === cleanId || e.name === cleanId);
+        const found = allAvailableEventsRef.current.find(e => e.id === cleanId || slugify(e.name) === cleanId || e.name === cleanId);
         eventName = found?.name;
       }
 
@@ -426,7 +431,7 @@ export default function App() {
         });
       }
     }
-  }, [allAvailableEvents]);
+  }, []);
 
   // Browser back/forward navigation sync
   useEffect(() => {
@@ -554,17 +559,37 @@ export default function App() {
         setIsMaintenanceWarming(false);
 
         // Categories
-        if (bundle.categories) setCategories(bundle.categories);
+        if (bundle.categories) {
+          setCategories(prev => {
+            if (prev.length === bundle.categories.length && prev.every((c, i) => c.id === bundle.categories[i]?.id)) {
+              return prev;
+            }
+            return bundle.categories;
+          });
+        }
 
         // Advertisements
-        if (bundle.advertisements) setAds(bundle.advertisements);
+        if (bundle.advertisements) {
+          setAds(prev => {
+            if (prev.length === bundle.advertisements.length && prev.every((a, i) => a.id === bundle.advertisements[i]?.id)) {
+              return prev;
+            }
+            return bundle.advertisements;
+          });
+        }
 
         // Featured Events
         if (bundle.featured) {
           const resolved: EventFeedItem[] = bundle.featured
             .map((fe: any) => fe.events || fe)
             .filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at);
-          setFeaturedEvents(normalizeEventDates(resolved));
+          const normalized = normalizeEventDates(resolved);
+          setFeaturedEvents(prev => {
+            if (prev.length === normalized.length && prev.every((e, i) => e.id === normalized[i]?.id)) {
+              return prev;
+            }
+            return normalized;
+          });
         }
 
         // Trending Events
@@ -572,12 +597,23 @@ export default function App() {
           const validTrending = bundle.trending.filter(
             (evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at
           );
-          setTrendingEvents(normalizeEventDates(validTrending));
+          const normalized = normalizeEventDates(validTrending);
+          setTrendingEvents(prev => {
+            if (prev.length === normalized.length && prev.every((e, i) => e.id === normalized[i]?.id)) {
+              return prev;
+            }
+            return normalized;
+          });
         }
 
         // Carousel
         if (bundle.carousel) {
-          setCarouselSlides(bundle.carousel);
+          setCarouselSlides(prev => {
+            if (prev.length === bundle.carousel.length && prev.every((c, i) => c.id === bundle.carousel[i]?.id)) {
+              return prev;
+            }
+            return bundle.carousel;
+          });
         }
 
         // Global Settings
@@ -666,8 +702,19 @@ export default function App() {
               !evt.deleted_at &&
               isEventToday(evt.start_at, evt.end_at, now)
           );
-          setHappeningTodayEvents(validLive);
-          setEvents(normalized.slice(0, 9));
+          setHappeningTodayEvents(prev => {
+            if (prev.length === validLive.length && prev.every((e, i) => e.id === validLive[i]?.id)) {
+              return prev;
+            }
+            return validLive;
+          });
+          setEvents(prev => {
+            const next = normalized.slice(0, 9);
+            if (prev.length === next.length && prev.every((e, i) => e.id === next[i]?.id)) {
+              return prev;
+            }
+            return next;
+          });
           setEventsLoading(false);
           setHasMoreEvents(normalized.length >= 9);
         }
@@ -1013,7 +1060,7 @@ export default function App() {
           el.remove();
         });
       } else {
-        // Re-inject AdSense script on user interaction if enabled
+        // Re-inject AdSense script during idle time without blocking frame render
         const injectScript = () => {
           const hasScript = document.querySelector(`script[src*="pagead2.googlesyndication.com"]`);
           if (!hasScript) {
@@ -1025,14 +1072,44 @@ export default function App() {
           }
         };
 
-        const events = ['scroll', 'pointerdown', 'touchstart', 'keydown'];
-        const onInteract = () => {
-          events.forEach(e => window.removeEventListener(e, onInteract));
-          injectScript();
+        const scheduleAdSense = () => {
+          if ('requestIdleCallback' in window) {
+            (window as any).requestIdleCallback(injectScript, { timeout: 3000 });
+          } else {
+            setTimeout(injectScript, 1000);
+          }
         };
-        events.forEach(e => window.addEventListener(e, onInteract, { once: true, passive: true }));
+
+        const events = ['pointerdown', 'touchstart', 'keydown'];
+        const onDirectInteract = () => {
+          events.forEach(e => window.removeEventListener(e, onDirectInteract));
+          window.removeEventListener('scroll', onScrollInteract);
+          scheduleAdSense();
+        };
+
+        const onScrollInteract = () => {
+          events.forEach(e => window.removeEventListener(e, onDirectInteract));
+          window.removeEventListener('scroll', onScrollInteract);
+          // Defer until scroll is calm
+          if ('requestIdleCallback' in window) {
+            (window as any).requestIdleCallback(injectScript, { timeout: 3500 });
+          } else {
+            setTimeout(injectScript, 2500);
+          }
+        };
+
+        events.forEach(e => window.addEventListener(e, onDirectInteract, { once: true, passive: true }));
+        window.addEventListener('scroll', onScrollInteract, { once: true, passive: true });
+
+        // Background idle fallback
+        const idleFallbackTimer = setTimeout(() => {
+          scheduleAdSense();
+        }, 4000);
+
         return () => {
-          events.forEach(e => window.removeEventListener(e, onInteract));
+          clearTimeout(idleFallbackTimer);
+          events.forEach(e => window.removeEventListener(e, onDirectInteract));
+          window.removeEventListener('scroll', onScrollInteract);
         };
       }
     }, [adSystemConfig.global_enabled, adSystemConfig?.adsense?.publisher_id]);
@@ -1229,19 +1306,31 @@ export default function App() {
         <div className="absolute inset-0 hidden dark:block dark:bg-[#0e0e12]/60 pointer-events-none" />
       </div>
 
-      {/* Dark Mode Premium Ambient Canvas — Obsidian Space with Luminous Refractive Depth */}
+      {/* Dark Mode Premium Ambient Canvas — Obsidian Space with Luminous Refractive Depth (Zero heavy blur filters) */}
       <div 
         style={{ contain: 'strict' }}
         className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none hidden dark:block"
       >
-        {/* 1. Ethereal Violet-Indigo Top Wash (creates luminous navbar refraction) */}
-        <div className="absolute -top-36 left-1/2 -translate-x-1/2 w-[900px] sm:w-[1400px] h-[520px] rounded-full bg-gradient-to-b from-indigo-500/18 via-purple-500/10 to-transparent blur-[110px]" />
+        {/* 1. Ethereal Violet-Indigo Top Wash */}
+        <div
+          className="absolute -top-36 left-1/2 -translate-x-1/2 w-[900px] sm:w-[1400px] h-[520px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse at center, rgba(99, 102, 241, 0.16) 0%, rgba(168, 85, 247, 0.08) 50%, transparent 75%)' }}
+        />
         {/* 2. Warm Amber LPU Glow (mid-right depth) */}
-        <div className="absolute top-[22%] -right-28 w-[650px] h-[650px] rounded-full bg-gradient-to-l from-[#ff6b00]/16 via-amber-500/10 to-transparent blur-[120px]" />
+        <div
+          className="absolute top-[22%] -right-28 w-[650px] h-[650px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle at center, rgba(255, 107, 0, 0.14) 0%, rgba(245, 158, 11, 0.07) 50%, transparent 75%)' }}
+        />
         {/* 3. Deep Sapphire Horizon (mid-left depth) */}
-        <div className="absolute top-[48%] -left-32 w-[650px] h-[650px] rounded-full bg-gradient-to-tr from-blue-600/18 via-cyan-500/10 to-transparent blur-[130px]" />
+        <div
+          className="absolute top-[48%] -left-32 w-[650px] h-[650px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(circle at center, rgba(37, 99, 235, 0.15) 0%, rgba(6, 182, 212, 0.07) 50%, transparent 75%)' }}
+        />
         {/* 4. Warm Ember Bottom Ambient (footer refraction) */}
-        <div className="absolute -bottom-36 left-1/3 -translate-x-1/2 w-[850px] h-[450px] rounded-full bg-gradient-to-t from-orange-500/14 via-purple-600/08 to-transparent blur-[120px]" />
+        <div
+          className="absolute -bottom-36 left-1/3 -translate-x-1/2 w-[850px] h-[450px] rounded-full pointer-events-none"
+          style={{ background: 'radial-gradient(ellipse at center, rgba(249, 115, 22, 0.12) 0%, rgba(147, 51, 234, 0.06) 50%, transparent 75%)' }}
+        />
       </div>
 
       {/* Scroll Top Reference Anchor */}
@@ -1410,15 +1499,13 @@ export default function App() {
                   ) : (
                     <>
                       {/* Happening Today Slider */}
-                      <Suspense fallback={null}>
-                        <HappeningTodaySlider
-                          events={happeningTodayEvents}
-                          ads={ads}
-                          config={happeningTodayConfig}
-                          adSystemConfig={adSystemConfig}
-                          onSelectEvent={handleSelectEvent}
-                        />
-                      </Suspense>
+                      <HappeningTodaySlider
+                        events={happeningTodayEvents}
+                        ads={ads}
+                        config={happeningTodayConfig}
+                        adSystemConfig={adSystemConfig}
+                        onSelectEvent={handleSelectEvent}
+                      />
 
                   {/* Ad Slot 2: Below Happening Today */}
                   {adSystemConfig?.global_enabled &&
@@ -1444,57 +1531,53 @@ export default function App() {
 
                   {/* Categories & Filter Bar */}
                   <div id="categories" className="scroll-mt-24">
-                    <Suspense fallback={
-                      <div className="w-full h-14 rounded-2xl glass-panel animate-pulse" />
-                    }>
-                      <CategoryFilter
-                        categories={categories}
-                        selectedCategory={selectedCategory}
-                        selectedSubcategory={selectedSubcategory}
-                        onSelectCategory={(catId) => {
-                          previousFiltersBeforeTrendingRef.current = null;
-                          setIsTrendingActive(false);
-                          setIsCategoriesActive(true);
-                          trackEvent('category_filter_selected', { category_id: catId });
-                          setSelectedCategory(catId);
-                        }}
-                        onSelectSubcategory={(subId) => {
-                          previousFiltersBeforeTrendingRef.current = null;
-                          setIsTrendingActive(false);
-                          setIsCategoriesActive(true);
-                          trackEvent('subcategory_filter_selected', { subcategory_id: subId });
-                          setSelectedSubcategory(subId);
-                        }}
-                        selectedDate={selectedDate}
-                        onSelectDate={(date) => {
-                          previousFiltersBeforeTrendingRef.current = null;
-                          setIsTrendingActive(false);
-                          if (date) {
-                            trackEvent('date_filter_selected', { date });
-                          }
-                          setSelectedDate(date);
-                        }}
-                        activeScheduleFilter={activeScheduleFilter}
-                        onSelectScheduleFilter={(sched) => {
-                          previousFiltersBeforeTrendingRef.current = null;
-                          setIsTrendingActive(false);
-                          trackEvent('schedule_filter_selected', { schedule: sched });
-                          setActiveScheduleFilter(sched);
-                        }}
-                        selectedPricingType={selectedPricingType}
-                        onSelectPricingType={handleSelectPricingType}
-                        isTrendingActive={isTrendingActive}
-                        onSelectTrending={handleSelectTrending}
-                      />
-                    </Suspense>
+                    <CategoryFilter
+                      categories={categories}
+                      selectedCategory={selectedCategory}
+                      selectedSubcategory={selectedSubcategory}
+                      onSelectCategory={(catId) => {
+                        previousFiltersBeforeTrendingRef.current = null;
+                        setIsTrendingActive(false);
+                        setIsCategoriesActive(true);
+                        trackEvent('category_filter_selected', { category_id: catId });
+                        setSelectedCategory(catId);
+                      }}
+                      onSelectSubcategory={(subId) => {
+                        previousFiltersBeforeTrendingRef.current = null;
+                        setIsTrendingActive(false);
+                        setIsCategoriesActive(true);
+                        trackEvent('subcategory_filter_selected', { subcategory_id: subId });
+                        setSelectedSubcategory(subId);
+                      }}
+                      selectedDate={selectedDate}
+                      onSelectDate={(date) => {
+                        previousFiltersBeforeTrendingRef.current = null;
+                        setIsTrendingActive(false);
+                        if (date) {
+                          trackEvent('date_filter_selected', { date });
+                        }
+                        setSelectedDate(date);
+                      }}
+                      activeScheduleFilter={activeScheduleFilter}
+                      onSelectScheduleFilter={(sched) => {
+                        previousFiltersBeforeTrendingRef.current = null;
+                        setIsTrendingActive(false);
+                        trackEvent('schedule_filter_selected', { schedule: sched });
+                        setActiveScheduleFilter(sched);
+                      }}
+                      selectedPricingType={selectedPricingType}
+                      onSelectPricingType={handleSelectPricingType}
+                      isTrendingActive={isTrendingActive}
+                      onSelectTrending={handleSelectTrending}
+                    />
                   </div>
                 </>
               )}
             </>
           )}
 
-              {/* Event hub upcoming grid / Search Results Grid with Off-Screen Deferral */}
-              <div id="events" className="deferred-feed-section scroll-mt-24">
+              {/* Event hub upcoming grid / Search Results Grid */}
+              <div id="events" className="scroll-mt-24">
                 <EventGrid
                   events={displayedEvents}
                   ads={ads}
