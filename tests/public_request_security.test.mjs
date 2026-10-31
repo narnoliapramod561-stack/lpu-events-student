@@ -65,10 +65,6 @@ describe('Public Request Security & Cookie Regression Suite', () => {
           return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
         }
 
-        if (url.includes('/rest/v1/advertisements')) {
-          return new Response(JSON.stringify([]), { status: 200, headers: { 'Content-Type': 'application/json' } });
-        }
-
         if (url.includes('/rest/v1/site_settings')) {
           return new Response(JSON.stringify([
             { key: 'initial_event_limit', value: '9' },
