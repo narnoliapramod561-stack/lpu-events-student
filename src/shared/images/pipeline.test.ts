@@ -24,7 +24,6 @@ async function runTests() {
     'hero',
     'event-banner',
     'event-card',
-    'advertisement',
     'thumbnail',
     'sponsor-logo',
     'memory',

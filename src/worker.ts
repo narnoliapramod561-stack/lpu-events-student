@@ -102,6 +102,19 @@ const originInFlight = new Map<string, Promise<{ ok: boolean; status: number; da
 // Edge telemetry buffer for user errors (D1 edge fallback)
 const edgeErrorsBuffer: any[] = [];
 
+// Edge telemetry buffer for student inquiries (Cloudflare D1 edge fallback)
+const edgeInquiriesBuffer: any[] = [];
+
+// Edge kill-switch flag for incoming student inquiries (0 DB lookup overhead)
+let isMessagesReceptionEnabled = true;
+let messagesPausedNotice = "The campus message desk is currently paused by platform administrators. For urgent matters, please email contact@lpuevents.live directly.";
+
+// Edge rate-limiting map for contact/inquiries (per IP — 0% Supabase impact)
+// Max 3 inquiries per 10 minutes per IP
+const recentInquiries = new Map<string, number[]>();
+const INQUIRY_RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const INQUIRY_MAX_PER_WINDOW = 3;
+
 // Edge sliding window deduplication for view tracking (per IP + eventId)
 // Window: 10 minutes (600,000ms). Maximum tracked keys: 10,000 to prevent memory leak.
 const recentViews = new Map<string, number>();
@@ -110,7 +123,7 @@ const VIEW_DEBOUNCE_MS = 10 * 60 * 1000;
 // ─── CORS Headers ────────────────────────────────────────────────────────────
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET, POST, DELETE, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type, Authorization',
   'Access-Control-Max-Age': '86400',
 };
@@ -145,7 +158,6 @@ const CACHE_CONFIGS: Record<string, CacheConfig> = {
   search:         { edgeTtl: 300,   browserTtl: 30,  swrTtl: 3600,   staleTtl: 604800 },   // 5m fresh, 1h swr, 7d stale backup
   categories:     { edgeTtl: 86400, browserTtl: 3600, swrTtl: 604800, staleTtl: 2592000 }, // 24h fresh, 7d swr, 30d stale backup
   eventDetail:    { edgeTtl: 600,   browserTtl: 60,  swrTtl: 14400,  staleTtl: 604800 },   // 10m fresh, 4h swr, 7d stale backup
-  advertisements: { edgeTtl: 1800,  browserTtl: 120, swrTtl: 43200,  staleTtl: 604800 },   // 30m fresh, 12h swr, 7d stale backup
   settings:       { edgeTtl: 3600,  browserTtl: 300, swrTtl: 86400,  staleTtl: 604800 },   // 1h fresh, 24h swr, 7d stale backup
   carousel:       { edgeTtl: 1800,  browserTtl: 60,  swrTtl: 43200,  staleTtl: 604800 },   // 30m fresh, 12h swr, 7d stale backup
 };
@@ -155,13 +167,12 @@ const CACHE_CONFIGS: Record<string, CacheConfig> = {
 
 const PROJECTIONS = {
   categories: 'id,key,name,sort_order,subcategories(id,key,name,sort_order)',
-  carousel: 'id,item_type,event_id,advertisement_id,media_id,sort_order,is_active,start_at,end_at,display_duration_ms,custom_title,custom_subtitle,custom_cta_text,custom_cta_url,badge_text,events:event_id(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(name),categories(name,key),subcategories(name,key)),advertisements:advertisement_id(id,name,redirect_url,media_id,status),media_assets:media_id(id,object_key)',
+  carousel: 'id,item_type,event_id,media_id,sort_order,is_active,start_at,end_at,display_duration_ms,custom_title,custom_subtitle,custom_cta_text,custom_cta_url,badge_text,events:event_id(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(name),categories(name,key),subcategories(name,key)),media_assets:media_id(id,object_key)',
   featured: 'event_id,sort_order,events(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(id,name))',
   trending: 'event_id,sort_order,events(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(id,name),categories(name,key),subcategories(name,key))',
-  advertisements: 'id,name,media_id,redirect_url,start_at,end_at,status,media_assets:media_id(id,object_key)',
   settings: 'key,value',
   eventFeed: 'id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets:banner_media_id(id,object_key),organizations(id,name),status,category_id,subcategory_id,categories(name,key),subcategories(name,key)',
-  eventDetail: 'id,name,description,start_at,end_at,venue_name,registration_mode,external_registration_url,pricing_type,price_amount,registration_format,capacity_limit,banner_media_id,category_id,subcategory_id,organization_id,status,created_at,updated_at,media_assets:banner_media_id(id,object_key),organizations(id,name),categories(id,name,key),subcategories(id,name,key),event_content_sections(id,section_type,title,content,sort_order)',
+  eventDetail: 'id,name,description,start_at,end_at,venue_name,registration_mode,external_registration_url,pricing_type,price_amount,registration_format,capacity_limit,banner_media_id,category_id,subcategory_id,organization_id,status,cancellation_reason,created_at,updated_at,media_assets:banner_media_id(id,object_key),organizations(id,name),categories(id,name,key),subcategories(id,name,key),event_content_sections(id,section_type,title,content,sort_order)',
   // SEO: Lightweight projection for sitemap generation (minimal fields)
   sitemapEvents: 'id,name,updated_at,created_at,status,end_at,category_id,categories(key)',
 };
@@ -720,8 +731,6 @@ async function handleCarousel(origin: string, env: Env, ctx: ExecutionContext): 
       if (slide.end_at && new Date(slide.end_at) < now) return false;
       if (slide.item_type === 'EVENT') {
         if (!slide.events || slide.events.status !== 'PUBLISHED' || new Date(slide.events.end_at) < now) return false;
-      } else if (slide.item_type === 'ADVERTISEMENT') {
-        if (!slide.advertisements || slide.advertisements.status !== 'active') return false;
       }
       return true;
     });
@@ -763,16 +772,6 @@ async function handleTrending(origin: string, env: Env, ctx: ExecutionContext): 
       }));
     return { ok: true, status: 200, data: mapped };
   }, ctx);
-}
-
-async function handleAdvertisements(origin: string, env: Env, ctx: ExecutionContext): Promise<Response> {
-  const cacheKeyUrl = buildCacheKey(origin, '/api/public/advertisements', {});
-  return handleCachedEndpoint(cacheKeyUrl, 'advertisements', () =>
-    fetchFromSupabaseCoalesced(
-      `advertisements?select=${encodeURIComponent(PROJECTIONS.advertisements)}&status=eq.active&order=created_at.desc`,
-      'GET', undefined, env
-    ), ctx
-  );
 }
 
 async function handleSettings(origin: string, env: Env, ctx: ExecutionContext): Promise<Response> {
@@ -860,22 +859,21 @@ async function handleEventDetail(
   const cacheKeyUrl = buildCacheKey(origin, `/api/public/events/${normalizedId}`, {});
 
   return handleCachedEndpoint(cacheKeyUrl, 'eventDetail', async () => {
-    const nowIso = new Date().toISOString();
     const res = await fetchFromSupabaseCoalesced(
-      `events?id=eq.${normalizedId}&status=eq.PUBLISHED&end_at=gte.${nowIso}&select=${encodeURIComponent(PROJECTIONS.eventDetail)}`,
+      `events?id=eq.${normalizedId}&select=${encodeURIComponent(PROJECTIONS.eventDetail)}`,
       'GET', undefined, env
     );
 
     if (!res.ok) {
       if (res.status >= 500) return res;
-      return { ok: false, status: 404, data: { message: 'Event not found or has completed' } };
+      return { ok: false, status: 404, data: { message: 'Event not found' } };
     }
     const rows = res.data as any[];
     const event = Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
 
-    // Fail-closed: If not found, completed, or cancelled, return 404
-    if (!event || event.status !== 'PUBLISHED' || new Date(event.end_at) < new Date()) {
-      return { ok: false, status: 404, data: { message: 'Event not found or has completed' } };
+    // Fail-closed: If not found, in draft or deleted status, return 404
+    if (!event || event.status === 'DRAFT' || event.status === 'DELETED') {
+      return { ok: false, status: 404, data: { message: 'Event not found' } };
     }
 
     return { ok: true, status: 200, data: event };
@@ -932,10 +930,17 @@ async function handleSearch(
     }
 
     const events = rpcRes.data as any[];
-    const bannerIds = [...new Set(events.map((e: any) => e.banner_media_id).filter(Boolean))];
-    if (bannerIds.length > 0) {
+    // Only fetch media_assets if not already embedded by search_events RPC
+    const missingBannerIds = [
+      ...new Set(
+        events
+          .filter((e: any) => e.banner_media_id && (!e.media_assets || !e.media_assets.object_key))
+          .map((e: any) => e.banner_media_id)
+      ),
+    ];
+    if (missingBannerIds.length > 0) {
       const mediaRes = await fetchFromSupabaseCoalesced(
-        `media_assets?id=in.(${bannerIds.join(',')})&select=id,object_key`,
+        `media_assets?id=in.(${missingBannerIds.join(',')})&select=id,object_key`,
         'GET',
         undefined,
         env
@@ -943,7 +948,7 @@ async function handleSearch(
       if (mediaRes.ok && Array.isArray(mediaRes.data)) {
         const mediaMap = new Map((mediaRes.data as any[]).map((m: any) => [m.id, m]));
         for (const evt of events) {
-          if (evt.banner_media_id && mediaMap.has(evt.banner_media_id)) {
+          if (evt.banner_media_id && !evt.media_assets && mediaMap.has(evt.banner_media_id)) {
             evt.media_assets = mediaMap.get(evt.banner_media_id);
           }
         }
@@ -967,7 +972,6 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext): 
       carouselRes,
       featuredRes,
       trendingRes,
-      adsRes,
       settingsRes,
       eventsRes,
     ] = await Promise.all([
@@ -988,15 +992,11 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext): 
         'GET', undefined, env
       ),
       fetchFromSupabaseCoalesced(
-        `advertisements?select=${encodeURIComponent(PROJECTIONS.advertisements)}&status=eq.active&order=created_at.desc&limit=6`,
-        'GET', undefined, env
-      ),
-      fetchFromSupabaseCoalesced(
         `global_settings?select=${encodeURIComponent(PROJECTIONS.settings)}`,
         'GET', undefined, env
       ),
       fetchFromSupabaseCoalesced(
-        `events?select=${encodeURIComponent(PROJECTIONS.eventFeed)}&status=eq.PUBLISHED&end_at=gte.${nowIso}&order=start_at.asc&limit=9&offset=0`,
+        `events?select=${encodeURIComponent(PROJECTIONS.eventFeed)}&status=eq.PUBLISHED&end_at=gte.${nowIso}&order=start_at.asc&limit=100&offset=0`,
         'GET', undefined, env
       ),
     ]);
@@ -1019,8 +1019,6 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext): 
         if (slide.end_at && new Date(slide.end_at) < now) return false;
         if (slide.item_type === 'EVENT') {
           if (!slide.events || slide.events.status !== 'PUBLISHED' || new Date(slide.events.end_at) < now) return false;
-        } else if (slide.item_type === 'ADVERTISEMENT') {
-          if (!slide.advertisements || slide.advertisements.status !== 'active') return false;
         }
         return true;
       });
@@ -1059,7 +1057,6 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext): 
         carousel,
         featured,
         trending,
-        advertisements: adsRes.ok ? adsRes.data : [],
         settings: settingsRes.ok ? settingsRes.data : [],
         events: eventsRes.data,
       },
@@ -1101,10 +1098,6 @@ function getInvalidationUrls(origin: string, tags: string[]): string[] {
     }
     if (tag === 'trending') {
       urls.add(buildCacheKey(origin, '/api/public/trending', {}));
-      urls.add(buildCacheKey(origin, '/api/public/homepage', {}));
-    }
-    if (tag === 'advertisements') {
-      urls.add(buildCacheKey(origin, '/api/public/advertisements', {}));
       urls.add(buildCacheKey(origin, '/api/public/homepage', {}));
     }
     if (tag === 'settings') {
@@ -1334,7 +1327,7 @@ async function resolveEventForSeo(slugOrId: string, env: Env): Promise<any | nul
   if (uuidMatch) {
     const id = uuidMatch[1].toLowerCase();
     const res = await fetchFromSupabaseCoalesced(
-      `events?id=eq.${id}&status=eq.PUBLISHED&select=${encodeURIComponent(PROJECTIONS.eventDetail)}`,
+      `events?id=eq.${id}&status=in.(PUBLISHED,COMPLETED,CANCELLED)&select=${encodeURIComponent(PROJECTIONS.eventDetail)}`,
       'GET', undefined, env
     );
     if (res.ok && Array.isArray(res.data) && (res.data as any[]).length > 0) {
@@ -1352,7 +1345,7 @@ async function resolveEventForSeo(slugOrId: string, env: Env): Promise<any | nul
     query_text: searchTerms,
     limit_count: 10,
     offset_count: 0,
-    p_show_past: false,
+    p_show_past: true,
   }, env);
 
   if (rpcRes.ok && Array.isArray(rpcRes.data) && (rpcRes.data as any[]).length > 0) {
@@ -1364,7 +1357,7 @@ async function resolveEventForSeo(slugOrId: string, env: Env): Promise<any | nul
     // Now fetch the full detail for this event
     if (matchedEvent?.id) {
       const detailRes = await fetchFromSupabaseCoalesced(
-        `events?id=eq.${matchedEvent.id}&status=eq.PUBLISHED&select=${encodeURIComponent(PROJECTIONS.eventDetail)}`,
+        `events?id=eq.${matchedEvent.id}&status=in.(PUBLISHED,COMPLETED,CANCELLED)&select=${encodeURIComponent(PROJECTIONS.eventDetail)}`,
         'GET', undefined, env
       );
       if (detailRes.ok && Array.isArray(detailRes.data) && (detailRes.data as any[]).length > 0) {
@@ -2510,7 +2503,7 @@ export default {
         let healedCount = 0;
         for (const reqVar of REQUIRED) {
           if (!variants[reqVar.key]) {
-            const vKey = asset.context && asset.context !== 'hero' && asset.context !== 'advertisement'
+            const vKey = asset.context && asset.context !== 'hero'
               ? `events/variants/${tenantScope}/${hashPrefix}/${asset.checksum}/${reqVar.key}.webp`
               : `variants/${asset.context || 'event-banner'}/${hashPrefix}/${asset.checksum}/${reqVar.key}.webp`;
 
@@ -2636,6 +2629,199 @@ export default {
       return errorResponse('Method Not Allowed', 405);
     }
 
+    // ─── Edge Student Inquiries Endpoint (Cloudflare D1 / Zero-Supabase-Stress) ───
+    if ((url.pathname === '/api/contact' || url.pathname === '/api/inquiries') && request.method === 'POST') {
+      try {
+        // 0. SuperAdmin Kill-Switch Check: Immediate edge rejection if message requests are paused (0 DB hit)
+        if (!isMessagesReceptionEnabled) {
+          return jsonResponse({
+            ok: false,
+            code: 'MESSAGES_PAUSED',
+            error: messagesPausedNotice
+          }, 503);
+        }
+
+        const clientIp = request.headers.get('CF-Connecting-IP') || request.headers.get('x-forwarded-for') || '127.0.0.1';
+        const now = Date.now();
+
+        // 1. IP Rate Limiting (Cyber Specialist Safeguard: Zero Supabase Hit)
+        const ipTimestamps = recentInquiries.get(clientIp) || [];
+        const recentTimestamps = ipTimestamps.filter(t => now - t < INQUIRY_RATE_LIMIT_WINDOW_MS);
+        if (recentTimestamps.length >= INQUIRY_MAX_PER_WINDOW) {
+          return jsonResponse({
+            ok: false,
+            code: 'RATE_LIMIT_EXCEEDED',
+            error: 'Anti-spam protection: Too many inquiries from this network. Please wait a few minutes.'
+          }, 429);
+        }
+
+        const body = (await request.json()) as any;
+
+        // 2. Honeypot check: If filled, bot trap -> silent success, 0 DB write
+        if (body.honeypot || body._hp_company_url) {
+          return jsonResponse({ ok: true, id: `inq_bot_${now}` }, 200);
+        }
+
+        const name = String(body.name || '').trim().slice(0, 100);
+        const email = body.email ? String(body.email).trim().toLowerCase().slice(0, 254) : null;
+        const subject = String(body.subject || 'General Inquiry').trim().slice(0, 100);
+        const message = String(body.message || '').trim().slice(0, 2500);
+        const deviceId = String(body.device_id || `dev_${Math.random().toString(36).substring(2, 10)}`).slice(0, 128);
+
+        // Validation
+        if (name.length < 2) {
+          return jsonResponse({ ok: false, error: 'Name must be at least 2 characters' }, 400);
+        }
+        const wordCount = message.split(/\s+/).filter(Boolean).length;
+        if (wordCount < 3 || wordCount > 250) {
+          return jsonResponse({ ok: false, error: 'Message must be between 3 and 250 words' }, 400);
+        }
+        if (email && !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
+          return jsonResponse({ ok: false, error: 'Invalid email address' }, 400);
+        }
+
+        recentTimestamps.push(now);
+        recentInquiries.set(clientIp, recentTimestamps);
+
+        const inquiryRecord = {
+          id: `inq_${now}_${Math.random().toString(36).substring(2, 7)}`,
+          name,
+          email,
+          subject,
+          message,
+          device_id: deviceId,
+          device_date: new Date().toISOString().slice(0, 10),
+          status: 'OPEN',
+          created_at: new Date().toISOString(),
+          admin_notes: null,
+          resolved_at: null
+        };
+
+        // Primary: Store in Cloudflare D1 (Free Tier, 0 Supabase Stress)
+        if (env.DB) {
+          await env.DB.prepare(`
+            INSERT INTO student_inquiries (id, name, email, subject, message, device_id, device_date, status, created_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN', ?)
+          `).bind(
+            inquiryRecord.id, inquiryRecord.name, inquiryRecord.email, inquiryRecord.subject, inquiryRecord.message,
+            inquiryRecord.device_id, inquiryRecord.device_date, inquiryRecord.created_at
+          ).run().catch(() => {});
+        }
+
+        // Secondary: Edge In-Memory Buffer
+        edgeInquiriesBuffer.unshift(inquiryRecord);
+        if (edgeInquiriesBuffer.length > 200) edgeInquiriesBuffer.pop();
+
+        // 100% Cloudflare D1 Native: Zero Supabase egress or database connections
+        return jsonResponse({ ok: true, id: inquiryRecord.id }, 200);
+      } catch {
+        return jsonResponse({ ok: false, error: 'Malformed request' }, 400);
+      }
+    }
+
+    if (url.pathname.startsWith('/api/admin/inquiries')) {
+      if (!await isCacheMutationAuthorized(request, env, true)) {
+        return errorResponse('Unauthorized administrative request', 401);
+      }
+
+      const parts = url.pathname.split('/');
+      const targetId = parts[4]; // e.g. /api/admin/inquiries/:id
+
+      // 0. Message Reception Kill-Switch Query / Toggle
+      if (url.pathname === '/api/admin/inquiries/settings') {
+        if (request.method === 'GET') {
+          return jsonResponse({
+            is_enabled: isMessagesReceptionEnabled,
+            paused_notice: messagesPausedNotice
+          }, 200);
+        }
+        if (request.method === 'POST') {
+          try {
+            const body = (await request.json().catch(() => ({}))) as any;
+            if (typeof body.is_enabled === 'boolean') {
+              isMessagesReceptionEnabled = body.is_enabled;
+            }
+            if (typeof body.paused_notice === 'string' && body.paused_notice.trim()) {
+              messagesPausedNotice = body.paused_notice.trim();
+            }
+            return jsonResponse({
+              ok: true,
+              is_enabled: isMessagesReceptionEnabled,
+              paused_notice: messagesPausedNotice
+            }, 200);
+          } catch {
+            return errorResponse('Invalid settings payload', 400);
+          }
+        }
+      }
+
+      // 1. GET: Fetch inquiries
+      if (request.method === 'GET') {
+        if (env.DB) {
+          try {
+            const res = await env.DB.prepare('SELECT * FROM student_inquiries ORDER BY created_at DESC LIMIT 500').all();
+            if (res?.results && res.results.length > 0) {
+              return jsonResponse({ inquiries: res.results }, 200);
+            }
+          } catch {}
+        }
+        return jsonResponse({ inquiries: edgeInquiriesBuffer }, 200);
+      }
+
+      // 2. PATCH: Update status and/or admin notes
+      if (request.method === 'PATCH' && targetId) {
+        try {
+          const patchBody = (await request.json().catch(() => ({}))) as any;
+          const newStatus = patchBody.status;
+          const adminNotes = patchBody.admin_notes !== undefined ? patchBody.admin_notes : null;
+          const resolvedAt = newStatus === 'RESOLVED' ? new Date().toISOString() : null;
+
+          if (env.DB) {
+            try {
+              await env.DB.prepare(`
+                UPDATE student_inquiries
+                SET status = COALESCE(?, status),
+                    admin_notes = COALESCE(?, admin_notes),
+                    resolved_at = COALESCE(?, resolved_at)
+                WHERE id = ?
+              `).bind(newStatus || null, adminNotes, resolvedAt, targetId).run();
+            } catch {}
+          }
+
+          const bufItem = edgeInquiriesBuffer.find((e: any) => e.id === targetId);
+          if (bufItem) {
+            if (newStatus) bufItem.status = newStatus;
+            if (adminNotes !== undefined) bufItem.admin_notes = adminNotes;
+            if (resolvedAt) bufItem.resolved_at = resolvedAt;
+          }
+
+          return jsonResponse({ ok: true, id: targetId }, 200);
+        } catch {
+          return errorResponse('Failed to update inquiry', 400);
+        }
+      }
+
+      // 3. DELETE: Single or All
+      if (request.method === 'DELETE') {
+        if (targetId) {
+          if (env.DB) {
+            await env.DB.prepare('DELETE FROM student_inquiries WHERE id = ?').bind(targetId).run().catch(() => {});
+          }
+          const idx = edgeInquiriesBuffer.findIndex((e: any) => e.id === targetId);
+          if (idx !== -1) edgeInquiriesBuffer.splice(idx, 1);
+        } else {
+          // DELETE ALL ("Delete All" in Message Center)
+          if (env.DB) {
+            await env.DB.prepare('DELETE FROM student_inquiries').run().catch(() => {});
+          }
+          edgeInquiriesBuffer.length = 0;
+        }
+        return jsonResponse({ ok: true, deleted: targetId || 'all' }, 200);
+      }
+
+      return errorResponse('Method Not Allowed', 405);
+    }
+
     // 5. Only GET and HEAD allowed for remaining public endpoints (POST for invalidation, view tracking, and search RPC)
     if (url.pathname.startsWith('/api/public/') && request.method !== 'GET' && request.method !== 'HEAD' && url.pathname !== '/api/public/view' && url.pathname !== '/api/public/search') {
       return errorResponse('Method Not Allowed', 405);
@@ -2685,10 +2871,6 @@ export default {
       return handleTrending(origin, env, ctx);
     }
 
-    if (url.pathname === '/api/public/advertisements') {
-      return handleAdvertisements(origin, env, ctx);
-    }
-
     if (url.pathname === '/api/public/settings') {
       return handleSettings(origin, env, ctx);
     }
@@ -2727,11 +2909,7 @@ export default {
               }
             }
             recentViews.set(viewKey, now);
-
-            ctx.waitUntil(
-              fetchFromSupabase('rpc/increment_event_view', 'POST', { target_event_id: body.event_id }, env)
-                .catch(() => { /* non-fatal */ })
-            );
+            // Analytics-Only: view count tracked purely in analytics pipeline (zero database write hits)
           }
         }
         return jsonResponse({ ok: true });

@@ -24,7 +24,6 @@ export type ImageContext =
   | 'hero'
   | 'event-banner'
   | 'event-card'
-  | 'advertisement'
   | 'thumbnail'
   | 'sponsor-logo'
   | 'memory'
@@ -336,30 +335,6 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
     }
   },
 
-  advertisement: {
-    context: 'advertisement',
-    label: 'Sponsored Promo Banner',
-    description: 'Sponsored cards in event grids and full-width promo slots',
-    maxWidth: 1600,
-    maxHeight: 800,
-    aspectRatio: 2 / 1,
-    aspectRatioLabel: '2:1 (Promo Banner)',
-    fitMode: 'cover',
-    outputFormat: 'image/webp',
-    quality: 88,
-    variants: [
-      { name: 'desktop', width: 1600, height: 800, quality: 88 },
-      { name: 'mobile', width: 960, height: 480, quality: 85 }
-    ],
-    enhancement: {
-      enabled: false,
-      sharpenAmount: 0.0,
-      contrastClip: 0.0,
-      vibranceBoost: 1.0,
-      denoiseArtifacts: false,
-      preserveOriginalColorProfile: true
-    }
-  },
 
   memory: {
     context: 'memory',

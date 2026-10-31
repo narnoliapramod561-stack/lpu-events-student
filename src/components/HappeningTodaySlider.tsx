@@ -1,21 +1,17 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { CalendarDays, Clock, MapPin, ArrowRight, ChevronLeft, ChevronRight, Megaphone, X } from "lucide-react";
+import { CalendarDays, Clock, MapPin, ArrowRight, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { 
   EventFeedItem, 
-  AdvertisementFeedItem, 
   HappeningTodayConfig,
-  AdSystemConfig,
-  injectAdsIntoSequence,
   resolveDefaultEventImage
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
-import { AdSenseSlot } from "./AdSenseSlot";
 
 export interface HappeningTodaySlideItem {
-  type: "event" | "ad" | "adsense";
+  type: "event";
   id: string;
   eventId?: string | null;
   title: string;
@@ -30,22 +26,17 @@ export interface HappeningTodaySlideItem {
   organizer?: string;
   ctaText: string;
   ctaUrl?: string | null;
-  adUnitId?: string;
 }
 
 export interface HappeningTodaySliderProps {
   events: EventFeedItem[];
-  ads?: AdvertisementFeedItem[];
   config?: HappeningTodayConfig | null;
-  adSystemConfig?: AdSystemConfig | null;
   onSelectEvent: (id: string, name?: string) => void;
 }
 
 export const HappeningTodaySliderComponent = ({
   events,
-  ads = [],
   config,
-  adSystemConfig,
   onSelectEvent,
 }: HappeningTodaySliderProps) => {
   const [isHovered, setIsHovered] = useState(false);
@@ -157,61 +148,8 @@ export const HappeningTodaySliderComponent = ({
       };
     });
 
-    // Configurable Ad Injection
-    const placementConfig = adSystemConfig?.placements?.happening_today || {
-      enabled: true,
-      provider: 'direct',
-      frequency: 2,
-      max_ads: 2,
-      ad_unit_id: '8059587837',
-    };
-
-    const injected = injectAdsIntoSequence(eventSlides, ads, placementConfig, {
-      global_enabled: adSystemConfig?.global_enabled,
-      remaining_global_quota: adSystemConfig?.max_ads_per_page,
-    });
-
-    return injected.map((item, idx) => {
-      if (item.type === "item" && item.data) {
-        return item.data;
-      }
-
-      if (item.adProvider === "adsense") {
-        return {
-          type: "adsense",
-          id: `ht-adsense-${idx}`,
-          title: "Google AdSense",
-          description: "Sponsored Advertisement",
-          image: "",
-          badge: "Sponsored",
-          category: "AdSense",
-          ctaText: "Explore",
-          adUnitId: item.adUnitId || placementConfig.ad_unit_id || "8059587837",
-        };
-      }
-
-      if (item.adProvider === "direct") {
-        const ad = item.adData;
-        if (!ad) return null;
-        return {
-          type: "ad",
-          id: `ht-ad-${ad.id}-${idx}`,
-          title: ad.name,
-          description: "Exclusive university partner opportunity & promotion.",
-          image: getEventImage(ad, "advertisement", 1080),
-          badge: "Sponsored Partner",
-          category: "Official Partner",
-          ctaText: "Learn More",
-          ctaUrl: ad.redirect_url,
-          date: "",
-          time: "",
-          venue: "",
-        };
-      }
-
-      return null;
-    }).filter(Boolean) as HappeningTodaySlideItem[];
-  }, [events, ads, adSystemConfig]);
+    return eventSlides;
+  }, [events]);
 
   // Track scroll position for chevron buttons
   const checkScroll = useCallback(() => {
@@ -372,36 +310,10 @@ export const HappeningTodaySliderComponent = ({
         >
           {slides.map((slide, idx) => {
             const handleCardClick = () => {
-              if (slide.type === "adsense") return;
-              if (slide.type === "ad" && slide.ctaUrl) {
-                const url = slide.ctaUrl.trim();
-                // Enforce strict scheme validation to prevent javascript:, data:, and // open redirects
-                if (/^https?:\/\//i.test(url)) {
-                  window.open(url, "_blank", "noopener,noreferrer");
-                } else if (url.startsWith("/") && !url.startsWith("//")) {
-                  window.location.href = url;
-                } else {
-                  console.warn("[Security] Blocked potentially unsafe slider CTA URL:", url);
-                }
-              } else if (slide.eventId) {
+              if (slide.eventId) {
                 onSelectEvent(slide.eventId, slide.title);
               }
             };
-
-            if (slide.type === "adsense") {
-              return (
-                <div
-                  key={slide.id}
-                  className="relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-18px)/2)] md:w-[calc((100%-36px)/3)] rounded-[24px] overflow-hidden p-3.5 glass-event-card flex flex-col items-center justify-center snap-start"
-                >
-                  <AdSenseSlot
-                    format="in_feed_card"
-                    slotId={slide.adUnitId}
-                    adSenseConfig={adSystemConfig?.adsense}
-                  />
-                </div>
-              );
-            }
 
             return (
               <div
@@ -412,7 +324,7 @@ export const HappeningTodaySliderComponent = ({
                 {/* Uniform Crisp Banner Stage (Zero Zoom, Full Visibility) */}
                 <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 bg-black/5 dark:bg-white/5">
                   {/* Full Cover Slide Banner */}
-                  {slide.image ? (
+                  {slide.image && (
                     <ProgressiveImage
                       src={slide.image}
                       fallbackSrc={slide.fallbackImage}
@@ -422,27 +334,13 @@ export const HappeningTodaySliderComponent = ({
                       containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
                       className="w-full h-full object-contain object-center relative z-10 sm:transition-transform sm:duration-300 sm:group-hover:scale-[1.02]"
                     />
-                  ) : (
-                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950 flex flex-col items-center justify-center p-4">
-                      <Megaphone className="w-8 h-8 text-indigo-400 mb-1" />
-                      <span className="text-[10px] font-black uppercase tracking-wider text-indigo-300 font-heading">
-                        Official Campus Partner
-                      </span>
-                    </div>
                   )}
 
                   {/* Soft bottom vignette overlay on image */}
                   <div className="absolute inset-x-0 bottom-0 h-8 bg-gradient-to-t from-black/25 to-transparent z-15 pointer-events-none" />
 
-                  {/* Top Badges: Category & Sponsored */}
+                  {/* Top Badges: Category */}
                   <div className="absolute top-2.5 left-2.5 right-2.5 z-20 flex items-center justify-between pointer-events-none">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      {slide.type === "ad" && (
-                        <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-indigo-600/90 text-white font-heading text-[9px] font-black uppercase tracking-wider shadow-md backdrop-blur-md border border-white/20">
-                          Sponsored
-                        </span>
-                      )}
-                    </div>
                     {slide.category && (
                       <span className="glass-category-jewel inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl font-heading text-[10px] font-black uppercase tracking-wider shadow-sm">
                         <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.8)]" />
@@ -466,7 +364,7 @@ export const HappeningTodaySliderComponent = ({
                   <div className="flex items-center justify-between gap-2 flex-nowrap">
                     <div className="flex items-center gap-1.5 min-w-0 flex-nowrap">
                       {/* Time Pill: High-contrast Monospace Glass Pill */}
-                      {slide.type === "event" && slide.time && (
+                      {slide.time && (
                         <span className="glass-meta-pill inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl shrink-0">
                           <Clock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 stroke-[2.4] shrink-0" />
                           <span className="font-mono font-bold text-xs text-slate-950 dark:text-white glass-text-emboss">
@@ -476,7 +374,7 @@ export const HappeningTodaySliderComponent = ({
                       )}
 
                       {/* Location Pill: High-contrast Frosted Glass Pill */}
-                      {slide.type === "event" && slide.venue && (
+                      {slide.venue && (
                         <span
                           title={slide.venue}
                           className="glass-meta-pill inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl truncate min-w-0 max-w-[140px] min-[390px]:max-w-[170px] md:max-w-[210px]"
@@ -487,18 +385,11 @@ export const HappeningTodaySliderComponent = ({
                           </span>
                         </span>
                       )}
-
-                      {/* Ad description if partner ad */}
-                      {slide.type === "ad" && slide.description && (
-                        <span className="text-xs text-gray-600 dark:text-gray-300 font-medium truncate max-w-[170px]">
-                          {slide.description}
-                        </span>
-                      )}
                     </div>
 
                     {/* Tactile Liquid Glass View Action */}
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-orange-500/15 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300 font-heading font-bold text-xs border border-orange-500/30 backdrop-blur-md group-hover:bg-orange-600 group-hover:text-white group-hover:border-orange-600 transition-all duration-200 shrink-0 ml-auto shadow-2xs">
-                      <span>{slide.type === "ad" ? "Learn More" : "View"}</span>
+                      <span>View</span>
                       <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                     </span>
                   </div>

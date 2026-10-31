@@ -13,8 +13,6 @@ import {
 import { lpuClient } from "../supabase";
 import { 
   EventFeedItem, 
-  AdvertisementFeedItem, 
-  AdSystemConfig,
   trackEvent, 
   trackRegistrationClick,
   getStudentEventUrl,
@@ -26,8 +24,6 @@ import {
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
-import { AdSenseSlot } from "./AdSenseSlot";
-import { SponsorBanner } from "./SponsorBanner";
 import { ShareModal } from "./ShareModal";
 import { BookingDisclaimerModal } from "./BookingDisclaimerModal";
 
@@ -35,17 +31,13 @@ interface EventDetailsViewProps {
   eventId: string;
   onBack: () => void;
   onSelectEvent: (id: string, name?: string) => void;
-  ads: AdvertisementFeedItem[];
   allEvents?: EventFeedItem[];
-  adSystemConfig?: AdSystemConfig | null;
 }
 
 export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
   eventId,
   onBack,
-  ads,
   allEvents = [],
-  adSystemConfig,
 }) => {
   // Pre-seed with existing event from memory for instant render
   const initialEvent = useMemo(() => {
@@ -486,22 +478,6 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
     );
   };
 
-  const detailsConfig = adSystemConfig?.placements?.event_details;
-  const effectiveDetailsAds = useMemo(() => {
-    if (!ads || ads.length === 0) return [];
-    if (detailsConfig?.selected_ad_ids && Array.isArray(detailsConfig.selected_ad_ids)) {
-      if (detailsConfig.selected_ad_ids.length === 0) return [];
-      const ordered = detailsConfig.selected_ad_ids
-        .map((id) => ads.find((a) => a.id === id))
-        .filter(Boolean);
-      if (ordered.length > 0) return ordered;
-    }
-    return ads;
-  }, [ads, detailsConfig?.selected_ad_ids]);
-
-  const spotlight1 = effectiveDetailsAds[0] || null;
-  const spotlight2 = effectiveDetailsAds[1] || effectiveDetailsAds[0] || null;
-
   if (loading && !event) {
     return (
       <div className="w-full max-w-5xl mx-auto pb-28 animate-in fade-in duration-300">
@@ -645,6 +621,24 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         </div>
       </div>
 
+      {/* Cancellation Notice Banner */}
+      {event?.status === 'CANCELLED' && (
+        <div className="mb-4 sm:mb-6 p-4 sm:p-5 rounded-2xl bg-rose-500/10 dark:bg-rose-950/40 border border-rose-500/30 dark:border-rose-800/60 flex items-start gap-3.5 shadow-sm">
+          <ShieldAlert className="h-5 w-5 sm:h-6 sm:w-6 text-rose-500 shrink-0 mt-0.5" />
+          <div className="flex flex-col gap-1 text-rose-950 dark:text-rose-200">
+            <h4 className="font-heading font-black text-sm sm:text-base">Event Cancelled</h4>
+            <p className="text-xs sm:text-sm font-medium leading-relaxed">
+              This event was cancelled by the organizers.
+              {event?.cancellation_reason && (
+                <span className="block mt-1 font-semibold text-rose-900 dark:text-rose-300">
+                  Reason: {event.cancellation_reason}
+                </span>
+              )}
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Hero Banner Stage (Full 16:9 Presentation Stage - Expands image to fill frame with zero color shade bars) */}
       <div className="w-full aspect-[16/9] overflow-hidden rounded-[16px] sm:rounded-[30px] mb-5 sm:mb-8 relative glass-panel shadow-xl bg-black/5 dark:bg-white/5 flex items-center justify-center">
         <ProgressiveImage
@@ -673,33 +667,6 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
           {event.name}
         </h1>
       </div>
-
-      {/* Sponsored Spotlight 1 / AdSense */}
-      {(() => {
-        if (!adSystemConfig || !adSystemConfig.global_enabled) return null;
-        const detailsConfig = adSystemConfig?.placements?.event_details;
-        if (!detailsConfig || !detailsConfig.enabled || detailsConfig.provider === 'disabled') return null;
-        
-        if (detailsConfig.provider === 'adsense') {
-          return (
-            <div className="mb-4 sm:mb-6">
-              <AdSenseSlot
-                format="banner"
-                slotId={detailsConfig.ad_unit_id || "1000000004"}
-                adSenseConfig={adSystemConfig?.adsense}
-              />
-            </div>
-          );
-        }
-        if (detailsConfig.provider === 'direct' && spotlight1) {
-          return (
-            <div className="mb-4 sm:mb-6">
-              <SponsorBanner ad={spotlight1} />
-            </div>
-          );
-        }
-        return null;
-      })()}
 
       {/* Event Schedule Details & QR Info Box */}
       <div className="flex flex-col gap-2.5 sm:gap-3 mb-6 sm:mb-10">
@@ -791,23 +758,6 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         </div>
       </div>
 
-      {/* Sponsored Spotlight 2 / AdSense Bottom */}
-      {(() => {
-        if (!adSystemConfig || !adSystemConfig.global_enabled) return null;
-        const detailsConfig = adSystemConfig?.placements?.event_details;
-        if (!detailsConfig || !detailsConfig.enabled || detailsConfig.provider === 'disabled') return null;
-
-        if (detailsConfig.provider === 'direct' && spotlight2) {
-          return (
-            <div className="mb-4 sm:mb-6">
-              <SponsorBanner ad={spotlight2} />
-            </div>
-          );
-        }
-        return null;
-      })()}
-
-
       {/* Section Navigation Tabs (Unified Parent Glass Container) */}
       {tabs.length > 0 && (
         <div className="w-full overflow-x-auto hide-scrollbar mb-4 sm:mb-6 select-none [touch-action:pan-x_pan-y]">
@@ -867,16 +817,22 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
               </span>
             </div>
 
-            {/* Right Side: External Book Ticket Button */}
+            {/* Right Side: External Book Ticket Button or Cancelled State */}
             <div className="flex items-center shrink-0">
-              <button
-                type="button"
-                onClick={handleRegister}
-                className="px-6 sm:px-9 py-2.5 sm:py-3.5 rounded-full glass-btn-primary font-black text-xs sm:text-sm md:text-base transition-all duration-200 flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap touch-target font-heading shadow-md hover:scale-[1.02] active:scale-95"
-              >
-                <span>Book Ticket</span>
-                <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-              </button>
+              {event?.status === 'CANCELLED' ? (
+                <div className="px-5 py-2.5 sm:px-7 sm:py-3 rounded-full bg-rose-500/15 dark:bg-rose-950/50 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-heading font-black text-xs sm:text-sm select-none">
+                  Event Cancelled
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleRegister}
+                  className="px-6 sm:px-9 py-2.5 sm:py-3.5 rounded-full glass-btn-primary font-black text-xs sm:text-sm md:text-base transition-all duration-200 flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap touch-target font-heading shadow-md hover:scale-[1.02] active:scale-95"
+                >
+                  <span>Book Ticket</span>
+                  <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                </button>
+              )}
             </div>
 
           </div>

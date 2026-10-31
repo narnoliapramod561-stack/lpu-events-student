@@ -1,4 +1,4 @@
-// lpu-events-student/src/snapshotClient.ts
+// packages/shared/src/snapshotClient.ts
 // LPU Events — R2 Public-Content Snapshot Delivery Client
 // Highly responsive public read path consuming precomputed, versioned R2 snapshots.
 // Features:
@@ -21,7 +21,6 @@ import {
 import { persistentCache } from './persistentCache';
 import { registerMediaAssets } from './images/url';
 import type { CategoryFeedItem, Event, EventFeedItem } from './types';
-import { isEventOnDate, matchesScheduleFilter } from './date';
 
 export interface SnapshotClientOptions {
   publicContentBaseUrl?: string; // e.g. "https://images.lpuevents.live/public-content"
@@ -303,8 +302,6 @@ export class SnapshotClient {
       category_id?: string | null;
       subcategory_id?: string | null;
       pricing_type?: string | null;
-      timeline?: string | null;
-      target_date?: string | null;
       limit?: number;
     }
   ): Promise<CompactCatalogueEvent[]> {
@@ -317,8 +314,6 @@ export class SnapshotClient {
     const catId = filters?.category_id || null;
     const subId = filters?.subcategory_id || null;
     const priceType = filters?.pricing_type || null;
-    const timeline = filters?.timeline || null;
-    const targetDate = filters?.target_date || null;
     const limit = filters?.limit ?? 50;
 
     let filtered = catalogue;
@@ -331,14 +326,6 @@ export class SnapshotClient {
     }
     if (priceType && priceType !== 'ALL') {
       filtered = filtered.filter((e) => e.pricing_type === priceType);
-    }
-
-    if (timeline || targetDate) {
-      filtered = filtered.filter((event) => {
-        if (targetDate && !isEventOnDate(event.start_at, event.end_at, targetDate)) return false;
-        if (timeline && !matchesScheduleFilter(event, timeline, null, new Date())) return false;
-        return true;
-      });
     }
 
     if (!q || q.length < 2) {
@@ -372,8 +359,6 @@ export class SnapshotClient {
       category_id?: string | null;
       subcategory_id?: string | null;
       pricing_type?: string | null;
-      timeline?: string | null;
-      target_date?: string | null;
       limit?: number;
     }
   ): Promise<{ results: EventFeedItem[]; fromSnapshot: boolean }> {

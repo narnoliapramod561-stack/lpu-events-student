@@ -1,20 +1,26 @@
-import React, { useState, useEffect } from 'react';
-import { RefreshCw, Clock, ArrowUpRight } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { RefreshCw, Clock, ArrowUpRight, ShieldCheck } from 'lucide-react';
 import { LpuLogo } from './LpuLogo';
 
 interface MaintenanceViewProps {
   onRetry: () => void;
   message?: string;
-  estimatedResumption?: string;
+  description?: string;
+  estimatedResumption?: string | null;
   autoRetrySeconds?: number;
+  contactEmail?: string;
 }
 
 export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
   onRetry,
   message,
+  description,
   estimatedResumption,
+  autoRetrySeconds = 20,
+  contactEmail = 'support@lpuevents.live'
 }) => {
   const [isRetrying, setIsRetrying] = useState(false);
+  const [countdownText, setCountdownText] = useState<string | null>(null);
 
   // Instantly dismiss startup pre-React logo shell so this maintenance screen is displayed immediately
   useEffect(() => {
@@ -31,6 +37,110 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     }
   }, []);
 
+  // Compute Human-Formatted Resumption Time
+  const formattedResumption = useMemo(() => {
+    if (!estimatedResumption || !estimatedResumption.trim()) return null;
+    try {
+      const targetDate = new Date(estimatedResumption.trim());
+      if (isNaN(targetDate.getTime())) return estimatedResumption.trim();
+
+      return targetDate.toLocaleString('en-US', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit',
+        hour12: true,
+      });
+    } catch {
+      return estimatedResumption.trim();
+    }
+  }, [estimatedResumption]);
+
+  // Live countdown timer calculation
+  useEffect(() => {
+    if (!estimatedResumption || !estimatedResumption.trim()) {
+      setCountdownText(null);
+      return;
+    }
+
+    const updateCountdown = () => {
+      try {
+        const targetDate = new Date(estimatedResumption.trim());
+        if (isNaN(targetDate.getTime())) {
+          setCountdownText(null);
+          return;
+        }
+
+        const diffMs = targetDate.getTime() - Date.now();
+        if (diffMs <= 0) {
+          setCountdownText('Finalizing updates • Resuming any moment');
+          return;
+        }
+
+        const totalMinutes = Math.floor(diffMs / 60000);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+
+        if (hours > 24) {
+          const days = Math.floor(hours / 24);
+          setCountdownText(`in ~${days} day${days > 1 ? 's' : ''}`);
+        } else if (hours > 0) {
+          setCountdownText(`in ~${hours}h ${minutes}m`);
+        } else if (minutes > 0) {
+          setCountdownText(`in ~${minutes} minute${minutes > 1 ? 's' : ''}`);
+        } else {
+          setCountdownText('in less than a minute');
+        }
+      } catch {
+        setCountdownText(null);
+      }
+    };
+
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 15000);
+    return () => clearInterval(interval);
+  }, [estimatedResumption]);
+
+  // Automated background polling to auto-resume when maintenance finishes
+  useEffect(() => {
+    if (!autoRetrySeconds || autoRetrySeconds <= 0) return;
+
+    const probeStatus = async () => {
+      try {
+        // Lightweight fetch to public bundle
+        const res = await fetch('/api/public/homepage', {
+          headers: { 'Accept': 'application/json' },
+          cache: 'no-cache'
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+          // Check if maintenance is still active in returned payload
+          const maint = Array.isArray(data?.settings)
+            ? data.settings.find((s: any) => s.key === 'platform_maintenance_mode')
+            : null;
+
+          const isStillMaint = maint
+            ? typeof maint.value === 'boolean'
+              ? maint.value
+              : Boolean(maint.value?.enabled ?? maint.value?.is_enabled ?? false)
+            : false;
+
+          if (!isStillMaint) {
+            // Maintenance has ended! Auto-resume
+            onRetry();
+          }
+        }
+      } catch {
+        // Non-blocking background probe
+      }
+    };
+
+    const interval = setInterval(probeStatus, autoRetrySeconds * 1000);
+    return () => clearInterval(interval);
+  }, [autoRetrySeconds, onRetry]);
+
   const handleManualRetry = () => {
     setIsRetrying(true);
     onRetry();
@@ -43,9 +153,9 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
     ? message.trim()
     : 'We are currently making scheduled platform updates to improve your campus event experience.';
 
-  const resumption = (estimatedResumption && estimatedResumption.trim().length > 0)
-    ? estimatedResumption.trim()
-    : null;
+  const subDescription = (description && description.trim().length > 0)
+    ? description.trim()
+    : 'All registered event tickets, team rosters, and student submissions remain fully secure.';
 
   return (
     <div className="min-h-screen w-full bg-[#090a0f] text-slate-100 flex flex-col justify-between relative overflow-hidden select-none font-sans">
@@ -66,8 +176,8 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
             />
             <div className="flex flex-col">
               <div className="flex items-center text-xl sm:text-2xl font-black tracking-tight font-heading leading-tight">
-                <span className="text-white">LPU</span>
-                <span className="ml-1 text-[#ff6b00]">Events</span>
+                <span className="text-white font-['Outfit']">LPU</span>
+                <span className="ml-1 text-[#ff6b00] font-['Outfit']">Events</span>
               </div>
               <span className="text-[10px] sm:text-[11px] font-extrabold tracking-widest text-slate-400 uppercase mt-0.5">
                 Student Directory
@@ -78,7 +188,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
           {/* Top-Right Maintenance Status Indicator */}
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-semibold bg-amber-500/10 border border-amber-500/20 text-amber-300">
             <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-            <span>Maintenance Mode</span>
+            <span>Scheduled Maintenance</span>
           </div>
         </div>
       </header>
@@ -86,7 +196,7 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
       {/* Main Content Hero */}
       <main className="w-full max-w-xl mx-auto text-center relative z-10 my-auto px-6 py-12">
         {/* Main Headline */}
-        <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white font-heading leading-tight mb-4 sm:mb-5">
+        <h1 className="text-3xl sm:text-5xl font-black tracking-tight text-white font-['Outfit'] leading-tight mb-4 sm:mb-5">
           We’ll be back shortly.
         </h1>
 
@@ -96,17 +206,21 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
         </p>
 
         {/* Estimated Resumption Time (if configured by admin) */}
-        {resumption && (
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs sm:text-sm text-slate-300 mb-8 font-medium">
-            <Clock className="w-3.5 h-3.5 text-[#ff6b00]" />
-            <span>Expected resumption: <strong className="text-white font-semibold">{resumption}</strong></span>
+        {formattedResumption && (
+          <div className="inline-flex flex-wrap items-center justify-center gap-2 px-4 py-2 rounded-full bg-white/[0.04] border border-white/[0.08] text-xs sm:text-sm text-slate-300 mb-8 font-medium">
+            <Clock className="w-3.5 h-3.5 text-[#ff6b00] shrink-0" />
+            <span>Expected resumption: <strong className="text-white font-semibold">{formattedResumption}</strong></span>
+            {countdownText && (
+              <span className="text-amber-400 font-semibold">({countdownText})</span>
+            )}
           </div>
         )}
 
         {/* Reassurance text */}
-        <p className="text-xs sm:text-sm text-slate-500 max-w-md mx-auto mb-8 leading-relaxed">
-          All registered event tickets, team rosters, and student submissions remain fully secure.
-        </p>
+        <div className="inline-flex items-center gap-2 text-xs sm:text-sm text-slate-400 max-w-md mx-auto mb-8 leading-relaxed">
+          <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{subDescription}</span>
+        </div>
 
         {/* Single Clean Action Button — Manual Only */}
         <div className="flex justify-center">
@@ -130,10 +244,10 @@ export const MaintenanceView: React.FC<MaintenanceViewProps> = ({
           </div>
 
           <a 
-            href="mailto:support@lpuevents.live" 
+            href={`mailto:${contactEmail}`} 
             className="inline-flex items-center gap-1 text-slate-400 hover:text-white transition-colors"
           >
-            <span>Urgent inquiries: support@lpuevents.live</span>
+            <span>Urgent inquiries: {contactEmail}</span>
             <ArrowUpRight className="w-3 h-3" />
           </a>
         </div>

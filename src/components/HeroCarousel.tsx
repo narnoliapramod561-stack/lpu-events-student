@@ -3,19 +3,15 @@ import { motion, AnimatePresence, type Variants } from "framer-motion";
 import { Calendar, MapPin, Users, ArrowRight, ChevronLeft, ChevronRight, Sparkles } from "lucide-react";
 import { 
   EventFeedItem, 
-  AdvertisementFeedItem, 
   CarouselItemFeedItem, 
-  AdSystemConfig,
-  injectAdsIntoSequence,
   resolveDefaultEventImage
 } from "@lpu-events/shared";
 import { getEventImage, getResponsiveImageUrl } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
-import { AdSenseSlot } from "./AdSenseSlot";
 
 export interface HeroSlideModel {
   id: string;
-  type: "event" | "ad" | "memory" | "media" | "adsense";
+  type: "event" | "memory" | "media";
   title: string;
   description?: string;
   image: string;
@@ -30,7 +26,6 @@ export interface HeroSlideModel {
   eventId?: string | null;
   isSponsored?: boolean;
   duration: number;
-  adUnitId?: string;
 }
 
 const slideVariants: Variants = {
@@ -113,14 +108,10 @@ const formatHeroTime = (dateStr?: string | null) => {
 export const HeroCarouselComponent = ({
   carouselItems,
   featuredEvents = [],
-  ads = [],
-  adSystemConfig,
   onSelectEvent,
 }: {
   carouselItems?: CarouselItemFeedItem[];
   featuredEvents?: EventFeedItem[];
-  ads?: AdvertisementFeedItem[];
-  adSystemConfig?: AdSystemConfig | null;
   onSelectEvent: (id: string, name?: string) => void;
 }) => {
   const [[currentIndex, direction], setPage] = useState<[number, number]>([0, 0]);
@@ -229,64 +220,8 @@ export const HeroCarouselComponent = ({
       }];
     }
 
-    // Configurable Ad Injection
-    const heroAdConfig = adSystemConfig?.placements?.hero_carousel || {
-      enabled: true,
-      provider: 'direct',
-      frequency: 2,
-      max_ads: 3,
-      ad_unit_id: '8059587837',
-    };
-
-    const injected = injectAdsIntoSequence(baseSlides, ads, heroAdConfig, {
-      global_enabled: adSystemConfig?.global_enabled,
-      remaining_global_quota: adSystemConfig?.max_ads_per_page,
-    });
-
-    return injected.map((item, idx) => {
-      if (item.type === "item" && item.data) {
-        return item.data;
-      }
-
-      if (item.adProvider === "adsense") {
-        return {
-          id: `hero-adsense-${idx}`,
-          type: "adsense",
-          title: "Google AdSense",
-          description: "Sponsored Advertisement",
-          image: "",
-          category: "Sponsored",
-          ctaText: "Explore",
-          isSponsored: true,
-          duration: 6000,
-          adUnitId: item.adUnitId || heroAdConfig.ad_unit_id || "8059587837",
-        };
-      }
-
-      if (item.adProvider === "direct") {
-        const ad = item.adData;
-        if (!ad) return null;
-        return {
-          id: `hero-direct-ad-${ad.id}-${idx}`,
-          type: "ad",
-          isSponsored: true,
-          title: ad.name,
-          description: "Featured university partner promotion. Explore exclusive student opportunities and offers.",
-          image: getEventImage(ad, "advertisement", 1920),
-          category: "Sponsored Partner",
-          date: "",
-          time: "",
-          venue: "",
-          organizer: "Official Campus Partner",
-          ctaText: "Explore More",
-          ctaUrl: ad.redirect_url,
-          duration: 5000,
-        };
-      }
-
-      return null;
-    }).filter(Boolean) as HeroSlideModel[];
-  }, [carouselItems, featuredEvents, ads, adSystemConfig]);
+    return baseSlides;
+  }, [carouselItems, featuredEvents]);
 
   useEffect(() => {
     if (currentIndex >= slides.length && slides.length > 0) {
@@ -329,8 +264,6 @@ export const HeroCarouselComponent = ({
   const currentSlide = slides[currentIndex] || slides[0];
 
   const handleAction = () => {
-    if (currentSlide.type === "adsense") return;
-
     if (currentSlide.ctaUrl) {
       const url = currentSlide.ctaUrl.trim();
       // Enforce strict scheme validation to prevent javascript:, data:, and // open redirects
@@ -379,16 +312,6 @@ export const HeroCarouselComponent = ({
             }}
             className="w-full h-full cursor-grab active:cursor-grabbing flex flex-col flex-1"
           >
-            {/* Google AdSense Isolated Slot */}
-            {currentSlide.type === "adsense" ? (
-              <div className="w-full p-3 sm:p-8 flex flex-col flex-1 h-full min-h-[250px] md:min-h-[500px]">
-                <AdSenseSlot
-                  format="carousel_slide"
-                  slotId={currentSlide.adUnitId}
-                  adSenseConfig={adSystemConfig?.adsense}
-                />
-              </div>
-            ) : (
               <>
                 {/* =========================================================
                     MOBILE SLIDE LAYOUT (< sm): Full-Bleed Tile with Zero Grey Space
@@ -589,8 +512,8 @@ export const HeroCarouselComponent = ({
                       </div>
                     </div>
                   </div>
-                ) : currentSlide.type === "memory" ? (
-                  /* Memory Slide Layout (Desktop) */
+                ) : (
+                  /* Memory / Spotlight Slide Layout (Desktop) */
                   <div
                     onClick={handleAction}
                     className="hidden sm:flex relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex-col justify-end p-8 md:p-12 lg:p-16 pb-20"
@@ -637,81 +560,8 @@ export const HeroCarouselComponent = ({
                       )}
                     </motion.div>
                   </div>
-                ) : (
-                  /* Sponsored Advertisement Slide (Desktop) */
-                  <div
-                    onClick={handleAction}
-                    className="hidden sm:flex relative w-full h-full flex-1 overflow-hidden cursor-pointer group flex-col justify-end p-8 md:p-12 lg:p-16 pb-20"
-                  >
-                    {currentSlide.image ? (
-                      <ProgressiveImage
-                        src={currentSlide.image}
-                        alt={currentSlide.title}
-                        width={1200}
-                        height={675}
-                        containerClassName="absolute inset-0 w-full h-full"
-                        className="w-full h-full object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 bg-gradient-to-br from-indigo-950 via-slate-900 to-purple-950" />
-                    )}
-
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/30 pointer-events-none" />
-                    <div className="absolute inset-0 bg-gradient-to-tr from-indigo-600/30 via-purple-600/15 to-transparent mix-blend-screen pointer-events-none" />
-
-                    <motion.div
-                      variants={contentStagger}
-                      initial="hidden"
-                      animate="visible"
-                      className="relative z-20 flex flex-row items-end justify-between gap-6 w-full max-w-6xl"
-                    >
-                      <div className="max-w-2xl">
-                        <motion.div variants={contentItem} className="flex items-center gap-2 mb-3">
-                          <span className="flex items-center gap-1.5 px-3 py-1 bg-indigo-950/80 backdrop-blur-md text-indigo-300 border border-indigo-500/50 rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-md">
-                            <span className="w-1.5 h-1.5 rounded-full bg-indigo-400 animate-pulse" />
-                            Sponsored Promotion
-                          </span>
-                          {currentSlide.category && (
-                            <span className="px-2.5 py-0.5 bg-white/10 backdrop-blur-md text-white/90 border border-white/20 rounded-full text-xs font-bold uppercase">
-                              {currentSlide.category}
-                            </span>
-                          )}
-                        </motion.div>
-
-                        <motion.h1
-                          variants={contentItem}
-                          className="text-2xl md:text-3xl lg:text-4xl font-black text-white font-heading leading-tight mb-2 drop-shadow-md break-safe"
-                        >
-                          {currentSlide.title}
-                        </motion.h1>
-
-                        {currentSlide.description && (
-                          <motion.p
-                            variants={contentItem}
-                            className="text-gray-200 text-sm font-medium line-clamp-2 leading-relaxed break-safe"
-                          >
-                            {currentSlide.description}
-                          </motion.p>
-                        )}
-                      </div>
-
-                      <motion.div variants={contentItem} className="shrink-0">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleAction();
-                          }}
-                          className="flex items-center gap-2 px-6 py-3 rounded-2xl glass-btn-ad font-black text-sm shadow-[0_6px_20px_rgba(99,102,241,0.4)] transition-transform duration-150 hover:scale-105 active:scale-95 group cursor-pointer touch-target font-heading"
-                        >
-                          <span>{currentSlide.ctaText || "Explore More"}</span>
-                          <ArrowRight className="h-4 w-4 group-hover:translate-x-1 transition-transform" />
-                        </button>
-                      </motion.div>
-                    </motion.div>
-                  </div>
                 )}
               </>
-            )}
           </motion.div>
         </AnimatePresence>
 

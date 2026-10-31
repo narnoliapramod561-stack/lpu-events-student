@@ -171,7 +171,7 @@ describe('Security Regression Suite (V2 Hardened)', () => {
       expect(res.data.new_media_id).toBe('new-media-uuid');
     });
 
-    it('IDOR-001-REG-004: Non-Super Admin attempting to replace platform advertisement media is rejected', async () => {
+    it('IDOR-001-REG-004: Non-Super Admin attempting to replace platform carousel media is rejected', async () => {
       mockRpc.mockResolvedValueOnce({
         data: null,
         error: {
@@ -181,8 +181,8 @@ describe('Security Regression Suite (V2 Hardened)', () => {
       });
 
       const res = await client.supabase.rpc('replace_entity_media', {
-        p_entity_table: 'advertisements',
-        p_entity_id: 'ad-uuid',
+        p_entity_table: 'carousel_items',
+        p_entity_id: 'carousel-uuid',
         p_media_column: 'media_id',
         p_new_media_id: 'malicious-media-uuid'
       });

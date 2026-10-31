@@ -121,7 +121,7 @@ export interface ImageUploadOptions {
 
 export interface ReplaceEntityMediaOptions {
   supabase: SupabaseClient;
-  entityTable: 'events' | 'advertisements' | 'carousel_items';
+  entityTable: 'events' | 'carousel_items';
   entityId: string;
   mediaColumn: 'banner_media_id' | 'media_id' | 'cover_media_id' | 'logo_media_id';
   newMediaId: string | null;
@@ -358,15 +358,13 @@ export async function replaceEntityMedia(options: ReplaceEntityMediaOptions): Pr
   // 3. If previous media exists and is replaced, check if it is orphaned
   if (oldMediaId && oldMediaId !== newMediaId) {
     try {
-      const [eventsRes, adsRes, carouselRes] = await Promise.all([
+      const [eventsRes, carouselRes] = await Promise.all([
         supabase.from('events').select('id').eq('banner_media_id', oldMediaId).limit(1),
-        supabase.from('advertisements').select('id').eq('media_id', oldMediaId).limit(1),
         supabase.from('carousel_items').select('id').eq('media_id', oldMediaId).limit(1)
       ]);
 
       const isStillReferenced =
         (eventsRes.data && eventsRes.data.length > 0) ||
-        (adsRes.data && adsRes.data.length > 0) ||
         (carouselRes.data && carouselRes.data.length > 0);
 
       if (!isStillReferenced) {

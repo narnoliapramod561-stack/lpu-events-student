@@ -57,7 +57,12 @@ export function getStorageBaseUrl(_bucket?: string): string {
     }
   } catch {}
 
-  // 3. Authoritative default: Cloudflare R2 delivery domain
+  // 3. Localhost environment check (prevents external requests to images.lpuevents.live)
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return window.location.origin;
+  }
+
+  // 4. Authoritative default: Cloudflare R2 delivery domain
   return 'https://images.lpuevents.live';
 }
 
@@ -438,22 +443,8 @@ export function getOptimizedImage(
   if (source.events) {
     return getOptimizedImage(source.events, context, options);
   }
-  if (source.advertisements) {
-    return getOptimizedImage(source.advertisements, context, options);
-  }
   if (source.event_memories) {
     return getOptimizedImage(source.event_memories, context, options);
-  }
-
-  // 5. Never fall back to event category images for advertisements
-  if (
-    context === 'advertisement' ||
-    Boolean(source.redirect_url) ||
-    source.item_type === 'advertisement' ||
-    source.item_type === 'ADVERTISEMENT' ||
-    Boolean(source.advertisements)
-  ) {
-    return '';
   }
 
   // 6. Category / Subcategory Taxonomy Fallback

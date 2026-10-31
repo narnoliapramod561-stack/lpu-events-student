@@ -3,12 +3,11 @@
 // All public reads strictly route through /api/public/* with zero direct Supabase hits.
 // Integrated with persistentCache (localStorage/IndexedDB) + Edge SWR + Maintenance Shield.
 
-import type { SupabaseClient } from '@supabase/supabase-js';
+import { createClient, SupabaseClient, RealtimeChannel } from '@supabase/supabase-js';
 import {
   CategoryFeedItem,
   EventFeedItem,
   CarouselItemFeedItem,
-  AdvertisementFeedItem,
   Event,
   OrganizerAccessRequest,
   PublishEventPayload,
@@ -20,6 +19,7 @@ import {
 import { slugify, extractEventId } from './slug';
 import { persistentCache, HOMEPAGE_CACHE_KEY } from './persistentCache';
 import { registerMediaAssets } from './images/url';
+import { trackEvent } from './telemetry/posthog';
 
 interface MemoryCacheEntry<T> {
   data: T;
@@ -34,51 +34,20 @@ export interface HomepageBundleData {
   carousel: CarouselItemFeedItem[];
   featured: any[];
   trending: EventFeedItem[];
-  advertisements: AdvertisementFeedItem[];
   settings: { key: string; value: any }[];
   events: EventFeedItem[];
 }
 
 export class LpuEventsClient {
   public supabase: SupabaseClient;
-  private _supabaseInstance: SupabaseClient | null = null;
-  private _supabasePromise: Promise<SupabaseClient> | null = null;
-  private _supabaseUrl: string;
-  private _supabaseAnonKey: string;
-  private _options?: any;
 
   // In-memory fast tier cache
   private _cache = new Map<string, MemoryCacheEntry<any>>();
   private _inFlight = new Map<string, Promise<any>>();
+  private _syncChan: RealtimeChannel | null = null;
 
   constructor(supabaseUrl: string, supabaseAnonKey: string, options?: any) {
-    this._supabaseUrl = supabaseUrl;
-    this._supabaseAnonKey = supabaseAnonKey;
-    this._options = options;
-
-    this.supabase = new Proxy({} as SupabaseClient, {
-      get: (target: any, prop: string | symbol) => {
-        if (this._supabaseInstance) {
-          const val = (this._supabaseInstance as any)[prop];
-          return typeof val === 'function' ? val.bind(this._supabaseInstance) : val;
-        }
-        if (target[prop] !== undefined) {
-          return target[prop];
-        }
-        return (...args: any[]) => {
-          return this.getSupabaseClient().then((sb: any) => {
-            return sb[prop](...args);
-          });
-        };
-      },
-      set: (target: any, prop: string | symbol, value: any) => {
-        target[prop] = value;
-        if (this._supabaseInstance) {
-          (this._supabaseInstance as any)[prop] = value;
-        }
-        return true;
-      }
-    });
+    this.supabase = createClient(supabaseUrl, supabaseAnonKey, options);
 
     // Cross-tab & multi-window instant cache synchronization
     if (typeof window !== 'undefined') {
@@ -90,18 +59,28 @@ export class LpuEventsClient {
       window.addEventListener('lpu:cache-invalidated', () => {
         this.invalidateClientCache();
       });
+
+      // Realtime cross-origin cache invalidation channel: only connect for authenticated admin sessions to protect connection quotas
+      try {
+        this.supabase.auth.getSession().then(({ data }) => {
+          if (!data?.session) return; // Anonymous student visitors rely purely on Cloudflare Edge Cache + SWR
+
+          this._syncChan = this.supabase.channel('public:events-sync');
+          this._syncChan
+            .on('broadcast', { event: 'cache-bust' }, (payload: any) => {
+              this.invalidateClientCache();
+              window.dispatchEvent(new CustomEvent('lpu:cache-invalidated', { detail: payload?.payload || payload }));
+            })
+            .subscribe();
+        }).catch(() => {});
+      } catch {
+        // Non-blocking
+      }
     }
   }
 
   public async getSupabaseClient(): Promise<SupabaseClient> {
-    if (this._supabaseInstance) return this._supabaseInstance;
-    if (!this._supabasePromise) {
-      this._supabasePromise = import('@supabase/supabase-js').then(({ createClient }) => {
-        this._supabaseInstance = createClient(this._supabaseUrl, this._supabaseAnonKey, this._options);
-        return this._supabaseInstance;
-      });
-    }
-    return this._supabasePromise;
+    return this.supabase;
   }
 
   /**
@@ -575,7 +554,7 @@ export class LpuEventsClient {
     });
   }
 
-  // --- View Tracking with Client-Side Deduplication (Zero direct Supabase hit) ---
+  // --- View Tracking: Pure Analytics Telemetry (Zero Supabase DB hit) ---
   private _viewedEventsSession: Set<string> = new Set();
 
   async incrementEventView(id: string): Promise<void> {
@@ -591,12 +570,9 @@ export class LpuEventsClient {
       }
     } catch {}
 
+    // Pure client-side analytics telemetry — zero database hits or locks
     try {
-      await fetch('/api/public/view', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ event_id: id }),
-      });
+      trackEvent('event_view_impression', { event_id: id });
     } catch {
       // Non-blocking telemetry
     }
@@ -620,11 +596,6 @@ export class LpuEventsClient {
     );
   }
 
-  async fetchActiveAdvertisements(): Promise<{ data: AdvertisementFeedItem[] | null; error: any }> {
-    return this._fetchWithCache<AdvertisementFeedItem[]>('public:ads', 180_000, () =>
-      this._fetchPublic<AdvertisementFeedItem[]>('advertisements')
-    );
-  }
 
   async fetchGlobalSettings(): Promise<{ data: { key: string; value: any }[] | null; error: any }> {
     return this._fetchWithCache<{ key: string; value: any }[]>('public:settings:all', 300_000, () =>
@@ -654,6 +625,31 @@ export class LpuEventsClient {
         localStorage.setItem('lpu_cache_bust', String(Date.now()));
         window.dispatchEvent(new CustomEvent('lpu:cache-invalidated', { detail: { tags } }));
 
+    // 1. Broadcast via Supabase Realtime across all origins, browsers, and tabs without leaking channel subscriptions
+        try {
+          if (this._syncChan) {
+            this._syncChan.send({
+              type: 'broadcast',
+              event: 'cache-bust',
+              payload: { tags, timestamp: Date.now() },
+            });
+          } else {
+            const syncChan = this.supabase.channel('public:events-sync');
+            this._syncChan = syncChan;
+            syncChan.subscribe((status) => {
+              if (status === 'SUBSCRIBED') {
+                syncChan.send({
+                  type: 'broadcast',
+                  event: 'cache-bust',
+                  payload: { tags, timestamp: Date.now() },
+                });
+              }
+            });
+          }
+        } catch {
+          // Non-blocking
+        }
+
         const studentSiteUrl = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1'
           ? `http://${window.location.hostname}:3000`
           : 'https://lpuevents.live';
@@ -673,6 +669,31 @@ export class LpuEventsClient {
         // Non-blocking telemetry
       }
     }
+  }
+
+  /**
+   * Public hook to trigger targeted edge & multi-tab cache invalidation
+   */
+  public async dispatchEdgeInvalidation(tags: string[]): Promise<void> {
+    return this._dispatchTargetedEdgeInvalidation(tags);
+  }
+
+  /**
+   * Manually purge all edge caches (Cloudflare CDN, Worker KV, Realtime, Browser storage)
+   * Ensures instant sync between Admin and Student portals.
+   */
+  async purgeAllEdgeCaches(): Promise<{ success: boolean; timestamp: number }> {
+    const timestamp = Date.now();
+    await this._dispatchTargetedEdgeInvalidation([
+      'events',
+      'homepage',
+      'categories',
+      'taxonomy',
+      'carousel',
+      'settings',
+      'all'
+    ]);
+    return { success: true, timestamp };
   }
 
   async submitAccessRequest(orgName: string, remarks?: string): Promise<{ data: any; error: any }> {
@@ -770,28 +791,9 @@ export class LpuEventsClient {
     return res;
   }
 
-  async manageAdvertisement(action: string, params?: {
-    id?: string; name?: string; media_id?: string; redirect_url?: string;
-    start_at?: string; end_at?: string; status?: string;
-  }): Promise<{ data: any; error: any }> {
-    const res = await this.supabase.rpc('manage_advertisement', {
-      p_action: action,
-      p_id: params?.id || null,
-      p_name: params?.name || null,
-      p_media_id: params?.media_id || null,
-      p_redirect_url: params?.redirect_url || null,
-      p_start_at: params?.start_at || null,
-      p_end_at: params?.end_at || null,
-      p_status: params?.status || 'active'
-    });
-    if (!res.error) {
-      this._dispatchTargetedEdgeInvalidation(['advertisements', 'homepage']);
-    }
-    return res;
-  }
 
   async manageCarouselItem(action: string, params?: {
-    id?: string; item_type?: string; event_id?: string; advertisement_id?: string;
+    id?: string; item_type?: string; event_id?: string;
     media_id?: string; sort_order?: number; is_active?: boolean;
     start_at?: string; end_at?: string; display_duration_ms?: number;
     custom_title?: string; custom_subtitle?: string; custom_cta_text?: string;
@@ -802,7 +804,6 @@ export class LpuEventsClient {
       p_id: params?.id || null,
       p_item_type: params?.item_type || 'EVENT',
       p_event_id: params?.event_id || null,
-      p_advertisement_id: params?.advertisement_id || null,
       p_media_id: params?.media_id || null,
       p_sort_order: params?.sort_order ?? 0,
       p_is_active: params?.is_active ?? true,
@@ -858,7 +859,21 @@ export class LpuEventsClient {
             .maybeSingle();
           adminId = au?.id || null;
         }
+        if (!adminId) {
+          const { data: fallbackAu } = await this.supabase
+            .from('admin_users')
+            .select('id')
+            .eq('is_active', true)
+            .order('created_at', { ascending: true })
+            .limit(1)
+            .maybeSingle();
+          adminId = fallbackAu?.id || null;
+        }
       } catch {}
+
+      if (!adminId) {
+        return res;
+      }
 
       const { data: directData, error: directErr } = await this.supabase
         .from('global_settings')
@@ -866,7 +881,7 @@ export class LpuEventsClient {
           key: (p_key || '').trim(),
           value: p_value,
           description: p_description,
-          updated_by: adminId || '0f159cb9-b672-499d-a9b6-d61d370342a5',
+          updated_by: adminId,
           updated_at: new Date().toISOString()
         }, { onConflict: 'key' })
         .select()
@@ -887,7 +902,7 @@ export class LpuEventsClient {
     }
 
     if (!res.error) {
-      this._dispatchTargetedEdgeInvalidation(['settings', 'homepage', 'advertisements']);
+      this._dispatchTargetedEdgeInvalidation(['settings', 'homepage']);
     }
     return res;
   }
@@ -902,7 +917,6 @@ export class LpuEventsClient {
       events: 0,
       featured: 0,
       carousel: 0,
-      ads: 0,
       settings: 0
     };
     for (const r of rows as ResourceVersionItem[]) {

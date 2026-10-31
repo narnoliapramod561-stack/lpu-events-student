@@ -107,13 +107,6 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onGoToCategories }) 
               >
                 Terms of Service
               </a>
-              <a
-                href="/privacy#adsense"
-                onClick={(e) => handleLinkClick(e, 'privacy')}
-                className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 hover:text-primary dark:hover:text-primary transition-colors py-1.5 sm:py-2 min-h-[36px] sm:min-h-[44px] flex items-center font-medium focus:outline-none focus-visible:ring-2 focus-visible:ring-primary rounded-md"
-              >
-                AdSense Policies
-              </a>
             </nav>
           </div>
         </div>

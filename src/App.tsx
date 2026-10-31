@@ -3,7 +3,6 @@ import { Navbar } from "./components/Navbar";
 import { HeroCarousel } from "./components/HeroCarousel";
 import { EventGrid } from "./components/EventGrid";
 import { Footer } from "./components/Footer";
-import { UnifiedAdSlot } from "./components/UnifiedAdSlot";
 import { MaintenanceView } from "./components/MaintenanceView";
 import { SplashScreen } from "./components/SplashScreen";
 
@@ -21,11 +20,11 @@ import { searchEventsClientSide } from "./shared/clientSearch";
 import { 
   CategoryFeedItem, 
   EventFeedItem, 
-  AdvertisementFeedItem, 
   CarouselItemFeedItem,
   HappeningTodayConfig,
-  AdSystemConfig,
-  DEFAULT_AD_SYSTEM_CONFIG,
+  PlatformMaintenanceConfig,
+  DEFAULT_PLATFORM_MAINTENANCE_CONFIG,
+  parsePlatformMaintenanceConfig,
   trackPageView,
   trackEvent,
   isEventToday,
@@ -192,7 +191,6 @@ export default function App() {
   const [categories, setCategories] = useState<CategoryFeedItem[]>(
     initialBundle?.categories || OFFICIAL_PLATFORM_CATEGORIES
   );
-  const [ads, setAds] = useState<AdvertisementFeedItem[]>(initialBundle?.advertisements || []);
   const [featuredEvents, setFeaturedEvents] = useState<EventFeedItem[]>(
     initialBundle?.featured ? normalizeEventDates(initialBundle.featured.map((fe: any) => fe.events || fe).filter(Boolean)) : []
   );
@@ -228,30 +226,9 @@ export default function App() {
     }
     return null;
   });
-  const [adSystemConfig, setAdSystemConfig] = useState<AdSystemConfig>(() => {
-    if (initialBundle?.settings && Array.isArray(initialBundle.settings)) {
-      const adSysSetting = initialBundle.settings.find((s: any) => s.key === "ad_system_config");
-      if (adSysSetting) {
-        try {
-          const parsed = typeof adSysSetting.value === 'string'
-            ? JSON.parse(adSysSetting.value)
-            : adSysSetting.value;
-          return {
-            ...DEFAULT_AD_SYSTEM_CONFIG,
-            ...parsed,
-            adsense: { ...DEFAULT_AD_SYSTEM_CONFIG.adsense, ...(parsed?.adsense || {}) },
-            placements: { ...DEFAULT_AD_SYSTEM_CONFIG.placements, ...(parsed?.placements || {}) },
-          };
-        } catch {}
-      }
-    }
-    return DEFAULT_AD_SYSTEM_CONFIG;
-  });
-
   // Configurable limits (with PRD defaults)
   const [, setLimit] = useState(9);
   const [showMoreIncrement, setShowMoreIncrement] = useState(5);
-  const [adInterval, setAdInterval] = useState(6);
 
 
   // Filter States initialized from URL query parameters
@@ -274,36 +251,24 @@ export default function App() {
   } | null>(null);
 
   // Pagination lists & loading
-  const [events, setEvents] = useState<EventFeedItem[]>(() => (initialBundle?.events ? initialBundle.events.slice(0, 9) : []));
+  const [events, setEvents] = useState<EventFeedItem[]>(() => (initialBundle?.events ? initialBundle.events : []));
   const [eventsLoading, setEventsLoading] = useState(!initialBundle?.events?.length);
   const [visibleEventsCount, setVisibleEventsCount] = useState(9);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMoreEvents, setHasMoreEvents] = useState(true);
+  const [hasMoreEvents, setHasMoreEvents] = useState(() => (initialBundle?.events?.length || 0) >= 100);
   const [appLoading, setAppLoading] = useState(!initialBundle);
   const [isMaintenanceWarming, setIsMaintenanceWarming] = useState(false);
   const searchReqIdRef = useRef(0);
 
   // Platform Maintenance & Campus Announcement state from global_settings
-  const [platformMaintenance, setPlatformMaintenance] = useState<{
-    isEnabled: boolean;
-    message?: string;
-    estimatedResumption?: string;
-  }>(() => {
+  const [platformMaintenance, setPlatformMaintenance] = useState<PlatformMaintenanceConfig>(() => {
     if (initialBundle?.settings && Array.isArray(initialBundle.settings)) {
       const maint = initialBundle.settings.find((s: any) => s.key === "platform_maintenance_mode");
       if (maint) {
-        const val = maint.value;
-        if (typeof val === 'boolean') return { isEnabled: val };
-        if (typeof val === 'object' && val !== null) {
-          return {
-            isEnabled: Boolean(val.is_enabled ?? val.enabled ?? false),
-            message: val.message,
-            estimatedResumption: val.estimated_resumption
-          };
-        }
+        return parsePlatformMaintenanceConfig(maint.value);
       }
     }
-    return { isEnabled: false };
+    return DEFAULT_PLATFORM_MAINTENANCE_CONFIG;
   });
 
   const [campusAnnouncement, setCampusAnnouncement] = useState<{
@@ -568,16 +533,6 @@ export default function App() {
           });
         }
 
-        // Advertisements
-        if (bundle.advertisements) {
-          setAds(prev => {
-            if (prev.length === bundle.advertisements.length && prev.every((a, i) => a.id === bundle.advertisements[i]?.id)) {
-              return prev;
-            }
-            return bundle.advertisements;
-          });
-        }
-
         // Featured Events
         if (bundle.featured) {
           const resolved: EventFeedItem[] = bundle.featured
@@ -626,8 +581,6 @@ export default function App() {
           }
           const incSetting = allSettings.find((s: any) => s.key === "show_more_increment");
           if (incSetting) setShowMoreIncrement(Number(incSetting.value) || 5);
-          const adSetting = allSettings.find((s: any) => s.key === "ad_placement_interval");
-          if (adSetting) setAdInterval(Number(adSetting.value) || 6);
 
           const htSetting = allSettings.find((s: any) => s.key === "happening_today_config");
           if (htSetting) {
@@ -638,34 +591,11 @@ export default function App() {
               setHappeningTodayConfig(parsed);
             } catch {}
           }
-          const adSysSetting = allSettings.find((s: any) => s.key === "ad_system_config");
-          if (adSysSetting) {
-            try {
-              const parsed = typeof adSysSetting.value === 'string'
-                ? JSON.parse(adSysSetting.value)
-                : adSysSetting.value;
-              setAdSystemConfig(prev => ({
-                ...prev,
-                ...parsed,
-                adsense: { ...prev.adsense, ...(parsed.adsense || {}) },
-                placements: { ...prev.placements, ...(parsed.placements || {}) },
-              }));
-            } catch {}
-          }
 
           // Check platform maintenance mode
           const maintSetting = allSettings.find((s: any) => s.key === "platform_maintenance_mode");
           if (maintSetting) {
-            const val = maintSetting.value;
-            if (typeof val === 'boolean') {
-              setPlatformMaintenance({ isEnabled: val });
-            } else if (typeof val === 'object' && val !== null) {
-              setPlatformMaintenance({
-                isEnabled: Boolean(val.is_enabled ?? val.enabled ?? false),
-                message: val.message,
-                estimatedResumption: val.estimated_resumption
-              });
-            }
+            setPlatformMaintenance(parsePlatformMaintenanceConfig(maintSetting.value));
           }
 
           // Check campus announcement banner
@@ -709,14 +639,13 @@ export default function App() {
             return validLive;
           });
           setEvents(prev => {
-            const next = normalized.slice(0, 9);
-            if (prev.length === next.length && prev.every((e, i) => e.id === next[i]?.id)) {
+            if (prev.length === normalized.length && prev.every((e, i) => e.id === normalized[i]?.id)) {
               return prev;
             }
-            return next;
+            return normalized;
           });
           setEventsLoading(false);
-          setHasMoreEvents(normalized.length >= 9);
+          setHasMoreEvents(normalized.length >= 100);
         }
       } catch (err) {
         console.error("Failed to load homepage data:", err);
@@ -907,7 +836,6 @@ export default function App() {
       const unsubscribe = persistentCache.subscribe((key, data: any) => {
         if (key === HOMEPAGE_CACHE_KEY && data && typeof data === 'object') {
           if (data.categories) setCategories(data.categories);
-          if (data.advertisements) setAds(data.advertisements);
           if (data.featured) {
             const resolved = data.featured
               .map((fe: any) => fe.events || fe)
@@ -942,68 +870,6 @@ export default function App() {
       });
       return unsubscribe;
     }, [selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
-
-    // Dynamically enable/disable Google AdSense script based on global ad toggle.
-    // The AdSense script in index.html runs Google Auto Ads independently of our React ad system,
-    // so we must remove it from the DOM when ads are globally disabled.
-    useEffect(() => {
-      const publisherId = adSystemConfig?.adsense?.publisher_id || 'ca-pub-5513043165999517';
-      const adsenseScriptSrc = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${publisherId}`;
-
-      if (!adSystemConfig.global_enabled) {
-        // Remove the AdSense script tag to stop new auto-ads from loading
-        const existingScripts = document.querySelectorAll(`script[src*="pagead2.googlesyndication.com"]`);
-        existingScripts.forEach(script => script.remove());
-
-        // Remove any auto-injected AdSense iframes and containers
-        const autoAdElements = document.querySelectorAll(
-          'ins.adsbygoogle, iframe[src*="googleads"], iframe[src*="doubleclick"], div[id^="google_ads"], .adsbygoogle'
-        );
-        autoAdElements.forEach(el => {
-          // Don't remove elements inside our React root that are managed by React
-          if (el.closest('#root')) return;
-          el.remove();
-        });
-      } else {
-        // Re-inject AdSense script during idle time without blocking frame render
-        const injectScript = () => {
-          const hasScript = document.querySelector(`script[src*="pagead2.googlesyndication.com"]`);
-          if (!hasScript) {
-            const script = document.createElement('script');
-            script.async = true;
-            script.src = adsenseScriptSrc;
-            script.crossOrigin = 'anonymous';
-            document.head.appendChild(script);
-          }
-        };
-
-        const scheduleAdSense = () => {
-          if ('requestIdleCallback' in window) {
-            (window as any).requestIdleCallback(injectScript, { timeout: 4000 });
-          } else {
-            setTimeout(injectScript, 2000);
-          }
-        };
-
-        const events = ['pointerdown', 'keydown'];
-        const onDirectInteract = () => {
-          events.forEach(e => window.removeEventListener(e, onDirectInteract));
-          scheduleAdSense();
-        };
-
-        events.forEach(e => window.addEventListener(e, onDirectInteract, { once: true, passive: true }));
-
-        // Background idle fallback: loads quietly long after initial scroll and page settle
-        const idleFallbackTimer = setTimeout(() => {
-          scheduleAdSense();
-        }, 6000);
-
-        return () => {
-          clearTimeout(idleFallbackTimer);
-          events.forEach(e => window.removeEventListener(e, onDirectInteract));
-        };
-      }
-    }, [adSystemConfig.global_enabled, adSystemConfig?.adsense?.publisher_id]);
 
     const lastFetchedFiltersRef = useRef<string>("all||ALL|all|");
 
@@ -1164,13 +1030,10 @@ export default function App() {
 
   // Paginated/Limited display list for upcoming events feed
   const displayedEvents = useMemo(() => {
-    if (isSearching) {
-      return filteredEvents.slice(0, visibleEventsCount);
-    }
-    return filteredEvents;
-  }, [filteredEvents, visibleEventsCount, isSearching]);
+    return filteredEvents.slice(0, visibleEventsCount);
+  }, [filteredEvents, visibleEventsCount]);
 
-  if (platformMaintenance.isEnabled || isMaintenanceWarming) {
+  if (platformMaintenance.enabled || isMaintenanceWarming) {
     return (
       <MaintenanceView
         onRetry={() => {
@@ -1178,8 +1041,10 @@ export default function App() {
           window.location.reload();
         }}
         message={platformMaintenance.message}
-        estimatedResumption={platformMaintenance.estimatedResumption}
-        autoRetrySeconds={platformMaintenance.isEnabled ? 20 : 5}
+        description={platformMaintenance.description}
+        estimatedResumption={platformMaintenance.estimated_resumption}
+        contactEmail={platformMaintenance.contact_email}
+        autoRetrySeconds={platformMaintenance.enabled ? 20 : 5}
       />
     );
   }
@@ -1305,9 +1170,7 @@ export default function App() {
               eventId={selectedEventId!}
               onBack={() => handleSelectEvent(null)}
               onSelectEvent={handleSelectEvent}
-              ads={ads}
               allEvents={allAvailableEvents}
-              adSystemConfig={adSystemConfig}
             />
           ) : (
             <>
@@ -1317,31 +1180,8 @@ export default function App() {
                   <HeroCarousel
                     carouselItems={carouselSlides}
                     featuredEvents={featuredEvents}
-                    ads={ads}
-                    adSystemConfig={adSystemConfig}
                     onSelectEvent={handleSelectEvent}
                   />
-
-                  {/* Ad Slot 1: Below Hero Carousel */}
-                  {adSystemConfig?.global_enabled &&
-                    adSystemConfig?.placements?.hero_carousel?.enabled &&
-                    adSystemConfig?.placements?.hero_carousel?.provider !== 'disabled' &&
-                    (adSystemConfig?.placements?.hero_carousel?.provider === 'adsense' || ads.length > 0) && (
-                      <UnifiedAdSlot
-                        placementKey="hero_carousel"
-                        adSystemConfig={adSystemConfig}
-                        directAd={(() => {
-                          const cfg = adSystemConfig?.placements?.hero_carousel;
-                          if (cfg?.selected_ad_ids && Array.isArray(cfg.selected_ad_ids)) {
-                            if (cfg.selected_ad_ids.length === 0) return null;
-                            const found = ads.find((a) => a.id === cfg.selected_ad_ids?.[0]);
-                            if (found) return found;
-                          }
-                          return ads[0] || null;
-                        })()}
-                        tag="Featured Partner Spotlight"
-                      />
-                  )}
 
                   {/* Lower Content: Skeletons during initial load, otherwise live modules */}
                   {appLoading ? (
@@ -1392,33 +1232,9 @@ export default function App() {
                       {/* Happening Today Slider */}
                       <HappeningTodaySlider
                         events={happeningTodayEvents}
-                        ads={ads}
                         config={happeningTodayConfig}
-                        adSystemConfig={adSystemConfig}
                         onSelectEvent={handleSelectEvent}
                       />
-
-                  {/* Ad Slot 2: Below Happening Today */}
-                  {adSystemConfig?.global_enabled &&
-                    adSystemConfig?.placements?.happening_today?.enabled &&
-                    adSystemConfig?.placements?.happening_today?.provider !== 'disabled' &&
-                    (adSystemConfig?.placements?.happening_today?.provider === 'adsense' || ads.length > 0) &&
-                    happeningTodayEvents.length > 0 && (
-                      <UnifiedAdSlot
-                        placementKey="happening_today"
-                        adSystemConfig={adSystemConfig}
-                        directAd={(() => {
-                          const cfg = adSystemConfig?.placements?.happening_today;
-                          if (cfg?.selected_ad_ids && Array.isArray(cfg.selected_ad_ids)) {
-                            if (cfg.selected_ad_ids.length === 0) return null;
-                            const found = ads.find((a) => a.id === cfg.selected_ad_ids?.[0]);
-                            if (found) return found;
-                          }
-                          return ads.length > 1 ? ads[1] : (ads[0] || null);
-                        })()}
-                        tag="Happening Today Sponsor"
-                      />
-                  )}
 
                   {/* Categories & Filter Bar */}
                   <div id="categories" className="scroll-mt-24">
@@ -1470,12 +1286,9 @@ export default function App() {
               <div id="events" className="scroll-mt-24">
                 <EventGrid
                   events={displayedEvents}
-                  ads={ads}
-                  adSystemConfig={adSystemConfig}
                   loading={isSearching ? false : eventsLoading}
                   onResetFilters={handleResetFilters}
                   onSelectEvent={handleSelectEvent}
-                  adInterval={adInterval}
                   title={
                     isSearching
                       ? "Search Results"
@@ -1490,14 +1303,14 @@ export default function App() {
                 {!eventsLoading && (
                   isSearching
                     ? filteredEvents.length > visibleEventsCount
-                    : hasMoreEvents
+                    : (visibleEventsCount < filteredEvents.length || hasMoreEvents)
                 ) && (
                   <div className="flex justify-center mt-6 sm:mt-8">
                     <button
                       type="button"
                       disabled={isLoadingMore}
                       onClick={() => {
-                        if (isSearching) {
+                        if (isSearching || visibleEventsCount < filteredEvents.length) {
                           setVisibleEventsCount(prev => prev + showMoreIncrement);
                         } else {
                           handleLoadMoreEvents();

@@ -485,7 +485,7 @@ async function runPhase2Tests() {
       return { status: 400, body: { error: 'FILE_TOO_LARGE', message: 'Exceeds 10 MiB.' } };
     }
 
-    const platformContexts = new Set(['hero', 'advertisement']);
+    const platformContexts = new Set(['hero']);
     const eventContexts = new Set(['event-banner', 'event-card', 'thumbnail', 'admin-preview', 'memory', 'sponsor-logo']);
 
     if (platformContexts.has(context) && !isSuperAdmin) {

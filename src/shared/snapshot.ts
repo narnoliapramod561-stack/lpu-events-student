@@ -1,4 +1,4 @@
-// lpu-events-student/src/shared/snapshot.ts
+// packages/shared/src/snapshot.ts
 // LPU Events — R2 Public-Content Snapshot Architecture Contract
 // Authoritative schema definitions, validators, and object path contracts.
 
@@ -6,7 +6,6 @@ import type {
   EventFeedItem,
   CategoryFeedItem,
   CarouselItemFeedItem,
-  AdvertisementFeedItem,
   Event
 } from './types';
 
@@ -57,7 +56,6 @@ export interface HomepageSnapshotPayload {
   carousel: CarouselItemFeedItem[];
   featured: any[];
   trending: EventFeedItem[];
-  advertisements: AdvertisementFeedItem[];
   settings: { key: string; value: any }[];
   events: EventFeedItem[];
 }
@@ -156,11 +154,9 @@ export const STUDENT_SAFE_SETTING_KEYS = new Set([
   'maintenance_mode',
   'platform_maintenance_mode',
   'site_notice_banner',
-  'ad_system_config',
   'happening_today_config',
   'initial_event_limit',
   'show_more_increment',
-  'ad_placement_interval',
 ]);
 
 /**

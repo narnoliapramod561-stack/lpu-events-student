@@ -7,15 +7,13 @@ export type AccessRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
 export type EventStatus = 'PUBLISHED' | 'COMPLETED' | 'CANCELLED' | 'DRAFT' | 'DELETED';
 export type RegistrationMode = 'NONE' | 'EXTERNAL';
 export type EventPricingType = 'FREE' | 'PAID';
-export type MediaType = 'EVENT_BANNER' | 'ADVERTISEMENT' | 'SPONSOR_LOGO' | 'CAROUSEL_IMAGE' | 'MEMORY_IMAGE';
+export type MediaType = 'EVENT_BANNER' | 'SPONSOR_LOGO' | 'CAROUSEL_IMAGE' | 'MEMORY_IMAGE';
 export type MediaStatus = 'UPLOADING' | 'READY' | 'FAILED' | 'PENDING_DELETE' | 'DELETED';
-export type AdvertisementStatus = 'active' | 'inactive';
-export type CarouselItemType = 'EVENT' | 'ADVERTISEMENT' | 'MEDIA';
+export type CarouselItemType = 'EVENT' | 'MEDIA';
 
 export type CanonicalResourceType =
   | 'events'
   | 'categories'
-  | 'ads'
   | 'featured'
   | 'carousel'
   | 'settings';
@@ -110,6 +108,8 @@ export interface Event {
   price_amount: number;
   status: EventStatus;
   view_count: number;
+  cancellation_reason?: string | null;
+  deleted_at?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -143,19 +143,6 @@ export interface Subcategory {
   created_at: string;
 }
 
-export interface Advertisement {
-  id: string;
-  name: string;
-  media_id: string;
-  redirect_url: string | null;
-  start_at: string;
-  end_at: string;
-  status: AdvertisementStatus;
-  created_by: string;
-  updated_by: string;
-  created_at: string;
-  updated_at: string;
-}
 
 export interface Sponsor {
   id: string;
@@ -269,6 +256,7 @@ export interface EventFeedItem {
     bucket?: string;
   } | null;
   status?: EventStatus;
+  cancellation_reason?: string | null;
   deleted_at?: string | null;
   organizations: {
     name: string;
@@ -300,7 +288,6 @@ export interface CarouselItemFeedItem {
   id: string;
   item_type: CarouselItemType;
   event_id?: string | null;
-  advertisement_id?: string | null;
   media_id?: string | null;
   sort_order: number;
   is_active: boolean;
@@ -327,13 +314,6 @@ export interface CarouselItemFeedItem {
     organizations: { name: string } | null;
     categories?: { name: string } | null;
   } | null;
-  advertisements?: {
-    id: string;
-    name: string;
-    redirect_url: string | null;
-    media_id: string | null;
-    status: AdvertisementStatus;
-  } | null;
   media_assets?: {
     id: string;
     bucket: string;
@@ -341,16 +321,6 @@ export interface CarouselItemFeedItem {
   } | null;
 }
 
-export interface AdvertisementFeedItem {
-  id: string;
-  name: string;
-  media_id: string;
-  redirect_url: string | null;
-  start_at: string;
-  end_at: string;
-  status: AdvertisementStatus;
-  advertisement_positions: any | null;
-}
 
 export interface EventMemoryFeedItem {
   id: string;
@@ -388,90 +358,60 @@ export interface SponsorFeedItem {
   sort_order: number;
 }
 
-export interface HappeningTodayAdInjection {
-  enabled: boolean;
-  advertisement_id: string | null;
-  insert_after_slide: number; // 1-indexed (1 = after 1st slide, 2 = after 2nd slide, etc.)
-  custom_badge?: string;
-  custom_cta_text?: string;
-}
-
 export interface HappeningTodayConfig {
   slide_duration_ms: number;
   auto_advance: boolean;
-  ad_injection: HappeningTodayAdInjection;
 }
 
-// ─────────────────────────────────────────────
-// Multi-Provider Advertisement System Types
-// ─────────────────────────────────────────────
-export type AdProviderMode = 'disabled' | 'adsense' | 'direct';
-
-export interface AdPlacementConfig {
-  enabled: boolean;
-  provider: AdProviderMode;
-  frequency: number; // e.g. 1 = after every 1 event, 2 = after every 2 events
-  max_ads: number;   // Maximum ads permitted for this specific placement
-  ad_unit_id?: string; // Optional AdSense slot identifier
-  selected_ad_ids?: string[]; // Specific chosen advertisements in exact display order
-}
-
-export interface AdSenseGlobalConfig {
-  publisher_id: string; // e.g. 'ca-pub-XXXXXXXXXXXXXXXX'
-  auto_ads_enabled?: boolean;
-  test_mode?: boolean;
-}
-
-export interface AdSystemConfig {
-  global_enabled: boolean;
-  max_ads_per_page: number; // Global ad limit ceiling across any single view
-  adsense: AdSenseGlobalConfig;
-  placements: {
-    hero_carousel: AdPlacementConfig;
-    happening_today: AdPlacementConfig;
-    event_hub: AdPlacementConfig;
-    event_details: AdPlacementConfig;
-  };
-}
-
-export const DEFAULT_AD_SYSTEM_CONFIG: AdSystemConfig = {
-  global_enabled: true,
-  max_ads_per_page: 10,
-  adsense: {
-    publisher_id: 'ca-pub-5513043165999517',
-    auto_ads_enabled: true,
-    test_mode: false,
-  },
-  placements: {
-    hero_carousel: {
-      enabled: true,
-      provider: 'direct',
-      frequency: 2, // PRD: after every 2 normal slides
-      max_ads: 3,
-      ad_unit_id: '8059587837',
-    },
-    happening_today: {
-      enabled: true,
-      provider: 'direct',
-      frequency: 1, // PRD: after every 1 normal event
-      max_ads: 3,
-      ad_unit_id: '8059587837',
-    },
-    event_hub: {
-      enabled: true,
-      provider: 'direct',
-      frequency: 1, // PRD: after every 1 event
-      max_ads: 5,
-      ad_unit_id: '8059587837',
-    },
-    event_details: {
-      enabled: false,
-      provider: 'direct',
-      frequency: 1,
-      max_ads: 2,
-      ad_unit_id: '8059587837',
-    },
-  },
+export const DEFAULT_HAPPENING_TODAY_CONFIG: HappeningTodayConfig = {
+  slide_duration_ms: 5000,
+  auto_advance: true,
 };
+
+export interface PlatformMaintenanceConfig {
+  enabled: boolean;
+  message: string;
+  description?: string;
+  estimated_resumption?: string | null;
+  reason?: 'SCHEDULED_UPGRADE' | 'EMERGENCY_PATCH' | 'DATABASE_MIGRATION' | 'CUSTOM';
+  contact_email?: string;
+  allow_admin_bypass?: boolean;
+  activated_at?: string;
+  activated_by?: string;
+}
+
+export const DEFAULT_PLATFORM_MAINTENANCE_CONFIG: PlatformMaintenanceConfig = {
+  enabled: false,
+  message: 'We are currently making scheduled platform updates to improve your campus event experience.',
+  description: 'All registered event tickets, team rosters, and student submissions remain fully secure.',
+  estimated_resumption: null,
+  reason: 'SCHEDULED_UPGRADE',
+  contact_email: 'support@lpuevents.live',
+  allow_admin_bypass: true
+};
+
+export function parsePlatformMaintenanceConfig(raw: unknown): PlatformMaintenanceConfig {
+  if (typeof raw === 'boolean') {
+    return {
+      ...DEFAULT_PLATFORM_MAINTENANCE_CONFIG,
+      enabled: raw
+    };
+  }
+  if (raw && typeof raw === 'object') {
+    const obj = raw as Record<string, any>;
+    return {
+      enabled: Boolean(obj.enabled ?? obj.is_enabled ?? false),
+      message: typeof obj.message === 'string' && obj.message.trim() ? obj.message.trim() : DEFAULT_PLATFORM_MAINTENANCE_CONFIG.message,
+      description: typeof obj.description === 'string' ? obj.description.trim() : DEFAULT_PLATFORM_MAINTENANCE_CONFIG.description,
+      estimated_resumption: typeof obj.estimated_resumption === 'string' ? obj.estimated_resumption.trim() : (typeof obj.estimatedResumption === 'string' ? obj.estimatedResumption.trim() : null),
+      reason: obj.reason || 'CUSTOM',
+      contact_email: typeof obj.contact_email === 'string' ? obj.contact_email.trim() : DEFAULT_PLATFORM_MAINTENANCE_CONFIG.contact_email,
+      allow_admin_bypass: obj.allow_admin_bypass !== false,
+      activated_at: typeof obj.activated_at === 'string' ? obj.activated_at : undefined,
+      activated_by: typeof obj.activated_by === 'string' ? obj.activated_by : undefined
+    };
+  }
+  return DEFAULT_PLATFORM_MAINTENANCE_CONFIG;
+}
 
 

@@ -156,7 +156,7 @@ export const TermsOfServiceView: React.FC<TermsOfServiceViewProps> = ({ onBack }
             <span className="text-primary font-mono">06.</span> Modification and Removal of Listings
           </h3>
           <p className="break-safe">
-            LPU Events reserves the right to review, update, modify, unpublish, or permanently remove any event listing, advertisement, or media asset at its sole discretion, including instances where listings violate campus policies, safety standards, or contain fraudulent information. The removal or modification of a listing does not create any assumption of liability on the part of LPU Events.
+            LPU Events reserves the right to review, update, modify, unpublish, or permanently remove any event listing or media asset at its sole discretion, including instances where listings violate campus policies, safety standards, or contain fraudulent information. The removal or modification of a listing does not create any assumption of liability on the part of LPU Events.
           </p>
         </section>
 
