@@ -35,36 +35,29 @@ const initDeferredTelemetry = async () => {
 };
 
 if (typeof window !== 'undefined') {
-  const triggerTelemetry = (e?: Event) => {
-    ['pointerdown', 'touchstart', 'keydown'].forEach((ev) => {
+  const triggerTelemetry = () => {
+    ['pointerdown', 'keydown'].forEach((ev) => {
       window.removeEventListener(ev, triggerTelemetry);
     });
-    window.removeEventListener('scroll', onScrollTelemetry);
-    const timeout = e && e.type === 'scroll' ? 3500 : 1500;
     if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(initDeferredTelemetry, { timeout });
+      (window as any).requestIdleCallback(initDeferredTelemetry, { timeout: 4000 });
     } else {
-      setTimeout(initDeferredTelemetry, timeout);
+      setTimeout(initDeferredTelemetry, 4000);
     }
   };
 
-  const onScrollTelemetry = () => {
-    triggerTelemetry({ type: 'scroll' } as Event);
-  };
-
-  ['pointerdown', 'touchstart', 'keydown'].forEach((e) => {
+  ['pointerdown', 'keydown'].forEach((e) => {
     window.addEventListener(e, triggerTelemetry, { once: true, passive: true });
   });
-  window.addEventListener('scroll', onScrollTelemetry, { once: true, passive: true });
 
-  // Background fallback
+  // Background idle fallback: loads quietly long after page is rendered and settled
   setTimeout(() => {
     if ('requestIdleCallback' in window) {
-      (window as any).requestIdleCallback(initDeferredTelemetry, { timeout: 2000 });
+      (window as any).requestIdleCallback(initDeferredTelemetry, { timeout: 4000 });
     } else {
       initDeferredTelemetry();
     }
-  }, 4500);
+  }, 8000);
 
   window.addEventListener('error', initDeferredTelemetry, { once: true });
   window.addEventListener('unhandledrejection', initDeferredTelemetry, { once: true });

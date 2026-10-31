@@ -138,16 +138,16 @@ interface CacheConfig {
 }
 
 const CACHE_CONFIGS: Record<string, CacheConfig> = {
-  homepage:       { edgeTtl: 120,   browserTtl: 30,  swrTtl: 3600,   staleTtl: 604800 },   // 2m fresh, 1h swr, 7d stale backup
-  events:         { edgeTtl: 120,   browserTtl: 30,  swrTtl: 3600,   staleTtl: 604800 },   // 2m fresh, 1h swr, 7d stale backup
-  featured:       { edgeTtl: 300,   browserTtl: 60,  swrTtl: 7200,   staleTtl: 604800 },   // 5m fresh, 2h swr, 7d stale backup
-  trending:       { edgeTtl: 300,   browserTtl: 60,  swrTtl: 7200,   staleTtl: 604800 },   // 5m fresh, 2h swr, 7d stale backup
-  search:         { edgeTtl: 120,   browserTtl: 30,  swrTtl: 1800,   staleTtl: 604800 },   // 2m fresh, 30m swr, 7d stale backup
+  homepage:       { edgeTtl: 1800,  browserTtl: 60,  swrTtl: 86400,  staleTtl: 604800 },   // 30m fresh, 24h swr, 7d stale backup
+  events:         { edgeTtl: 900,   browserTtl: 60,  swrTtl: 43200,  staleTtl: 604800 },   // 15m fresh, 12h swr, 7d stale backup
+  featured:       { edgeTtl: 1800,  browserTtl: 60,  swrTtl: 43200,  staleTtl: 604800 },   // 30m fresh, 12h swr, 7d stale backup
+  trending:       { edgeTtl: 1800,  browserTtl: 60,  swrTtl: 43200,  staleTtl: 604800 },   // 30m fresh, 12h swr, 7d stale backup
+  search:         { edgeTtl: 300,   browserTtl: 30,  swrTtl: 3600,   staleTtl: 604800 },   // 5m fresh, 1h swr, 7d stale backup
   categories:     { edgeTtl: 86400, browserTtl: 3600, swrTtl: 604800, staleTtl: 2592000 }, // 24h fresh, 7d swr, 30d stale backup
-  eventDetail:    { edgeTtl: 300,   browserTtl: 60,  swrTtl: 7200,   staleTtl: 604800 },   // 5m fresh, 2h swr, 7d stale backup
-  advertisements: { edgeTtl: 600,   browserTtl: 120, swrTtl: 7200,   staleTtl: 604800 },   // 10m fresh, 2h swr, 7d stale backup
-  settings:       { edgeTtl: 1800,  browserTtl: 300, swrTtl: 14400,  staleTtl: 604800 },   // 30m fresh, 4h swr, 7d stale backup
-  carousel:       { edgeTtl: 300,   browserTtl: 60,  swrTtl: 7200,   staleTtl: 604800 },   // 5m fresh, 2h swr, 7d stale backup
+  eventDetail:    { edgeTtl: 600,   browserTtl: 60,  swrTtl: 14400,  staleTtl: 604800 },   // 10m fresh, 4h swr, 7d stale backup
+  advertisements: { edgeTtl: 1800,  browserTtl: 120, swrTtl: 43200,  staleTtl: 604800 },   // 30m fresh, 12h swr, 7d stale backup
+  settings:       { edgeTtl: 3600,  browserTtl: 300, swrTtl: 86400,  staleTtl: 604800 },   // 1h fresh, 24h swr, 7d stale backup
+  carousel:       { edgeTtl: 1800,  browserTtl: 60,  swrTtl: 43200,  staleTtl: 604800 },   // 30m fresh, 12h swr, 7d stale backup
 };
 
 
@@ -544,7 +544,7 @@ async function executeSingleFlightOriginFetch(
       const body = JSON.stringify(result.data);
       const bodySize = new Blob([body]).size;
 
-      const cacheControlHeader = `public, s-maxage=${config.edgeTtl}, max-age=0, must-revalidate, no-transform, stale-while-revalidate=${config.swrTtl}, stale-if-error=${config.staleTtl}`;
+      const cacheControlHeader = `public, s-maxage=${config.edgeTtl}, max-age=${config.browserTtl}, no-transform, stale-while-revalidate=${config.swrTtl}, stale-if-error=${config.staleTtl}`;
 
       const headersList: [string, string][] = [
         ['Content-Type', 'application/json; charset=utf-8'],

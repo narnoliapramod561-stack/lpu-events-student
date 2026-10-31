@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { CalendarDays, Clock, MapPin, ArrowRight, ChevronLeft, ChevronRight, Megaphone, X } from "lucide-react";
 import { 
@@ -50,10 +51,15 @@ export const HappeningTodaySliderComponent = ({
   const [isHovered, setIsHovered] = useState(false);
   const [isInView, setIsInView] = useState(true);
   const [isAllTodayModalOpen, setIsAllTodayModalOpen] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
   const trackRef = useRef<HTMLDivElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   useEffect(() => {
     const el = sectionRef.current;
@@ -65,26 +71,46 @@ export const HappeningTodaySliderComponent = ({
     return () => observer.disconnect();
   }, []);
 
-  // Lock body scroll when the Today's Events modal is open
+  // Lock body scroll reliably on mobile & desktop without scroll jumping
   useEffect(() => {
-    if (isAllTodayModalOpen) {
-      const prevOverflow = document.body.style.overflow === "hidden" ? "" : document.body.style.overflow;
-      document.body.style.overflow = "hidden";
-      const handleKeyDown = (e: KeyboardEvent) => {
-        if (e.key === "Escape") setIsAllTodayModalOpen(false);
-      };
-      window.addEventListener("keydown", handleKeyDown);
-      return () => {
-        document.body.style.overflow = prevOverflow;
-        window.removeEventListener("keydown", handleKeyDown);
-      };
+    if (!isAllTodayModalOpen) return;
+    const scrollY = window.scrollY;
+    const originalOverflow = document.body.style.overflow;
+    const originalPosition = document.body.style.position;
+    const originalTop = document.body.style.top;
+    const originalWidth = document.body.style.width;
+
+    document.body.style.overflow = "hidden";
+    if (window.innerWidth < 640) {
+      document.body.style.position = "fixed";
+      document.body.style.top = `-${scrollY}px`;
+      document.body.style.width = "100%";
     }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setIsAllTodayModalOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      if (window.innerWidth < 640) {
+        document.body.style.position = originalPosition;
+        document.body.style.top = originalTop;
+        document.body.style.width = originalWidth;
+        window.scrollTo(0, scrollY);
+      }
+      window.removeEventListener("keydown", handleKeyDown);
+    };
   }, [isAllTodayModalOpen]);
 
   // Guaranteed scroll lock cleanup on unmount
   useEffect(() => {
     return () => {
       document.body.style.overflow = "";
+      document.body.style.position = "";
+      document.body.style.top = "";
+      document.body.style.width = "";
     };
   }, []);
 
@@ -530,210 +556,243 @@ export const HappeningTodaySliderComponent = ({
           Displays all verified live events for today in a luxury
           translucent VisionOS glass sheet.
          ========================================================= */}
-      <AnimatePresence>
-        {isAllTodayModalOpen && (
-          <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4">
-            {/* Backdrop: Deep cinematic high-dispersion blur */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.25 }}
-              onClick={() => setIsAllTodayModalOpen(false)}
-              className="fixed inset-0 bg-slate-950/55 dark:bg-black/80 backdrop-blur-[44px] sm:backdrop-blur-[64px] backdrop-saturate-150 transition-opacity"
-            />
+      {/* =========================================================
+          3. DEDICATED "HAPPENING TODAY - ALL EVENTS" MODAL / SHEET
+          Portaled to document.body at z-[100] to completely eliminate
+          stacking context displacement, clipping, and navbar z-index clashes.
+         ========================================================= */}
+      {isMounted && typeof document !== "undefined" && createPortal(
+        <AnimatePresence>
+          {isAllTodayModalOpen && (
+            <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 touch-none overscroll-none">
+              {/* Backdrop: Smooth, zero-tearing blur */}
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                onClick={() => setIsAllTodayModalOpen(false)}
+                className="fixed inset-0 bg-slate-950/60 dark:bg-black/80 backdrop-blur-sm sm:backdrop-blur-md transition-opacity"
+              />
 
-            {/* Modal Sheet Window: Translucent VisionOS Glass Sheet */}
-            <motion.div
-              initial={{ opacity: 0, y: 35, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 35, scale: 0.96 }}
-              transition={{ type: "spring", stiffness: 360, damping: 28 }}
-              className="relative z-10 w-full sm:max-w-2xl max-h-[88vh] sm:max-h-[84vh] glass-modal-sheet rounded-t-[32px] sm:rounded-[32px] flex flex-col overflow-hidden"
-              role="dialog"
-              aria-modal="true"
-              aria-labelledby="today-modal-title"
-            >
-              {/* Multi-layered Ambient Caustic Mesh for optical crystal refraction */}
-              <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-bl from-orange-500/20 via-amber-400/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-              <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-gradient-to-tr from-sky-400/12 via-indigo-500/08 to-transparent rounded-full blur-3xl pointer-events-none" />
-              <div className="hidden sm:block absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-orange-500/06 rounded-full blur-3xl pointer-events-none" />
+              {/* Modal Sheet Window: Native-feeling bottom sheet on mobile (slide up flush), centered modal on desktop */}
+              <motion.div
+                initial={
+                  typeof window !== 'undefined' && window.innerWidth < 640
+                    ? { y: "100%" }
+                    : { opacity: 0, y: 25, scale: 0.96 }
+                }
+                animate={
+                  typeof window !== 'undefined' && window.innerWidth < 640
+                    ? { y: 0 }
+                    : { opacity: 1, y: 0, scale: 1 }
+                }
+                exit={
+                  typeof window !== 'undefined' && window.innerWidth < 640
+                    ? { y: "100%" }
+                    : { opacity: 0, y: 25, scale: 0.96 }
+                }
+                transition={{ type: "spring", damping: 32, stiffness: 340, mass: 0.8 }}
+                drag={typeof window !== 'undefined' && window.innerWidth < 640 ? "y" : false}
+                dragConstraints={{ top: 0 }}
+                dragElastic={{ top: 0, bottom: 0.5 }}
+                onDragEnd={(_, info) => {
+                  if (info.offset.y > 100 || info.velocity.y > 400) {
+                    setIsAllTodayModalOpen(false);
+                  }
+                }}
+                className="relative z-10 w-full sm:max-w-2xl max-h-[90vh] sm:max-h-[84vh] glass-modal-sheet rounded-t-[28px] sm:rounded-[32px] flex flex-col overflow-hidden touch-auto overscroll-contain shadow-2xl"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="today-modal-title"
+              >
+                {/* Multi-layered Ambient Caustic Mesh for optical crystal refraction */}
+                <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-bl from-orange-500/20 via-amber-400/10 to-transparent rounded-full blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-gradient-to-tr from-sky-400/12 via-indigo-500/08 to-transparent rounded-full blur-3xl pointer-events-none" />
+                <div className="hidden sm:block absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-orange-500/06 rounded-full blur-3xl pointer-events-none" />
 
-              {/* Mobile Drag Bar */}
-              <div className="w-12 h-1.5 rounded-full bg-slate-500/40 dark:bg-white/20 mx-auto mt-2.5 sm:hidden shrink-0" />
-
-              {/* Header */}
-              <div className="relative z-10 flex items-center justify-between px-5 sm:px-6 pt-4.5 pb-3.5 sm:pt-5 sm:pb-4 border-b border-black/[0.06] dark:border-white/10 shrink-0 gap-3">
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  {/* Calendar Icon Jewel */}
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/25 ring-1 ring-white/50 flex items-center justify-center shrink-0">
-                    <CalendarDays className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[2.2]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    {/* Title Row */}
-                    <div className="flex items-center gap-2 min-w-0">
-                      <h3 id="today-modal-title" className="font-heading font-black text-base sm:text-xl text-slate-950 dark:text-white tracking-tight truncate">
-                        Happening Today
-                      </h3>
-                      {/* Desktop-only pill beside title */}
-                      <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-500/12 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300 font-heading font-black text-xs border border-orange-500/25 whitespace-nowrap shrink-0 shadow-2xs">
-                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.8)] animate-pulse" />
-                        <span>{events.length} {events.length === 1 ? "Event" : "Events"}</span>
-                      </span>
-                    </div>
-
-                    {/* Subtitle Row: Date + Mobile Live Badge tightly integrated */}
-                    <div className="flex items-center gap-2 mt-1 min-w-0">
-                      <span className="text-[11.5px] sm:text-xs text-slate-600 dark:text-slate-400 font-semibold whitespace-nowrap">
-                        {new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" }).format(new Date())}
-                      </span>
-                      <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 sm:hidden" />
-                      {/* Mobile Live Badge */}
-                      <span className="sm:hidden inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-orange-500/12 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300 font-heading font-black text-[10px] border border-orange-500/25 whitespace-nowrap shrink-0 shadow-2xs">
-                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.8)] animate-pulse" />
-                        <span>{events.length} {events.length === 1 ? "Event" : "Events"}</span>
-                      </span>
-                      {/* Desktop-only extra subtitle text */}
-                      <span className="hidden sm:inline text-xs text-slate-500 dark:text-slate-400 font-medium">
-                        • Live campus activities
-                      </span>
-                    </div>
-                  </div>
+                {/* Mobile Drag Bar */}
+                <div className="w-full pt-3 pb-1 flex items-center justify-center sm:hidden shrink-0 cursor-grab active:cursor-grabbing">
+                  <div className="w-12 h-1.5 rounded-full bg-slate-400/50 dark:bg-white/30" />
                 </div>
 
-                {/* High-Contrast Bold Black Close Button */}
-                <button
-                  type="button"
-                  onClick={() => setIsAllTodayModalOpen(false)}
-                  className="w-8.5 h-8.5 rounded-full bg-slate-950 hover:bg-black text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-950 flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-md hover:scale-105 active:scale-95"
-                  aria-label="Close modal"
-                >
-                  <X className="w-4 h-4 stroke-[2.5]" />
-                </button>
-              </div>
-
-              {/* Event List */}
-              <div className="flex-1 overflow-y-auto px-4 py-1 sm:p-6 divide-y divide-white/80 dark:divide-white/[0.08] sm:divide-y-0 sm:space-y-3 relative z-10">
-                {events.length === 0 ? (
-                  <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-                    <div className="w-12 h-12 rounded-full bg-orange-500/10 dark:bg-white/10 text-orange-500 dark:text-white flex items-center justify-center border border-orange-500/20 dark:border-white/15">
-                      <CalendarDays className="w-6 h-6" />
+                {/* Header */}
+                <div className="relative z-10 flex items-center justify-between px-5 sm:px-6 pt-3 pb-3.5 sm:pt-5 sm:pb-4 border-b border-black/[0.06] dark:border-white/10 shrink-0 gap-3">
+                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                    {/* Calendar Icon Jewel */}
+                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/25 ring-1 ring-white/50 flex items-center justify-center shrink-0">
+                      <CalendarDays className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[2.2]" />
                     </div>
-                    <p className="text-base font-heading font-black text-slate-900 dark:text-white">
-                      No Events Scheduled For Today
-                    </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
-                      Stay tuned for upcoming workshops, guest lectures, and campus activities scheduled later this week.
-                    </p>
+                    <div className="min-w-0 flex-1">
+                      {/* Title Row */}
+                      <div className="flex items-center gap-2 min-w-0">
+                        <h3 id="today-modal-title" className="font-heading font-black text-base sm:text-xl text-slate-950 dark:text-white tracking-tight truncate">
+                          Happening Today
+                        </h3>
+                        {/* Desktop-only pill beside title */}
+                        <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-500/12 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300 font-heading font-black text-xs border border-orange-500/25 whitespace-nowrap shrink-0 shadow-2xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.8)] animate-pulse" />
+                          <span>{events.length} {events.length === 1 ? "Event" : "Events"}</span>
+                        </span>
+                      </div>
+
+                      {/* Subtitle Row: Date + Mobile Live Badge tightly integrated */}
+                      <div className="flex items-center gap-2 mt-1 min-w-0">
+                        <span className="text-[11.5px] sm:text-xs text-slate-600 dark:text-slate-400 font-semibold whitespace-nowrap">
+                          {new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" }).format(new Date())}
+                        </span>
+                        <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 sm:hidden" />
+                        {/* Mobile Live Badge */}
+                        <span className="sm:hidden inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-orange-500/12 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300 font-heading font-black text-[10px] border border-orange-500/25 whitespace-nowrap shrink-0 shadow-2xs">
+                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.8)] animate-pulse" />
+                          <span>{events.length} {events.length === 1 ? "Event" : "Events"}</span>
+                        </span>
+                        {/* Desktop-only extra subtitle text */}
+                        <span className="hidden sm:inline text-xs text-slate-500 dark:text-slate-400 font-medium">
+                          • Live campus activities
+                        </span>
+                      </div>
+                    </div>
                   </div>
-                ) : (
-                  events.map((evt, idx) => {
-                    const startDate = new Date(evt.start_at);
-                    const timeString = startDate.toLocaleTimeString([], {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    });
-                    const eventImg = getEventImage(evt, "event-card", 600);
 
-                    return (
-                      <div
-                        key={evt.id}
-                        onClick={() => {
-                           setIsAllTodayModalOpen(false);
-                           onSelectEvent(evt.id, evt.name);
-                        }}
-                        className="group flex items-center gap-3 sm:gap-4 py-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl cursor-pointer sm:glass-modal-card active:bg-white/40 dark:active:bg-white/[0.06] transition-all"
-                      >
-                        {/* Thumbnail */}
-                        <div className="relative w-18 h-18 sm:w-28 sm:aspect-[4/3] rounded-xl overflow-hidden shrink-0 bg-black/10 dark:bg-black/40 border border-white/60 dark:border-white/15 shadow-sm">
-                          <ProgressiveImage
-                            src={eventImg}
-                            fallbackSrc={resolveDefaultEventImage(evt)}
-                            alt={evt.name}
-                            loading={idx < 4 ? "eager" : "lazy"}
-                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                          />
-                          <div className="absolute top-1 left-1 sm:top-1.5 sm:left-1.5">
-                            <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-red-600/90 text-white font-heading text-[7.5px] sm:text-[8px] font-black uppercase tracking-wider backdrop-blur-md shadow-xs">
-                              <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                              LIVE
-                            </span>
-                          </div>
-                        </div>
+                  {/* High-Contrast Bold Black Close Button */}
+                  <button
+                    type="button"
+                    onClick={() => setIsAllTodayModalOpen(false)}
+                    className="w-8.5 h-8.5 rounded-full bg-slate-950 hover:bg-black text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-950 flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-md hover:scale-105 active:scale-95"
+                    aria-label="Close modal"
+                  >
+                    <X className="w-4 h-4 stroke-[2.5]" />
+                  </button>
+                </div>
 
-                        {/* Details */}
-                        <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5 sm:gap-2">
-                          {/* Title */}
-                          <h4 className="text-slate-950 dark:text-white font-heading font-black text-[13.5px] sm:text-base leading-snug line-clamp-1 sm:group-hover:text-orange-600 transition-colors tracking-tight sm:glass-title-emboss">
-                            {evt.name}
-                          </h4>
+                {/* Event List */}
+                <div 
+                  className="flex-1 overflow-y-auto px-4 py-1 sm:p-6 divide-y divide-white/80 dark:divide-white/[0.08] sm:divide-y-0 sm:space-y-3 relative z-10 overscroll-contain"
+                  style={{ WebkitOverflowScrolling: "touch" }}
+                >
+                  {events.length === 0 ? (
+                    <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
+                      <div className="w-12 h-12 rounded-full bg-orange-500/10 dark:bg-white/10 text-orange-500 dark:text-white flex items-center justify-center border border-orange-500/20 dark:border-white/15">
+                        <CalendarDays className="w-6 h-6" />
+                      </div>
+                      <p className="text-base font-heading font-black text-slate-900 dark:text-white">
+                        No Events Scheduled For Today
+                      </p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
+                        Stay tuned for upcoming workshops, guest lectures, and campus activities scheduled later this week.
+                      </p>
+                    </div>
+                  ) : (
+                    events.map((evt, idx) => {
+                      const startDate = new Date(evt.start_at);
+                      const timeString = startDate.toLocaleTimeString([], {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      });
+                      const eventImg = getEventImage(evt, "event-card", 600);
 
-                          {/* Mobile: Location Moved from Side to BELOW Time/Date - Compact, Matching Fonts */}
-                          <div className="flex sm:hidden flex-col gap-0.5 text-xs">
-                            <div className="flex items-center gap-1.5 font-semibold text-[11px] text-slate-900 dark:text-slate-100">
-                              <Clock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 stroke-[2.4] shrink-0" />
-                              <span>{timeString}</span>
-                            </div>
-                            {evt.venue_name && (
-                              <div className="flex items-center gap-1.5 font-semibold text-[11px] text-slate-700 dark:text-slate-300 min-w-0 truncate">
-                                <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 stroke-[2.4] shrink-0" />
-                                <span className="truncate">{evt.venue_name}</span>
-                              </div>
-                            )}
-                          </div>
-
-                          {/* Desktop: High-Contrast Glass Capsules Preserved Exactly */}
-                          <div className="hidden sm:flex items-center gap-2 text-xs font-medium flex-wrap">
-                            <span className="glass-meta-pill inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg shrink-0">
-                              <Clock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 stroke-[2.4] shrink-0" />
-                              <span className="font-mono font-bold text-xs text-slate-950 dark:text-white glass-text-emboss">
-                                {timeString}
+                      return (
+                        <div
+                          key={evt.id}
+                          onClick={() => {
+                             setIsAllTodayModalOpen(false);
+                             onSelectEvent(evt.id, evt.name);
+                          }}
+                          className="group flex items-center gap-3 sm:gap-4 py-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl cursor-pointer sm:glass-modal-card active:bg-white/40 dark:active:bg-white/[0.06] transition-all"
+                        >
+                          {/* Thumbnail */}
+                          <div className="relative w-18 h-18 sm:w-28 sm:aspect-[4/3] rounded-xl overflow-hidden shrink-0 bg-black/10 dark:bg-black/40 border border-white/60 dark:border-white/15 shadow-sm">
+                            <ProgressiveImage
+                              src={eventImg}
+                              fallbackSrc={resolveDefaultEventImage(evt)}
+                              alt={evt.name}
+                              loading={idx < 4 ? "eager" : "lazy"}
+                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                            />
+                            <div className="absolute top-1 left-1 sm:top-1.5 sm:left-1.5">
+                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-red-600/90 text-white font-heading text-[7.5px] sm:text-[8px] font-black uppercase tracking-wider backdrop-blur-md shadow-xs">
+                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                                LIVE
                               </span>
-                            </span>
-                            {evt.venue_name && (
-                              <span className="glass-meta-pill inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg truncate min-w-0 max-w-[210px] sm:max-w-xs">
-                                <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 stroke-[2.4] shrink-0" />
-                                <span className="font-heading font-bold text-[11px] sm:text-xs text-slate-900 dark:text-slate-100 truncate glass-text-emboss">
-                                  {evt.venue_name}
+                            </div>
+                          </div>
+
+                          {/* Details */}
+                          <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5 sm:gap-2">
+                            {/* Title */}
+                            <h4 className="text-slate-950 dark:text-white font-heading font-black text-[13.5px] sm:text-base leading-snug line-clamp-1 sm:group-hover:text-orange-600 transition-colors tracking-tight sm:glass-title-emboss">
+                              {evt.name}
+                            </h4>
+
+                            {/* Mobile: Location Moved from Side to BELOW Time/Date - Compact, Matching Fonts */}
+                            <div className="flex sm:hidden flex-col gap-0.5 text-xs">
+                              <div className="flex items-center gap-1.5 font-semibold text-[11px] text-slate-900 dark:text-slate-100">
+                                <Clock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 stroke-[2.4] shrink-0" />
+                                <span>{timeString}</span>
+                              </div>
+                              {evt.venue_name && (
+                                <div className="flex items-center gap-1.5 font-semibold text-[11px] text-slate-700 dark:text-slate-300 min-w-0 truncate">
+                                  <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 stroke-[2.4] shrink-0" />
+                                  <span className="truncate">{evt.venue_name}</span>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Desktop: High-Contrast Glass Capsules Preserved Exactly */}
+                            <div className="hidden sm:flex items-center gap-2 text-xs font-medium flex-wrap">
+                              <span className="glass-meta-pill inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg shrink-0">
+                                <Clock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 stroke-[2.4] shrink-0" />
+                                <span className="font-mono font-bold text-xs text-slate-950 dark:text-white glass-text-emboss">
+                                  {timeString}
                                 </span>
                               </span>
-                            )}
+                              {evt.venue_name && (
+                                <span className="glass-meta-pill inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg truncate min-w-0 max-w-[210px] sm:max-w-xs">
+                                  <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 stroke-[2.4] shrink-0" />
+                                  <span className="font-heading font-bold text-[11px] sm:text-xs text-slate-900 dark:text-slate-100 truncate glass-text-emboss">
+                                    {evt.venue_name}
+                                  </span>
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Action Affordance */}
+                          {/* Mobile: Sleek Apple-style Frosted Glass Chevron Affordance */}
+                          <div className="sm:hidden shrink-0 w-8 h-8 rounded-full bg-white/60 dark:bg-white/10 backdrop-blur-md border border-white/80 dark:border-white/15 text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-xs group-hover:text-orange-600 group-hover:bg-orange-500/15 group-active:scale-90 transition-all">
+                            <ChevronRight className="w-4 h-4 stroke-[2.5]" />
+                          </div>
+
+                          {/* Desktop: Illuminated Vibrant Orange Glass Jewel Button Preserved Exactly */}
+                          <div className="hidden sm:flex shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-md shadow-orange-500/25 border-t border-white/40 items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-orange-500/35 active:scale-95">
+                            <ArrowRight className="w-4.5 h-4.5 stroke-[2.2] group-hover:translate-x-0.5 transition-transform" />
                           </div>
                         </div>
+                      );
+                    })
+                  )}
+                </div>
 
-                        {/* Action Affordance */}
-                        {/* Mobile: Sleek Apple-style Frosted Glass Chevron Affordance */}
-                        <div className="sm:hidden shrink-0 w-8 h-8 rounded-full bg-white/60 dark:bg-white/10 backdrop-blur-md border border-white/80 dark:border-white/15 text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-xs group-hover:text-orange-600 group-hover:bg-orange-500/15 group-active:scale-90 transition-all">
-                          <ChevronRight className="w-4 h-4 stroke-[2.5]" />
-                        </div>
-
-                        {/* Desktop: Illuminated Vibrant Orange Glass Jewel Button Preserved Exactly */}
-                        <div className="hidden sm:flex shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-md shadow-orange-500/25 border-t border-white/40 items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-orange-500/35 active:scale-95">
-                          <ArrowRight className="w-4.5 h-4.5 stroke-[2.2] group-hover:translate-x-0.5 transition-transform" />
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-
-              {/* Modal Footer */}
-              <div className="relative z-10 px-5 sm:px-6 py-3 sm:py-4 bg-slate-900/04 dark:bg-white/[0.03] backdrop-blur-xl border-t border-slate-900/08 dark:border-white/10 flex items-center justify-between shrink-0">
-                <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 font-medium hidden sm:block">
-                  Click any event to view full schedule &amp; venue details
-                </p>
-                <button
-                  type="button"
-                  onClick={() => setIsAllTodayModalOpen(false)}
-                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900/08 hover:bg-slate-900/15 text-slate-900 dark:bg-white/15 dark:hover:bg-white/25 dark:text-white border border-slate-900/12 dark:border-white/20 sm:bg-slate-950 sm:hover:bg-slate-900 sm:text-white sm:border-slate-800 text-xs sm:text-sm font-heading font-black cursor-pointer transition-all shadow-xs sm:shadow-md sm:shadow-slate-950/20 hover:scale-[1.02] sm:hover:scale-105 active:scale-95 sm:ml-auto tracking-wide text-center"
-                >
-                  Close
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+                {/* Modal Footer with Safe Area Support for iPhone home indicator */}
+                <div className="relative z-10 px-5 sm:px-6 py-3 sm:py-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-slate-900/04 dark:bg-white/[0.03] backdrop-blur-xl border-t border-slate-900/08 dark:border-white/10 flex items-center justify-between shrink-0">
+                  <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 font-medium hidden sm:block">
+                    Click any event to view full schedule &amp; venue details
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => setIsAllTodayModalOpen(false)}
+                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900/08 hover:bg-slate-900/15 text-slate-900 dark:bg-white/15 dark:hover:bg-white/25 dark:text-white border border-slate-900/12 dark:border-white/20 sm:bg-slate-950 sm:hover:bg-slate-900 sm:text-white sm:border-slate-800 text-xs sm:text-sm font-heading font-black cursor-pointer transition-all shadow-xs sm:shadow-md sm:shadow-slate-950/20 hover:scale-[1.02] sm:hover:scale-105 active:scale-95 sm:ml-auto tracking-wide text-center"
+                  >
+                    Close
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </section>
   );
 };

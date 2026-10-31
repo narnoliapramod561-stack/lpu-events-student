@@ -11,17 +11,14 @@
  *  5. Reduces edge requests by up to 40% during campus mega-fests.
  */
 
-const STATIC_CACHE = 'lpu-static-v1';
-const API_TAXONOMY_CACHE = 'lpu-taxonomies-v1';
-const DYNAMIC_CACHE = 'lpu-dynamic-v1';
+const STATIC_CACHE = 'lpu-static-v2';
+const API_TAXONOMY_CACHE = 'lpu-taxonomies-v2';
+const DYNAMIC_CACHE = 'lpu-dynamic-v2';
 
 const STATIC_PRECACHE_URLS = [
   '/',
   '/site.webmanifest',
   '/favicon.ico',
-  '/logo.svg',
-  '/favicon-192x192.png',
-  '/favicon-512x512.png',
 ];
 
 // Pre-cache core application shell

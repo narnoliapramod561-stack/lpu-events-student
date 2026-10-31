@@ -255,7 +255,8 @@ export class LpuEventsClient {
    * If edge is warming/cold, propagates MAINTENANCE_WARMING so the UI displays the maintenance shield.
    */
   private async _fetchPublic<T>(
-    edgePath: string
+    edgePath: string,
+    forceFresh: boolean = false
   ): Promise<{ data: T | null; error: any }> {
     try {
       const cleanPath = edgePath.startsWith('/') ? edgePath : `/${edgePath}`;
@@ -278,7 +279,7 @@ export class LpuEventsClient {
       }
       const res = await fetch(`${baseOrigin}/api/public${cleanPath}`, {
         headers: { 'Accept': 'application/json' },
-        cache: 'no-cache',
+        cache: forceFresh ? 'no-cache' : 'default',
       });
 
       if (res.ok) {
@@ -378,7 +379,7 @@ export class LpuEventsClient {
       }
 
       if (!edgeRes) {
-        edgeRes = await this._fetchPublic<HomepageBundleData>('homepage');
+        edgeRes = await this._fetchPublic<HomepageBundleData>('homepage', forceFresh);
       }
 
       if (edgeRes.data && !edgeRes.error) {

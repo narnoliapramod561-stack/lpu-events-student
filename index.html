@@ -56,28 +56,30 @@
         position: sticky;
         top: 0;
         z-index: 50;
-        background: rgba(255, 255, 255, 0.40);
-        backdrop-filter: blur(36px) saturate(200%) brightness(103%);
-        -webkit-backdrop-filter: blur(36px) saturate(200%) brightness(103%);
-        border-bottom: 1px solid rgba(255, 255, 255, 0.45);
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.60);
       }
       .dark .glass-nav, html.dark .glass-nav {
         position: sticky;
         top: 0;
         z-index: 50;
-        background: rgba(22, 22, 26, 0.65);
-        backdrop-filter: blur(36px) saturate(200%) brightness(108%);
-        -webkit-backdrop-filter: blur(36px) saturate(200%) brightness(108%);
+        background: rgba(24, 24, 28, 0.85);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
         border-bottom: 1px solid rgba(255, 255, 255, 0.12);
       }
       .glass-panel {
-        background: rgba(255, 255, 255, 0.65);
-        backdrop-filter: blur(24px);
-        -webkit-backdrop-filter: blur(24px);
-        border: 1px solid rgba(255, 255, 255, 0.8);
+        background: rgba(255, 255, 255, 0.85);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
+        border: 1px solid rgba(255, 255, 255, 0.85);
       }
       .dark .glass-panel, html.dark .glass-panel {
-        background: rgba(44, 44, 46, 0.70);
+        background: rgba(44, 44, 46, 0.85);
+        backdrop-filter: blur(8px);
+        -webkit-backdrop-filter: blur(8px);
         border: 1px solid rgba(255, 255, 255, 0.10);
       }
       .text-primary { color: #ff6b00; }
@@ -95,9 +97,9 @@
         position: absolute;
         inset: 0;
         background-color: rgba(250, 248, 245, 0.96);
-        backdrop-filter: blur(16px);
-        -webkit-backdrop-filter: blur(16px);
-        transition: opacity 0.35s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.35s cubic-bezier(0.16, 1, 0.3, 1), -webkit-backdrop-filter 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        backdrop-filter: blur(6px);
+        -webkit-backdrop-filter: blur(6px);
+        transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.2s cubic-bezier(0.16, 1, 0.3, 1), -webkit-backdrop-filter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
       }
       .dark #lpu-startup-backdrop, html.dark #lpu-startup-backdrop {
         background-color: rgba(12, 13, 18, 0.96);
@@ -275,13 +277,13 @@
     </script>
 
     <!-- Non-Render-Blocking Google Fonts (Zero Layout Shift via display=swap) -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" media="print" onload="this.media='all'" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@800;900&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@800;900&display=swap" media="print" onload="this.media='all'" />
     <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&display=swap" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@800;900&display=swap" />
     </noscript>
 
-    <!-- Deferred High-Performance Analytics & Ads (Triggered on first user interaction or idle timeout) -->
+    <!-- Deferred High-Performance Analytics & Ads (Triggered on idle timeout or user interaction) -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
@@ -313,9 +315,9 @@
         };
 
         if ('requestIdleCallback' in window) {
-          window.requestIdleCallback(execLoad, { timeout: 2000 });
+          window.requestIdleCallback(execLoad, { timeout: 3000 });
         } else {
-          setTimeout(execLoad, 50);
+          setTimeout(execLoad, 200);
         }
       }
 
@@ -323,27 +325,27 @@
         if (e && e.type === 'scroll') {
           // Defer to idle callback so scroll remains 60/120fps smooth
           if ('requestIdleCallback' in window) {
-            window.requestIdleCallback(loadAnalytics, { timeout: 2500 });
+            window.requestIdleCallback(loadAnalytics, { timeout: 8000 });
           } else {
-            setTimeout(loadAnalytics, 1500);
+            setTimeout(loadAnalytics, 6000);
           }
           return;
         }
         loadAnalytics();
       }
 
-      ['pointerdown', 'touchstart', 'scroll', 'keydown'].forEach(function(e) {
+      ['pointerdown', 'touchstart', 'keydown'].forEach(function(e) {
         window.addEventListener(e, onUserInteract, { passive: true, once: true });
       });
 
-      // Background fallback so analytics runs after 3.5s even with zero interaction
+      // Background fallback so analytics runs after 8s idle without competing with initial load
       setTimeout(function() {
         if (!analyticsInitialized && 'requestIdleCallback' in window) {
-          window.requestIdleCallback(loadAnalytics, { timeout: 1000 });
+          window.requestIdleCallback(loadAnalytics, { timeout: 3000 });
         } else if (!analyticsInitialized) {
           loadAnalytics();
         }
-      }, 3500);
+      }, 8000);
     </script>
 
     <!-- Primary SEO Metadata -->
@@ -493,19 +495,26 @@
         }
 
         var startTime = Date.now();
-        var MAX_SAFETY_MS = 850;
+        var MAX_SAFETY_MS = 120;
         var isCriticalReady = false;
         var isAnimationComplete = false;
         var isHandoffStarted = false;
         var handoffAttempts = 0;
-        var MAX_HANDOFF_ATTEMPTS = 45;
+        var MAX_HANDOFF_ATTEMPTS = 20;
 
         function checkAndTriggerHandoff() {
-          // Immediately hand off once the full logo sequence completes OR data is ready
           triggerHandoff();
         }
 
-        // Coordinate with the actual completion of the logo sheen sweep (~780ms)
+        // Dismiss immediately if user initiates scroll gesture during startup
+        window.addEventListener('scroll', function onEarlyScroll() {
+          window.removeEventListener('scroll', onEarlyScroll);
+          if (!isHandoffStarted) {
+            fallbackDismiss();
+          }
+        }, { passive: true, once: true });
+
+        // Coordinate with the actual completion of the logo sheen sweep
         var sheenEl = document.getElementById('lpu-startup-sheen');
         if (sheenEl) {
           sheenEl.addEventListener('animationend', function() {
@@ -514,13 +523,13 @@
           }, { once: true });
         }
 
-        // Guaranteed animation fallback so user NEVER waits for slow network
+        // Guaranteed fast animation fallback so user NEVER waits for slow network
         setTimeout(function() {
           if (!isHandoffStarted) {
             isAnimationComplete = true;
             checkAndTriggerHandoff();
           }
-        }, 820);
+        }, 100);
 
         function fallbackDismiss() {
           if (isHandoffStarted) return;
@@ -530,24 +539,28 @@
           var container = document.getElementById('lpu-startup-logo-container');
           var backdrop = document.getElementById('lpu-startup-backdrop');
           var shell = document.getElementById('lpu-startup-shell');
+          var navEl = document.getElementById('navbar-brand-logo');
+
+          if (navEl) navEl.style.opacity = '1';
 
           if (container) {
-            container.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+            container.style.transition = 'opacity 0.1s ease, transform 0.1s ease';
             container.style.opacity = '0';
             container.style.transform = 'scale(0.95)';
           }
           if (backdrop) {
-            backdrop.style.transition = 'opacity 0.25s ease, backdrop-filter 0.25s ease, -webkit-backdrop-filter 0.25s ease';
+            backdrop.style.transition = 'opacity 0.1s ease, backdrop-filter 0.1s ease, -webkit-backdrop-filter 0.1s ease';
             backdrop.style.opacity = '0';
             backdrop.style.backdropFilter = 'blur(0px)';
             backdrop.style.webkitBackdropFilter = 'blur(0px)';
           }
 
           setTimeout(function() {
+            if (navEl) navEl.style.opacity = '1';
             if (shell && shell.parentNode) {
               shell.parentNode.removeChild(shell);
             }
-          }, 260);
+          }, 110);
         }
 
         var state = {
@@ -571,6 +584,12 @@
           var navEl = document.getElementById('navbar-brand-logo');
 
           if (!container) {
+            fallbackDismiss();
+            return;
+          }
+
+          // If user scrolled down before handoff, skip FLIP translation to prevent coordinate displacement
+          if (window.scrollY > 20) {
             fallbackDismiss();
             return;
           }
@@ -613,19 +632,19 @@
 
           // Smooth, cinematic shared-element FLIP transition into navbar slot
           container.style.transformOrigin = 'top left';
-          container.style.transition = 'transform 0.38s cubic-bezier(0.22, 1, 0.36, 1), filter 0.38s cubic-bezier(0.22, 1, 0.36, 1)';
+          container.style.transition = 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s cubic-bezier(0.22, 1, 0.36, 1)';
           container.style.transform = 'translate(' + deltaX + 'px, ' + deltaY + 'px) scale(' + targetScale + ')';
           container.style.filter = 'drop-shadow(0 2px 8px rgba(0,0,0,0.18))';
 
           // Fade out blur backdrop as logo approaches docked position
           setTimeout(function() {
             if (backdrop) {
-              backdrop.style.transition = 'opacity 0.28s cubic-bezier(0.22, 1, 0.36, 1), backdrop-filter 0.28s ease, -webkit-backdrop-filter 0.28s ease';
+              backdrop.style.transition = 'opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1), backdrop-filter 0.22s ease, -webkit-backdrop-filter 0.22s ease';
               backdrop.style.opacity = '0';
               backdrop.style.backdropFilter = 'blur(0px)';
               backdrop.style.webkitBackdropFilter = 'blur(0px)';
             }
-          }, 100);
+          }, 80);
 
           // Clean handoff to real navbar logo
           setTimeout(function() {
@@ -633,7 +652,7 @@
             if (navEl) navEl.style.opacity = '1';
             var s = document.getElementById('lpu-startup-shell');
             if (s && s.parentNode) s.parentNode.removeChild(s);
-          }, 390);
+          }, 310);
         }
 
         // Hard safety timeout so slow networks or late APIs never block the site indefinitely

@@ -943,101 +943,6 @@ export default function App() {
       return unsubscribe;
     }, [selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
 
-    // Live Settings Synchronization & Realtime Supabase CDC across all devices/origins
-    useEffect(() => {
-      const applySettings = (settingsRows: any[]) => {
-        if (!Array.isArray(settingsRows)) return;
-        const maint = settingsRows.find((s: any) => s.key === 'platform_maintenance_mode');
-        if (maint) {
-          const val = maint.value;
-          if (typeof val === 'boolean') {
-            setPlatformMaintenance({ isEnabled: val });
-          } else if (typeof val === 'object' && val !== null) {
-            setPlatformMaintenance({
-              isEnabled: Boolean(val.is_enabled ?? val.enabled ?? false),
-              message: val.message,
-              estimatedResumption: val.estimated_resumption
-            });
-          }
-        }
-
-        const banner = settingsRows.find((s: any) => s.key === 'site_notice_banner');
-        if (banner) {
-          const val = banner.value;
-          if (typeof val === 'string' && val.trim().length > 0) {
-            setCampusAnnouncement({ isActive: true, message: val, urgency: 'info' });
-          } else if (typeof val === 'object' && val !== null) {
-            setCampusAnnouncement({
-              isActive: Boolean(val.is_active ?? true),
-              message: String(val.message || ''),
-              urgency: (val.urgency === 'warning' || val.urgency === 'critical') ? val.urgency : 'info',
-              ctaLabel: val.cta_label,
-              ctaUrl: val.cta_url
-            });
-          }
-        }
-      };
-
-      let activeChannel: any = null;
-      let activeSb: any = null;
-
-      const fetchFreshSettings = async () => {
-        try {
-          const sb = await lpuClient.getSupabaseClient();
-          const { data: rows } = await sb
-            .from('global_settings')
-            .select('key, value')
-            .in('key', ['platform_maintenance_mode', 'site_notice_banner']);
-          if (rows) applySettings(rows);
-        } catch (e) {
-          console.warn('Realtime settings fetch:', e);
-        }
-      };
-
-      const initRealtime = async () => {
-        try {
-          const sb = await lpuClient.getSupabaseClient();
-          activeSb = sb;
-          if (typeof sb.channel === 'function') {
-            activeChannel = sb
-              .channel('public:global-settings-realtime')
-              .on(
-                'postgres_changes',
-                { event: '*', schema: 'public', table: 'global_settings' },
-                () => {
-                  fetchFreshSettings();
-                }
-              )
-              .subscribe();
-          }
-        } catch (err) {
-          console.warn('Realtime channel subscription error:', err);
-        }
-      };
-
-      // Realtime subscription is deferred to requestIdleCallback so it never competes
-      // with critical initial rendering, early edge API, or hero banner downloads.
-      const timer = setTimeout(() => {
-        const runInit = () => {
-          initRealtime();
-        };
-        if ('requestIdleCallback' in window) {
-          (window as any).requestIdleCallback(runInit);
-        } else {
-          runInit();
-        }
-      }, 1500);
-
-      return () => {
-        clearTimeout(timer);
-        if (activeSb && activeChannel && typeof activeSb.removeChannel === 'function') {
-          try {
-            activeSb.removeChannel(activeChannel);
-          } catch {}
-        }
-      };
-    }, []);
-
     // Dynamically enable/disable Google AdSense script based on global ad toggle.
     // The AdSense script in index.html runs Google Auto Ads independently of our React ad system,
     // so we must remove it from the DOM when ads are globally disabled.
@@ -1074,42 +979,28 @@ export default function App() {
 
         const scheduleAdSense = () => {
           if ('requestIdleCallback' in window) {
-            (window as any).requestIdleCallback(injectScript, { timeout: 3000 });
+            (window as any).requestIdleCallback(injectScript, { timeout: 4000 });
           } else {
-            setTimeout(injectScript, 1000);
+            setTimeout(injectScript, 2000);
           }
         };
 
-        const events = ['pointerdown', 'touchstart', 'keydown'];
+        const events = ['pointerdown', 'keydown'];
         const onDirectInteract = () => {
           events.forEach(e => window.removeEventListener(e, onDirectInteract));
-          window.removeEventListener('scroll', onScrollInteract);
           scheduleAdSense();
-        };
-
-        const onScrollInteract = () => {
-          events.forEach(e => window.removeEventListener(e, onDirectInteract));
-          window.removeEventListener('scroll', onScrollInteract);
-          // Defer until scroll is calm
-          if ('requestIdleCallback' in window) {
-            (window as any).requestIdleCallback(injectScript, { timeout: 3500 });
-          } else {
-            setTimeout(injectScript, 2500);
-          }
         };
 
         events.forEach(e => window.addEventListener(e, onDirectInteract, { once: true, passive: true }));
-        window.addEventListener('scroll', onScrollInteract, { once: true, passive: true });
 
-        // Background idle fallback
+        // Background idle fallback: loads quietly long after initial scroll and page settle
         const idleFallbackTimer = setTimeout(() => {
           scheduleAdSense();
-        }, 4000);
+        }, 6000);
 
         return () => {
           clearTimeout(idleFallbackTimer);
           events.forEach(e => window.removeEventListener(e, onDirectInteract));
-          window.removeEventListener('scroll', onScrollInteract);
         };
       }
     }, [adSystemConfig.global_enabled, adSystemConfig?.adsense?.publisher_id]);
@@ -1395,7 +1286,7 @@ export default function App() {
           allEvents={allAvailableEvents}
         />
 
-        <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-3 sm:px-4 md:px-6 flex flex-col gap-3.5 sm:gap-12 mt-2 sm:mt-6 overflow-hidden">
+        <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-3 sm:px-4 md:px-6 flex flex-col gap-3.5 sm:gap-12 mt-2 sm:mt-6">
           <Suspense fallback={
             <div className="min-h-[40vh] flex items-center justify-center">
               <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
@@ -1420,9 +1311,8 @@ export default function App() {
             />
           ) : (
             <>
-              {/* If user is actively searching, provide focused search view */}
-              {searchQuery.trim().length < 2 && (
-                <>
+              {/* If user is actively searching, hide top modules gracefully via CSS rather than unmounting */}
+              <div className={searchQuery.trim().length >= 2 ? "hidden" : "contents"}>
                   {/* Top Hero Carousel */}
                   <HeroCarousel
                     carouselItems={carouselSlides}
@@ -1574,8 +1464,7 @@ export default function App() {
                   </div>
                 </>
               )}
-            </>
-          )}
+            </div>
 
               {/* Event hub upcoming grid / Search Results Grid */}
               <div id="events" className="scroll-mt-24">
