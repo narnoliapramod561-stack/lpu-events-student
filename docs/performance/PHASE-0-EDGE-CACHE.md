@@ -190,24 +190,23 @@ In `src/worker.ts:handleHomepage()` (Lines 802–910):
 
 ### 3.1 Fan-Out Queries
 
-Every cold request or cache expiration for `/api/public/homepage` issues **7 parallel HTTP REST queries** to Supabase PostgREST:
+Every cold request or cache expiration for `/api/public/homepage` issues **6 parallel HTTP REST queries** to Supabase PostgREST:
 
 | # | Table / Resource | Supabase REST Path & Projection | Live Query Latency | Typical Payload |
 |---|---|---|---|---|
 | 1 | `categories` | `categories?select=id,key,name,sort_order,subcategories(...)&is_active=eq.true` | 1,319 ms | 11,143 bytes |
-| 2 | `carousel_items` | `carousel_items?select=id,item_type,event_id,advertisement_id,media_id,sort_order,is_active,start_at,end_at,display_duration_ms,custom_title,custom_subtitle,custom_cta_text,custom_cta_url,badge_text,events(...),advertisements(...),media_assets(...)&is_active=eq.true&limit=8` | 819 ms | 818 bytes |
+| 2 | `carousel_items` | `carousel_items?select=id,item_type,event_id,media_id,sort_order,is_active,start_at,end_at,display_duration_ms,custom_title,custom_subtitle,custom_cta_text,custom_cta_url,badge_text,events(...),media_assets(...)&is_active=eq.true&limit=8` | 819 ms | 818 bytes |
 | 3 | `featured_events` | `featured_events?select=event_id,sort_order,events(...)&order=sort_order.asc&limit=10` | 1,191 ms | 2 bytes (empty) |
 | 4 | `trending_events` | `trending_events?select=event_id,sort_order,events(...)&order=sort_order.asc&limit=10` | 799 ms | 2 bytes (empty) |
-| 5 | `advertisements` | `advertisements?select=id,name,media_id,redirect_url,start_at,end_at,status,media_assets(...)&status=eq.active&limit=6` | 672 ms | 2 bytes (empty) |
-| 6 | `global_settings` | `global_settings?select=key,value` | 435 ms | 1,345 bytes |
-| 7 | `events` | `events?select=id,name,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets(...),organizations(...),status,category_id,subcategory_id,categories(...),subcategories(...)&status=eq.PUBLISHED&limit=10&offset=0` | 726 ms | 920 bytes |
+| 5 | `global_settings` | `global_settings?select=key,value` | 435 ms | 1,345 bytes |
+| 6 | `events` | `events?select=id,name,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,registration_format,banner_media_id,media_assets(...),organizations(...),status,category_id,subcategory_id,categories(...),subcategories(...)&status=eq.PUBLISHED&limit=10&offset=0` | 726 ms | 920 bytes |
 
 ### 3.2 Total Origin Cost Metrics
 
-* **Total Database Queries per Miss:** **7 queries**
+* **Total Database Queries per Miss:** **6 queries**
 * **Parallel Execution:** Yes (`Promise.all` in Worker isolate)
 * **Total Worker Processing Time (CPU):** ~8–15 ms
 * **Total Wall-Clock Latency on Miss:** **1,320 ms – 1,800 ms** (governed by the slowest query, `categories` at 1.32s)
-* **Sequential Sum of DB Queries:** **5,961 ms (~6.0 seconds)**
+* **Sequential Sum of DB Queries:** **5,289 ms (~5.3 seconds)**
 * **Final Aggregated JSON Size:** **13,664 bytes (~13.3 KB)**
 * **Response Guard Limit:** 200 KB (`MAX_RESPONSE_SIZE = 200 * 1024`)
