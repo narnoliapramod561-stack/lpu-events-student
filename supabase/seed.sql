@@ -5,8 +5,6 @@
 -- 0. Clean up existing transactional & platform data in reverse dependency order
 delete from public.featured_events;
 delete from public.carousel_items;
-delete from public.advertisement_positions;
-delete from public.advertisements;
 delete from public.event_memory_media;
 delete from public.event_memories;
 delete from public.sponsors;
@@ -205,14 +203,6 @@ insert into public.media_assets (
 )
 select
   'd1111111-1111-1111-1111-111111111111', 'public', 'events/cyberhack2026.png', 'EVENT_BANNER'::public.media_type, 'image/png', 102400, 'chk_banner1', 'READY'::public.media_status, au.id
-from public.admin_users au where au.email = 'subhamkumar86032@gmail.com' limit 1
-on conflict (id) do update set status = excluded.status;
-
-insert into public.media_assets (
-  id, bucket, object_key, media_type, mime_type, file_size_bytes, checksum, status, created_by
-)
-select
-  'd2222222-2222-2222-2222-222222222222', 'public', 'ads/placement_drive.png', 'ADVERTISEMENT'::public.media_type, 'image/png', 81920, 'chk_ad1', 'READY'::public.media_status, au.id
 from public.admin_users au where au.email = 'subhamkumar86032@gmail.com' limit 1
 on conflict (id) do update set status = excluded.status;
 
@@ -1280,47 +1270,6 @@ on conflict do nothing;
 
 
 -- ==============================================================================
--- 11. SEED ADVERTISEMENTS & POSITIONS
--- ==============================================================================
-insert into public.advertisements (
-  id, name, media_id, redirect_url, start_at, end_at, status, created_by, updated_by
-)
-select
-  'a1111111-1111-1111-1111-111111111111',
-  'Campus Placement & Internship Drive 2026',
-  'd2222222-2222-2222-2222-222222222222',
-  'https://placements.lpu.in',
-  now() - interval '1 day',
-  now() + interval '30 days',
-  'active'::public.advertisement_status,
-  au.id, au.id
-from public.admin_users au where au.email = 'subhamkumar86032@gmail.com'
-on conflict (id) do update set status = excluded.status;
-
-insert into public.advertisements (
-  id, name, media_id, redirect_url, start_at, end_at, status, created_by, updated_by
-)
-select
-  'a2222222-2222-2222-2222-222222222222',
-  'Google Cloud Career Readiness Program',
-  'd3333333-3333-3333-3333-333333333333',
-  'https://cloud.google.com/edu',
-  now() - interval '1 day',
-  now() + interval '30 days',
-  'active'::public.advertisement_status,
-  au.id, au.id
-from public.admin_users au where au.email = 'subhamkumar86032@gmail.com'
-on conflict (id) do update set status = excluded.status;
-
-insert into public.advertisement_positions (advertisement_id, position)
-values
-  ('a1111111-1111-1111-1111-111111111111', 'homepage_top'),
-  ('a1111111-1111-1111-1111-111111111111', 'homepage_feed'),
-  ('a2222222-2222-2222-2222-222222222222', 'homepage_feed')
-on conflict do nothing;
-
-
--- ==============================================================================
 -- 12. SEED SPONSORS & PARTNERS
 -- ==============================================================================
 insert into public.sponsors (
@@ -1400,15 +1349,6 @@ select
 from public.admin_users au where au.email = 'subhamkumar86032@gmail.com'
 on conflict (id) do update set is_active = true, sort_order = 4;
 
-insert into public.carousel_items (
-  id, item_type, advertisement_id, sort_order, is_active, created_by, updated_by
-)
-select
-  'c0000000-0000-0000-0000-000000000005', 'ADVERTISEMENT'::public.carousel_item_type,
-  'a1111111-1111-1111-1111-111111111111', 5, true, au.id, au.id
-from public.admin_users au where au.email = 'subhamkumar86032@gmail.com'
-on conflict (id) do update set is_active = true, sort_order = 5;
-
 
 -- ==============================================================================
 -- 15. SEED GLOBAL SETTINGS
@@ -1436,8 +1376,8 @@ on conflict (key) do update set value = excluded.value;
 insert into public.global_settings (key, value, description, updated_by)
 select
   'happening_today_config',
-  '{"slide_duration_ms": 4500, "auto_advance": true, "ad_injection": {"enabled": true, "advertisement_id": "a1111111-1111-1111-1111-111111111111", "insert_after_slide": 2, "custom_badge": "SPONSORED", "custom_cta_text": "Explore More"}}'::jsonb,
-  'Happening Today carousel timing and ad injection settings', au.id
+  '{"slide_duration_ms": 4500, "auto_advance": true}'::jsonb,
+  'Happening Today carousel timing settings', au.id
 from public.admin_users au where au.email = 'subhamkumar86032@gmail.com'
 on conflict (key) do update set value = excluded.value;
 
@@ -1449,7 +1389,6 @@ insert into public.resource_versions (resource, version)
 values
   ('events', 1),
   ('categories', 1),
-  ('ads', 1),
   ('featured', 1),
   ('memories', 1),
   ('carousel', 1),
