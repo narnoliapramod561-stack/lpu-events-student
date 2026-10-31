@@ -64,15 +64,14 @@ return this._fetchWithCache<HomepageBundleData>(cacheKey, 60_000, async () => {
 
 * **On Production:** `isLocalhost` is `false`. The client calls `_fetchPublic('homepage')`, which hits the Cloudflare Worker `/api/public/homepage`.
 * **On Localhost:** `isLocalhost` is `true`. The client **skips the Edge Worker entirely** and calls `_fetchHomepageBundleFromSupabase()`.
-* **What `_fetchHomepageBundleFromSupabase()` does:** It invokes `this.getSupabaseClient()`, dynamically loading the 212 KB `@supabase/supabase-js` library, then launches `Promise.all` with **8 independent HTTP requests** directly to `nhjphyqiqhmxdhppljap.supabase.co/rest/v1`:
+* **What `_fetchHomepageBundleFromSupabase()` does:** It invokes `this.getSupabaseClient()`, dynamically loading the 212 KB `@supabase/supabase-js` library, then launches `Promise.all` with **7 independent HTTP requests** directly to `nhjphyqiqhmxdhppljap.supabase.co/rest/v1`:
   1. `categories`
   2. `subcategories`
   3. `carousel_items`
   4. `featured_events`
   5. `trending_events`
-  6. `advertisements`
-  7. `global_settings`
-  8. `events`
+  6. `global_settings`
+  7. `events`
 
 ---
 

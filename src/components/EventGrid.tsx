@@ -223,7 +223,6 @@ export const EventGridComponent = ({
   loading: boolean;
   onResetFilters: () => void;
   onSelectEvent: (id: string, name?: string) => void;
-  adInterval?: number;
   title?: string;
   searchQuery?: string;
 }) => {

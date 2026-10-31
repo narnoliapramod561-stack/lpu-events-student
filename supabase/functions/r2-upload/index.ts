@@ -790,8 +790,6 @@ function contextToMediaType(context: string): string {
     case "memory":
     case "sponsor-logo":
       return "EVENT_BANNER";
-    case "advertisement":
-      return "ADVERTISEMENT";
     default:
       return "EVENT_BANNER";
   }
@@ -801,7 +799,6 @@ const ALLOWED_CONTEXTS = [
   "hero",
   "event-banner",
   "event-card",
-  "advertisement",
   "thumbnail",
   "admin-preview",
   "memory",
@@ -974,7 +971,7 @@ serve(async (req: Request) => {
     }
 
     // Role Enforcement for Platform vs Event Contexts
-    const platformContexts = new Set(["hero", "advertisement"]);
+    const platformContexts = new Set(["hero"]);
     const eventContexts = new Set(["event-banner", "event-card", "thumbnail", "admin-preview", "memory", "sponsor-logo"]);
 
     if (platformContexts.has(context) && !isSuperAdmin) {

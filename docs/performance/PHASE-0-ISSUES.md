@@ -130,15 +130,15 @@
 
 ---
 
-### Issue 08: 7-Query Fan-Out on Every Homepage Cache Miss
+### Issue 08: 6-Query Fan-Out on Every Homepage Cache Miss
 * **ID:** `ISSUE-P1-05`
 * **Severity:** **P1**
 * **File:** `src/worker.ts`
 * **Function:** `handleHomepage()` (lines 808–845)
-* **Observed Behavior:** Every homepage cache miss executes 7 parallel queries (`categories`, `carousel_items`, `featured_events`, `trending_events`, `advertisements`, `global_settings`, `events`) against Supabase PostgREST.
+* **Observed Behavior:** Every homepage cache miss executes 6 parallel queries (`categories`, `carousel_items`, `featured_events`, `trending_events`, `global_settings`, `events`) against Supabase PostgREST.
 * **Expected Behavior:** A consolidated RPC function or a single pre-aggregated view/table in Postgres that returns the entire homepage JSON payload in a single round-trip.
-* **Evidence:** In `src/worker.ts:808`, `Promise.all([fetchFromSupabase(...), ...])` has 7 distinct query calls.
-* **How Verified:** Code audit and individual Supabase latency tracing (cumulative time 5.96s, wall-clock time 1.32s).
+* **Evidence:** In `src/worker.ts:808`, `Promise.all([fetchFromSupabase(...), ...])` has 6 distinct query calls.
+* **How Verified:** Code audit and individual Supabase latency tracing (cumulative time 5.29s, wall-clock time 1.32s).
 * **Performance Impact:** Places unnecessary connection pressure on Supabase PostgREST pool; delays edge warming.
 * **Correctness Impact:** Low.
 * **Confidence:** **100% (High)**
