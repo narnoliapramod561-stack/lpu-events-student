@@ -68,7 +68,6 @@
       "status": "PUBLISHED"
     }
   ],
-  "advertisements": [],
   "settings": [
     { "key": "platform_maintenance_mode", "value": false },
     { "key": "initial_event_limit", "value": 9 }
