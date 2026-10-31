@@ -24,7 +24,6 @@ export interface HeroSlideModel {
   ctaText: string;
   ctaUrl?: string | null;
   eventId?: string | null;
-  isSponsored?: boolean;
   duration: number;
 }
 
