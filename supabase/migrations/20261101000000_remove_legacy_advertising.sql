@@ -92,6 +92,7 @@ begin
   if position('advertisement' in v_definition) > 0 then
     raise exception 'Could not fully remove advertisement context from register_uploaded_media_asset().';
   end if;
+  execute v_definition;
 
   -- Enum columns are temporarily converted to text so only retired enum labels are removed.
   alter table public.carousel_items
