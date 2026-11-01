@@ -15,6 +15,7 @@ import {
   generateQrDataUrl, 
   downloadQrCode,
   formatEventDateRange,
+  formatEventTimeRange,
   trackEvent,
   resolveDefaultEventImage
 } from "@lpu-events/shared";
@@ -64,21 +65,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
     ? formatEventDateRange(event.start_at, event.end_at) 
     : "Date to be announced";
 
-  const timeFormatted = (() => {
-    if (!event?.start_at) return "Time TBA";
-    try {
-      const start = new Date(event.start_at);
-      const startStr = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-      if (event.end_at) {
-        const end = new Date(event.end_at);
-        const endStr = end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-        return `${startStr} – ${endStr}`;
-      }
-      return startStr;
-    } catch {
-      return "Time TBA";
-    }
-  })();
+  const timeFormatted = formatEventTimeRange(event?.start_at, event?.end_at) || "Time TBA";
 
   const venueFormatted = event?.venue_name || "LPU Campus";
 

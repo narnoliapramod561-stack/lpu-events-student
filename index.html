@@ -15,6 +15,7 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f7f9fc" />
+    <link rel="preload" as="image" type="image/webp" href="/lpu-events-campus-glass-background.webp" fetchpriority="high" />
 
     <!-- Default Theme Initialization (Light Mode Default) -->
     <script>
@@ -56,6 +57,10 @@
         position: sticky;
         top: 0;
         z-index: 50;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
         background: rgba(255, 255, 255, 0.85);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
@@ -65,6 +70,10 @@
         position: sticky;
         top: 0;
         z-index: 50;
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
         background: rgba(24, 24, 28, 0.85);
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
@@ -75,12 +84,20 @@
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
         border: 1px solid rgba(255, 255, 255, 0.85);
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
       }
       .dark .glass-panel, html.dark .glass-panel {
         background: rgba(44, 44, 46, 0.85);
         backdrop-filter: blur(8px);
         -webkit-backdrop-filter: blur(8px);
         border: 1px solid rgba(255, 255, 255, 0.10);
+        transform: translateZ(0);
+        -webkit-transform: translateZ(0);
+        backface-visibility: hidden;
+        -webkit-backface-visibility: hidden;
       }
       .text-primary { color: #ff6b00; }
 
@@ -244,12 +261,41 @@
           var p = window.location.pathname.toLowerCase();
           var isHome = p === '/' || p === '' || window.location.search.indexOf('page=home') !== -1;
           if (isHome) {
+            var rawCached = null;
+            var storedEtag = null;
+            try {
+              var item = localStorage.getItem('lpu_cache_v1_public:homepage:bundle:v2');
+              if (item) {
+                var parsed = JSON.parse(item);
+                if (parsed && parsed.data) {
+                  rawCached = parsed.data;
+                  if (parsed.version) storedEtag = String(parsed.version);
+                }
+              }
+            } catch(e) {}
+
+            var fetchHeaders = { 'Accept': 'application/json' };
+            if (storedEtag) {
+              fetchHeaders['If-None-Match'] = storedEtag;
+            }
+
             window.__PREFETCHED_HOMEPAGE__ = fetch('/api/public/homepage', {
-              headers: { 'Accept': 'application/json' }
+              headers: fetchHeaders,
+              cache: 'no-cache'
             }).then(function(res) {
-              return res.ok ? res.json() : null;
-            }).then(function(data) {
-              if (data) {
+              if (res.status === 304 && rawCached) {
+                return { notModified: true, data: rawCached };
+              }
+              if (res.ok) {
+                var etag = res.headers.get('etag');
+                return res.json().then(function(data) {
+                  return { notModified: false, data: data, etag: etag };
+                });
+              }
+              return rawCached ? { notModified: true, data: rawCached } : null;
+            }).then(function(result) {
+              if (result && result.data) {
+                var data = result.data;
                 try {
                   var firstSlide = (data.carousel && data.carousel[0]) || (data.featured && data.featured[0]);
                   var imgUrl = null;
@@ -269,8 +315,10 @@
                   }
                 } catch(e) {}
               }
-              return data;
-            }).catch(function() { return null; });
+              return result;
+            }).catch(function() {
+              return rawCached ? { notModified: true, data: rawCached } : null;
+            });
           }
         } catch(e) {}
       })();

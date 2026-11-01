@@ -91,7 +91,19 @@ class PersistentCacheManager {
   }
 
   public getRecord<T>(key: string): CacheRecord<T> | null {
-    return (this._memCache.get(key) as CacheRecord<T>) || null;
+    let record = this._memCache.get(key);
+    if (!record && typeof window !== 'undefined' && window.localStorage) {
+      try {
+        const raw = localStorage.getItem(this._prefix + key);
+        if (raw) {
+          record = JSON.parse(raw);
+          if (record && record.data !== undefined) {
+            this._memCache.set(key, record);
+          }
+        }
+      } catch {}
+    }
+    return (record as CacheRecord<T>) || null;
   }
 
   public set<T>(

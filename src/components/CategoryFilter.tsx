@@ -191,9 +191,9 @@ export const CategoryFilterComponent = ({
       {/* ======================================================== */}
       <div className="relative sm:hidden rounded-[28px] overflow-hidden glass-mobile-filter">
         
-        {/* Optical Ambient Caustics Mesh */}
-        <div className="absolute -top-16 -right-16 w-60 h-60 bg-gradient-to-bl from-orange-500/18 via-amber-400/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-        <div className="absolute -bottom-16 -left-16 w-60 h-60 bg-gradient-to-tr from-sky-400/12 via-indigo-500/08 to-transparent rounded-full blur-3xl pointer-events-none" />
+        {/* Optical Ambient Caustics Mesh (Lightweight on mobile) */}
+        <div className="absolute -top-16 -right-16 w-60 h-60 bg-gradient-to-bl from-orange-500/15 via-amber-400/08 to-transparent rounded-full blur-xl opacity-60 pointer-events-none" />
+        <div className="absolute -bottom-16 -left-16 w-60 h-60 bg-gradient-to-tr from-sky-400/10 via-indigo-500/06 to-transparent rounded-full blur-xl opacity-60 pointer-events-none" />
 
         <div className="relative flex flex-col">
           

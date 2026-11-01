@@ -4,7 +4,8 @@ import { Calendar, MapPin, Users, ArrowRight, ChevronLeft, ChevronRight, Sparkle
 import { 
   EventFeedItem, 
   CarouselItemFeedItem, 
-  resolveDefaultEventImage
+  resolveDefaultEventImage,
+  formatEventTime
 } from "@lpu-events/shared";
 import { getEventImage, getResponsiveImageUrl } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
@@ -50,26 +51,6 @@ const slideVariants: Variants = {
   }),
 };
 
-const contentStagger: Variants = {
-  hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.06,
-      delayChildren: 0.1,
-    },
-  },
-};
-
-const contentItem: Variants = {
-  hidden: { opacity: 0, y: 12 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { type: "spring" as const, stiffness: 320, damping: 26 },
-  },
-};
-
 const swipeConfidenceThreshold = 10000;
 const swipePower = (offset: number, velocity: number) => {
   return Math.abs(offset) * velocity;
@@ -90,18 +71,7 @@ const formatHeroDate = (dateStr?: string | null) => {
 };
 
 const formatHeroTime = (dateStr?: string | null) => {
-  if (!dateStr) return "";
-  try {
-    const d = new Date(dateStr);
-    if (isNaN(d.getTime())) return "";
-    return d.toLocaleTimeString("en-US", {
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-  } catch {
-    return "";
-  }
+  return formatEventTime(dateStr);
 };
 
 export const HeroCarouselComponent = ({
@@ -115,7 +85,7 @@ export const HeroCarouselComponent = ({
 }) => {
   const [[currentIndex, direction], setPage] = useState<[number, number]>([0, 0]);
   const [isHovered, setIsHovered] = useState(false);
-  const [isInView, setIsInView] = useState(true);
+  const isInViewRef = useRef(true);
   const containerRef = useRef<HTMLDivElement>(null);
   const isFirstMountRef = useRef(true);
 
@@ -124,7 +94,7 @@ export const HeroCarouselComponent = ({
     const el = containerRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
     const observer = new IntersectionObserver(([entry]) => {
-      setIsInView(entry.isIntersecting);
+      isInViewRef.current = entry.isIntersecting;
     }, { threshold: 0.05 });
     observer.observe(el);
     return () => observer.disconnect();
@@ -248,15 +218,17 @@ export const HeroCarouselComponent = ({
   };
 
   useEffect(() => {
-    if (slides.length <= 1 || isHovered || !isInView) return;
+    if (slides.length <= 1 || isHovered) return;
 
     const currentDuration = slides[currentIndex]?.duration || 5000;
-    const timer = setTimeout(() => {
-      paginate(1);
+    const timer = setInterval(() => {
+      if (isInViewRef.current && !isHovered) {
+        paginate(1);
+      }
     }, currentDuration);
 
-    return () => clearTimeout(timer);
-  }, [slides, currentIndex, isHovered, isInView, paginate]);
+    return () => clearInterval(timer);
+  }, [slides, currentIndex, isHovered, paginate]);
 
   if (slides.length === 0) return null;
 
@@ -351,14 +323,11 @@ export const HeroCarouselComponent = ({
                 {currentSlide.type === "event" ? (
                   <div className="hidden sm:flex flex-col-reverse lg:flex-row items-stretch h-full w-full flex-1 relative">
                     {/* Content Panel (Left on Desktop) */}
-                    <motion.div
-                      variants={contentStagger}
-                      initial={isFirstMountRef.current ? false : "hidden"}
-                      animate="visible"
+                    <div
                       className="flex flex-col justify-center p-5 sm:pl-10 sm:pr-4 md:pl-12 md:pr-6 lg:px-8 lg:py-6 xl:px-10 xl:py-7 lg:w-[48%] xl:w-[48%] 2xl:w-[48%] flex-1 relative z-10 gap-2.5 sm:gap-3 lg:gap-3.5 h-full"
                     >
                       {/* Badge & Category Pill */}
-                      <motion.div variants={contentItem} className="flex items-center gap-2 flex-wrap shrink-0">
+                      <div className="flex items-center gap-2 flex-wrap shrink-0">
                         <span className="inline-flex items-center gap-2 px-3 py-1 bg-white/60 dark:bg-white/14 text-[#c2410c] dark:text-orange-400 border border-white/80 dark:border-white/20 rounded-full font-heading text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-2xs backdrop-blur-md">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#ea580c] dark:bg-orange-400" />
                           Featured Event
@@ -368,33 +337,30 @@ export const HeroCarouselComponent = ({
                             • {currentSlide.category}
                           </span>
                         )}
-                      </motion.div>
+                      </div>
 
                       {/* Headline - High contrast bold slate with subtle luminous lift */}
-                      <motion.h1
-                        variants={contentItem}
+                      <h1
                         onClick={handleAction}
                         className="font-black tracking-tight text-[#0f172a] dark:text-white font-heading cursor-pointer hover:text-primary transition-colors text-2xl md:text-3xl lg:text-[32px] xl:text-[36px] leading-[1.22] line-clamp-2 shrink-0 drop-shadow-[0_1px_2px_rgba(255,255,255,0.7)] dark:drop-shadow-none"
                       >
                         {currentSlide.title}
-                      </motion.h1>
+                      </h1>
 
                       {/* Description - High contrast relaxed slate */}
                       {currentSlide.description && (
-                        <motion.p
-                          variants={contentItem}
+                        <p
                           className="text-[#1e293b] dark:text-slate-200 leading-relaxed text-xs md:text-sm lg:text-[14.5px] font-bold line-clamp-2 xl:line-clamp-3 max-w-xl shrink-0"
                         >
                           {currentSlide.date
                             ? currentSlide.description.replace(/on \d{1,2}\s+[A-Za-z]+\s+\d{4}/g, `on ${currentSlide.date}`)
                             : currentSlide.description}
-                        </motion.p>
+                        </p>
                       )}
 
                       {/* Schedule & Venue Frosted Card (Balanced Frosted Glass) */}
                       {(currentSlide.date || currentSlide.venue || currentSlide.organizer) && (
-                        <motion.div
-                          variants={contentItem}
+                        <div
                           className="flex flex-col rounded-2xl sm:rounded-3xl bg-white/55 dark:bg-white/[0.09] backdrop-blur-lg border border-white/85 dark:border-white/15 shadow-[0_4px_24px_rgba(15,23,42,0.05),inset_0_1px_1.5px_rgba(255,255,255,0.8)] p-3 sm:p-4 lg:p-4.5 gap-2 sm:gap-2.5 shrink-0"
                         >
                           {/* Date & Time */}
@@ -448,11 +414,11 @@ export const HeroCarouselComponent = ({
                               </div>
                             </div>
                           )}
-                        </motion.div>
+                        </div>
                       )}
 
                       {/* Primary Action Button (Glossy Orange Pill with Arrow in Circle) */}
-                      <motion.div variants={contentItem} className="flex items-center gap-3 pt-1">
+                      <div className="flex items-center gap-3 pt-1">
                         <button
                           onClick={handleAction}
                           className="relative group overflow-hidden flex items-center gap-3 px-7 sm:px-8 py-3 rounded-2xl glass-btn-primary font-black cursor-pointer font-heading text-sm md:text-base hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-lg"
@@ -462,8 +428,8 @@ export const HeroCarouselComponent = ({
                             <ArrowRight className="h-3.5 w-3.5 stroke-[2.5]" />
                           </span>
                         </button>
-                      </motion.div>
-                    </motion.div>
+                      </div>
+                    </div>
 
                     {/* Hero Banner Image (Right on Desktop) - Apple VisionOS Floating Display Glass */}
                     <div
@@ -489,24 +455,6 @@ export const HeroCarouselComponent = ({
                             containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
                             className="w-full h-full object-cover object-center relative z-10"
                           />
-
-                          {/* In-Image Floating Glass Indicator Pill (Matching Mockup) */}
-                          {slides.length > 1 && (
-                            <div className="absolute bottom-3.5 left-3.5 z-20 pointer-events-none">
-                              <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/55 backdrop-blur-md border border-white/25 shadow-[0_4px_12px_rgba(0,0,0,0.3)]">
-                                {slides.map((_, dotIdx) => (
-                                  <span
-                                    key={dotIdx}
-                                    className={`h-1.5 rounded-full transition-all duration-300 ${
-                                      dotIdx === currentIndex
-                                        ? "w-4 bg-gradient-to-r from-[#ff7f24] to-[#ea580c] shadow-[0_0_8px_rgba(234,88,12,0.9)]"
-                                        : "w-1.5 bg-white/45"
-                                    }`}
-                                  />
-                                ))}
-                              </div>
-                            </div>
-                          )}
                         </div>
                       </div>
                     </div>
@@ -529,35 +477,30 @@ export const HeroCarouselComponent = ({
                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-black/20 pointer-events-none" />
                     <div className="absolute inset-0 bg-gradient-to-tr from-orange-900/30 via-transparent to-amber-500/15 mix-blend-screen pointer-events-none" />
 
-                    <motion.div
-                      variants={contentStagger}
-                      initial="hidden"
-                      animate="visible"
+                    <div
                       className="relative z-20 max-w-3xl"
                     >
-                      <motion.div variants={contentItem} className="mb-3">
+                      <div className="mb-3">
                         <span className="inline-flex items-center gap-1.5 px-3 py-1 bg-black/60 backdrop-blur-md text-amber-300 border border-amber-500/40 rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-md">
                           <Sparkles className="w-3 h-3" />
                           Campus Memory
                         </span>
-                      </motion.div>
+                      </div>
 
-                      <motion.h1
-                        variants={contentItem}
+                      <h1
                         className="text-2xl md:text-3xl lg:text-5xl font-black text-white font-heading leading-tight mb-3 drop-shadow-[0_4px_20px_rgba(0,0,0,0.85)] break-safe"
                       >
                         {currentSlide.title}
-                      </motion.h1>
+                      </h1>
 
                       {currentSlide.description && (
-                        <motion.p
-                          variants={contentItem}
+                        <p
                           className="text-gray-200 text-sm lg:text-base font-medium leading-relaxed max-w-2xl line-clamp-2 break-safe"
                         >
                           {currentSlide.description}
-                        </motion.p>
+                        </p>
                       )}
-                    </motion.div>
+                    </div>
                   </div>
                 )}
               </>

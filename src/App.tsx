@@ -259,6 +259,7 @@ export default function App() {
   const [appLoading, setAppLoading] = useState(!initialBundle);
   const [isMaintenanceWarming, setIsMaintenanceWarming] = useState(false);
   const searchReqIdRef = useRef(0);
+  const lastManualRefreshRef = useRef<number>(0);
 
   // Platform Maintenance & Campus Announcement state from global_settings
   const [platformMaintenance, setPlatformMaintenance] = useState<PlatformMaintenanceConfig>(() => {
@@ -504,13 +505,10 @@ export default function App() {
     searchQuery
   ]);
 
-  // Load all homepage data (categories, carousel, featured, trending, ads, settings, live events).
-  // Supports forceFresh to bypass client caches and query Supabase directly on publication events.
+  // Load all homepage data (categories, carousel, featured, trending, settings, live events).
+  // Supports forceFresh to revalidate with Cloudflare Edge via HTTP ETag / 304 Not Modified.
   const loadAllData = useCallback(async (forceFresh = false) => {
       try {
-        if (forceFresh) {
-          lpuClient.invalidateClientCache('public:');
-        }
         const { data: bundle, error } = await lpuClient.fetchHomepageBundle(forceFresh);
         if (error || !bundle) {
           if (error?.code === 'MAINTENANCE_WARMING' || error?.status === 503) {
@@ -928,12 +926,19 @@ export default function App() {
     setIsTrendingActive(false);
     setIsCategoriesActive(false);
 
+    // Revalidate on clicking Brand logo if > 3 seconds since last refresh (Anti-spam rate limit)
+    const now = Date.now();
+    if (now - lastManualRefreshRef.current > 3000) {
+      lastManualRefreshRef.current = now;
+      loadAllData(true);
+    }
+
     if (typeof window !== 'undefined') {
       window.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       document.documentElement.scrollTo({ top: 0, left: 0, behavior: "smooth" });
       document.body.scrollTo({ top: 0, left: 0, behavior: "smooth" });
     }
-  }, [handleNavigate]);
+  }, [handleNavigate, loadAllData]);
 
   const handleGoToCategories = useCallback(() => {
     trackEvent('nav_categories');
@@ -1002,6 +1007,38 @@ export default function App() {
     trackEvent('pricing_type_selected', { pricing_type: type });
   }, [isTrendingActive]);
 
+  const handleSelectCategory = useCallback((catId: string) => {
+    previousFiltersBeforeTrendingRef.current = null;
+    setIsTrendingActive(false);
+    setIsCategoriesActive(true);
+    trackEvent('category_filter_selected', { category_id: catId });
+    setSelectedCategory(catId);
+  }, []);
+
+  const handleSelectSubcategory = useCallback((subId: string) => {
+    previousFiltersBeforeTrendingRef.current = null;
+    setIsTrendingActive(false);
+    setIsCategoriesActive(true);
+    trackEvent('subcategory_filter_selected', { subcategory_id: subId });
+    setSelectedSubcategory(subId);
+  }, []);
+
+  const handleSelectDate = useCallback((date: string) => {
+    previousFiltersBeforeTrendingRef.current = null;
+    setIsTrendingActive(false);
+    if (date) {
+      trackEvent('date_filter_selected', { date });
+    }
+    setSelectedDate(date);
+  }, []);
+
+  const handleSelectScheduleFilter = useCallback((sched: string) => {
+    previousFiltersBeforeTrendingRef.current = null;
+    setIsTrendingActive(false);
+    trackEvent('schedule_filter_selected', { schedule: sched });
+    setActiveScheduleFilter(sched);
+  }, []);
+
   // Client-side date filtering, search, and trending list mapping
   const isSearching = searchQuery.trim().length >= 2;
   const filteredEvents = useMemo(() => {
@@ -1056,17 +1093,27 @@ export default function App() {
       {/* Global Fixed Campus Background Layer (Pure and Unaltered in Light Mode) */}
       <div 
         aria-hidden="true" 
-        style={{ contain: 'strict' }}
-        className="fixed inset-0 pointer-events-none z-0 overflow-hidden"
+        className="campus-bg-fixed-layer"
       >
-        <div className="absolute inset-0 campus-bg-image" />
+        <img
+          src="/lpu-events-campus-glass-background.webp"
+          alt=""
+          fetchPriority="high"
+          decoding="async"
+          className="absolute inset-0 w-full h-full object-cover object-[center_50%] sm:object-[center_46%] lg:object-[center_42%] 2xl:object-[center_44%] select-none pointer-events-none"
+          style={{
+            transform: 'translate3d(0, 0, 0)',
+            WebkitTransform: 'translate3d(0, 0, 0)',
+            backfaceVisibility: 'hidden',
+            WebkitBackfaceVisibility: 'hidden',
+          }}
+        />
         <div className="absolute inset-0 hidden dark:block dark:bg-[#0e0e12]/60 pointer-events-none" />
       </div>
 
       {/* Dark Mode Premium Ambient Canvas — Obsidian Space with Luminous Refractive Depth (Zero heavy blur filters) */}
       <div 
-        style={{ contain: 'strict' }}
-        className="pointer-events-none fixed inset-0 z-0 overflow-hidden select-none hidden dark:block"
+        className="campus-bg-fixed-layer select-none hidden dark:block"
       >
         {/* 1. Ethereal Violet-Indigo Top Wash */}
         <div
@@ -1242,36 +1289,12 @@ export default function App() {
                       categories={categories}
                       selectedCategory={selectedCategory}
                       selectedSubcategory={selectedSubcategory}
-                      onSelectCategory={(catId) => {
-                        previousFiltersBeforeTrendingRef.current = null;
-                        setIsTrendingActive(false);
-                        setIsCategoriesActive(true);
-                        trackEvent('category_filter_selected', { category_id: catId });
-                        setSelectedCategory(catId);
-                      }}
-                      onSelectSubcategory={(subId) => {
-                        previousFiltersBeforeTrendingRef.current = null;
-                        setIsTrendingActive(false);
-                        setIsCategoriesActive(true);
-                        trackEvent('subcategory_filter_selected', { subcategory_id: subId });
-                        setSelectedSubcategory(subId);
-                      }}
+                      onSelectCategory={handleSelectCategory}
+                      onSelectSubcategory={handleSelectSubcategory}
                       selectedDate={selectedDate}
-                      onSelectDate={(date) => {
-                        previousFiltersBeforeTrendingRef.current = null;
-                        setIsTrendingActive(false);
-                        if (date) {
-                          trackEvent('date_filter_selected', { date });
-                        }
-                        setSelectedDate(date);
-                      }}
+                      onSelectDate={handleSelectDate}
                       activeScheduleFilter={activeScheduleFilter}
-                      onSelectScheduleFilter={(sched) => {
-                        previousFiltersBeforeTrendingRef.current = null;
-                        setIsTrendingActive(false);
-                        trackEvent('schedule_filter_selected', { schedule: sched });
-                        setActiveScheduleFilter(sched);
-                      }}
+                      onSelectScheduleFilter={handleSelectScheduleFilter}
                       selectedPricingType={selectedPricingType}
                       onSelectPricingType={handleSelectPricingType}
                       isTrendingActive={isTrendingActive}

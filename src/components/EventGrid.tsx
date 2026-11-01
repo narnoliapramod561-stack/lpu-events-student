@@ -2,7 +2,8 @@ import React from "react";
 import { Calendar, Clock, MapPin, SearchX, RefreshCw, ArrowRight } from "lucide-react";
 import { 
   EventFeedItem, 
-  formatEventDateRange
+  formatEventDateRange,
+  formatEventTime
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { resolveDefaultEventImage } from "../shared/images/defaults";
@@ -19,17 +20,12 @@ export const EventCardComponent = ({
 }) => {
   const imageUrl = getEventImage(event, 'event-card', 1080);
   const fallbackUrl = resolveDefaultEventImage(event);
-  const startDate = new Date(event.start_at);
 
   // Format Date: DD/MM/YYYY or DD/MM/YYYY – DD/MM/YYYY (if multi-day)
   const dateFormatted = formatEventDateRange(event.start_at, event.end_at);
 
-  // Format Time: 1:25 AM
-  const timeFormatted = startDate.toLocaleTimeString('en-US', {
-    hour: 'numeric',
-    minute: '2-digit',
-    hour12: true,
-  });
+  // Format Time: 01:25 AM (4 digits 12-hour format with AM/PM)
+  const timeFormatted = formatEventTime(event.start_at) || 'Time TBA';
 
   const categoryName = (event.categories?.name || event.category_id || "CAMPUS EVENT").toUpperCase();
 

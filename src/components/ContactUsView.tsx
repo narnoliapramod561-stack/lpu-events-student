@@ -457,7 +457,7 @@ export const ContactUsView: React.FC<ContactUsViewProps> = ({ onBack }) => {
                   >
                     <option value="General Inquiry" className="dark:bg-slate-900">General Inquiry</option>
                     <option value="Event Listing Feedback / Correction" className="dark:bg-slate-900">Event Listing Feedback / Correction</option>
-                    <option value="Organizer Portal Access" className="dark:bg-slate-900">Organizer Portal Access</option>
+                    <option value="Club & Event Listing Inquiry" className="dark:bg-slate-900">Club & Event Listing Inquiry</option>
                     <option value="Technical / Website Issue" className="dark:bg-slate-900">Technical / Website Issue</option>
                     <option value="Campus Collaboration & Partnership" className="dark:bg-slate-900">Campus Collaboration & Partnership</option>
                     <option value="Other" className="dark:bg-slate-900">Other</option>
@@ -564,7 +564,7 @@ export const ContactUsView: React.FC<ContactUsViewProps> = ({ onBack }) => {
               How do student clubs list their events?
             </h4>
             <p className="text-gray-600 dark:text-zinc-300 leading-relaxed break-safe">
-              Registered university student organizations, clubs, and departments can request organizer access to create, manage, and feature verified events.
+              Registered university student organizations, clubs, and departments can have their campus events verified and featured by contacting our campus events team.
             </p>
           </div>
 

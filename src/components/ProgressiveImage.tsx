@@ -2,7 +2,7 @@ import React, { useState, useRef, useCallback } from "react";
 import { getLowResPlaceholderUrl } from "../utils/images";
 
 // Bounded in-memory cache of already loaded HD image URLs to prevent re-blurring on scroll/route navigation
-const MAX_IMAGE_CACHE_ENTRIES = 300;
+const MAX_IMAGE_CACHE_ENTRIES = 1000;
 const loadedHdImageCache = new Set<string>();
 
 const recordLoadedImage = (url: string) => {
@@ -43,7 +43,7 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
 }) => {
   const defaultFallback = fallbackSrc !== undefined ? fallbackSrc : "";
   const isEager = loading === "eager" || fetchPriority === "high";
-  const isAlreadyLoaded = loadedHdImageCache.has(src) || isEager;
+  const isAlreadyLoaded = loadedHdImageCache.has(src) || (defaultFallback ? loadedHdImageCache.has(defaultFallback) : false) || isEager;
   const [isHdLoaded, setIsHdLoaded] = useState<boolean>(isAlreadyLoaded);
   const [imgSrc, setImgSrc] = useState<string>(src);
   const [hasFailed, setHasFailed] = useState<boolean>(false);
@@ -61,22 +61,25 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
   // If the browser already has the image decoded into memory, mark ready immediately
   React.useLayoutEffect(() => {
     if (imgRef.current && imgRef.current.complete && imgRef.current.naturalWidth > 0) {
+      recordLoadedImage(src);
       recordLoadedImage(imgSrc);
       setIsHdLoaded(true);
     }
-  }, [imgSrc]);
+  }, [src, imgSrc]);
 
   const handleImageLoad = useCallback(() => {
+    recordLoadedImage(src);
     if (imgSrc) recordLoadedImage(imgSrc);
     setIsHdLoaded(true);
     setHasFailed(false);
     if (onLoadComplete) onLoadComplete();
-  }, [imgSrc, onLoadComplete]);
+  }, [src, imgSrc, onLoadComplete]);
 
   const handleImageError = useCallback(() => {
     if (defaultFallback && imgSrc !== defaultFallback) {
       // Gracefully switch to the deterministic category/subcategory default WebP
       setImgSrc(defaultFallback);
+      setIsHdLoaded(loadedHdImageCache.has(defaultFallback));
     } else {
       // Both primary and fallback failed; enter fallback state gracefully
       setHasFailed(true);
@@ -112,7 +115,13 @@ export const ProgressiveImage: React.FC<ProgressiveImageProps> = ({
           {/* Desktop: Rich Ambient Refractive Backdrop */}
           <div
             className="hidden sm:block absolute -inset-[15%] w-[130%] h-[130%] bg-cover bg-center filter blur-xl saturate-150 brightness-105 opacity-80"
-            style={{ backgroundImage: `url(${imgSrc})` }}
+            style={{
+              backgroundImage: `url(${imgSrc})`,
+              transform: 'translateZ(0)',
+              WebkitTransform: 'translateZ(0)',
+              contain: 'paint layout',
+              willChange: 'transform',
+            }}
           />
           <div className="hidden sm:block absolute inset-0 bg-gradient-to-t from-black/30 via-transparent to-black/20 pointer-events-none" />
         </div>

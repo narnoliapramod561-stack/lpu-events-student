@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { X, Calendar, Clock, MapPin, Users, ShieldAlert, ExternalLink } from "lucide-react";
 import { lpuClient } from "../supabase";
-import { Event, formatEventDateRange, resolveDefaultEventImage } from "@lpu-events/shared";
+import { Event, formatEventDateRange, formatEventTimeRange, resolveDefaultEventImage } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
 import { BookingDisclaimerModal } from "./BookingDisclaimerModal";
@@ -174,7 +174,7 @@ export const EventDetailsModal = ({ eventId, onClose }: {
                     <div className="flex flex-col min-w-0">
                       <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider font-heading">Time</span>
                       <span className="text-xs sm:text-sm font-bold truncate text-gray-900 dark:text-white">
-                        {new Date(event.start_at).toLocaleTimeString("en-US", { hour: 'numeric', minute: '2-digit', hour12: true })}
+                        {formatEventTimeRange(event.start_at, event.end_at) || "Time to be announced"}
                       </span>
                     </div>
                   </div>

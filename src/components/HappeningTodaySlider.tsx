@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { CalendarDays, Clock, MapPin, ArrowRight, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { 
   EventFeedItem, 
   HappeningTodayConfig,
-  resolveDefaultEventImage
+  resolveDefaultEventImage,
+  formatEventTime
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
@@ -39,8 +40,9 @@ export const HappeningTodaySliderComponent = ({
   config,
   onSelectEvent,
 }: HappeningTodaySliderProps) => {
+  const dragControls = useDragControls();
   const [isHovered, setIsHovered] = useState(false);
-  const [isInView, setIsInView] = useState(true);
+  const isInViewRef = useRef(true);
   const [isAllTodayModalOpen, setIsAllTodayModalOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
@@ -56,7 +58,7 @@ export const HappeningTodaySliderComponent = ({
     const el = sectionRef.current;
     if (!el || typeof IntersectionObserver === 'undefined') return;
     const observer = new IntersectionObserver(([entry]) => {
-      setIsInView(entry.isIntersecting);
+      isInViewRef.current = entry.isIntersecting;
     }, { threshold: 0.05 });
     observer.observe(el);
     return () => observer.disconnect();
@@ -125,10 +127,7 @@ export const HappeningTodaySliderComponent = ({
         })}`;
       }
 
-      const timeString = startDate.toLocaleTimeString([], {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+      const timeString = formatEventTime(evt.start_at);
 
       return {
         type: "event",
@@ -184,7 +183,7 @@ export const HappeningTodaySliderComponent = ({
   // Auto advance smoothly on desktop view when not hovered and in view
   useEffect(() => {
     const isAutoAdvance = config?.auto_advance !== false;
-    if (slides.length <= 1 || isHovered || !isInView || !isAutoAdvance) return;
+    if (slides.length <= 1 || isHovered || !isAutoAdvance) return;
 
     if (typeof window !== "undefined" && window.innerWidth < 768) {
       return;
@@ -192,7 +191,7 @@ export const HappeningTodaySliderComponent = ({
 
     const duration = config?.slide_duration_ms || 4500;
     const timer = setInterval(() => {
-      if (!trackRef.current) return;
+      if (!isInViewRef.current || !trackRef.current) return;
       const { scrollLeft, scrollWidth, clientWidth } = trackRef.current;
       const isAtEnd = scrollLeft + clientWidth >= scrollWidth - 15;
       if (isAtEnd) {
@@ -205,7 +204,7 @@ export const HappeningTodaySliderComponent = ({
     }, duration);
 
     return () => clearInterval(timer);
-  }, [slides.length, isHovered, isInView, config?.auto_advance, config?.slide_duration_ms]);
+  }, [slides.length, isHovered, config?.auto_advance, config?.slide_duration_ms]);
 
   if (slides.length === 0 && events.length === 0) return null;
 
@@ -218,8 +217,8 @@ export const HappeningTodaySliderComponent = ({
       onMouseLeave={() => setIsHovered(false)}
       className="w-full relative select-none"
     >
-      {/* Soft Atmospheric Ambient Lighting (Borderless, zero hard edges) */}
-      <div className="absolute inset-x-0 -top-6 -bottom-6 bg-gradient-to-r from-orange-500/[0.06] via-amber-500/[0.03] to-transparent dark:from-orange-500/[0.04] dark:via-purple-500/[0.02] dark:to-transparent rounded-[36px] blur-3xl pointer-events-none -z-10" />
+      {/* Soft Atmospheric Ambient Lighting (Borderless, zero hard edges on desktop, lightweight on mobile) */}
+      <div className="hidden sm:block absolute inset-x-0 -top-6 -bottom-6 bg-gradient-to-r from-orange-500/[0.06] via-amber-500/[0.03] to-transparent dark:from-orange-500/[0.04] dark:via-purple-500/[0.02] dark:to-transparent rounded-[36px] blur-3xl pointer-events-none -z-10" />
 
       {/* Floating Dynamic Island Header Bar */}
       <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-3 mb-3.5 sm:mb-4 px-0.5">
@@ -306,7 +305,7 @@ export const HappeningTodaySliderComponent = ({
 
         <div
           ref={trackRef}
-          className="w-full overflow-x-auto hide-scrollbar snap-x snap-mandatory flex items-stretch gap-3.5 sm:gap-4.5 px-0.5 py-2 [touch-action:pan-x_pan-y] overscroll-x-contain scroll-smooth"
+          className="w-full overflow-x-auto hide-scrollbar snap-x snap-mandatory flex items-stretch gap-3.5 sm:gap-4.5 px-0.5 py-2 [touch-action:pan-x_pan-y] overscroll-x-contain"
         >
           {slides.map((slide, idx) => {
             const handleCardClick = () => {
@@ -330,9 +329,8 @@ export const HappeningTodaySliderComponent = ({
                       fallbackSrc={slide.fallbackImage}
                       alt={slide.title}
                       loading={idx < 4 ? "eager" : "lazy"}
-                      ambientBackdrop
                       containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
-                      className="w-full h-full object-contain object-center relative z-10 sm:transition-transform sm:duration-300 sm:group-hover:scale-[1.02]"
+                      className="w-full h-full object-cover object-center relative z-10 sm:transition-transform sm:duration-300 sm:group-hover:scale-[1.02]"
                     />
                   )}
 
@@ -463,7 +461,7 @@ export const HappeningTodaySliderComponent = ({
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.2 }}
                 onClick={() => setIsAllTodayModalOpen(false)}
-                className="fixed inset-0 bg-slate-950/60 dark:bg-black/80 backdrop-blur-sm sm:backdrop-blur-md transition-opacity"
+                className="fixed inset-0 bg-black/25 dark:bg-black/45 backdrop-blur-[2px] sm:bg-slate-950/60 sm:dark:bg-black/80 sm:backdrop-blur-md transition-opacity"
               />
 
               {/* Modal Sheet Window: Native-feeling bottom sheet on mobile (slide up flush), centered modal on desktop */}
@@ -485,198 +483,167 @@ export const HappeningTodaySliderComponent = ({
                 }
                 transition={{ type: "spring", damping: 32, stiffness: 340, mass: 0.8 }}
                 drag={typeof window !== 'undefined' && window.innerWidth < 640 ? "y" : false}
+                dragListener={false}
+                dragControls={dragControls}
                 dragConstraints={{ top: 0 }}
                 dragElastic={{ top: 0, bottom: 0.5 }}
                 onDragEnd={(_, info) => {
-                  if (info.offset.y > 100 || info.velocity.y > 400) {
+                  if (info.offset.y > 80 || info.velocity.y > 350) {
                     setIsAllTodayModalOpen(false);
                   }
                 }}
-                className="relative z-10 w-full sm:max-w-2xl max-h-[90vh] sm:max-h-[84vh] glass-modal-sheet rounded-t-[28px] sm:rounded-[32px] flex flex-col overflow-hidden touch-auto overscroll-contain shadow-2xl"
+                className="relative z-10 w-full sm:max-w-2xl h-[60dvh] sm:h-auto sm:max-h-[84vh] glass-modal-sheet rounded-t-[32px] sm:rounded-[32px] flex flex-col overflow-hidden touch-auto overscroll-contain shadow-2xl"
+                style={{ touchAction: "pan-y" }}
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="today-modal-title"
               >
-                {/* Multi-layered Ambient Caustic Mesh for optical crystal refraction */}
-                <div className="absolute -top-20 -right-20 w-80 h-80 bg-gradient-to-bl from-orange-500/20 via-amber-400/10 to-transparent rounded-full blur-3xl pointer-events-none" />
-                <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-gradient-to-tr from-sky-400/12 via-indigo-500/08 to-transparent rounded-full blur-3xl pointer-events-none" />
-                <div className="hidden sm:block absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-orange-500/06 rounded-full blur-3xl pointer-events-none" />
+                {/* Multi-layered Ambient Caustic Mesh for optical crystal refraction (visible on mobile and desktop) */}
+                <div className="absolute -top-16 -right-16 w-72 sm:w-84 h-72 sm:h-84 bg-gradient-to-bl from-orange-500/25 via-amber-400/15 to-transparent rounded-full blur-2xl sm:blur-3xl pointer-events-none" />
+                <div className="absolute -bottom-16 -left-16 w-72 sm:w-84 h-72 sm:h-84 bg-gradient-to-tr from-sky-400/20 via-indigo-500/12 to-transparent rounded-full blur-2xl sm:blur-3xl pointer-events-none" />
+                <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-64 sm:w-80 h-64 sm:h-80 bg-orange-500/10 rounded-full blur-2xl sm:blur-3xl pointer-events-none" />
 
                 {/* Mobile Drag Bar */}
-                <div className="w-full pt-3 pb-1 flex items-center justify-center sm:hidden shrink-0 cursor-grab active:cursor-grabbing">
-                  <div className="w-12 h-1.5 rounded-full bg-slate-400/50 dark:bg-white/30" />
+                <div 
+                  onPointerDown={(e) => dragControls.start(e)}
+                  className="w-full pt-3 pb-1.5 flex items-center justify-center sm:hidden shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
+                >
+                  <div className="w-12 h-1.5 rounded-full bg-slate-400/40 dark:bg-white/30" />
                 </div>
 
                 {/* Header */}
-                <div className="relative z-10 flex items-center justify-between px-5 sm:px-6 pt-3 pb-3.5 sm:pt-5 sm:pb-4 border-b border-black/[0.06] dark:border-white/10 shrink-0 gap-3">
-                  <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                    {/* Calendar Icon Jewel */}
-                    <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/25 ring-1 ring-white/50 flex items-center justify-center shrink-0">
-                      <CalendarDays className="w-5 h-5 sm:w-5.5 sm:h-5.5 stroke-[2.2]" />
+                <div 
+                  onPointerDown={(e) => {
+                    if ((e.target as HTMLElement).closest('button')) return;
+                    dragControls.start(e);
+                  }}
+                  className="relative z-10 flex items-center justify-between px-4 sm:px-6 pt-1.5 pb-2.5 sm:pt-4 sm:pb-3 border-b border-black/[0.06] dark:border-white/10 shrink-0 gap-3 touch-none select-none cursor-grab active:cursor-grabbing"
+                >
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    {/* Glowing Calendar Jewel */}
+                    <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 text-white shadow-md shadow-orange-500/25 ring-1 ring-white/50 flex items-center justify-center shrink-0">
+                      <CalendarDays className="w-4.5 h-4.5 sm:w-5 sm:h-5 stroke-[2.2]" />
                     </div>
                     <div className="min-w-0 flex-1">
                       {/* Title Row */}
                       <div className="flex items-center gap-2 min-w-0">
-                        <h3 id="today-modal-title" className="font-heading font-black text-base sm:text-xl text-slate-950 dark:text-white tracking-tight truncate">
+                        <h3 id="today-modal-title" className="font-heading font-black text-base sm:text-lg text-slate-950 dark:text-white tracking-tight truncate">
                           Happening Today
                         </h3>
-                        {/* Desktop-only pill beside title */}
-                        <span className="hidden sm:inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-500/12 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300 font-heading font-black text-xs border border-orange-500/25 whitespace-nowrap shrink-0 shadow-2xs">
+                        {/* Event Count Pill */}
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-500/15 dark:bg-orange-500/25 text-orange-700 dark:text-orange-300 font-heading font-black text-[10.5px] sm:text-xs border border-orange-500/30 dark:border-orange-400/40 shadow-[inset_0_1px_1px_rgba(255,255,255,0.7)] backdrop-blur-md whitespace-nowrap shrink-0">
                           <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.8)] animate-pulse" />
                           <span>{events.length} {events.length === 1 ? "Event" : "Events"}</span>
                         </span>
                       </div>
 
-                      {/* Subtitle Row: Date + Mobile Live Badge tightly integrated */}
-                      <div className="flex items-center gap-2 mt-1 min-w-0">
-                        <span className="text-[11.5px] sm:text-xs text-slate-600 dark:text-slate-400 font-semibold whitespace-nowrap">
-                          {new Intl.DateTimeFormat(undefined, { weekday: "short", month: "short", day: "numeric" }).format(new Date())}
-                        </span>
-                        <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600 shrink-0 sm:hidden" />
-                        {/* Mobile Live Badge */}
-                        <span className="sm:hidden inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-orange-500/12 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300 font-heading font-black text-[10px] border border-orange-500/25 whitespace-nowrap shrink-0 shadow-2xs">
-                          <span className="w-1.5 h-1.5 rounded-full bg-orange-500 shadow-[0_0_6px_rgba(249,115,22,0.8)] animate-pulse" />
-                          <span>{events.length} {events.length === 1 ? "Event" : "Events"}</span>
-                        </span>
-                        {/* Desktop-only extra subtitle text */}
-                        <span className="hidden sm:inline text-xs text-slate-500 dark:text-slate-400 font-medium">
-                          • Live campus activities
-                        </span>
-                      </div>
+                      {/* Subtitle: Date */}
+                      <p className="text-[11.5px] sm:text-xs text-slate-600 dark:text-slate-300 font-semibold truncate mt-0.5">
+                        {new Intl.DateTimeFormat(undefined, { weekday: "long", month: "short", day: "numeric" }).format(new Date())} • Live campus schedule
+                      </p>
                     </div>
                   </div>
 
-                  {/* High-Contrast Bold Black Close Button */}
+                  {/* Frosted Glass Header Close Button */}
                   <button
                     type="button"
                     onClick={() => setIsAllTodayModalOpen(false)}
-                    className="w-8.5 h-8.5 rounded-full bg-slate-950 hover:bg-black text-white dark:bg-white dark:hover:bg-slate-100 dark:text-slate-950 flex items-center justify-center transition-all cursor-pointer shrink-0 shadow-md hover:scale-105 active:scale-95"
+                    className="w-8 h-8 rounded-full bg-white/70 hover:bg-white/90 dark:bg-white/12 dark:hover:bg-white/20 text-slate-700 dark:text-slate-200 border border-white/85 dark:border-white/20 shadow-[inset_0_1px_1.5px_rgba(255,255,255,1),0_2px_6px_rgba(15,23,42,0.06)] flex items-center justify-center transition-all cursor-pointer shrink-0 hover:scale-105 active:scale-90"
                     aria-label="Close modal"
                   >
-                    <X className="w-4 h-4 stroke-[2.5]" />
+                    <X className="w-4 h-4 stroke-[2.2]" />
                   </button>
                 </div>
 
-                {/* Event List */}
-                <div 
-                  className="flex-1 overflow-y-auto px-4 py-1 sm:p-6 divide-y divide-white/80 dark:divide-white/[0.08] sm:divide-y-0 sm:space-y-3 relative z-10 overscroll-contain"
-                  style={{ WebkitOverflowScrolling: "touch" }}
-                >
-                  {events.length === 0 ? (
-                    <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
-                      <div className="w-12 h-12 rounded-full bg-orange-500/10 dark:bg-white/10 text-orange-500 dark:text-white flex items-center justify-center border border-orange-500/20 dark:border-white/15">
-                        <CalendarDays className="w-6 h-6" />
+                {/* Event Schedule List — Event Name Focused Continuous Schedule Stream */}
+                <div className="relative flex-1 min-h-0 flex flex-col">
+                  <div 
+                    className="flex-1 overflow-y-auto px-4 sm:px-6 py-2 pb-[max(1.5rem,env(safe-area-inset-bottom))] relative z-10 premium-modal-scroll"
+                    style={{ 
+                      WebkitOverflowScrolling: "touch",
+                      overscrollBehaviorY: "contain",
+                      touchAction: "pan-y"
+                    }}
+                  >
+                    {events.length === 0 ? (
+                      <div className="py-12 flex flex-col items-center justify-center text-center space-y-3">
+                        <div className="w-12 h-12 rounded-full bg-orange-500/10 dark:bg-white/10 text-orange-500 dark:text-white flex items-center justify-center border border-orange-500/20 dark:border-white/15">
+                          <CalendarDays className="w-6 h-6" />
+                        </div>
+                        <p className="text-base font-heading font-black text-slate-900 dark:text-white">
+                          No Events Scheduled For Today
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
+                          Stay tuned for upcoming workshops, guest lectures, and campus activities scheduled later this week.
+                        </p>
                       </div>
-                      <p className="text-base font-heading font-black text-slate-900 dark:text-white">
-                        No Events Scheduled For Today
-                      </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 max-w-xs leading-relaxed">
-                        Stay tuned for upcoming workshops, guest lectures, and campus activities scheduled later this week.
-                      </p>
-                    </div>
-                  ) : (
-                    events.map((evt, idx) => {
-                      const startDate = new Date(evt.start_at);
-                      const timeString = startDate.toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                      });
-                      const eventImg = getEventImage(evt, "event-card", 600);
+                    ) : (
+                      <div className="flex flex-col">
+                        {events.map((evt, idx) => {
+                          const timeString = formatEventTime(evt.start_at);
+                          const isLast = idx === events.length - 1;
 
-                      return (
-                        <div
-                          key={evt.id}
-                          onClick={() => {
-                             setIsAllTodayModalOpen(false);
-                             onSelectEvent(evt.id, evt.name);
-                          }}
-                          className="group flex items-center gap-3 sm:gap-4 py-2.5 sm:p-3.5 rounded-xl sm:rounded-2xl cursor-pointer sm:glass-modal-card active:bg-white/40 dark:active:bg-white/[0.06] transition-all"
-                        >
-                          {/* Thumbnail */}
-                          <div className="relative w-18 h-18 sm:w-28 sm:aspect-[4/3] rounded-xl overflow-hidden shrink-0 bg-black/10 dark:bg-black/40 border border-white/60 dark:border-white/15 shadow-sm">
-                            <ProgressiveImage
-                              src={eventImg}
-                              fallbackSrc={resolveDefaultEventImage(evt)}
-                              alt={evt.name}
-                              loading={idx < 4 ? "eager" : "lazy"}
-                              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                            />
-                            <div className="absolute top-1 left-1 sm:top-1.5 sm:left-1.5">
-                              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-red-600/90 text-white font-heading text-[7.5px] sm:text-[8px] font-black uppercase tracking-wider backdrop-blur-md shadow-xs">
-                                <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-                                LIVE
-                              </span>
-                            </div>
-                          </div>
+                          return (
+                            <React.Fragment key={evt.id}>
+                              <div
+                                onClick={() => {
+                                  setIsAllTodayModalOpen(false);
+                                  onSelectEvent(evt.id, evt.name);
+                                }}
+                                className="group relative py-3.5 px-2.5 sm:px-3 rounded-2xl hover:bg-white/45 dark:hover:bg-white/[0.06] active:bg-orange-500/[0.08] dark:active:bg-white/[0.08] transition-all cursor-pointer"
+                              >
+                                {/* Row 1: Event Name (Hero Emphasis) + Subtle Arrow */}
+                                <div className="flex items-start justify-between gap-3 mb-2">
+                                  <h3 className="font-heading font-black text-[16px] min-[390px]:text-[17px] text-slate-950 dark:text-white leading-[1.28] tracking-[-0.025em] group-hover:text-[#ea580c] dark:group-hover:text-orange-400 transition-colors line-clamp-2 flex-1">
+                                    {evt.name}
+                                  </h3>
+                                  <div className="w-5 h-5 flex items-center justify-center text-slate-400 dark:text-slate-400 group-hover:text-[#ea580c] dark:group-hover:text-orange-400 group-hover:translate-x-0.5 transition-all shrink-0 mt-0.5">
+                                    <ChevronRight className="w-4 h-4 stroke-[2.4]" />
+                                  </div>
+                                </div>
 
-                          {/* Details */}
-                          <div className="flex-1 min-w-0 flex flex-col justify-center gap-0.5 sm:gap-2">
-                            {/* Title */}
-                            <h4 className="text-slate-950 dark:text-white font-heading font-black text-[13.5px] sm:text-base leading-snug line-clamp-1 sm:group-hover:text-orange-600 transition-colors tracking-tight sm:glass-title-emboss">
-                              {evt.name}
-                            </h4>
+                                {/* Row 2: Premium Schedule Strip (Time on Left, Venue on Right) */}
+                                <div className="flex items-center justify-between gap-3 pt-0.5">
+                                  {/* Left: Time */}
+                                  <div className="inline-flex items-center gap-1.5 shrink-0">
+                                    <span className="w-5.5 h-5.5 rounded-lg bg-orange-500/15 dark:bg-orange-500/25 border border-orange-500/30 flex items-center justify-center text-[#ea580c] dark:text-orange-400 shrink-0 shadow-2xs">
+                                      <Clock className="w-3.5 h-3.5 stroke-[2.6]" />
+                                    </span>
+                                    <span className="font-heading font-extrabold text-[13px] min-[390px]:text-[13.5px] sm:text-[14px] text-slate-950 dark:text-white tabular-nums tracking-tight">
+                                      {timeString}
+                                    </span>
+                                  </div>
 
-                            {/* Mobile: Location Moved from Side to BELOW Time/Date - Compact, Matching Fonts */}
-                            <div className="flex sm:hidden flex-col gap-0.5 text-xs">
-                              <div className="flex items-center gap-1.5 font-semibold text-[11px] text-slate-900 dark:text-slate-100">
-                                <Clock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 stroke-[2.4] shrink-0" />
-                                <span>{timeString}</span>
+                                  {/* Right: Venue */}
+                                  <div className="flex items-center gap-1.5 min-w-0 truncate">
+                                    <span className="w-5.5 h-5.5 rounded-lg bg-amber-500/15 dark:bg-amber-500/25 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-2xs">
+                                      <MapPin className="w-3.5 h-3.5 stroke-[2.6]" />
+                                    </span>
+                                    <span className="font-heading font-bold text-[13px] min-[390px]:text-[13.5px] sm:text-[14px] text-slate-900 dark:text-slate-100 tracking-tight truncate">
+                                      {evt.venue_name || "LPU Campus"}
+                                    </span>
+                                  </div>
+                                </div>
                               </div>
-                              {evt.venue_name && (
-                                <div className="flex items-center gap-1.5 font-semibold text-[11px] text-slate-700 dark:text-slate-300 min-w-0 truncate">
-                                  <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 stroke-[2.4] shrink-0" />
-                                  <span className="truncate">{evt.venue_name}</span>
+
+                              {/* Optical Etched Glass Separator Line (Clearly Visible, 3D Luxury Bevel) */}
+                              {!isLast && (
+                                <div className="mx-2 sm:mx-3 my-0.5 relative h-[2px]">
+                                  {/* Top Dark Groove Stroke (18% slate for clear visibility) */}
+                                  <div className="h-px w-full bg-gradient-to-r from-transparent via-slate-900/18 to-transparent dark:via-white/22" />
+                                  {/* Bottom Specular White Highlight Reflection (80% white light ray) */}
+                                  <div className="h-px w-full bg-gradient-to-r from-transparent via-white/80 to-transparent dark:via-white/[0.06]" />
                                 </div>
                               )}
-                            </div>
+                            </React.Fragment>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
 
-                            {/* Desktop: High-Contrast Glass Capsules Preserved Exactly */}
-                            <div className="hidden sm:flex items-center gap-2 text-xs font-medium flex-wrap">
-                              <span className="glass-meta-pill inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg shrink-0">
-                                <Clock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 stroke-[2.4] shrink-0" />
-                                <span className="font-mono font-bold text-xs text-slate-950 dark:text-white glass-text-emboss">
-                                  {timeString}
-                                </span>
-                              </span>
-                              {evt.venue_name && (
-                                <span className="glass-meta-pill inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg truncate min-w-0 max-w-[210px] sm:max-w-xs">
-                                  <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 stroke-[2.4] shrink-0" />
-                                  <span className="font-heading font-bold text-[11px] sm:text-xs text-slate-900 dark:text-slate-100 truncate glass-text-emboss">
-                                    {evt.venue_name}
-                                  </span>
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Action Affordance */}
-                          {/* Mobile: Sleek Apple-style Frosted Glass Chevron Affordance */}
-                          <div className="sm:hidden shrink-0 w-8 h-8 rounded-full bg-white/60 dark:bg-white/10 backdrop-blur-md border border-white/80 dark:border-white/15 text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-xs group-hover:text-orange-600 group-hover:bg-orange-500/15 group-active:scale-90 transition-all">
-                            <ChevronRight className="w-4 h-4 stroke-[2.5]" />
-                          </div>
-
-                          {/* Desktop: Illuminated Vibrant Orange Glass Jewel Button Preserved Exactly */}
-                          <div className="hidden sm:flex shrink-0 w-10 h-10 rounded-xl bg-gradient-to-br from-orange-500 to-amber-600 text-white shadow-md shadow-orange-500/25 border-t border-white/40 items-center justify-center transition-all group-hover:scale-110 group-hover:shadow-lg group-hover:shadow-orange-500/35 active:scale-95">
-                            <ArrowRight className="w-4.5 h-4.5 stroke-[2.2] group-hover:translate-x-0.5 transition-transform" />
-                          </div>
-                        </div>
-                      );
-                    })
-                  )}
-                </div>
-
-                {/* Modal Footer with Safe Area Support for iPhone home indicator */}
-                <div className="relative z-10 px-5 sm:px-6 py-3 sm:py-4 pb-[max(0.75rem,env(safe-area-inset-bottom))] bg-slate-900/04 dark:bg-white/[0.03] backdrop-blur-xl border-t border-slate-900/08 dark:border-white/10 flex items-center justify-between shrink-0">
-                  <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 font-medium hidden sm:block">
-                    Click any event to view full schedule &amp; venue details
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => setIsAllTodayModalOpen(false)}
-                    className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-900/08 hover:bg-slate-900/15 text-slate-900 dark:bg-white/15 dark:hover:bg-white/25 dark:text-white border border-slate-900/12 dark:border-white/20 sm:bg-slate-950 sm:hover:bg-slate-900 sm:text-white sm:border-slate-800 text-xs sm:text-sm font-heading font-black cursor-pointer transition-all shadow-xs sm:shadow-md sm:shadow-slate-950/20 hover:scale-[1.02] sm:hover:scale-105 active:scale-95 sm:ml-auto tracking-wide text-center"
-                  >
-                    Close
-                  </button>
+                  {/* Bottom Subtle Optical Fade Overlay */}
+                  <div className="pointer-events-none absolute bottom-0 inset-x-0 h-6 bg-gradient-to-t from-white/75 dark:from-[#18181c]/80 to-transparent z-20" />
                 </div>
               </motion.div>
             </div>

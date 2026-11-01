@@ -12,7 +12,7 @@
  *   - Single-flight request coalescing (concurrent misses → 1 origin fetch)
  *   - Stale backup store for origin failure fallback
  *   - Fail-Closed: Return HTTP 503 if origin is unavailable and no cache exists (No browser direct fallthrough to Supabase)
- *   - Strict Temporal Filtering: Only status = 'PUBLISHED' and end_at >= now()
+ *   - Strict Temporal Filtering: Feeds filter published future events; Hero Carousel items are managed directly by superadmin curation
  *   - Response size guards (200 KB max)
  *   - Parameter allowlists prevent cache-key explosion
  *   - Security: Restrict disallowed authorization headers on public endpoints while permitting standard browser cookies
@@ -124,7 +124,8 @@ const VIEW_DEBOUNCE_MS = 10 * 60 * 1000;
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, If-None-Match',
+  'Access-Control-Expose-Headers': 'ETag, X-Cache-Version, CF-Cache-Status, X-Edge-Cache, X-Cache-Status, X-Origin-Refreshed, Content-Length',
   'Access-Control-Max-Age': '86400',
 };
 
@@ -145,21 +146,21 @@ const SECURITY_HEADERS: Record<string, string> = {
 
 interface CacheConfig {
   edgeTtl: number;      // Fresh TTL on Edge (in seconds)
-  browserTtl: number;   // Browser cache TTL (in seconds)
+  browserTtl: number;   // Browser cache TTL (in seconds, 0 = always revalidate with Edge via ETag / 304)
   swrTtl: number;       // stale-while-revalidate (in seconds)
   staleTtl: number;     // stale-if-error & stale backup TTL (in seconds)
 }
 
 const CACHE_CONFIGS: Record<string, CacheConfig> = {
-  homepage:       { edgeTtl: 1800,  browserTtl: 60,  swrTtl: 86400,  staleTtl: 604800 },   // 30m fresh, 24h swr, 7d stale backup
-  events:         { edgeTtl: 900,   browserTtl: 60,  swrTtl: 43200,  staleTtl: 604800 },   // 15m fresh, 12h swr, 7d stale backup
-  featured:       { edgeTtl: 1800,  browserTtl: 60,  swrTtl: 43200,  staleTtl: 604800 },   // 30m fresh, 12h swr, 7d stale backup
-  trending:       { edgeTtl: 1800,  browserTtl: 60,  swrTtl: 43200,  staleTtl: 604800 },   // 30m fresh, 12h swr, 7d stale backup
-  search:         { edgeTtl: 300,   browserTtl: 30,  swrTtl: 3600,   staleTtl: 604800 },   // 5m fresh, 1h swr, 7d stale backup
-  categories:     { edgeTtl: 86400, browserTtl: 3600, swrTtl: 604800, staleTtl: 2592000 }, // 24h fresh, 7d swr, 30d stale backup
-  eventDetail:    { edgeTtl: 600,   browserTtl: 60,  swrTtl: 14400,  staleTtl: 604800 },   // 10m fresh, 4h swr, 7d stale backup
-  settings:       { edgeTtl: 3600,  browserTtl: 300, swrTtl: 86400,  staleTtl: 604800 },   // 1h fresh, 24h swr, 7d stale backup
-  carousel:       { edgeTtl: 1800,  browserTtl: 60,  swrTtl: 43200,  staleTtl: 604800 },   // 30m fresh, 12h swr, 7d stale backup
+  homepage:       { edgeTtl: 1800,  browserTtl: 0,  swrTtl: 86400,  staleTtl: 604800 },   // 30m Edge cache, 0s browser (revalidates via ETag/304), 24h swr
+  events:         { edgeTtl: 900,   browserTtl: 0,  swrTtl: 43200,  staleTtl: 604800 },   // 15m Edge cache, 0s browser (revalidates via ETag/304)
+  featured:       { edgeTtl: 1800,  browserTtl: 0,  swrTtl: 43200,  staleTtl: 604800 },   // 30m Edge cache, 0s browser (revalidates via ETag/304)
+  trending:       { edgeTtl: 1800,  browserTtl: 0,  swrTtl: 43200,  staleTtl: 604800 },   // 30m Edge cache, 0s browser (revalidates via ETag/304)
+  search:         { edgeTtl: 300,   browserTtl: 0,  swrTtl: 3600,   staleTtl: 604800 },   // 5m Edge cache, 0s browser (revalidates via ETag/304)
+  categories:     { edgeTtl: 86400, browserTtl: 0,  swrTtl: 604800, staleTtl: 2592000 }, // 24h Edge cache, 0s browser (revalidates via ETag/304)
+  eventDetail:    { edgeTtl: 600,   browserTtl: 0,  swrTtl: 14400,  staleTtl: 604800 },   // 10m Edge cache, 0s browser (revalidates via ETag/304)
+  settings:       { edgeTtl: 3600,  browserTtl: 0,  swrTtl: 86400,  staleTtl: 604800 },   // 1h Edge cache, 0s browser (revalidates via ETag/304)
+  carousel:       { edgeTtl: 1800,  browserTtl: 0,  swrTtl: 43200,  staleTtl: 604800 },   // 30m Edge cache, 0s browser (revalidates via ETag/304)
 };
 
 
@@ -213,6 +214,18 @@ function buildCacheKey(origin: string, path: string, params: Record<string, stri
   const sorted = Object.keys(params).sort();
   const qs = sorted.map(k => `${k}=${encodeURIComponent(params[k])}`).join('&');
   return qs ? `${origin}${path}?${qs}` : `${origin}${path}`;
+}
+
+/**
+ * Evaluates whether an incoming HTTP If-None-Match header matches the target ETag.
+ * Supports weak validation (W/"...") and wildcard (*).
+ */
+function isEtagMatch(clientEtag: string | null | undefined, serverEtag: string | null | undefined): boolean {
+  if (!clientEtag || !serverEtag) return false;
+  if (clientEtag.trim() === '*') return true;
+  const cleanClient = clientEtag.trim().replace(/^W\//, '').replace(/^"|"$/g, '');
+  const cleanServer = serverEtag.trim().replace(/^W\//, '').replace(/^"|"$/g, '');
+  return cleanClient === cleanServer;
 }
 
 /**
@@ -554,12 +567,15 @@ async function executeSingleFlightOriginFetch(
       // Success: Serialize body and construct cache headers
       const body = JSON.stringify(result.data);
       const bodySize = new Blob([body]).size;
+      const etag = `W/"v_${currentCacheVersion}_${bodySize}"`;
 
-      const cacheControlHeader = `public, s-maxage=${config.edgeTtl}, max-age=${config.browserTtl}, no-transform, stale-while-revalidate=${config.swrTtl}, stale-if-error=${config.staleTtl}`;
+      const cacheControlHeader = `public, s-maxage=${config.edgeTtl}, max-age=${config.browserTtl}, must-revalidate, no-transform, stale-while-revalidate=${config.swrTtl}, stale-if-error=${config.staleTtl}`;
 
       const headersList: [string, string][] = [
         ['Content-Type', 'application/json; charset=utf-8'],
         ['Cache-Control', cacheControlHeader],
+        ['ETag', etag],
+        ['X-Cache-Version', String(currentCacheVersion)],
         ['Vary', 'Accept-Encoding'],
         ['CF-Cache-Status', 'MISS'],
         ['X-Edge-Cache', 'MISS'],
@@ -641,21 +657,40 @@ async function handleCachedEndpoint(
   cacheKeyUrl: string,
   configName: string,
   fetcher: () => Promise<{ ok: boolean; status: number; data: unknown }>,
-  ctx: ExecutionContext
+  ctx: ExecutionContext,
+  request?: Request
 ): Promise<Response> {
   const config = CACHE_CONFIGS[configName] || CACHE_CONFIGS.events;
   const cache = (caches as any).default;
   const staleCache = await caches.open(STALE_CACHE_NAME);
   const cacheKey = new Request(cacheKeyUrl, { method: 'GET' });
+  const ifNoneMatch = request?.headers.get('If-None-Match');
 
   // 1. FAST-PATH: Check primary edge cache (Fresh HIT) (<2ms)
   const cached = await cache.match(cacheKey);
   if (cached) {
+    const etag = cached.headers.get('ETag') || `W/"v_${currentCacheVersion}"`;
+
+    // ─── Guardrail: Return HTTP 304 Not Modified if client already has this version ───
+    if (ifNoneMatch && isEtagMatch(ifNoneMatch, etag)) {
+      const notModifiedHeaders = new Headers();
+      notModifiedHeaders.set('ETag', etag);
+      notModifiedHeaders.set('CF-Cache-Status', 'HIT');
+      notModifiedHeaders.set('X-Edge-Cache', 'HIT');
+      notModifiedHeaders.set('X-Cache-Status', 'NOT_MODIFIED');
+      notModifiedHeaders.set('X-Cache-Version', String(currentCacheVersion));
+      notModifiedHeaders.set('Cache-Control', `public, s-maxage=${config.edgeTtl}, max-age=${config.browserTtl}, must-revalidate`);
+      for (const [k, v] of Object.entries(CORS_HEADERS)) notModifiedHeaders.set(k, v);
+      return new Response(null, { status: 304, headers: notModifiedHeaders });
+    }
+
     const headers = new Headers(cached.headers);
+    if (!headers.has('ETag')) headers.set('ETag', etag);
     headers.set('CF-Cache-Status', 'HIT');
     headers.set('X-Edge-Cache', 'HIT');
     headers.set('X-Cache-Status', 'HIT');
     headers.set('X-Origin-Refreshed', 'false');
+    headers.set('X-Cache-Version', String(currentCacheVersion));
     for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
     return new Response(cached.body, { status: cached.status, headers });
   }
@@ -675,11 +710,26 @@ async function handleCachedEndpoint(
       );
     }
 
+    const etag = stale.headers.get('ETag') || `W/"v_${currentCacheVersion}"`;
+    if (ifNoneMatch && isEtagMatch(ifNoneMatch, etag)) {
+      const notModifiedHeaders = new Headers();
+      notModifiedHeaders.set('ETag', etag);
+      notModifiedHeaders.set('CF-Cache-Status', 'STALE');
+      notModifiedHeaders.set('X-Edge-Cache', 'STALE');
+      notModifiedHeaders.set('X-Cache-Status', 'NOT_MODIFIED');
+      notModifiedHeaders.set('X-Cache-Version', String(currentCacheVersion));
+      notModifiedHeaders.set('Cache-Control', `public, s-maxage=${config.edgeTtl}, max-age=${config.browserTtl}, must-revalidate`);
+      for (const [k, v] of Object.entries(CORS_HEADERS)) notModifiedHeaders.set(k, v);
+      return new Response(null, { status: 304, headers: notModifiedHeaders });
+    }
+
     const headers = new Headers(stale.headers);
+    if (!headers.has('ETag')) headers.set('ETag', etag);
     headers.set('CF-Cache-Status', 'STALE');
     headers.set('X-Edge-Cache', 'STALE');
     headers.set('X-Cache-Status', 'STALE-REVALIDATING');
     headers.set('X-Origin-Refreshed', 'false');
+    headers.set('X-Cache-Version', String(currentCacheVersion));
     for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
     return new Response(stale.body, { status: stale.status, headers });
   }
@@ -699,6 +749,11 @@ async function handleCachedEndpoint(
 
   const resHeaders = new Headers(coalesced.headers);
   for (const [k, v] of Object.entries(CORS_HEADERS)) resHeaders.set(k, v);
+  const etag = resHeaders.get('ETag');
+  if (ifNoneMatch && etag && isEtagMatch(ifNoneMatch, etag)) {
+    return new Response(null, { status: 304, headers: resHeaders });
+  }
+
   return new Response(coalesced.bodyText, {
     status: coalesced.status,
     headers: resHeaders,
@@ -707,17 +762,17 @@ async function handleCachedEndpoint(
 
 // ─── Public API Handlers (Strict Temporal Filtering: end_at >= now) ─────────
 
-async function handleCategories(origin: string, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function handleCategories(origin: string, env: Env, ctx: ExecutionContext, request?: Request): Promise<Response> {
   const cacheKeyUrl = buildCacheKey(origin, '/api/public/categories', {});
   return handleCachedEndpoint(cacheKeyUrl, 'categories', () =>
     fetchFromSupabaseCoalesced(
       `categories?select=${encodeURIComponent(PROJECTIONS.categories)}&is_active=eq.true&order=sort_order.asc&subcategories.order=sort_order.asc`,
       'GET', undefined, env
-    ), ctx
+    ), ctx, request
   );
 }
 
-async function handleCarousel(origin: string, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function handleCarousel(origin: string, env: Env, ctx: ExecutionContext, request?: Request): Promise<Response> {
   const cacheKeyUrl = buildCacheKey(origin, '/api/public/carousel', {});
   return handleCachedEndpoint(cacheKeyUrl, 'carousel', async () => {
     const res = await fetchFromSupabaseCoalesced(
@@ -725,20 +780,19 @@ async function handleCarousel(origin: string, env: Env, ctx: ExecutionContext): 
       'GET', undefined, env
     );
     if (!res.ok || !Array.isArray(res.data)) return res;
-    const now = new Date();
+    // Carousel items are curated directly by superadmin:
+    // They stay in the hero carousel regardless of event end time until superadmin deactivates or removes them.
     const filtered = (res.data as any[]).filter((slide: any) => {
-      if (slide.start_at && new Date(slide.start_at) > now) return false;
-      if (slide.end_at && new Date(slide.end_at) < now) return false;
       if (slide.item_type === 'EVENT') {
-        if (!slide.events || slide.events.status !== 'PUBLISHED' || new Date(slide.events.end_at) < now) return false;
+        if (!slide.events || !['PUBLISHED', 'COMPLETED'].includes(slide.events.status)) return false;
       }
       return true;
     });
     return { ok: true, status: 200, data: filtered };
-  }, ctx);
+  }, ctx, request);
 }
 
-async function handleFeatured(origin: string, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function handleFeatured(origin: string, env: Env, ctx: ExecutionContext, request?: Request): Promise<Response> {
   const cacheKeyUrl = buildCacheKey(origin, '/api/public/featured', {});
   return handleCachedEndpoint(cacheKeyUrl, 'featured', async () => {
     const res = await fetchFromSupabaseCoalesced(
@@ -751,10 +805,10 @@ async function handleFeatured(origin: string, env: Env, ctx: ExecutionContext): 
       (fe: any) => fe.events && fe.events.status === 'PUBLISHED' && new Date(fe.events.end_at) >= now
     );
     return { ok: true, status: 200, data: filtered };
-  }, ctx);
+  }, ctx, request);
 }
 
-async function handleTrending(origin: string, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function handleTrending(origin: string, env: Env, ctx: ExecutionContext, request?: Request): Promise<Response> {
   const cacheKeyUrl = buildCacheKey(origin, '/api/public/trending', {});
   return handleCachedEndpoint(cacheKeyUrl, 'trending', async () => {
     const res = await fetchFromSupabaseCoalesced(
@@ -771,19 +825,19 @@ async function handleTrending(origin: string, env: Env, ctx: ExecutionContext): 
         trending_sort_order: te.sort_order,
       }));
     return { ok: true, status: 200, data: mapped };
-  }, ctx);
+  }, ctx, request);
 }
 
-async function handleSettings(origin: string, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function handleSettings(origin: string, env: Env, ctx: ExecutionContext, request?: Request): Promise<Response> {
   const cacheKeyUrl = buildCacheKey(origin, '/api/public/settings', {});
   return handleCachedEndpoint(cacheKeyUrl, 'settings', () =>
     fetchFromSupabaseCoalesced(`global_settings?select=${encodeURIComponent(PROJECTIONS.settings)}`, 'GET', undefined, env),
-    ctx
+    ctx, request
   );
 }
 
 async function handleEventFeed(
-  origin: string, url: URL, env: Env, ctx: ExecutionContext
+  origin: string, url: URL, env: Env, ctx: ExecutionContext, request?: Request
 ): Promise<Response> {
   const categoryId = url.searchParams.get('category_id') || '';
   const subcategoryId = url.searchParams.get('subcategory_id') || '';
@@ -845,11 +899,11 @@ async function handleEventFeed(
     path += `&limit=${limit}&offset=${offset}`;
 
     return fetchFromSupabaseCoalesced(path, 'GET', undefined, env);
-  }, ctx);
+  }, ctx, request);
 }
 
 async function handleEventDetail(
-  origin: string, eventId: string, env: Env, ctx: ExecutionContext
+  origin: string, eventId: string, env: Env, ctx: ExecutionContext, request?: Request
 ): Promise<Response> {
   const normalizedId = eventId.toLowerCase();
   if (!UUID_REGEX.test(normalizedId)) {
@@ -877,11 +931,11 @@ async function handleEventDetail(
     }
 
     return { ok: true, status: 200, data: event };
-  }, ctx);
+  }, ctx, request);
 }
 
 async function handleSearch(
-  origin: string, url: URL, env: Env, ctx: ExecutionContext
+  origin: string, url: URL, env: Env, ctx: ExecutionContext, request?: Request
 ): Promise<Response> {
   const rawQuery = url.searchParams.get('q') || '';
   const normalizedQuery = normalizeSearchQuery(rawQuery);
@@ -956,12 +1010,12 @@ async function handleSearch(
     }
 
     return { ok: true, status: 200, data: events };
-  }, ctx);
+  }, ctx, request);
 }
 
 // ─── Homepage Aggregation ───────────────────────────────────────────────────
 
-async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext): Promise<Response> {
+async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext, request?: Request): Promise<Response> {
   const cacheKeyUrl = buildCacheKey(origin, '/api/public/homepage', {});
 
   return handleCachedEndpoint(cacheKeyUrl, 'homepage', async () => {
@@ -1011,14 +1065,13 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext): 
 
     const now = new Date();
 
-    // Filter carousel (strictly end_at >= now)
+    // Carousel items are curated directly by superadmin:
+    // They stay in the hero carousel regardless of event end time until superadmin deactivates or removes them.
     let carousel: any[] = [];
     if (carouselRes.ok && Array.isArray(carouselRes.data)) {
       carousel = (carouselRes.data as any[]).filter((slide: any) => {
-        if (slide.start_at && new Date(slide.start_at) > now) return false;
-        if (slide.end_at && new Date(slide.end_at) < now) return false;
         if (slide.item_type === 'EVENT') {
-          if (!slide.events || slide.events.status !== 'PUBLISHED' || new Date(slide.events.end_at) < now) return false;
+          if (!slide.events || !['PUBLISHED', 'COMPLETED'].includes(slide.events.status)) return false;
         }
         return true;
       });
@@ -1061,7 +1114,7 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext): 
         events: eventsRes.data,
       },
     };
-  }, ctx);
+  }, ctx, request);
 }
 
 // ─── Cache Invalidation & Measured Warming ──────────────────────────────────
@@ -1171,13 +1224,18 @@ async function handleInvalidation(
     ]);
 
     const cache = (caches as any).default;
+    const staleCache = await caches.open(STALE_CACHE_NAME);
     const invalidated: string[] = [];
+
+    // Bump cache version immediately so any new ETag checks reflect the update
+    currentCacheVersion = Date.now();
+    lastRefreshTimestamps.clear();
+    inFlightRequests.clear();
 
     for (const urlStr of targetUrls) {
       const req = new Request(urlStr, { method: 'GET' });
       await cache.delete(req);
-      // Soft-purge: Preserve staleCache so concurrent student requests during the rebuild
-      // window receive instant stale data (<5ms) rather than waiting or hitting cold misses!
+      try { await staleCache.delete(req); } catch {}
       lastRefreshTimestamps.delete(urlStr);
       invalidated.push(urlStr);
     }
@@ -2852,41 +2910,41 @@ export default {
     }
 
     if (url.pathname === '/api/public/homepage') {
-      return handleHomepage(origin, env, ctx);
+      return handleHomepage(origin, env, ctx, request);
     }
 
     if (url.pathname === '/api/public/categories') {
-      return handleCategories(origin, env, ctx);
+      return handleCategories(origin, env, ctx, request);
     }
 
     if (url.pathname === '/api/public/carousel') {
-      return handleCarousel(origin, env, ctx);
+      return handleCarousel(origin, env, ctx, request);
     }
 
     if (url.pathname === '/api/public/featured') {
-      return handleFeatured(origin, env, ctx);
+      return handleFeatured(origin, env, ctx, request);
     }
 
     if (url.pathname === '/api/public/trending') {
-      return handleTrending(origin, env, ctx);
+      return handleTrending(origin, env, ctx, request);
     }
 
     if (url.pathname === '/api/public/settings') {
-      return handleSettings(origin, env, ctx);
+      return handleSettings(origin, env, ctx, request);
     }
 
     if (url.pathname === '/api/public/events') {
-      return handleEventFeed(origin, url, env, ctx);
+      return handleEventFeed(origin, url, env, ctx, request);
     }
 
     // Route: /api/public/events/:id
     const eventDetailMatch = url.pathname.match(/^\/api\/public\/events\/([a-f0-9-]+)$/i);
     if (eventDetailMatch) {
-      return handleEventDetail(origin, eventDetailMatch[1], env, ctx);
+      return handleEventDetail(origin, eventDetailMatch[1], env, ctx, request);
     }
 
     if (url.pathname === '/api/public/search') {
-      return handleSearch(origin, url, env, ctx);
+      return handleSearch(origin, url, env, ctx, request);
     }
 
     // 7. View tracking (debounced at edge to prevent database write exhaustion)

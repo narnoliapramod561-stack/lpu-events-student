@@ -112,90 +112,47 @@ export class LpuEventsClient {
   private async _fetchWithCache<T>(
     cacheKey: string,
     ttlMs: number,
-    fetcher: () => Promise<{ data: T | null; error: any }>
+    fetcher: () => Promise<{ data: T | null; error: any; notModified?: boolean }>,
+    forceFresh: boolean = false
   ): Promise<{ data: T | null; error: any }> {
     const now = Date.now();
 
-    // 1. Tier 1: Check in-memory fast tier (<0.1ms)
-    const inMem = this._cache.get(cacheKey);
-    if (inMem && inMem.expiresAt > now) {
-      return { data: inMem.data as T, error: null };
-    }
-
-    // 2. Tier 2: Check persistent storage tier (localStorage / IndexedDB) (<3ms)
-    const persistent = persistentCache.get<T>(cacheKey);
-    if (persistent !== null && persistent !== undefined) {
-      this._cache.set(cacheKey, {
-        data: persistent,
-        expiresAt: now + Math.min(ttlMs, 60_000),
-      });
-
-      // Background SWR revalidation via singleflight if memory entry expired
-      if (!inMem || inMem.expiresAt <= now) {
-        this._executeSingleFlight(cacheKey, fetcher).then((res) => {
-          if (!res.error && res.data !== null && res.data !== undefined) {
-            this._cache.set(cacheKey, { data: res.data, expiresAt: Date.now() + ttlMs });
-            persistentCache.set(cacheKey, res.data, ttlMs);
-          }
-        }).catch(() => { /* non-fatal background SWR */ });
+    if (!forceFresh) {
+      // 1. Tier 1: Check in-memory fast tier (<0.1ms)
+      const inMem = this._cache.get(cacheKey);
+      if (inMem && inMem.expiresAt > now) {
+        return { data: inMem.data as T, error: null };
       }
 
-      return { data: persistent, error: null };
-    }
-
-    // 3. Tier 3: Cold Miss Cross-Tab Coalescing (Web Locks API + In-Tab Singleflight)
-    return this._executeSingleFlight(cacheKey, async () => {
-      // Check if Web Locks is supported in this browser
-      if (typeof navigator !== 'undefined' && 'locks' in navigator && (navigator as any).locks?.request) {
-        return new Promise<{ data: T | null; error: any }>((resolve) => {
-          (navigator as any).locks.request(`lpu_flock_${cacheKey}`, { mode: 'exclusive' }, async () => {
-            // Double-checked locking: check persistentCache again inside lock!
-            const postLockPersistent = persistentCache.get<T>(cacheKey);
-            if (postLockPersistent !== null && postLockPersistent !== undefined) {
-              this._cache.set(cacheKey, {
-                data: postLockPersistent,
-                expiresAt: Date.now() + ttlMs,
-              });
-              resolve({ data: postLockPersistent, error: null });
-              return;
-            }
-
-            // We are the designated fetching tab!
-            const result = await fetcher();
-            if (!result.error && result.data !== null && result.data !== undefined) {
-              this._cache.set(cacheKey, {
-                data: result.data,
-                expiresAt: Date.now() + ttlMs,
-              });
-              persistentCache.set(cacheKey, result.data, ttlMs);
-            } else if (result.error) {
-              const stale = persistentCache.get<T>(cacheKey);
-              if (stale !== null && stale !== undefined) {
-                resolve({ data: stale, error: null });
-                return;
-              }
-            }
-            resolve(result);
-          }).catch(async () => {
-            // Fallback if lock was aborted or blocked by browser security
-            const direct = await fetcher();
-            if (!direct.error && direct.data !== null && direct.data !== undefined) {
-              this._cache.set(cacheKey, { data: direct.data, expiresAt: Date.now() + ttlMs });
-              persistentCache.set(cacheKey, direct.data, ttlMs);
-            }
-            resolve(direct);
-          });
+      // 2. Tier 2: Check persistent storage tier (localStorage / IndexedDB) (<3ms)
+      const persistent = persistentCache.get<T>(cacheKey);
+      if (persistent !== null && persistent !== undefined) {
+        this._cache.set(cacheKey, {
+          data: persistent,
+          expiresAt: now + Math.min(ttlMs, 60_000),
         });
-      }
 
-      // Fallback for browsers without Web Locks: In-Tab Singleflight
+        // Background SWR revalidation via singleflight if memory entry expired
+        if (!inMem || inMem.expiresAt <= now) {
+          this._executeSingleFlight(cacheKey, fetcher).then((res) => {
+            if (!res.error && res.data !== null && res.data !== undefined) {
+              this._cache.set(cacheKey, { data: res.data, expiresAt: Date.now() + ttlMs });
+            }
+          }).catch(() => { /* non-fatal background SWR */ });
+        }
+
+        return { data: persistent, error: null };
+      }
+    }
+
+    // 3. Force Fresh or Cold Miss: Execute SingleFlight
+    return this._executeSingleFlight(cacheKey, async () => {
       const result = await fetcher();
       if (!result.error && result.data !== null && result.data !== undefined) {
         this._cache.set(cacheKey, {
           data: result.data,
           expiresAt: Date.now() + ttlMs,
         });
-        persistentCache.set(cacheKey, result.data, ttlMs);
       } else if (result.error) {
         const stale = persistentCache.get<T>(cacheKey);
         if (stale !== null && stale !== undefined) {
@@ -235,8 +192,9 @@ export class LpuEventsClient {
    */
   private async _fetchPublic<T>(
     edgePath: string,
-    forceFresh: boolean = false
-  ): Promise<{ data: T | null; error: any }> {
+    forceFresh: boolean = false,
+    existingEtag?: string
+  ): Promise<{ data: T | null; error: any; notModified?: boolean; etag?: string }> {
     try {
       const cleanPath = edgePath.startsWith('/') ? edgePath : `/${edgePath}`;
       // In browser, use relative URL if on student app (lpuevents.live or localhost:3000), otherwise use production edge URL
@@ -256,10 +214,22 @@ export class LpuEventsClient {
           baseOrigin = '';
         }
       }
+
+      const headers: Record<string, string> = { 'Accept': 'application/json' };
+      if (existingEtag) {
+        headers['If-None-Match'] = existingEtag;
+      }
+
       const res = await fetch(`${baseOrigin}/api/public${cleanPath}`, {
-        headers: { 'Accept': 'application/json' },
+        headers,
         cache: forceFresh ? 'no-cache' : 'default',
       });
+
+      const responseEtag = res.headers.get('etag') || undefined;
+
+      if (res.status === 304) {
+        return { data: null, error: null, notModified: true, etag: responseEtag || existingEtag };
+      }
 
       if (res.ok) {
         const contentType = res.headers.get('content-type') || '';
@@ -274,7 +244,7 @@ export class LpuEventsClient {
           };
         }
         const data = await res.json();
-        return { data: data as T, error: null };
+        return { data: data as T, error: null, notModified: false, etag: responseEtag };
       }
 
       if (res.status === 503) {
@@ -341,67 +311,112 @@ export class LpuEventsClient {
   async fetchHomepageBundle(forceFresh = false): Promise<{ data: HomepageBundleData | null; error: any }> {
     const cacheKey = HOMEPAGE_CACHE_KEY;
     if (forceFresh) {
-      this.invalidateClientCache(cacheKey);
+      this._cache.delete(cacheKey);
     }
 
-    return this._fetchWithCache<HomepageBundleData>(cacheKey, 1800_000, async () => {
-      // Consume early edge prefetch if initiated by index.html in parallel with JS downloading
-      let edgeRes: { data: HomepageBundleData | null; error: any } | null = null;
-      if (!forceFresh && typeof window !== 'undefined' && (window as any).__PREFETCHED_HOMEPAGE__) {
-        try {
-          const pre = await (window as any).__PREFETCHED_HOMEPAGE__;
-          (window as any).__PREFETCHED_HOMEPAGE__ = null;
-          if (pre) {
-            edgeRes = { data: pre as HomepageBundleData, error: null };
+    return this._fetchWithCache<HomepageBundleData>(
+      cacheKey,
+      300_000,
+      async () => {
+        const existingRecord = persistentCache.getRecord<HomepageBundleData>(cacheKey);
+        const existingEtag = existingRecord?.version ? String(existingRecord.version) : undefined;
+
+        // Consume early edge prefetch if initiated by index.html in parallel with JS downloading
+        let edgeRes: { data: HomepageBundleData | null; error: any; notModified?: boolean; etag?: string } | null = null;
+        if (!forceFresh && typeof window !== 'undefined' && (window as any).__PREFETCHED_HOMEPAGE__) {
+          try {
+            const pre = await (window as any).__PREFETCHED_HOMEPAGE__;
+            (window as any).__PREFETCHED_HOMEPAGE__ = null;
+            if (pre) {
+              const payload = pre.data ? pre.data : pre;
+              const etag = pre.etag || (pre.notModified ? existingEtag : undefined);
+              if (etag && payload) {
+                persistentCache.set(cacheKey, payload, 300_000, etag);
+              }
+              edgeRes = { data: payload as HomepageBundleData, error: null, notModified: Boolean(pre.notModified), etag };
+            }
+          } catch {}
+        }
+
+        if (!edgeRes) {
+          edgeRes = await this._fetchPublic<HomepageBundleData>('homepage', forceFresh, existingEtag);
+        }
+
+        if (edgeRes.notModified) {
+          const cached = existingRecord?.data || persistentCache.get<HomepageBundleData>(cacheKey);
+          if (cached) {
+            registerMediaAssets([
+              ...(cached.events || []),
+              ...(cached.featured || []).map((f: any) => f.events || f),
+              ...(cached.trending || []),
+              ...(cached.carousel || []).map((c: any) => c.events || c),
+            ]);
+            return { data: cached, error: null };
           }
-        } catch {}
-      }
+        }
 
-      if (!edgeRes) {
-        edgeRes = await this._fetchPublic<HomepageBundleData>('homepage', forceFresh);
-      }
+        if (edgeRes.data && !edgeRes.error) {
+          const b = edgeRes.data;
+          registerMediaAssets([
+            ...(b.events || []),
+            ...(b.featured || []).map((f: any) => f.events || f),
+            ...(b.trending || []),
+            ...(b.carousel || []).map((c: any) => c.events || c),
+          ]);
+          if (edgeRes.etag) {
+            persistentCache.set(cacheKey, b, 300_000, edgeRes.etag);
+          }
+          return { data: b, error: null };
+        }
 
-      if (edgeRes.data && !edgeRes.error) {
-        const b = edgeRes.data;
-        registerMediaAssets([
-          ...(b.events || []),
-          ...(b.featured || []).map((f: any) => f.events || f),
-          ...(b.trending || []),
-          ...(b.carousel || []).map((c: any) => c.events || c),
-        ]);
-        return edgeRes;
-      }
+        // Safe resilient fallback: Serve persistent cache if available
+        const stale = persistentCache.get<HomepageBundleData>(cacheKey);
+        if (stale) {
+          registerMediaAssets([
+            ...(stale.events || []),
+            ...(stale.featured || []).map((f: any) => f.events || f),
+            ...(stale.trending || []),
+            ...(stale.carousel || []).map((c: any) => c.events || c),
+          ]);
+          return { data: stale, error: null };
+        }
 
-      // Safe resilient fallback: Serve persistent cache if available
-      const stale = persistentCache.get<HomepageBundleData>(cacheKey);
-      if (stale) {
-        registerMediaAssets([
-          ...(stale.events || []),
-          ...(stale.featured || []).map((f: any) => f.events || f),
-          ...(stale.trending || []),
-          ...(stale.carousel || []).map((c: any) => c.events || c),
-        ]);
-        return { data: stale, error: null };
-      }
-
-      return edgeRes;
-    });
+        return { data: null, error: edgeRes.error };
+      },
+      forceFresh
+    );
   }
 
-  async fetchCategories(): Promise<{ data: CategoryFeedItem[] | null; error: any }> {
+  async fetchCategories(forceFresh = false): Promise<{ data: CategoryFeedItem[] | null; error: any }> {
     const cacheKey = 'public:categories';
-    return this._fetchWithCache<CategoryFeedItem[]>(cacheKey, 300_000, async () => {
-      const edgeRes = await this._fetchPublic<CategoryFeedItem[]>('categories');
-      if (edgeRes.data && Array.isArray(edgeRes.data) && edgeRes.data.length > 0) {
-        return edgeRes;
-      }
-      // Resilient fallback to persistent cache (zero direct Supabase hits)
-      const stale = persistentCache.get<CategoryFeedItem[]>(cacheKey);
-      if (stale && Array.isArray(stale) && stale.length > 0) {
-        return { data: stale, error: null };
-      }
-      return edgeRes;
-    });
+    if (forceFresh) {
+      this._cache.delete(cacheKey);
+    }
+    return this._fetchWithCache<CategoryFeedItem[]>(
+      cacheKey,
+      300_000,
+      async () => {
+        const existingRecord = persistentCache.getRecord<CategoryFeedItem[]>(cacheKey);
+        const existingEtag = existingRecord?.version ? String(existingRecord.version) : undefined;
+        const edgeRes = await this._fetchPublic<CategoryFeedItem[]>('categories', forceFresh, existingEtag);
+        if (edgeRes.notModified && existingRecord?.data) {
+          return { data: existingRecord.data, error: null };
+        }
+        if (edgeRes.data && Array.isArray(edgeRes.data) && edgeRes.data.length > 0) {
+          if (edgeRes.etag) {
+            persistentCache.set(cacheKey, edgeRes.data, 300_000, edgeRes.etag);
+          }
+          return { data: edgeRes.data, error: null };
+        }
+        // Resilient fallback to persistent cache (zero direct Supabase hits)
+        const stale = persistentCache.get<CategoryFeedItem[]>(cacheKey);
+        if (stale && Array.isArray(stale) && stale.length > 0) {
+          return { data: stale, error: null };
+        }
+        return { data: null, error: edgeRes.error };
+      },
+      forceFresh
+    );
   }
 
   async fetchEventFeed(filters?: {
@@ -427,35 +442,50 @@ export class LpuEventsClient {
 
     const cacheKey = `public:events:feed:${catId}:${subId}:${priceType}:${timeline}:${date}:${showPast}:${limit}:${offset}`;
     if (forceFresh) {
-      this.invalidateClientCache(cacheKey);
+      this._cache.delete(cacheKey);
     }
 
-    return this._fetchWithCache<EventFeedItem[]>(cacheKey, 60_000, async () => {
-      const edgeQueryParams = new URLSearchParams();
-      if (catId) edgeQueryParams.set('category_id', catId);
-      if (subId) edgeQueryParams.set('subcategory_id', subId);
-      if (priceType) edgeQueryParams.set('pricing_type', priceType);
-      if (timeline) edgeQueryParams.set('timeline', timeline);
-      if (date) edgeQueryParams.set('date', date);
-      if (showPast) edgeQueryParams.set('show_past', 'true');
-      edgeQueryParams.set('limit', String(limit));
-      edgeQueryParams.set('offset', String(offset));
+    return this._fetchWithCache<EventFeedItem[]>(
+      cacheKey,
+      60_000,
+      async () => {
+        const edgeQueryParams = new URLSearchParams();
+        if (catId) edgeQueryParams.set('category_id', catId);
+        if (subId) edgeQueryParams.set('subcategory_id', subId);
+        if (priceType) edgeQueryParams.set('pricing_type', priceType);
+        if (timeline) edgeQueryParams.set('timeline', timeline);
+        if (date) edgeQueryParams.set('date', date);
+        if (showPast) edgeQueryParams.set('show_past', 'true');
+        edgeQueryParams.set('limit', String(limit));
+        edgeQueryParams.set('offset', String(offset));
 
-      const edgeRes = await this._fetchPublic<EventFeedItem[]>(`events?${edgeQueryParams.toString()}`);
-      if (edgeRes.data && Array.isArray(edgeRes.data) && !edgeRes.error) {
-        registerMediaAssets(edgeRes.data);
-        return edgeRes;
-      }
+        const existingRecord = persistentCache.getRecord<EventFeedItem[]>(cacheKey);
+        const existingEtag = existingRecord?.version ? String(existingRecord.version) : undefined;
 
-      // Safe resilient fallback: Serve persistent cache if available
-      const stale = persistentCache.get<EventFeedItem[]>(cacheKey);
-      if (stale && Array.isArray(stale)) {
-        registerMediaAssets(stale);
-        return { data: stale, error: null };
-      }
+        const edgeRes = await this._fetchPublic<EventFeedItem[]>(`events?${edgeQueryParams.toString()}`, forceFresh, existingEtag);
+        if (edgeRes.notModified && existingRecord?.data) {
+          registerMediaAssets(existingRecord.data);
+          return { data: existingRecord.data, error: null };
+        }
+        if (edgeRes.data && Array.isArray(edgeRes.data) && !edgeRes.error) {
+          registerMediaAssets(edgeRes.data);
+          if (edgeRes.etag) {
+            persistentCache.set(cacheKey, edgeRes.data, 60_000, edgeRes.etag);
+          }
+          return { data: edgeRes.data, error: null };
+        }
 
-      return edgeRes;
-    });
+        // Safe resilient fallback: Serve persistent cache if available
+        const stale = persistentCache.get<EventFeedItem[]>(cacheKey);
+        if (stale && Array.isArray(stale)) {
+          registerMediaAssets(stale);
+          return { data: stale, error: null };
+        }
+
+        return { data: null, error: edgeRes.error };
+      },
+      forceFresh
+    );
   }
 
   async searchEvents(

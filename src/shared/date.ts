@@ -242,3 +242,38 @@ export function matchesScheduleFilter(
       return true;
   }
 }
+
+/**
+ * Formats a timestamp into a premium 12-hour format with exactly 4 digits: 'hh:mm AM/PM'
+ * (e.g., '03:00 PM', '09:05 AM', '12:00 PM', '12:00 AM').
+ */
+export function formatEventTime(dateInput?: string | Date | number | null): string {
+  if (!dateInput) return '';
+  const d = typeof dateInput === 'string' || typeof dateInput === 'number' ? new Date(dateInput) : dateInput;
+  if (isNaN(d.getTime())) return '';
+  let hours = d.getHours();
+  const minutes = d.getMinutes();
+  const period = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  if (hours === 0) hours = 12;
+  const hourStr = String(hours).padStart(2, '0');
+  const minuteStr = String(minutes).padStart(2, '0');
+  return `${hourStr}:${minuteStr} ${period}`;
+}
+
+/**
+ * Formats start and optional end time into premium 12-hour format:
+ * '03:00 PM' or '03:00 PM – 05:30 PM'
+ */
+export function formatEventTimeRange(
+  startInput?: string | Date | number | null,
+  endInput?: string | Date | number | null,
+): string {
+  if (!startInput) return '';
+  const startStr = formatEventTime(startInput);
+  if (!startStr) return '';
+  if (!endInput) return startStr;
+  const endStr = formatEventTime(endInput);
+  if (!endStr || endStr === startStr) return startStr;
+  return `${startStr} – ${endStr}`;
+}

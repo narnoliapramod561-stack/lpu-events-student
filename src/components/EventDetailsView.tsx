@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef, useCallback, useLayoutEffect } from "react";
 import { 
   ArrowLeft, 
   Calendar, 
@@ -8,8 +8,13 @@ import {
   CheckCircle2, 
   ShieldAlert, 
   Share2, 
-  ExternalLink
+  ExternalLink,
+  Users,
+  Ticket,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import { lpuClient } from "../supabase";
 import { 
   EventFeedItem, 
@@ -20,6 +25,7 @@ import {
   slugify,
   generateQrDataUrl,
   formatEventDateRange,
+  formatEventTimeRange,
   resolveDefaultEventImage
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
@@ -165,26 +171,84 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
     return formatEventDateRange(event.start_at, event.end_at);
   }, [event]);
 
-  // Safe Time Formatting
+  // Safe Time Formatting (4 digits 12-hour format with AM/PM)
   const timeDisplay = useMemo(() => {
     if (!event || !event.start_at) return "Time to be announced";
-    try {
-      const start = new Date(event.start_at);
-      if (isNaN(start.getTime())) return "Time to be announced";
-      const startStr = start.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-
-      if (event.end_at) {
-        const end = new Date(event.end_at);
-        if (!isNaN(end.getTime())) {
-          const endStr = end.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit", hour12: true });
-          return `${startStr} – ${endStr}`;
-        }
-      }
-      return startStr;
-    } catch {
-      return "Time to be announced";
-    }
+    return formatEventTimeRange(event.start_at, event.end_at) || "Time to be announced";
   }, [event]);
+
+  // Real Dynamic Auto-Fit System for Event Title (Senior Frontend Engineering)
+  const titleContainerRef = useRef<HTMLDivElement>(null);
+  const titleTextRef = useRef<HTMLHeadingElement>(null);
+  const [dynamicFontSize, setDynamicFontSize] = useState<number | null>(null);
+
+  const calculateTitleFit = useCallback(() => {
+    const container = titleContainerRef.current;
+    const text = titleTextRef.current;
+    if (!container || !text) return;
+
+    const isMobile = window.innerWidth < 640;
+    const isTablet = window.innerWidth < 1024;
+
+    const maxFont = isMobile ? 36 : isTablet ? 48 : 64;
+    const minFont = isMobile ? 22 : isTablet ? 24 : 28;
+
+    // Available height calculation:
+    // On desktop lg, container stretches to match right dock (~300-340px)
+    // Container has vertical padding, so calculate allowed text height:
+    const maxAllowedHeight = !isTablet && container.clientHeight > 180
+      ? container.clientHeight - 48
+      : (isMobile ? 140 : 180);
+
+    if (container.clientWidth <= 0) return;
+
+    // Fast binary search to find maximum font size that fits both width and height
+    let low = minFont;
+    let high = maxFont;
+    let optimal = minFont;
+
+    while (low <= high) {
+      const mid = Math.floor((low + high) / 2);
+      text.style.fontSize = `${mid}px`;
+      text.style.lineHeight = '1.38';
+      text.style.wordSpacing = '0.12em';
+
+      // Width check: text.scrollWidth exceeds clientWidth only when an unbroken word overflows horizontally
+      const fitsWidth = text.scrollWidth <= text.clientWidth + 1;
+      // Height check: multi-line wrapped text height must not exceed the allowed height
+      const fitsHeight = text.scrollHeight <= maxAllowedHeight;
+
+      if (fitsWidth && fitsHeight) {
+        optimal = mid;
+        low = mid + 1; // Try bigger font
+      } else {
+        high = mid - 1; // Too big or overflowing, step down
+      }
+    }
+
+    text.style.fontSize = `${optimal}px`;
+    text.style.lineHeight = '1.38';
+    text.style.wordSpacing = '0.12em';
+    setDynamicFontSize(optimal);
+  }, []);
+
+  useLayoutEffect(() => {
+    calculateTitleFit();
+
+    if (document.fonts?.ready) {
+      document.fonts.ready.then(calculateTitleFit);
+    }
+
+    const container = titleContainerRef.current;
+    if (!container) return;
+
+    const ro = new ResizeObserver(() => {
+      calculateTitleFit();
+    });
+    ro.observe(container);
+
+    return () => ro.disconnect();
+  }, [calculateTitleFit, event?.name]);
 
   const handleRegister = () => {
     if (event?.external_registration_url) {
@@ -277,6 +341,114 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
       setActiveTab(tabs[0].id);
     }
   }, [tabs, activeTab]);
+
+  // Tab Sliding Carousel & Swipe Gestures
+  const [slideDirection, setSlideDirection] = useState<"left" | "right">("right");
+  const tabsScrollRef = useRef<HTMLDivElement>(null);
+  const isDraggingTabsRef = useRef(false);
+  const startXTabsRef = useRef(0);
+  const scrollLeftTabsRef = useRef(0);
+  const hasDraggedTabsRef = useRef(false);
+  const [canScrollLeft, setCanScrollLeft] = useState(false);
+  const [canScrollRight, setCanScrollRight] = useState(false);
+
+  const checkTabsScroll = useCallback(() => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    setCanScrollLeft(el.scrollLeft > 6);
+    setCanScrollRight(el.scrollLeft + el.clientWidth < el.scrollWidth - 6);
+  }, []);
+
+  useEffect(() => {
+    const el = tabsScrollRef.current;
+    if (!el) return;
+    checkTabsScroll();
+    el.addEventListener("scroll", checkTabsScroll, { passive: true });
+    window.addEventListener("resize", checkTabsScroll);
+    return () => {
+      el.removeEventListener("scroll", checkTabsScroll);
+      window.removeEventListener("resize", checkTabsScroll);
+    };
+  }, [checkTabsScroll, tabs]);
+
+  // Smoothly center active tab in scroll view on change
+  useEffect(() => {
+    const activeBtn = document.getElementById(`tab-btn-${activeTab}`);
+    if (activeBtn) {
+      activeBtn.scrollIntoView({
+        behavior: "smooth",
+        inline: "center",
+        block: "nearest",
+      });
+    }
+  }, [activeTab]);
+
+  const handleTabsMouseDown = (e: React.MouseEvent) => {
+    if (!tabsScrollRef.current) return;
+    isDraggingTabsRef.current = true;
+    hasDraggedTabsRef.current = false;
+    startXTabsRef.current = e.pageX - tabsScrollRef.current.offsetLeft;
+    scrollLeftTabsRef.current = tabsScrollRef.current.scrollLeft;
+  };
+
+  const handleTabsMouseMove = (e: React.MouseEvent) => {
+    if (!isDraggingTabsRef.current || !tabsScrollRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - tabsScrollRef.current.offsetLeft;
+    const walk = (x - startXTabsRef.current) * 1.5;
+    if (Math.abs(walk) > 4) {
+      hasDraggedTabsRef.current = true;
+    }
+    tabsScrollRef.current.scrollLeft = scrollLeftTabsRef.current - walk;
+  };
+
+  const handleTabsMouseUpOrLeave = () => {
+    isDraggingTabsRef.current = false;
+  };
+
+  const scrollTabsBy = (offset: number) => {
+    if (!tabsScrollRef.current) return;
+    tabsScrollRef.current.scrollBy({ left: offset, behavior: "smooth" });
+  };
+
+  // Switch tabs with direction tracking
+  const selectTab = (tabId: string) => {
+    const currentIndex = tabs.findIndex((t) => t.id === activeTab);
+    const newIndex = tabs.findIndex((t) => t.id === tabId);
+    setSlideDirection(newIndex >= currentIndex ? "right" : "left");
+    setActiveTab(tabId);
+  };
+
+  // Touch gesture swipe on the content card to slide between tabs
+  const touchStartXRef = useRef<number | null>(null);
+  const touchStartYRef = useRef<number | null>(null);
+
+  const handleContentTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0].clientX;
+    touchStartYRef.current = e.touches[0].clientY;
+  };
+
+  const handleContentTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null || touchStartYRef.current === null) return;
+    const diffX = e.changedTouches[0].clientX - touchStartXRef.current;
+    const diffY = e.changedTouches[0].clientY - touchStartYRef.current;
+
+    // Detect intentional horizontal swipe (> 45px, dominant over vertical)
+    if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > 45) {
+      const currentIndex = tabs.findIndex((t) => t.id === activeTab);
+      if (diffX < 0 && currentIndex < tabs.length - 1) {
+        // Swipe left -> slide to next tab (e.g. Prize Pool)
+        setSlideDirection("right");
+        setActiveTab(tabs[currentIndex + 1].id);
+      } else if (diffX > 0 && currentIndex > 0) {
+        // Swipe right -> slide to previous tab (e.g. About)
+        setSlideDirection("left");
+        setActiveTab(tabs[currentIndex - 1].id);
+      }
+    }
+    touchStartXRef.current = null;
+    touchStartYRef.current = null;
+  };
 
   // Rich section content renderer with modern bold & premium typography
   const renderSectionContent = (content: any) => {
@@ -527,7 +699,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
             <div className="h-10 w-28 rounded-xl skeleton-base" />
             <div className="h-10 w-28 rounded-xl skeleton-base" />
           </div>
-          <div className="glass-panel rounded-[24px] p-6 space-y-3.5">
+          <div className="glass-panel glass-details-content-card rounded-[24px] p-6 space-y-3.5">
             <div className="h-4 w-full rounded-lg skeleton-base" />
             <div className="h-4 w-11/12 rounded-lg skeleton-base" />
             <div className="h-4 w-4/5 rounded-lg skeleton-base" />
@@ -661,130 +833,238 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         )}
       </div>
 
-      {/* Event Title */}
-      <div className="mb-5 sm:mb-7">
-        <h1 className="font-heading font-black text-2xl sm:text-3xl md:text-4xl lg:text-5xl leading-tight text-gray-900 dark:text-white break-safe">
-          {event.name}
-        </h1>
-      </div>
+      {/* =========================================================================
+          MASTER EVENT IDENTITY & TELEMETRY BENTO SHOWCASE (Single Unified Master Glass Frame)
+          Replaces awkward stacked twin cards with a senior-tier unified command showcase.
+         ========================================================================= */}
+      <div className="relative glass-panel rounded-[22px] sm:rounded-[32px] md:rounded-[36px] p-5 sm:p-7 md:p-8 mb-6 sm:mb-10 shadow-xl overflow-hidden group border border-white/85 dark:border-white/12">
+        {/* Ambient Volumetric Backdrop Accents */}
+        <div
+          aria-hidden="true"
+          className="absolute -top-24 -left-24 w-96 h-96 bg-gradient-to-br from-orange-500/15 via-amber-500/8 to-transparent rounded-full blur-3xl pointer-events-none -z-0"
+        />
+        <div
+          aria-hidden="true"
+          className="absolute -bottom-24 -right-24 w-96 h-96 bg-gradient-to-tl from-primary/10 via-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none -z-0"
+        />
 
-      {/* Event Schedule Details & QR Info Box */}
-      <div className="flex flex-col gap-2.5 sm:gap-3 mb-6 sm:mb-10">
-        {/* Organizer Name directly above Date Box */}
-        <div className="px-1 flex items-center gap-2">
-          <p className="text-primary dark:text-white font-bold text-xs sm:text-sm md:text-base font-heading">
-            Organized by {event.organizations?.name || "LPU Organization"}
-          </p>
-        </div>
-
-        <div className="relative glass-panel rounded-[16px] sm:rounded-[30px] hover:border-primary/40 transition-all duration-300 shadow-xl overflow-hidden">
+        <div className="relative z-10 flex flex-col lg:flex-row lg:items-stretch gap-3.5 sm:gap-6 lg:gap-10">
           
-          {/* Ambient Glow */}
-          <div className="absolute top-0 right-0 w-80 h-80 bg-primary/[0.04] rounded-full blur-3xl pointer-events-none" />
+          {/* ─────────────────────────────────────────────────────────────
+              LEFT HERO ZONE: Title (60%)
+             ───────────────────────────────────────────────────────────── */}
+          <div
+            ref={titleContainerRef}
+            className="flex-1 flex flex-col justify-center min-w-0 px-0 sm:px-6 lg:px-10 py-1 sm:py-6 lg:py-10 pb-1.5 sm:pb-6 lg:pb-10 mb-0 overflow-hidden"
+          >
+            <h1
+              ref={titleTextRef}
+              style={{
+                ...(dynamicFontSize ? { fontSize: `${dynamicFontSize}px` } : {}),
+                lineHeight: 1.38,
+                wordSpacing: '0.12em',
+              }}
+              className="text-3xl sm:text-4xl md:text-5xl lg:text-[46px] font-heading font-black text-[#0f172a] dark:text-white tracking-normal break-safe drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)] dark:drop-shadow-none pb-0 sm:pb-2.5"
+            >
+              {event.name}
+            </h1>
+          </div>
 
-          <div className="relative z-10 flex flex-col md:flex-row md:items-stretch">
-            {/* Left Side: Schedule Details */}
-            <div className="flex-1 flex flex-col justify-center">
-              {/* Date */}
-              <div className="flex items-center space-x-3 sm:space-x-4 p-4 sm:p-6 hover:bg-primary/[0.02] transition-colors">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-orange-500/15 dark:bg-white/10 border border-orange-200/80 dark:border-white/15 flex items-center justify-center text-primary dark:text-white shrink-0 shadow-xs">
-                  <Calendar className="h-5 w-5 sm:h-6 sm:w-6" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] sm:text-[11px] font-heading font-black tracking-[0.14em] uppercase text-primary dark:text-white mb-0.5">DATE</p>
-                  <p className="font-heading text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white break-safe">{dateDisplay}</p>
-                </div>
-              </div>
+          {/* Vertical Glass Divider for Desktop */}
+          <div className="hidden lg:block w-px bg-gradient-to-b from-transparent via-slate-300/70 dark:via-white/15 to-transparent self-stretch my-2 shrink-0" />
 
-              {/* Clean Dashed Separator */}
-              <div className="border-t border-dashed border-gray-200/80 dark:border-white/10 mx-4 sm:mx-6"></div>
-
-              {/* Time */}
-              <div className="flex items-center space-x-3 sm:space-x-4 p-4 sm:p-6 hover:bg-primary/[0.02] transition-colors">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-amber-500/15 dark:bg-white/10 border border-amber-200/80 dark:border-white/15 flex items-center justify-center text-amber-600 dark:text-white shrink-0 shadow-xs">
-                  <Clock className="h-5 w-5 sm:h-6 sm:w-6" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] sm:text-[11px] font-heading font-black tracking-[0.14em] uppercase text-amber-600 dark:text-white mb-0.5">TIME</p>
-                  <p className="font-heading text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white break-safe">{timeDisplay}</p>
-                </div>
-              </div>
-
-              {/* Clean Dashed Separator */}
-              <div className="border-t border-dashed border-gray-200/80 dark:border-white/10 mx-4 sm:mx-6"></div>
-
-              {/* Venue */}
-              <div className="flex items-center space-x-3 sm:space-x-4 p-4 sm:p-6 hover:bg-primary/[0.02] transition-colors">
-                <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl sm:rounded-2xl bg-rose-500/15 dark:bg-white/10 border border-rose-200/80 dark:border-white/15 flex items-center justify-center text-rose-600 dark:text-rose-400 shrink-0 shadow-xs">
-                  <MapPin className="h-5 w-5 sm:h-6 sm:w-6" />
-                </div>
-                <div className="min-w-0">
-                  <p className="text-[10px] sm:text-[11px] font-heading font-black tracking-[0.14em] uppercase text-rose-600 dark:text-rose-400 mb-0.5">VENUE</p>
-                  <p className="font-heading text-base sm:text-lg md:text-xl font-bold text-gray-900 dark:text-white break-safe">{event.venue_name || "LPU Campus"}</p>
-                </div>
-              </div>
-            </div>
-
-            <div className="hidden md:block w-px bg-gradient-to-b from-transparent via-gray-200/80 dark:via-white/10 to-transparent my-4"></div>
-
-            {/* Right Side: Canonical QR Code (Desktop only: scanning mobile from mobile is redundant) */}
-            <div className="hidden md:flex shrink-0 md:w-56 lg:w-64 p-6 flex-col items-center justify-center text-center bg-orange-500/[0.02] dark:bg-white/[0.01]">
-              <div className="w-28 h-28 lg:w-32 lg:h-32 bg-white rounded-xl sm:rounded-2xl p-2 shadow-md border border-orange-500/20 flex items-center justify-center shrink-0">
-                {qrDataUrl ? (
-                  <img
-                    src={qrDataUrl}
-                    alt={`QR code for ${event.name}`}
-                    className="w-full h-full object-contain rounded-lg"
-                  />
-                ) : (
-                  <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-mono">
-                    Generating QR...
+          {/* ─────────────────────────────────────────────────────────────
+              RIGHT TELEMETRY DOCK: Schedule, Venue, Mobile QR & Host (40%)
+             ───────────────────────────────────────────────────────────── */}
+          <div className="lg:w-[42%] xl:w-[40%] flex flex-col justify-between shrink-0 gap-3 sm:gap-3.5">
+            
+            {/* Card 1: Schedule & Logistics (Date, Time, Venue & QR) */}
+            <div className="flex-1 flex flex-col justify-between rounded-2xl sm:rounded-3xl bg-white/55 dark:bg-white/[0.06] backdrop-blur-lg border border-white/85 dark:border-white/12 p-3.5 sm:p-4.5 shadow-[0_4px_24px_rgba(15,23,42,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.8)] gap-3">
+              {/* Schedule Rows */}
+              <div className="flex flex-col gap-2 sm:gap-2.5">
+                {/* Date Item */}
+                <div className="flex items-center gap-3.5 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-orange-500/15 dark:bg-orange-500/20 text-[#ea580c] dark:text-orange-400 border border-orange-300/40 dark:border-orange-500/30 flex items-center justify-center shrink-0 shadow-2xs">
+                    <Calendar className="h-5 w-5 stroke-[2.2]" />
                   </div>
-                )}
+                  <div className="min-w-0 flex-1">
+                    <span className="block text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#ea580c] dark:text-orange-400 font-heading">
+                      Date
+                    </span>
+                    <span className="font-black font-heading text-xs sm:text-sm md:text-[15px] text-[#0f172a] dark:text-white tracking-tight truncate block">
+                      {dateDisplay}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Time Item */}
+                <div className="flex items-center gap-3.5 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-500/15 dark:bg-amber-500/20 text-[#d97706] dark:text-amber-400 border border-amber-300/40 dark:border-amber-500/30 flex items-center justify-center shrink-0 shadow-2xs">
+                    <Clock className="h-5 w-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="block text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#d97706] dark:text-amber-400 font-heading">
+                      Time
+                    </span>
+                    <span className="font-black font-heading text-xs sm:text-sm md:text-[15px] text-[#0f172a] dark:text-white tracking-tight truncate block">
+                      {timeDisplay}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Venue Item */}
+                <div className="flex items-center gap-3.5 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-rose-500/15 dark:bg-rose-500/20 text-[#e11d48] dark:text-rose-400 border border-rose-300/40 dark:border-rose-500/30 flex items-center justify-center shrink-0 shadow-2xs">
+                    <MapPin className="h-5 w-5 stroke-[2.2]" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <span className="block text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#e11d48] dark:text-rose-400 font-heading">
+                      Venue
+                    </span>
+                    <span className="font-bold text-xs sm:text-sm md:text-[15px] text-[#0f172a] dark:text-white truncate block">
+                      {event.venue_name || "LPU Campus"}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              <div className="mt-3 flex flex-col items-center gap-0.5">
-                <span className="font-heading font-black text-xs uppercase tracking-wider text-primary dark:text-white flex items-center gap-1">
-                  <QrCode className="h-3.5 w-3.5" />
-                  Scan to View Event
-                </span>
-                <span className="text-[11px] text-gray-500 dark:text-gray-400 font-medium">
-                  Direct mobile access
-                </span>
+              {/* QR Code Handover (Desktop only) */}
+              <div className="hidden sm:flex items-center gap-3 pt-2.5 sm:pt-3 border-t border-slate-200/60 dark:border-white/10 px-2 sm:px-3">
+                <div className="w-14 h-14 bg-white rounded-xl p-1 shadow-xs border border-orange-500/20 flex items-center justify-center shrink-0">
+                  {qrDataUrl ? (
+                    <img
+                      src={qrDataUrl}
+                      alt={`QR code for ${event.name}`}
+                      className="w-full h-full object-contain rounded-md"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-400 font-mono">
+                      QR
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-col min-w-0">
+                  <span className="font-heading font-black text-xs uppercase tracking-wider text-primary dark:text-white flex items-center gap-1">
+                    <QrCode className="h-3.5 w-3.5" />
+                    Scan to View
+                  </span>
+                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
+                    Direct phone access & passes
+                  </span>
+                </div>
               </div>
             </div>
+
+            {/* Card 2: Verified Organizer Card (Distinct Standalone Glass Box) */}
+            <div className="rounded-2xl sm:rounded-3xl bg-white/60 dark:bg-white/[0.07] backdrop-blur-lg border border-white/85 dark:border-white/12 p-3 sm:p-4 shadow-[0_4px_20px_rgba(15,23,42,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.8)]">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500/20 via-orange-500/10 to-amber-500/20 text-[#ea580c] dark:text-orange-400 border border-orange-300/40 dark:border-orange-500/30 flex items-center justify-center shrink-0 shadow-2xs">
+                  <Users className="h-5 w-5 stroke-[2.2]" />
+                </div>
+                <div className="flex flex-col min-w-0 pr-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#ea580c] dark:text-orange-400 font-heading leading-tight">
+                      Organized by
+                    </span>
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                  </div>
+                  <span className="text-xs sm:text-sm font-black font-heading text-[#0f172a] dark:text-white truncate">
+                    {event.organizations?.name || "LPU Club / Organization"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
           </div>
 
         </div>
       </div>
 
-      {/* Section Navigation Tabs (Unified Parent Glass Container) */}
+      {/* Section Navigation Tabs (Horizontally Slidable Circular Capsule Track) */}
       {tabs.length > 0 && (
-        <div className="w-full overflow-x-auto hide-scrollbar mb-4 sm:mb-6 select-none [touch-action:pan-x_pan-y]">
-          <div className="inline-flex glass-tabs-container p-1 sm:p-1.5 rounded-xl sm:rounded-2xl gap-1 sm:gap-1.5 min-w-full sm:min-w-0 border border-white/80 dark:border-white/10 shadow-xs">
-            {tabs.map((tab) => {
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  type="button"
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-2 sm:px-5 sm:py-2.5 rounded-lg sm:rounded-xl text-xs sm:text-sm font-semibold whitespace-nowrap transition-all duration-200 cursor-pointer touch-target font-heading outline-none shrink-0 tracking-tight ${
-                    isActive
-                      ? "!bg-gradient-to-r !from-[#FF5E00] !to-[#FFA000] dark:!from-white/16 dark:!to-white/12 !text-white shadow-[0_4px_14px_rgba(255,94,0,0.3)] dark:shadow-none !border-transparent dark:!border dark:!border-white/20 scale-[1.01]"
-                      : "text-slate-600 dark:text-zinc-300 hover:text-primary hover:bg-black/5 dark:hover:bg-white/5 !bg-transparent border-transparent"
-                  }`}
-                >
-                  {tab.label}
-                </button>
-              );
-            })}
+        <div className="relative mb-5 sm:mb-7 group">
+          {/* Left Gradient Fade & Circular Scroll Arrow */}
+          <div
+            className={`absolute left-0 top-0 bottom-0 z-20 flex items-center pr-4 pl-1 pointer-events-none transition-opacity duration-200 ${
+              canScrollLeft ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 dark:from-[#0d1117] dark:via-[#0d1117]/85 to-transparent rounded-l-full" />
+            <button
+              type="button"
+              onClick={() => scrollTabsBy(-180)}
+              aria-label="Scroll tabs left"
+              className="relative z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/95 dark:bg-[#1e1e24]/95 text-gray-800 dark:text-zinc-100 shadow-[0_4px_14px_rgba(0,0,0,0.12)] border border-white/90 dark:border-white/15 flex items-center justify-center hover:bg-gradient-to-r hover:from-[#FF5E00] hover:to-[#FFA000] hover:text-white transition-all cursor-pointer pointer-events-auto hidden sm:flex active:scale-90"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Right Gradient Fade & Circular Scroll Arrow */}
+          <div
+            className={`absolute right-0 top-0 bottom-0 z-20 flex items-center pl-4 pr-1 pointer-events-none transition-opacity duration-200 ${
+              canScrollRight ? "opacity-100" : "opacity-0"
+            }`}
+          >
+            <div className="absolute inset-0 bg-gradient-to-l from-white via-white/85 dark:from-[#0d1117] dark:via-[#0d1117]/85 to-transparent rounded-r-full" />
+            <button
+              type="button"
+              onClick={() => scrollTabsBy(180)}
+              aria-label="Scroll tabs right"
+              className="relative z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/95 dark:bg-[#1e1e24]/95 text-gray-800 dark:text-zinc-100 shadow-[0_4px_14px_rgba(0,0,0,0.12)] border border-white/90 dark:border-white/15 flex items-center justify-center hover:bg-gradient-to-r hover:from-[#FF5E00] hover:to-[#FFA000] hover:text-white transition-all cursor-pointer pointer-events-auto hidden sm:flex active:scale-90"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Slidable Carousel Track (Touch Pan & Mouse Drag) */}
+          <div
+            ref={tabsScrollRef}
+            onMouseDown={handleTabsMouseDown}
+            onMouseMove={handleTabsMouseMove}
+            onMouseUp={handleTabsMouseUpOrLeave}
+            onMouseLeave={handleTabsMouseUpOrLeave}
+            className="w-full overflow-x-auto scroll-smooth hide-scrollbar select-none cursor-grab active:cursor-grabbing [touch-action:pan-x] overscroll-x-contain py-1"
+            style={{ WebkitOverflowScrolling: "touch" }}
+          >
+            <div className="inline-flex glass-tabs-container p-1.5 sm:p-2 rounded-full gap-1.5 sm:gap-2 w-max min-w-full sm:min-w-0 border border-white/90 dark:border-white/15 shadow-[0_4px_20px_rgba(15,23,42,0.06),inset_0_1px_2px_rgba(255,255,255,0.9)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.35)]">
+              {tabs.map((tab) => {
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    id={`tab-btn-${tab.id}`}
+                    key={tab.id}
+                    type="button"
+                    onClick={(e) => {
+                      if (hasDraggedTabsRef.current) return;
+                      selectTab(tab.id);
+                      e.currentTarget.scrollIntoView({
+                        behavior: "smooth",
+                        inline: "center",
+                        block: "nearest",
+                      });
+                    }}
+                    className={`px-5 py-2.5 sm:px-6 sm:py-3 rounded-full text-xs sm:text-sm font-heading font-black whitespace-nowrap transition-all duration-200 cursor-pointer touch-target outline-none shrink-0 tracking-normal ${
+                      isActive
+                        ? "!bg-gradient-to-r !from-[#FF5500] !via-[#FF6D00] !to-[#FFA000] !text-white shadow-[0_4px_16px_rgba(255,85,0,0.38),inset_0_1px_1px_rgba(255,255,255,0.45)] dark:!from-white/22 dark:!to-white/12 dark:!text-white dark:!border dark:!border-white/25 dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)] scale-[1.02]"
+                        : "text-slate-600 dark:text-zinc-300 hover:text-primary dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/8 hover:scale-[1.01] !bg-transparent border-transparent"
+                    }`}
+                  >
+                    {tab.label}
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}
 
-      {/* Content Area */}
-      <div className="relative glass-panel rounded-[18px] sm:rounded-[30px] md:rounded-[36px] px-5 py-6 sm:p-8 md:p-10 lg:p-12 mb-8 sm:mb-12 border border-white/90 dark:border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.35)] overflow-hidden">
+      {/* Content Area with Swipe Gestures and Smooth Animated Tab Slide */}
+      <div 
+        onTouchStart={handleContentTouchStart}
+        onTouchEnd={handleContentTouchEnd}
+        className="relative glass-panel glass-details-content-card rounded-[18px] sm:rounded-[30px] md:rounded-[36px] px-5 py-6 sm:p-8 md:p-10 lg:p-12 mb-8 sm:mb-12 border border-white/90 dark:border-white/10 shadow-[0_10px_30px_rgba(0,0,0,0.05)] dark:shadow-[0_16px_40px_rgba(0,0,0,0.35)] overflow-hidden"
+      >
         {/* Atmospheric Ambient Glow */}
         <div className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-orange-500/15 via-amber-500/8 to-transparent rounded-full blur-3xl pointer-events-none hidden sm:block dark:hidden" />
         <div className="absolute bottom-0 left-0 w-80 h-80 bg-gradient-to-tr from-rose-500/10 via-transparent to-transparent rounded-full blur-3xl pointer-events-none hidden sm:block dark:hidden" />
@@ -795,30 +1075,52 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
             if (!currentTab) return null;
 
             return (
-              <div>
-                {renderSectionContent(currentTab.content)}
-              </div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, x: slideDirection === "right" ? 18 : -18 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: slideDirection === "right" ? -18 : 18 }}
+                  transition={{ duration: 0.2, ease: "easeOut" }}
+                >
+                  {renderSectionContent(currentTab.content)}
+                </motion.div>
+              </AnimatePresence>
             );
           })()}
         </div>
       </div>
 
-      {/* Sticky Bottom Registration Bar (ONLY when external_registration_url exists) */}
+      {/* =========================================================================
+          PERSISTENT FIXED BOTTOM ACTION DOCK (Always visible at screen bottom)
+          Senior UI/UX Design: Fixed to the screen bottom so users can book from
+          the instant the page loads, without scrolling.
+         ========================================================================= */}
       {hasExternalRegistration && (
-        <div className="fixed bottom-0 left-0 right-0 z-40 glass-nav py-3 sm:py-4 px-4 sm:px-8 shadow-[0_-10px_35px_rgba(15,23,42,0.1)] pb-safe border-t border-white/95 dark:border-white/10">
-          <div className="max-w-5xl mx-auto flex items-center justify-between gap-3 sm:gap-4">
+        <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/94 dark:bg-[#16161a]/96 backdrop-blur-2xl border-t border-white/95 dark:border-white/12 shadow-[0_-8px_30px_rgba(15,23,42,0.10)] dark:shadow-[0_-8px_30px_rgba(0,0,0,0.5)] pt-3 sm:pt-3.5 pb-[calc(0.75rem+env(safe-area-inset-bottom,0px))] sm:pb-3.5">
+          <div className="max-w-5xl mx-auto px-4 sm:px-8 flex items-center justify-between gap-4">
             
-            {/* Left Side: Price / Registration Status */}
-            <div className="flex flex-col justify-center min-w-0">
-              <span className="text-xl sm:text-2xl md:text-3xl font-black font-heading text-gray-900 dark:text-white tracking-tight truncate leading-none">
-                {isPaid && event?.price_amount !== undefined && event?.price_amount !== null 
-                  ? `₹${event.price_amount}` 
-                  : (isPaid ? "Paid" : "Free")}
-              </span>
+            {/* Left Side: Ticket Price & Admission Status */}
+            <div className="flex items-center gap-3 sm:gap-3.5 min-w-0">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-orange-500/15 dark:bg-orange-500/20 text-[#ea580c] dark:text-orange-400 border border-orange-300/40 dark:border-orange-500/30 flex items-center justify-center shrink-0 shadow-2xs">
+                <Ticket className="h-5 w-5 stroke-[2.2]" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-[10px] sm:text-[11px] font-black uppercase tracking-wider text-gray-500 dark:text-zinc-400 font-heading leading-tight truncate">
+                  {isPaid ? "Ticket Price" : "Admission"}
+                </span>
+                <div className="flex items-center">
+                  <span className="text-2xl sm:text-3xl font-black font-heading text-[#0f172a] dark:text-white tracking-tight leading-none truncate">
+                    {isPaid && event?.price_amount !== undefined && event?.price_amount !== null 
+                      ? `₹${event.price_amount}` 
+                      : (isPaid ? "Paid" : "Free Entry")}
+                  </span>
+                </div>
+              </div>
             </div>
 
-            {/* Right Side: External Book Ticket Button or Cancelled State */}
-            <div className="flex items-center shrink-0">
+            {/* Right Side: Primary Book Ticket CTA or Cancelled State */}
+            <div className="flex items-center gap-3 shrink-0">
               {event?.status === 'CANCELLED' ? (
                 <div className="px-5 py-2.5 sm:px-7 sm:py-3 rounded-full bg-rose-500/15 dark:bg-rose-950/50 border border-rose-500/30 text-rose-600 dark:text-rose-400 font-heading font-black text-xs sm:text-sm select-none">
                   Event Cancelled
@@ -827,10 +1129,11 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
                 <button
                   type="button"
                   onClick={handleRegister}
-                  className="px-6 sm:px-9 py-2.5 sm:py-3.5 rounded-full glass-btn-primary font-black text-xs sm:text-sm md:text-base transition-all duration-200 flex items-center gap-1.5 sm:gap-2 cursor-pointer whitespace-nowrap touch-target font-heading shadow-md hover:scale-[1.02] active:scale-95"
+                  className="inline-flex items-center justify-center gap-2 sm:gap-2.5 px-6 sm:px-9 py-2.5 sm:py-3.5 rounded-full bg-gradient-to-r from-[#FF5E00] to-[#FFA000] text-white font-heading font-black text-sm sm:text-base tracking-wide hover:shadow-[0_10px_30px_rgba(255,94,0,0.45)] hover:scale-[1.02] active:scale-95 transition-all cursor-pointer shadow-[0_4px_18px_rgba(255,94,0,0.35)] touch-target"
                 >
+                  <Ticket className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.2]" />
                   <span>Book Ticket</span>
-                  <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[2.5]" />
                 </button>
               )}
             </div>
