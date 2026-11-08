@@ -16,10 +16,10 @@
   --color-on-surface-variant: var(--color-on-surface-variant-val);
   --color-on-primary: var(--color-on-primary-val);
 
-  --font-heading: 'Plus Jakarta Sans', 'Geist', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-heading: 'Outfit', 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-sans: 'Plus Jakarta Sans', 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
   --font-body: 'Plus Jakarta Sans', 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-display: 'Plus Jakarta Sans', 'Geist', sans-serif;
+  --font-display: 'Outfit', 'Plus Jakarta Sans', sans-serif;
 
   --shadow-orange: 0 4px 14px 0 rgba(255, 107, 0, 0.35);
   --shadow-extreme-glass: 0 20px 50px -10px rgba(15, 23, 42, 0.08), 0 2px 8px -1px rgba(15, 23, 42, 0.04);
@@ -172,6 +172,64 @@
     inset 0 1px 0 0 rgba(255, 255, 255, 0.12) !important;
   position: relative;
   isolation: isolate;
+}
+
+/* High-Legibility Premium Frosted Glass for Tabs Track & Dock (Global: Desktop + Mobile) */
+.glass-tabs-container,
+.glass-tabs-dock {
+  background: linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.94) 0%,
+    rgba(255, 255, 255, 0.88) 100%
+  ) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.95) !important;
+  box-shadow: 
+    0 10px 30px -4px rgba(15, 23, 42, 0.07),
+    0 2px 6px rgba(15, 23, 42, 0.03),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 1) !important;
+  position: relative;
+  isolation: isolate;
+}
+
+.dark .glass-tabs-container,
+.dark .glass-tabs-dock {
+  background: linear-gradient(
+    180deg,
+    rgba(32, 34, 42, 0.92) 0%,
+    rgba(22, 24, 30, 0.95) 100%
+  ) !important;
+  backdrop-filter: blur(24px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(24px) saturate(180%) !important;
+  border: 1px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 
+    0 12px 36px -4px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 0 rgba(255, 255, 255, 0.12) !important;
+  position: relative;
+  isolation: isolate;
+}
+
+/* Full-Page Background Blur for Event Details View (Desktop + Mobile) */
+.event-details-blur-layer {
+  position: fixed !important;
+  inset: 0 !important;
+  top: 0 !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  pointer-events: none !important;
+  z-index: 5 !important;
+  transform: none !important;
+  -webkit-transform: none !important;
+  backdrop-filter: blur(20px) saturate(140%) !important;
+  -webkit-backdrop-filter: blur(20px) saturate(140%) !important;
+  background: rgba(255, 255, 255, 0.20) !important;
+  transition: opacity 0.4s ease;
+}
+
+.dark .event-details-blur-layer {
+  background: rgba(12, 13, 18, 0.45);
 }
 
 /* Apple Control Center Translucent Glass Card Widget */
@@ -1579,13 +1637,16 @@
 
 html {
   -webkit-tap-highlight-color: transparent;
-  overflow-x: clip;
-  max-width: 100%;
+  overscroll-behavior-y: none;
+  background-color: #0b0c10;
+  min-height: 100%;
 }
 
 body {
   margin: 0;
-  background: transparent;
+  background-color: transparent;
+  min-height: 100%;
+  overscroll-behavior-y: none;
   color: var(--color-on-surface);
   font-family: 'Plus Jakarta Sans', 'Geist', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
   font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
@@ -1593,8 +1654,6 @@ body {
   letter-spacing: -0.011em;
   transition: background-color 0.3s ease;
   min-height: 100vh;
-  overflow-x: clip;
-  max-width: 100%;
   text-rendering: optimizeLegibility;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -1606,13 +1665,8 @@ body {
 
 .dark body,
 html.dark body {
-  background-color: #1c1c1e;
-  background-image:
-    /* Premium Warm Charcoal Ambient Depth — Apple/Vercel Style */
-    radial-gradient(ellipse 80% 50% at 50% -5%, rgba(142, 142, 147, 0.08), transparent 70%),
-    radial-gradient(ellipse 55% 35% at 85% 20%, rgba(174, 174, 178, 0.04), transparent 55%),
-    radial-gradient(ellipse 55% 35% at 15% 50%, rgba(142, 142, 147, 0.04), transparent 55%),
-    radial-gradient(circle 700px at 50% 100%, rgba(174, 174, 178, 0.05), transparent 65%);
+  background-color: #0e0e12 !important;
+  background-image: none !important;
 }
 
 /* Safe area support for notch and home indicator on mobile */
@@ -1907,9 +1961,10 @@ html.dark body {
     isolation: isolate;
   }
 
-  /* Level 1: Visual Glass for Parent Tabs Container */
-  .glass-tabs-container {
-    background: rgba(255, 255, 255, 0.90) !important;
+  /* Level 1: Visual Glass for Parent Tabs Container & Dock */
+  .glass-tabs-container,
+  .glass-tabs-dock {
+    background: rgba(255, 255, 255, 0.92) !important;
     backdrop-filter: blur(16px) saturate(160%) !important;
     -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
     border: 1px solid rgba(255, 255, 255, 0.92) !important;
@@ -1917,7 +1972,8 @@ html.dark body {
     isolation: isolate;
   }
 
-  .dark .glass-tabs-container {
+  .dark .glass-tabs-container,
+  .dark .glass-tabs-dock {
     background: rgba(34, 34, 38, 0.92) !important;
     backdrop-filter: blur(16px) saturate(160%) !important;
     -webkit-backdrop-filter: blur(16px) saturate(160%) !important;
@@ -1956,14 +2012,6 @@ html.dark body {
   .glass-card::before,
   .glass-event-card::before {
     display: none !important;
-  }
-
-  /* Hardware-accelerate campus background on mobile to prevent scroll layer invalidation */
-  .campus-bg-image {
-    transform: translate3d(0, 0, 0) !important;
-    -webkit-transform: translate3d(0, 0, 0) !important;
-    backface-visibility: hidden !important;
-    -webkit-backface-visibility: hidden !important;
   }
 
   /* Disable continuous infinite background rotation on mobile */
@@ -2052,17 +2100,18 @@ html.dark body {
 
 /* =========================================================
    GLOBAL CAMPUS BACKGROUND (LPU Amphitheatre)
-   Rock-solid 108lvh layer completely immune to mobile address bar collapse/expand
+   100% Stationary Fixed Viewport Layer
+   Immune to Mobile Address Bar Collapse/Expand, Scroll Jitter & Zooming
    ========================================================= */
 .campus-bg-fixed-layer {
   position: fixed !important;
-  top: -4vh !important;
+  top: 0 !important;
   left: 0 !important;
-  right: 0 !important;
+  width: 100vw !important;
   width: 100% !important;
-  height: 108lvh !important;
-  min-height: calc(100vh + 40px) !important;
-  min-height: -webkit-fill-available !important;
+  height: 100% !important;
+  height: 100lvh !important;
+  height: var(--stable-screen-h, 100lvh) !important;
   pointer-events: none !important;
   z-index: 0 !important;
   overflow: hidden !important;
@@ -2070,35 +2119,40 @@ html.dark body {
   -webkit-transform: translate3d(0, 0, 0) !important;
   backface-visibility: hidden !important;
   -webkit-backface-visibility: hidden !important;
-  contain: layout paint !important;
+  contain: strict !important;
+  will-change: transform !important;
 }
 
-.campus-bg-image {
-  background-image: url('/lpu-events-campus-glass-background.webp');
-  background-size: cover;
-  background-repeat: no-repeat;
-  background-position: center 50%;
-  transform: translate3d(0, 0, 0);
-  -webkit-transform: translate3d(0, 0, 0);
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
+.campus-bg-img-element {
+  position: absolute !important;
+  top: 0 !important;
+  left: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: cover !important;
+  object-position: center top !important;
+  pointer-events: none !important;
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  transform: translate3d(0, 0, 0) !important;
+  -webkit-transform: translate3d(0, 0, 0) !important;
 }
 
 @media (min-width: 640px) {
-  .campus-bg-image {
-    background-position: center 46%;
+  .campus-bg-img-element {
+    object-position: center 46% !important;
   }
 }
 
 @media (min-width: 1024px) {
-  .campus-bg-image {
-    background-position: center 42%;
+  .campus-bg-img-element {
+    object-position: center 42% !important;
   }
 }
 
 @media (min-width: 1536px) {
-  .campus-bg-image {
-    background-position: center 44%;
+  .campus-bg-img-element {
+    object-position: center 44% !important;
   }
 }
 

@@ -173,7 +173,7 @@ export const HappeningTodaySliderComponent = ({
   const scrollTrack = useCallback((direction: "left" | "right") => {
     if (!trackRef.current) return;
     const card = trackRef.current.firstElementChild as HTMLElement;
-    const step = card ? card.offsetWidth + 16 : 360;
+    const step = card ? card.offsetWidth + 18 : 360;
     trackRef.current.scrollBy({
       left: direction === "left" ? -step : step,
       behavior: "smooth",
@@ -198,7 +198,7 @@ export const HappeningTodaySliderComponent = ({
         trackRef.current.scrollTo({ left: 0, behavior: "smooth" });
       } else {
         const card = trackRef.current.firstElementChild as HTMLElement;
-        const step = card ? card.offsetWidth + 16 : 360;
+        const step = card ? card.offsetWidth + 18 : 360;
         trackRef.current.scrollBy({ left: step, behavior: "smooth" });
       }
     }, duration);
@@ -298,6 +298,8 @@ export const HappeningTodaySliderComponent = ({
 
       {/* =========================================================
           HORIZONTAL TRACK (Open Edge-to-Edge Rail)
+          Full-bleed edge-to-edge scroll on mobile and desktop (-mx-3 sm:-mx-4 md:-mx-6)
+          so cards slide to/from the extreme edges with zero boxed clipping.
           Cards sized to show exactly 3 boxes at once on desktop
           (calc((100% - 32px) / 3)), 2 on tablet, and swipeable on mobile.
          ========================================================= */}
@@ -305,7 +307,7 @@ export const HappeningTodaySliderComponent = ({
 
         <div
           ref={trackRef}
-          className="w-full overflow-x-auto hide-scrollbar snap-x snap-mandatory flex items-stretch gap-3.5 sm:gap-4.5 px-0.5 py-2 [touch-action:pan-x_pan-y] overscroll-x-contain"
+          className="-mx-3 sm:-mx-4 md:-mx-6 px-3 sm:px-4 md:px-6 w-[calc(100%+1.5rem)] sm:w-[calc(100%+2rem)] md:w-[calc(100%+3rem)] overflow-x-auto hide-scrollbar snap-x snap-mandatory scroll-pl-3 sm:scroll-pl-4 md:scroll-pl-6 flex items-stretch gap-3.5 sm:gap-4.5 py-2 [touch-action:pan-x_pan-y] overscroll-x-contain"
         >
           {slides.map((slide, idx) => {
             const handleCardClick = () => {
@@ -318,7 +320,7 @@ export const HappeningTodaySliderComponent = ({
               <div
                 key={slide.id}
                 onClick={handleCardClick}
-                className="group relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-18px)/2)] md:w-[calc((100%-36px)/3)] rounded-[24px] overflow-hidden cursor-pointer snap-start glass-event-card flex flex-col sm:active:scale-[0.98]"
+                className="group relative shrink-0 w-[82vw] min-[390px]:w-[84vw] sm:w-[calc((100%-18px)/2)] md:w-[calc((100%-36px)/3)] rounded-[24px] overflow-hidden cursor-pointer snap-start glass-event-card flex flex-col sm:active:scale-[0.98]"
               >
                 {/* Uniform Crisp Banner Stage (Zero Zoom, Full Visibility) */}
                 <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 bg-black/5 dark:bg-white/5">
@@ -400,7 +402,7 @@ export const HappeningTodaySliderComponent = ({
           {events.length > slides.length && (
             <div
               onClick={() => setIsAllTodayModalOpen(true)}
-              className="group relative shrink-0 w-[84vw] min-[390px]:w-[86vw] sm:w-[calc((100%-18px)/2)] md:w-[calc((100%-36px)/3)] rounded-[24px] overflow-hidden cursor-pointer snap-start glass-event-card flex flex-col justify-between active:scale-[0.98]"
+              className="group relative shrink-0 w-[82vw] min-[390px]:w-[84vw] sm:w-[calc((100%-18px)/2)] md:w-[calc((100%-36px)/3)] rounded-[24px] overflow-hidden cursor-pointer snap-start glass-event-card flex flex-col justify-between active:scale-[0.98]"
             >
               {/* Visual Header matching 16:9 banner */}
               <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 flex flex-col items-center justify-center bg-gradient-to-br from-orange-500/15 via-amber-500/10 to-orange-600/15 dark:from-white/10 dark:via-white/5 dark:to-white/10">
@@ -432,6 +434,9 @@ export const HappeningTodaySliderComponent = ({
               </div>
             </div>
           )}
+
+          {/* Trailing end spacer to ensure smooth scroll snap gutter across all browsers */}
+          <div className="w-0.5 sm:w-1 shrink-0" aria-hidden="true" />
         </div>
       </div>
 

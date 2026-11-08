@@ -1,5 +1,5 @@
 // supabase/functions/health/index.ts
-// LPU Events Edge Health Check Function for Uptime & Availability Monitoring (e.g., Better Stack)
+// LPU Events Edge Health Check Function for Uptime & Availability Monitoring (UptimeRobot)
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.1";
@@ -10,36 +10,6 @@ const corsHeaders = {
   "Cache-Control": "no-cache, no-store, must-revalidate",
   "Content-Type": "application/json",
 };
-
-async function reportEdgeErrorToSentry(err: unknown, context: string): Promise<void> {
-  try {
-    const dsn = Deno.env.get("SENTRY_DSN");
-    if (!dsn || !dsn.startsWith("http")) return;
-
-    // Direct HTTP POST to Sentry envelope endpoint for serverless edge runtimes
-    const parsedDsn = new URL(dsn);
-    const projectId = parsedDsn.pathname.replace(/^\//, '');
-    const sentryKey = parsedDsn.username;
-    const sentryUrl = `${parsedDsn.origin}/api/${projectId}/store/?sentry_key=${sentryKey}&sentry_version=7`;
-
-    const errorEvent = {
-      event_id: crypto.randomUUID().replace(/-/g, ''),
-      timestamp: new Date().toISOString(),
-      platform: "javascript",
-      level: "error",
-      tags: { app: "edge-function", function: "health", context },
-      message: err instanceof Error ? err.message : String(err),
-    };
-
-    await fetch(sentryUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(errorEvent),
-    });
-  } catch {
-    // Non-blocking
-  }
-}
 
 serve(async (req: Request) => {
   // Handle CORS preflight
@@ -65,7 +35,7 @@ serve(async (req: Request) => {
         const { error: queryErr } = await client.from("resource_versions").select("resource").limit(1);
         if (queryErr) {
           databaseStatus = "degraded";
-          await reportEdgeErrorToSentry(queryErr, "database_fallback_probe_failed");
+          console.error("[HealthProbe] Database probe failed:", queryErr);
         } else {
           databaseStatus = "healthy";
         }
@@ -94,7 +64,7 @@ serve(async (req: Request) => {
       headers: corsHeaders,
     });
   } catch (err) {
-    await reportEdgeErrorToSentry(err, "unhandled_edge_exception");
+    console.error("[HealthProbe] Unhandled edge exception:", err);
 
     // Safe error response - never leak internal stack traces, env variables, or credentials
     const errorPayload = {

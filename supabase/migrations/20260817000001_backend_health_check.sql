@@ -1,5 +1,5 @@
 -- 20260817000001_backend_health_check.sql
--- Lightweight, safe backend database health check RPC for LPU Events uptime monitoring (e.g. Better Stack)
+-- Lightweight, safe backend database health check RPC for LPU Events uptime monitoring (UptimeRobot)
 
 CREATE OR REPLACE FUNCTION public.health_check()
 RETURNS jsonb

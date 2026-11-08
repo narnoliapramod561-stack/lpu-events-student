@@ -12,7 +12,8 @@ import {
   Users,
   Ticket,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  X
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { lpuClient } from "../supabase";
@@ -64,8 +65,19 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("about");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
+  const [qrModalOpen, setQrModalOpen] = useState(false);
   const [shareModalOpen, setShareModalOpen] = useState(false);
   const [bookingDisclaimerOpen, setBookingDisclaimerOpen] = useState(false);
+
+  // Close QR modal on Escape key
+  useEffect(() => {
+    if (!qrModalOpen) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setQrModalOpen(false);
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [qrModalOpen]);
 
   // Synchronize internal event state when eventId or initialEvent changes
   useEffect(() => {
@@ -177,7 +189,7 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
     return formatEventTimeRange(event.start_at, event.end_at) || "Time to be announced";
   }, [event]);
 
-  // Real Dynamic Auto-Fit System for Event Title (Senior Frontend Engineering)
+  // Real Dynamic Auto-Fit System for Event Title
   const titleContainerRef = useRef<HTMLDivElement>(null);
   const titleTextRef = useRef<HTMLHeadingElement>(null);
   const [dynamicFontSize, setDynamicFontSize] = useState<number | null>(null);
@@ -190,19 +202,12 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
     const isMobile = window.innerWidth < 640;
     const isTablet = window.innerWidth < 1024;
 
-    const maxFont = isMobile ? 36 : isTablet ? 48 : 64;
-    const minFont = isMobile ? 22 : isTablet ? 24 : 28;
-
-    // Available height calculation:
-    // On desktop lg, container stretches to match right dock (~300-340px)
-    // Container has vertical padding, so calculate allowed text height:
-    const maxAllowedHeight = !isTablet && container.clientHeight > 180
-      ? container.clientHeight - 48
-      : (isMobile ? 140 : 180);
+    const maxFont = isMobile ? 32 : isTablet ? 40 : 48;
+    const minFont = isMobile ? 22 : isTablet ? 24 : 26;
 
     if (container.clientWidth <= 0) return;
 
-    // Fast binary search to find maximum font size that fits both width and height
+    // Fast binary search to find maximum font size that fits cleanly across container width
     let low = minFont;
     let high = maxFont;
     let optimal = minFont;
@@ -210,25 +215,21 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
     while (low <= high) {
       const mid = Math.floor((low + high) / 2);
       text.style.fontSize = `${mid}px`;
-      text.style.lineHeight = '1.38';
-      text.style.wordSpacing = '0.12em';
+      text.style.lineHeight = '1.18';
 
       // Width check: text.scrollWidth exceeds clientWidth only when an unbroken word overflows horizontally
-      const fitsWidth = text.scrollWidth <= text.clientWidth + 1;
-      // Height check: multi-line wrapped text height must not exceed the allowed height
-      const fitsHeight = text.scrollHeight <= maxAllowedHeight;
+      const fitsWidth = text.scrollWidth <= text.clientWidth + 2;
 
-      if (fitsWidth && fitsHeight) {
+      if (fitsWidth) {
         optimal = mid;
-        low = mid + 1; // Try bigger font
+        low = mid + 1;
       } else {
-        high = mid - 1; // Too big or overflowing, step down
+        high = mid - 1;
       }
     }
 
     text.style.fontSize = `${optimal}px`;
-    text.style.lineHeight = '1.38';
-    text.style.wordSpacing = '0.12em';
+    text.style.lineHeight = '1.18';
     setDynamicFontSize(optimal);
   }, []);
 
@@ -684,12 +685,12 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         </div>
 
         {/* Date / Time / Venue Details Grid Skeleton */}
-        <div className="glass-panel rounded-[24px] sm:rounded-[30px] p-5 sm:p-8 mb-6 sm:mb-8 border border-white/80 dark:border-white/10 shadow-xl space-y-5">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div className="p-4 rounded-2xl skeleton-base h-20" />
-            <div className="p-4 rounded-2xl skeleton-base h-20" />
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 md:gap-4.5 mb-6 sm:mb-8 items-stretch">
+          <div className="col-span-1 md:col-span-7 lg:col-span-8 rounded-2xl sm:rounded-3xl skeleton-base h-40 md:h-[155px]" />
+          <div className="col-span-1 md:col-span-5 lg:col-span-4 flex flex-col justify-between gap-3 sm:gap-3.5 md:gap-3.5 lg:gap-4">
+            <div className="flex-1 rounded-2xl sm:rounded-3xl skeleton-base hidden md:block min-h-[66px]" />
+            <div className="flex-1 rounded-2xl sm:rounded-3xl skeleton-base min-h-[60px] md:min-h-[66px]" />
           </div>
-          <div className="p-4 rounded-2xl skeleton-base h-20" />
         </div>
 
         {/* Tabs & Content Skeleton */}
@@ -833,187 +834,188 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         )}
       </div>
 
-      {/* =========================================================================
-          MASTER EVENT IDENTITY & TELEMETRY BENTO SHOWCASE (Single Unified Master Glass Frame)
-          Replaces awkward stacked twin cards with a senior-tier unified command showcase.
-         ========================================================================= */}
-      <div className="relative glass-panel rounded-[22px] sm:rounded-[32px] md:rounded-[36px] p-5 sm:p-7 md:p-8 mb-6 sm:mb-10 shadow-xl overflow-hidden group border border-white/85 dark:border-white/12">
-        {/* Ambient Volumetric Backdrop Accents */}
-        <div
-          aria-hidden="true"
-          className="absolute -top-24 -left-24 w-96 h-96 bg-gradient-to-br from-orange-500/15 via-amber-500/8 to-transparent rounded-full blur-3xl pointer-events-none -z-0"
-        />
-        <div
-          aria-hidden="true"
-          className="absolute -bottom-24 -right-24 w-96 h-96 bg-gradient-to-tl from-primary/10 via-amber-500/5 to-transparent rounded-full blur-3xl pointer-events-none -z-0"
-        />
+      {/* Event Title (Clean, no background box) */}
+      <div
+        ref={titleContainerRef}
+        className="mb-4 sm:mb-6 min-w-0"
+      >
+        <h1
+          ref={titleTextRef}
+          style={{
+            ...(dynamicFontSize ? { fontSize: `${dynamicFontSize}px` } : {}),
+            lineHeight: 1.18,
+          }}
+          className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-['Outfit',sans-serif] font-black tracking-tight text-[#070b14] dark:text-white drop-shadow-[0_1px_2px_rgba(255,255,255,0.85)] dark:drop-shadow-[0_4px_24px_rgba(0,0,0,0.7)] break-safe select-text transition-all duration-150"
+        >
+          {event.name}
+        </h1>
+      </div>
 
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-stretch gap-3.5 sm:gap-6 lg:gap-10">
-          
-          {/* ─────────────────────────────────────────────────────────────
-              LEFT HERO ZONE: Title (60%)
-             ───────────────────────────────────────────────────────────── */}
-          <div
-            ref={titleContainerRef}
-            className="flex-1 flex flex-col justify-center min-w-0 px-0 sm:px-6 lg:px-10 py-1 sm:py-6 lg:py-10 pb-1.5 sm:pb-6 lg:pb-10 mb-0 overflow-hidden"
-          >
-            <h1
-              ref={titleTextRef}
-              style={{
-                ...(dynamicFontSize ? { fontSize: `${dynamicFontSize}px` } : {}),
-                lineHeight: 1.38,
-                wordSpacing: '0.12em',
-              }}
-              className="text-3xl sm:text-4xl md:text-5xl lg:text-[46px] font-heading font-black text-[#0f172a] dark:text-white tracking-normal break-safe drop-shadow-[0_1px_1px_rgba(255,255,255,0.7)] dark:drop-shadow-none pb-0 sm:pb-2.5"
-            >
-              {event.name}
-            </h1>
+      {/* Details Grid (Desktop: Left = Date/Time/Venue (wider from sides), Right = QR & Organizer (compact from sides)) */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-3 sm:gap-4 md:gap-4.5 mb-6 sm:mb-10 items-stretch">
+        
+        {/* ───── LEFT COLUMN: Date, Time & Venue (Wider horizontally from side, compact vertically) ───── */}
+        <div className="col-span-1 md:col-span-7 lg:col-span-8 flex flex-col justify-between rounded-2xl sm:rounded-3xl glass-panel border border-white/85 dark:border-white/12 py-2.5 sm:py-3 md:py-3.5 px-4 sm:px-5 md:px-6 shadow-xl gap-1.5 sm:gap-2">
+          {/* Date Item */}
+          <div className="flex items-center gap-3 sm:gap-3.5 md:gap-4 py-1.5 px-2.5 sm:px-3 md:px-3.5 rounded-xl sm:rounded-2xl hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+            <div className="w-9 h-9 sm:w-9.5 sm:h-9.5 md:w-10 md:h-10 rounded-xl bg-orange-500/15 dark:bg-orange-500/20 text-[#ea580c] dark:text-orange-400 border border-orange-300/40 dark:border-orange-500/30 flex items-center justify-center shrink-0 shadow-2xs">
+              <Calendar className="h-4.5 w-4.5 sm:h-5 sm:w-5 stroke-[2.2]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="block text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#ea580c] dark:text-orange-400 font-heading leading-tight">
+                Date
+              </span>
+              <span className="font-black font-heading text-xs sm:text-sm md:text-[15px] lg:text-base text-[#0f172a] dark:text-white tracking-tight truncate block leading-snug">
+                {dateDisplay}
+              </span>
+            </div>
           </div>
 
-          {/* Vertical Glass Divider for Desktop */}
-          <div className="hidden lg:block w-px bg-gradient-to-b from-transparent via-slate-300/70 dark:via-white/15 to-transparent self-stretch my-2 shrink-0" />
+          {/* Time Item */}
+          <div className="flex items-center gap-3 sm:gap-3.5 md:gap-4 py-1.5 px-2.5 sm:px-3 md:px-3.5 rounded-xl sm:rounded-2xl hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+            <div className="w-9 h-9 sm:w-9.5 sm:h-9.5 md:w-10 md:h-10 rounded-xl bg-amber-500/15 dark:bg-amber-500/20 text-[#d97706] dark:text-amber-400 border border-amber-300/40 dark:border-amber-500/30 flex items-center justify-center shrink-0 shadow-2xs">
+              <Clock className="h-4.5 w-4.5 sm:h-5 sm:w-5 stroke-[2.2]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="block text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#d97706] dark:text-amber-400 font-heading leading-tight">
+                Time
+              </span>
+              <span className="font-black font-heading text-xs sm:text-sm md:text-[15px] lg:text-base text-[#0f172a] dark:text-white tracking-tight truncate block leading-snug">
+                {timeDisplay}
+              </span>
+            </div>
+          </div>
 
-          {/* ─────────────────────────────────────────────────────────────
-              RIGHT TELEMETRY DOCK: Schedule, Venue, Mobile QR & Host (40%)
-             ───────────────────────────────────────────────────────────── */}
-          <div className="lg:w-[42%] xl:w-[40%] flex flex-col justify-between shrink-0 gap-3 sm:gap-3.5">
-            
-            {/* Card 1: Schedule & Logistics (Date, Time, Venue & QR) */}
-            <div className="flex-1 flex flex-col justify-between rounded-2xl sm:rounded-3xl bg-white/55 dark:bg-white/[0.06] backdrop-blur-lg border border-white/85 dark:border-white/12 p-3.5 sm:p-4.5 shadow-[0_4px_24px_rgba(15,23,42,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.8)] gap-3">
-              {/* Schedule Rows */}
-              <div className="flex flex-col gap-2 sm:gap-2.5">
-                {/* Date Item */}
-                <div className="flex items-center gap-3.5 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-orange-500/15 dark:bg-orange-500/20 text-[#ea580c] dark:text-orange-400 border border-orange-300/40 dark:border-orange-500/30 flex items-center justify-center shrink-0 shadow-2xs">
-                    <Calendar className="h-5 w-5 stroke-[2.2]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="block text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#ea580c] dark:text-orange-400 font-heading">
-                      Date
-                    </span>
-                    <span className="font-black font-heading text-xs sm:text-sm md:text-[15px] text-[#0f172a] dark:text-white tracking-tight truncate block">
-                      {dateDisplay}
-                    </span>
-                  </div>
-                </div>
+          {/* Venue Item */}
+          <div className="flex items-center gap-3 sm:gap-3.5 md:gap-4 py-1.5 px-2.5 sm:px-3 md:px-3.5 rounded-xl sm:rounded-2xl hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+            <div className="w-9 h-9 sm:w-9.5 sm:h-9.5 md:w-10 md:h-10 rounded-xl bg-rose-500/15 dark:bg-rose-500/20 text-[#e11d48] dark:text-rose-400 border border-rose-300/40 dark:border-rose-500/30 flex items-center justify-center shrink-0 shadow-2xs">
+              <MapPin className="h-4.5 w-4.5 sm:h-5 sm:w-5 stroke-[2.2]" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <span className="block text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#e11d48] dark:text-rose-400 font-heading leading-tight">
+                Venue
+              </span>
+              <span className="font-bold text-xs sm:text-sm md:text-[15px] lg:text-base text-[#0f172a] dark:text-white truncate block leading-snug">
+                {event.venue_name || "LPU Campus"}
+              </span>
+            </div>
+          </div>
+        </div>
 
-                {/* Time Item */}
-                <div className="flex items-center gap-3.5 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-amber-500/15 dark:bg-amber-500/20 text-[#d97706] dark:text-amber-400 border border-amber-300/40 dark:border-amber-500/30 flex items-center justify-center shrink-0 shadow-2xs">
-                    <Clock className="h-5 w-5 stroke-[2.2]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="block text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#d97706] dark:text-amber-400 font-heading">
-                      Time
-                    </span>
-                    <span className="font-black font-heading text-xs sm:text-sm md:text-[15px] text-[#0f172a] dark:text-white tracking-tight truncate block">
-                      {timeDisplay}
-                    </span>
-                  </div>
-                </div>
-
-                {/* Venue Item */}
-                <div className="flex items-center gap-3.5 p-2.5 sm:p-3 rounded-xl sm:rounded-2xl hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
-                  <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl bg-rose-500/15 dark:bg-rose-500/20 text-[#e11d48] dark:text-rose-400 border border-rose-300/40 dark:border-rose-500/30 flex items-center justify-center shrink-0 shadow-2xs">
-                    <MapPin className="h-5 w-5 stroke-[2.2]" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <span className="block text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#e11d48] dark:text-rose-400 font-heading">
-                      Venue
-                    </span>
-                    <span className="font-bold text-xs sm:text-sm md:text-[15px] text-[#0f172a] dark:text-white truncate block">
-                      {event.venue_name || "LPU Campus"}
-                    </span>
-                  </div>
-                </div>
+        {/* ───── RIGHT COLUMN: Launch Mobile Pass (Top) & Organized By (Bottom) (Premium balanced gap & proportions) ───── */}
+        <div className="col-span-1 md:col-span-5 lg:col-span-4 flex flex-col justify-between gap-3 sm:gap-3.5 md:gap-3.5 lg:gap-4">
+          
+          {/* Card 1: Launch Mobile Pass QR Code (Click to Enlarge) */}
+          <div
+            onClick={() => qrDataUrl && setQrModalOpen(true)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setQrModalOpen(true);
+              }
+            }}
+            aria-label="Launch Mobile Pass - Click to enlarge QR code"
+            className="hidden md:flex flex-1 items-center justify-between gap-2.5 sm:gap-3 rounded-2xl sm:rounded-3xl glass-panel border border-white/85 dark:border-white/12 py-2 sm:py-2.5 px-3 md:px-3.5 shadow-xl cursor-pointer hover:border-primary/50 dark:hover:border-primary/40 hover:shadow-2xl transition-all group overflow-hidden"
+          >
+            {/* Left: Content */}
+            <div className="flex flex-col justify-center min-w-0 pr-1 py-0.5 gap-0.5">
+              {/* Top: Header with pulse indicator */}
+              <div className="flex items-center gap-1.5">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" title="Active Mobile Pass" />
+                <h4 className="font-heading font-black text-xs sm:text-[12.5px] md:text-[13px] text-[#0f172a] dark:text-white tracking-tight leading-tight group-hover:text-primary transition-colors truncate">
+                  Launch Mobile Pass
+                </h4>
               </div>
 
-              {/* QR Code Handover (Desktop only) */}
-              <div className="hidden sm:flex items-center gap-3 pt-2.5 sm:pt-3 border-t border-slate-200/60 dark:border-white/10 px-2 sm:px-3">
-                <div className="w-14 h-14 bg-white rounded-xl p-1 shadow-xs border border-orange-500/20 flex items-center justify-center shrink-0">
-                  {qrDataUrl ? (
-                    <img
-                      src={qrDataUrl}
-                      alt={`QR code for ${event.name}`}
-                      className="w-full h-full object-contain rounded-md"
-                    />
-                  ) : (
-                    <div className="w-full h-full flex items-center justify-center text-[8px] text-gray-400 font-mono">
-                      QR
-                    </div>
-                  )}
-                </div>
-                <div className="flex flex-col min-w-0">
-                  <span className="font-heading font-black text-xs uppercase tracking-wider text-primary dark:text-white flex items-center gap-1">
-                    <QrCode className="h-3.5 w-3.5" />
-                    Scan to View
-                  </span>
-                  <span className="text-[11px] text-slate-500 dark:text-slate-400 font-medium">
-                    Direct phone access & passes
-                  </span>
-                </div>
+              {/* Middle: Clear instruction */}
+              <p className="text-[9.5px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-tight truncate">
+                Scan with phone camera
+              </p>
+
+              {/* Bottom: Context & Action Hint */}
+              <div className="flex items-center gap-1 text-[9px] sm:text-[9.5px] text-primary font-bold">
+                <span className="group-hover:underline">Tap to expand QR</span>
+                <span className="transition-transform group-hover:translate-x-0.5">→</span>
               </div>
             </div>
 
-            {/* Card 2: Verified Organizer Card (Distinct Standalone Glass Box) */}
-            <div className="rounded-2xl sm:rounded-3xl bg-white/60 dark:bg-white/[0.07] backdrop-blur-lg border border-white/85 dark:border-white/12 p-3 sm:p-4 shadow-[0_4px_20px_rgba(15,23,42,0.04),inset_0_1px_1.5px_rgba(255,255,255,0.8)]">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500/20 via-orange-500/10 to-amber-500/20 text-[#ea580c] dark:text-orange-400 border border-orange-300/40 dark:border-orange-500/30 flex items-center justify-center shrink-0 shadow-2xs">
-                  <Users className="h-5 w-5 stroke-[2.2]" />
+            {/* Right: QR Code */}
+            <div className="aspect-square w-[46px] h-[46px] sm:w-[48px] sm:h-[48px] md:w-[48px] md:h-[48px] bg-white rounded-lg sm:rounded-xl p-1 shadow-sm border border-orange-500/25 dark:border-white/15 flex items-center justify-center shrink-0 group-hover:scale-[1.03] group-hover:border-primary/50 group-hover:shadow-md transition-all">
+              {qrDataUrl ? (
+                <img
+                  src={qrDataUrl}
+                  alt={`QR code to launch mobile pass for ${event.name}`}
+                  className="w-full h-full object-contain rounded-md"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-mono">
+                  QR
                 </div>
-                <div className="flex flex-col min-w-0 pr-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#ea580c] dark:text-orange-400 font-heading leading-tight">
-                      Organized by
-                    </span>
-                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-                  </div>
-                  <span className="text-xs sm:text-sm font-black font-heading text-[#0f172a] dark:text-white truncate">
-                    {event.organizations?.name || "LPU Club / Organization"}
-                  </span>
-                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Card 2: Verified Organizer Card */}
+          <div className="flex-1 flex items-center gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl md:rounded-3xl glass-panel border border-white/85 dark:border-white/12 py-2 sm:py-2.5 px-3 md:px-3.5 shadow-lg md:shadow-xl overflow-hidden">
+            <div className="w-[46px] h-[46px] sm:w-[48px] sm:h-[48px] md:w-[48px] md:h-[48px] rounded-lg sm:rounded-xl bg-gradient-to-br from-orange-500/20 via-orange-500/10 to-amber-500/20 text-[#ea580c] dark:text-orange-400 border border-orange-300/40 dark:border-orange-500/30 flex items-center justify-center shrink-0 shadow-2xs">
+              <Users className="h-4 w-4 sm:h-4.5 sm:w-4.5 stroke-[2.2]" />
+            </div>
+            <div className="flex flex-col justify-center min-w-0 flex-1 pr-1 py-0.5 gap-0.5">
+              {/* Top: Organized by Label */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-[9px] sm:text-[9.5px] uppercase font-black tracking-wider text-[#ea580c] dark:text-orange-400 font-heading leading-none">
+                  Organized by
+                </span>
+                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+              </div>
+
+              {/* Middle: Organization Name */}
+              <div className="py-0.5">
+                <h4 className="font-heading font-black text-xs sm:text-[12.5px] md:text-[13px] text-[#0f172a] dark:text-white truncate block leading-tight">
+                  {event.organizations?.name || "Lovely Professional University"}
+                </h4>
               </div>
             </div>
-
           </div>
 
         </div>
+
       </div>
 
-      {/* Section Navigation Tabs (Horizontally Slidable Circular Capsule Track) */}
+      {/* Section Navigation Tabs (Premium Frosted Dock Capsule) */}
       {tabs.length > 0 && (
-        <div className="relative mb-5 sm:mb-7 group">
-          {/* Left Gradient Fade & Circular Scroll Arrow */}
+        <div className="relative mb-5 sm:mb-8 glass-tabs-dock rounded-2xl sm:rounded-full p-1.5 sm:p-2 border border-white/90 dark:border-white/12 shadow-[0_10px_30px_rgba(15,23,42,0.07),inset_0_1px_1.5px_rgba(255,255,255,1)] dark:shadow-[0_12px_36px_rgba(0,0,0,0.45),inset_0_1px_0_rgba(255,255,255,0.12)]">
+          {/* Left Circular Scroll Arrow */}
           <div
-            className={`absolute left-0 top-0 bottom-0 z-20 flex items-center pr-4 pl-1 pointer-events-none transition-opacity duration-200 ${
+            className={`absolute left-2 top-1/2 -translate-y-1/2 z-20 pointer-events-none transition-opacity duration-200 ${
               canScrollLeft ? "opacity-100" : "opacity-0"
             }`}
           >
-            <div className="absolute inset-0 bg-gradient-to-r from-white via-white/85 dark:from-[#0d1117] dark:via-[#0d1117]/85 to-transparent rounded-l-full" />
             <button
               type="button"
-              onClick={() => scrollTabsBy(-180)}
+              onClick={() => scrollTabsBy(-200)}
               aria-label="Scroll tabs left"
-              className="relative z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/95 dark:bg-[#1e1e24]/95 text-gray-800 dark:text-zinc-100 shadow-[0_4px_14px_rgba(0,0,0,0.12)] border border-white/90 dark:border-white/15 flex items-center justify-center hover:bg-gradient-to-r hover:from-[#FF5E00] hover:to-[#FFA000] hover:text-white transition-all cursor-pointer pointer-events-auto hidden sm:flex active:scale-90"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/95 dark:bg-[#1e1e24]/95 text-slate-700 dark:text-zinc-100 shadow-[0_2px_10px_rgba(0,0,0,0.15)] border border-white dark:border-white/15 flex items-center justify-center hover:bg-gradient-to-r hover:from-[#FF5E00] hover:to-[#FFA000] hover:text-white transition-all cursor-pointer pointer-events-auto hidden sm:flex active:scale-90"
             >
-              <ChevronLeft className="h-4 w-4" />
+              <ChevronLeft className="h-3.5 w-3.5" />
             </button>
           </div>
 
-          {/* Right Gradient Fade & Circular Scroll Arrow */}
+          {/* Right Circular Scroll Arrow */}
           <div
-            className={`absolute right-0 top-0 bottom-0 z-20 flex items-center pl-4 pr-1 pointer-events-none transition-opacity duration-200 ${
+            className={`absolute right-2 top-1/2 -translate-y-1/2 z-20 pointer-events-none transition-opacity duration-200 ${
               canScrollRight ? "opacity-100" : "opacity-0"
             }`}
           >
-            <div className="absolute inset-0 bg-gradient-to-l from-white via-white/85 dark:from-[#0d1117] dark:via-[#0d1117]/85 to-transparent rounded-r-full" />
             <button
               type="button"
-              onClick={() => scrollTabsBy(180)}
+              onClick={() => scrollTabsBy(200)}
               aria-label="Scroll tabs right"
-              className="relative z-10 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-white/95 dark:bg-[#1e1e24]/95 text-gray-800 dark:text-zinc-100 shadow-[0_4px_14px_rgba(0,0,0,0.12)] border border-white/90 dark:border-white/15 flex items-center justify-center hover:bg-gradient-to-r hover:from-[#FF5E00] hover:to-[#FFA000] hover:text-white transition-all cursor-pointer pointer-events-auto hidden sm:flex active:scale-90"
+              className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-white/95 dark:bg-[#1e1e24]/95 text-slate-700 dark:text-zinc-100 shadow-[0_2px_10px_rgba(0,0,0,0.15)] border border-white dark:border-white/15 flex items-center justify-center hover:bg-gradient-to-r hover:from-[#FF5E00] hover:to-[#FFA000] hover:text-white transition-all cursor-pointer pointer-events-auto hidden sm:flex active:scale-90"
             >
-              <ChevronRight className="h-4 w-4" />
+              <ChevronRight className="h-3.5 w-3.5" />
             </button>
           </div>
 
@@ -1024,10 +1026,10 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
             onMouseMove={handleTabsMouseMove}
             onMouseUp={handleTabsMouseUpOrLeave}
             onMouseLeave={handleTabsMouseUpOrLeave}
-            className="w-full overflow-x-auto scroll-smooth hide-scrollbar select-none cursor-grab active:cursor-grabbing [touch-action:pan-x] overscroll-x-contain py-1"
+            className="w-full overflow-x-auto scroll-smooth hide-scrollbar select-none cursor-grab active:cursor-grabbing [touch-action:pan-x] overscroll-x-contain py-0.5"
             style={{ WebkitOverflowScrolling: "touch" }}
           >
-            <div className="inline-flex glass-tabs-container p-1.5 sm:p-2 rounded-full gap-1.5 sm:gap-2 w-max min-w-full sm:min-w-0 border border-white/90 dark:border-white/15 shadow-[0_4px_20px_rgba(15,23,42,0.06),inset_0_1px_2px_rgba(255,255,255,0.9)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.35)]">
+            <div className="flex items-center gap-1.5 sm:gap-2 w-max min-w-full px-1.5 sm:px-2">
               {tabs.map((tab) => {
                 const isActive = activeTab === tab.id;
                 return (
@@ -1044,10 +1046,10 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
                         block: "nearest",
                       });
                     }}
-                    className={`px-5 py-2.5 sm:px-6 sm:py-3 rounded-full text-xs sm:text-sm font-heading font-black whitespace-nowrap transition-all duration-200 cursor-pointer touch-target outline-none shrink-0 tracking-normal ${
+                    className={`px-4 sm:px-5 py-2 sm:py-2.5 rounded-full text-xs sm:text-[13px] font-heading whitespace-nowrap transition-all duration-200 cursor-pointer touch-target outline-none shrink-0 tracking-tight ${
                       isActive
-                        ? "!bg-gradient-to-r !from-[#FF5500] !via-[#FF6D00] !to-[#FFA000] !text-white shadow-[0_4px_16px_rgba(255,85,0,0.38),inset_0_1px_1px_rgba(255,255,255,0.45)] dark:!from-white/22 dark:!to-white/12 dark:!text-white dark:!border dark:!border-white/25 dark:shadow-[0_4px_16px_rgba(0,0,0,0.4),inset_0_1px_1px_rgba(255,255,255,0.3)] scale-[1.02]"
-                        : "text-slate-600 dark:text-zinc-300 hover:text-primary dark:hover:text-white hover:bg-white/60 dark:hover:bg-white/8 hover:scale-[1.01] !bg-transparent border-transparent"
+                        ? "!bg-gradient-to-r !from-[#FF5500] !via-[#FF6D00] !to-[#FFA000] !text-white font-black shadow-[0_4px_14px_rgba(255,85,0,0.32),inset_0_1px_1px_rgba(255,255,255,0.45)] scale-[1.01]"
+                        : "text-slate-700 dark:text-zinc-200 font-bold hover:text-primary dark:hover:text-white hover:bg-black/[0.04] dark:hover:bg-white/[0.08] active:scale-[0.99] !bg-transparent border-transparent"
                     }`}
                   >
                     {tab.label}
@@ -1156,6 +1158,68 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         onConfirm={handleConfirmRegistration}
         event={event}
       />
+
+      {/* Enlarged QR Code Lightbox Modal */}
+      <AnimatePresence>
+        {qrModalOpen && (
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/65 backdrop-blur-md animate-in fade-in duration-200"
+            onClick={() => setQrModalOpen(false)}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Enlarged Event QR Code"
+          >
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              transition={{ type: "spring", duration: 0.25, bounce: 0.2 }}
+              onClick={(e) => e.stopPropagation()}
+              className="relative w-full max-w-sm rounded-[28px] sm:rounded-[32px] glass-panel border border-white/90 dark:border-white/15 p-6 sm:p-7 shadow-[0_25px_60px_rgba(0,0,0,0.4)] flex flex-col items-center text-center gap-4 bg-white/95 dark:bg-[#1e1e24]/95"
+            >
+              {/* Close Button */}
+              <button
+                type="button"
+                onClick={() => setQrModalOpen(false)}
+                className="absolute top-4 right-4 w-9 h-9 rounded-full bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/20 flex items-center justify-center text-gray-600 dark:text-gray-300 transition-colors cursor-pointer"
+                aria-label="Close QR Modal"
+              >
+                <X className="h-4 w-4" />
+              </button>
+
+              {/* Title & Info */}
+              <div className="flex flex-col gap-1 pr-6 pl-1">
+                <span className="font-heading font-black text-xs uppercase tracking-wider text-primary flex items-center justify-center gap-1.5">
+                  <QrCode className="h-4 w-4" /> Launch Mobile Pass
+                </span>
+                <h3 className="font-heading font-black text-lg sm:text-xl text-gray-950 dark:text-white line-clamp-1">
+                  {event.name}
+                </h3>
+              </div>
+
+              {/* Large QR Display */}
+              <div className="w-56 h-56 sm:w-64 sm:h-64 p-3 bg-white rounded-2xl sm:rounded-3xl shadow-md border border-orange-500/25 flex items-center justify-center">
+                {qrDataUrl ? (
+                  <img
+                    src={qrDataUrl}
+                    alt={`QR code to launch mobile pass for ${event.name}`}
+                    className="w-full h-full object-contain rounded-xl"
+                  />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-gray-400 font-mono text-sm">
+                    Generating QR...
+                  </div>
+                )}
+              </div>
+
+              {/* Helper Subtitle */}
+              <p className="text-xs sm:text-sm text-gray-600 dark:text-gray-300 font-medium leading-relaxed max-w-xs">
+                Point your phone's camera at this QR code to instantly launch and view your mobile pass for this event.
+              </p>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );

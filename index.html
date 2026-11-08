@@ -40,17 +40,42 @@
       })();
     </script>
 
+    <!-- Measure & Lock Stable Viewport Height (Eliminates address bar scroll shift on mobile) -->
+    <script>
+      (function() {
+        function setStableHeight() {
+          var h = window.innerHeight;
+          if (window.screen && window.screen.height) {
+            h = Math.max(h, window.screen.height);
+          }
+          document.documentElement.style.setProperty('--stable-screen-h', h + 'px');
+        }
+        setStableHeight();
+        window.addEventListener('orientationchange', function() {
+          setTimeout(setStableHeight, 150);
+        }, { passive: true });
+      })();
+    </script>
+
     <!-- Critical Above-the-Fold Pre-paint Styles (Zero FOUC, Sub-300ms FCP & LCP) -->
     <style>
+      html {
+        background-color: #0b0c10;
+        min-height: 100%;
+        overscroll-behavior-y: none;
+        -webkit-tap-highlight-color: transparent;
+      }
       body {
         margin: 0;
         background-color: transparent;
+        min-height: 100%;
         font-family: 'Plus Jakarta Sans', 'Geist', 'Inter', system-ui, -apple-system, sans-serif;
         color: #0f172a;
-        overflow-x: clip;
+        overscroll-behavior-y: none;
       }
       .dark body, html.dark body {
-        background-color: #1c1c1e;
+        background-color: #0e0e12 !important;
+        background-image: none !important;
         color: #f5f5f7;
       }
       .glass-nav {
@@ -325,76 +350,11 @@
     </script>
 
     <!-- Non-Render-Blocking Google Fonts (Zero Layout Shift via display=swap) -->
-    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@800;900&display=swap" />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@800;900&display=swap" media="print" onload="this.media='all'" />
+    <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" media="print" onload="this.media='all'" />
     <noscript>
-      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@800;900&display=swap" />
+      <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;600;700;800&family=Outfit:wght@500;600;700;800;900&display=swap" />
     </noscript>
-
-    <!-- Deferred High-Performance Analytics & Ads (Triggered on idle timeout or user interaction) -->
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      
-      var analyticsInitialized = false;
-      function loadAnalytics() {
-        if (analyticsInitialized) return;
-        analyticsInitialized = true;
-
-        ['pointerdown', 'touchstart', 'scroll', 'keydown'].forEach(function(e) {
-          window.removeEventListener(e, onUserInteract, { passive: true });
-        });
-
-        var execLoad = function() {
-          // Load GTM
-          (function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
-          new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
-          j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
-          'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
-          })(window,document,'script','dataLayer','GTM-5XHHNRKM');
-
-          // Load gtag.js
-          var gtScript = document.createElement('script');
-          gtScript.async = true;
-          gtScript.src = 'https://www.googletagmanager.com/gtag/js?id=G-HXC7S26FSN';
-          document.head.appendChild(gtScript);
-          gtag('js', new Date());
-          gtag('config', 'G-HXC7S26FSN');
-        };
-
-        if ('requestIdleCallback' in window) {
-          window.requestIdleCallback(execLoad, { timeout: 3000 });
-        } else {
-          setTimeout(execLoad, 200);
-        }
-      }
-
-      function onUserInteract(e) {
-        if (e && e.type === 'scroll') {
-          // Defer to idle callback so scroll remains 60/120fps smooth
-          if ('requestIdleCallback' in window) {
-            window.requestIdleCallback(loadAnalytics, { timeout: 8000 });
-          } else {
-            setTimeout(loadAnalytics, 6000);
-          }
-          return;
-        }
-        loadAnalytics();
-      }
-
-      ['pointerdown', 'touchstart', 'keydown'].forEach(function(e) {
-        window.addEventListener(e, onUserInteract, { passive: true, once: true });
-      });
-
-      // Background fallback so analytics runs after 8s idle without competing with initial load
-      setTimeout(function() {
-        if (!analyticsInitialized && 'requestIdleCallback' in window) {
-          window.requestIdleCallback(loadAnalytics, { timeout: 3000 });
-        } else if (!analyticsInitialized) {
-          loadAnalytics();
-        }
-      }, 8000);
-    </script>
 
     <!-- Primary SEO Metadata -->
     <title>LPU Events — Discover Campus Events, Clubs & Festivities</title>
@@ -425,9 +385,6 @@
   </head>
 
   <body>
-    <!-- Google Tag Manager (noscript) -->
-    <noscript><iframe src="https://www.googletagmanager.com/ns.html?id=GTM-5XHHNRKM"
-    height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     <!-- Inline High-Performance Zero-Delay Startup Shell (Renders on Frame 1 on Homepage) -->
     <div id="lpu-startup-shell" aria-hidden="true">
       <div id="lpu-startup-backdrop"></div>

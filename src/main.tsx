@@ -4,30 +4,19 @@ import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
 import './index.css';
 
-// Non-blocking telemetry (Sentry, PostHog, Clarity) loaded dynamically on first user interaction
+// Non-blocking telemetry (PostHog Product Analytics & Error Tracking) loaded dynamically on first user interaction
 let telemetryLoaded = false;
 const initDeferredTelemetry = async () => {
   if (telemetryLoaded) return;
   telemetryLoaded = true;
 
   try {
-    const { initSentry, initPostHog, initClarity } = await import('./shared/telemetry');
-    initSentry({
-      dsn: import.meta.env.VITE_SENTRY_DSN,
-      environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || 'development',
-      release: import.meta.env.VITE_SENTRY_RELEASE || '1.0.0',
-      app: 'student'
-    });
-
+    const { initPostHog } = await import('./shared/telemetry');
     initPostHog({
       apiKey: import.meta.env.VITE_POSTHOG_KEY,
       apiHost: import.meta.env.VITE_POSTHOG_HOST,
       app: 'student',
-      environment: import.meta.env.VITE_SENTRY_ENVIRONMENT || 'development'
-    });
-
-    initClarity({
-      projectId: import.meta.env.VITE_CLARITY_PROJECT_ID
+      environment: import.meta.env.PROD ? 'production' : 'development'
     });
   } catch {
     // Non-blocking telemetry failure

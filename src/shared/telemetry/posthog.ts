@@ -1,27 +1,154 @@
 // packages/shared/src/telemetry/posthog.ts
-// Resilient PostHog Product Analytics Client for LPU Events
+// Authoritative PostHog Analytics & Error Management Client for LPU Events
+// Replaced legacy Sentry, Clarity, and GA4 telemetry with zero-subscription-cost PostHog integration
 
 import type posthogType from 'posthog-js';
-import { PostHogConfig, AppIdentifier } from './types';
-import { scrubSensitiveData } from './scrub';
+import type { PostHogConfig, AppIdentifier } from './types.ts';
+import { scrubSensitiveData } from './scrub.ts';
 
 let posthogClient: typeof posthogType | null = null;
 let isInitialized = false;
 let activeApp: AppIdentifier = 'student';
 
+// ─── Fingerprint-Aware Exception Rate Limiter & Deduplicator ───────────────────
+
+export interface ErrorFingerprintState {
+  totalOccurrences: number;
+  dispatchedCount: number;
+  lastDispatchedAt: number;
+  suppressedSinceLastDispatch: number;
+}
+
+export interface RateLimitDecision {
+  shouldDispatch: boolean;
+  occurrenceCount: number;
+  suppressedCount: number;
+  sessionCapped: boolean;
+  fingerprint: string;
+}
+
+const fingerprintRegistry = new Map<string, ErrorFingerprintState>();
+let totalSessionDispatched = 0;
+const EMERGENCY_SESSION_CAP = 50;
+const DUPLICATE_THROTTLE_WINDOW_MS = 30_000; // 30s throttle between duplicate occurrences of same error
+
 /**
- * Reset PostHog state (for test isolation)
+ * Generates a stable fingerprint from an error and execution context.
+ * Normalizes dynamic tokens (dates, UUIDs, hex pointers) to prevent fingerprint explosion.
+ */
+export function generateErrorFingerprint(error: any, context: Record<string, any> = {}): string {
+  const errorType = error instanceof Error ? error.name : 'Error';
+  const errorMsg = error instanceof Error ? error.message : String(error || 'Unknown');
+  const component = context.component || context.source || 'global';
+
+  const normalizedMsg = errorMsg
+    .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '[UUID]')
+    .replace(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?Z?\b/g, '[DATE]')
+    .replace(/\b0x[0-9a-f]+\b/gi, '[HEX]')
+    .slice(0, 150);
+
+  return `${errorType}:${component}:${normalizedMsg}`;
+}
+
+/**
+ * Fingerprint-aware rate limiter.
+ * - ALWAYS preserves and dispatches the first occurrence of a distinct error.
+ * - Suppresses rapid subsequent duplicates of the same fingerprint within a 30s window.
+ * - Tracks exact occurrence counts so reported metrics reflect reality rather than dropped telemetry.
+ * - Enforces an emergency session-level hard cap (50 total dispatches) to protect client performance.
+ */
+export function evaluateExceptionRateLimit(
+  error: any,
+  context: Record<string, any> = {}
+): RateLimitDecision {
+  const now = Date.now();
+  const fingerprint = generateErrorFingerprint(error, context);
+
+  // 1. Emergency session-level hard cap check
+  if (totalSessionDispatched >= EMERGENCY_SESSION_CAP) {
+    const existing = fingerprintRegistry.get(fingerprint);
+    if (existing) {
+      existing.totalOccurrences++;
+      existing.suppressedSinceLastDispatch++;
+    }
+    return {
+      shouldDispatch: false,
+      occurrenceCount: existing ? existing.totalOccurrences : 1,
+      suppressedCount: existing ? existing.suppressedSinceLastDispatch : 1,
+      sessionCapped: true,
+      fingerprint
+    };
+  }
+
+  let state = fingerprintRegistry.get(fingerprint);
+
+  if (!state) {
+    // First occurrence of a distinct error: ALWAYS dispatch!
+    state = {
+      totalOccurrences: 1,
+      dispatchedCount: 1,
+      lastDispatchedAt: now,
+      suppressedSinceLastDispatch: 0
+    };
+    fingerprintRegistry.set(fingerprint, state);
+    totalSessionDispatched++;
+
+    return {
+      shouldDispatch: true,
+      occurrenceCount: 1,
+      suppressedCount: 0,
+      sessionCapped: false,
+      fingerprint
+    };
+  }
+
+  // Increment total occurrences seen in this session
+  state.totalOccurrences++;
+
+  // 2. Throttle duplicates of the same fingerprint
+  const timeSinceLastDispatch = now - state.lastDispatchedAt;
+  if (timeSinceLastDispatch < DUPLICATE_THROTTLE_WINDOW_MS) {
+    state.suppressedSinceLastDispatch++;
+    return {
+      shouldDispatch: false,
+      occurrenceCount: state.totalOccurrences,
+      suppressedCount: state.suppressedSinceLastDispatch,
+      sessionCapped: false,
+      fingerprint
+    };
+  }
+
+  // Throttle window expired: allow subsequent dispatch
+  const suppressedBeforeThisDispatch = state.suppressedSinceLastDispatch;
+  state.dispatchedCount++;
+  state.lastDispatchedAt = now;
+  state.suppressedSinceLastDispatch = 0;
+  totalSessionDispatched++;
+
+  return {
+    shouldDispatch: true,
+    occurrenceCount: state.totalOccurrences,
+    suppressedCount: suppressedBeforeThisDispatch,
+    sessionCapped: false,
+    fingerprint
+  };
+}
+
+/**
+ * Reset PostHog client and rate limiting state (for test isolation)
  */
 export function _resetPostHogForTesting(): void {
   isInitialized = false;
   posthogClient = null;
   activeApp = 'student';
+  fingerprintRegistry.clear();
+  totalSessionDispatched = 0;
 }
 
 /**
  * Initialize PostHog client with single shared project key
- * and mandatory 'app' property isolation ('student' | 'admin').
- * Dynamically imports posthog-js so it is not bundled in the initial critical path.
+ * and mandatory 'app' property isolation ('student' | 'admin' | 'backend').
+ * Dynamically imports posthog-js so it is not bundled in the critical rendering path.
  */
 export function initPostHog(config: PostHogConfig): typeof posthogType | null {
   if (typeof window === 'undefined') {
@@ -50,9 +177,9 @@ export function initPostHog(config: PostHogConfig): typeof posthogType | null {
       ph.init(apiKey, {
         api_host: apiHost,
         autocapture: false,
-        capture_pageview: false, // We control pageviews explicitly for single-page apps
+        capture_pageview: false, // Explicit pageviews for SPAs
         capture_pageleave: true,
-        disable_session_recording: true, // We use Microsoft Clarity for recordings
+        disable_session_recording: true,
         respect_dnt: true,
         persistence: 'localStorage+cookie',
         loaded: (instance: any) => {
@@ -95,9 +222,73 @@ export function trackEvent(eventName: string, properties: Record<string, any> = 
     if (isInitialized && posthogClient) {
       posthogClient.capture(eventName, payload);
     }
-  } catch (err) {
+  } catch {
     // Silently ignore telemetry failure
   }
+}
+
+/**
+ * Safely capture an application exception to PostHog.
+ * Features:
+ * - Fingerprint-aware deduplication (preserves distinct errors).
+ * - Exact occurrence and suppressed count tracking.
+ * - Emergency session cap (50).
+ * - Sensitive credential scrubbing (Bearer, JWT, OTPs, Secrets).
+ * - Full stack trace preservation.
+ */
+export function captureSafeException(error: any, context: Record<string, any> = {}): void {
+  if (typeof window === 'undefined') return;
+
+  try {
+    const rateCheck = evaluateExceptionRateLimit(error, context);
+    if (!rateCheck.shouldDispatch) {
+      return;
+    }
+
+    const safeContext = scrubSensitiveData(context);
+    const errorMsg = error instanceof Error ? error.message : String(error || 'Unknown error');
+    const errorStack = error instanceof Error ? error.stack : undefined;
+    const errorType = error instanceof Error ? error.name : 'Error';
+
+    const payload = {
+      app: activeApp,
+      $exception_type: errorType,
+      $exception_message: errorMsg,
+      $exception_stack_trace_raw: errorStack,
+      local_session_occurrence_count: rateCheck.occurrenceCount,
+      locally_suppressed_occurrences: rateCheck.suppressedCount,
+      error_fingerprint: rateCheck.fingerprint,
+      ...safeContext
+    };
+
+    if (isInitialized && posthogClient) {
+      if (typeof (posthogClient as any).captureException === 'function') {
+        (posthogClient as any).captureException(error, payload);
+      } else {
+        posthogClient.capture('$exception', payload);
+      }
+    }
+  } catch {
+    // Non-blocking telemetry
+  }
+}
+
+/**
+ * Safely capture an operational or handled message to PostHog.
+ */
+export function captureSafeMessage(message: string, level: string = 'info', context: Record<string, any> = {}): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const safeContext = scrubSensitiveData(context);
+    const safeMsg = scrubSensitiveData(message);
+
+    trackEvent('$exception', {
+      $exception_type: `HandledMessage:${level}`,
+      $exception_message: safeMsg,
+      level,
+      ...safeContext
+    });
+  } catch {}
 }
 
 /**
@@ -114,7 +305,6 @@ export function trackPageView(pageName: string, properties: Record<string, any> 
 
 /**
  * Track outbound click on external registration URL (PRD Section 89).
- * Explicitly named 'Registration Link Click' without implying completed ticket purchase.
  */
 export function trackRegistrationClick(
   eventId: string,

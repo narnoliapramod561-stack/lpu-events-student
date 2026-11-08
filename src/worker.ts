@@ -99,9 +99,6 @@ const inFlightRequests = new Map<string, EdgeSingleFlightEntry>();
 // Single-flight map for internal Supabase PostgREST queries across handlers
 const originInFlight = new Map<string, Promise<{ ok: boolean; status: number; data: unknown }>>();
 
-// Edge telemetry buffer for user errors (D1 edge fallback)
-const edgeErrorsBuffer: any[] = [];
-
 // Edge telemetry buffer for student inquiries (Cloudflare D1 edge fallback)
 const edgeInquiriesBuffer: any[] = [];
 
@@ -139,7 +136,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Cross-Origin-Resource-Policy': 'same-origin',
   'X-Permitted-Cross-Domain-Policies': 'none',
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://*.googletagmanager.com https://googletagmanager.com https://*.google-analytics.com https://*.adtrafficquality.google https://*.google.com https://*.clarity.ms https://*.posthog.com https://us-assets.i.posthog.com https://pagead2.googlesyndication.com https://adservice.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://images.unsplash.com https://upload.wikimedia.org https://*.supabase.co https://*.lpuevents.live https://lpuevents.live https://images.lpuevents.live https://*.clarity.ms https://c.bing.com https://pagead2.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.google-analytics.com https://*.googletagmanager.com https://*.adtrafficquality.google; connect-src 'self' http://localhost:* ws://localhost:* https://*.supabase.co wss://*.supabase.co https://*.lpuevents.live wss://*.lpuevents.live https://images.lpuevents.live https://*.posthog.com https://us-assets.i.posthog.com https://*.cloudflareinsights.com https://*.sentry.io https://*.clarity.ms https://c.bing.com https://pagead2.googlesyndication.com https://adservice.google.com https://*.doubleclick.net https://*.googletagmanager.com https://*.google-analytics.com https://*.google.com https://*.adtrafficquality.google; frame-src 'self' https://*.doubleclick.net https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://*.googletagmanager.com https://*.google.com https://*.adtrafficquality.google; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none';",
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://*.adtrafficquality.google https://*.google.com https://*.posthog.com https://us-assets.i.posthog.com https://pagead2.googlesyndication.com https://adservice.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://images.unsplash.com https://upload.wikimedia.org https://*.supabase.co https://*.lpuevents.live https://lpuevents.live https://images.lpuevents.live https://pagead2.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; connect-src 'self' http://localhost:* ws://localhost:* https://*.supabase.co wss://*.supabase.co https://*.lpuevents.live wss://*.lpuevents.live https://images.lpuevents.live https://*.posthog.com https://us-assets.i.posthog.com https://*.cloudflareinsights.com https://pagead2.googlesyndication.com https://adservice.google.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; frame-src 'self' https://*.doubleclick.net https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://*.google.com https://*.adtrafficquality.google; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none';",
 };
 
 // ─── Cache TTL & SWR Policy Matrix (99.999% Target) ─────────────────────────
@@ -2612,80 +2609,6 @@ export default {
       }
     }
 
-    // ─── Edge Error Telemetry Endpoints (Cloudflare D1 — 0% Supabase impact) ────
-    if (url.pathname === '/api/report-error' && request.method === 'POST') {
-      try {
-        const body = (await request.json()) as any;
-        const errRecord = {
-          id: `err_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
-          error_type: String(body.error_type || 'SCREEN_CRASH').slice(0, 50),
-          error_message: String(body.error_message || 'Unknown error').slice(0, 500),
-          file_path: String(body.file_path || 'Unknown file').slice(0, 200),
-          line_number: Math.min(Math.max(Number(body.line_number) || 0, 0), 100000),
-          component: String(body.component || 'Unknown component').slice(0, 100),
-          url: String(body.url || origin).slice(0, 500),
-          user_device: String(body.user_device || 'Unknown device').slice(0, 200),
-          last_action: String(body.last_action || 'Screen interaction').slice(0, 200),
-          stack_trace: String(body.stack_trace || '').slice(0, 2000),
-          created_at: new Date().toISOString(),
-        };
-
-        if (env.DB) {
-          await env.DB.prepare(`
-            INSERT INTO user_errors (id, error_type, error_message, file_path, line_number, component, url, user_device, last_action, stack_trace, created_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-          `).bind(
-            errRecord.id, errRecord.error_type, errRecord.error_message, errRecord.file_path, errRecord.line_number,
-            errRecord.component, errRecord.url, errRecord.user_device, errRecord.last_action, errRecord.stack_trace, errRecord.created_at
-          ).run().catch(() => {});
-        }
-
-        edgeErrorsBuffer.unshift(errRecord);
-        if (edgeErrorsBuffer.length > 100) edgeErrorsBuffer.pop();
-
-        return jsonResponse({ ok: true, id: errRecord.id }, 200);
-      } catch {
-        return jsonResponse({ ok: false }, 400);
-      }
-    }
-
-    if (url.pathname.startsWith('/api/admin/errors')) {
-      if (!await isCacheMutationAuthorized(request, env, true)) {
-        return errorResponse('Unauthorized administrative request', 401);
-      }
-
-      if (url.pathname === '/api/admin/errors' && request.method === 'GET') {
-        if (env.DB) {
-          try {
-            const res = await env.DB.prepare('SELECT * FROM user_errors ORDER BY created_at DESC LIMIT 50').all();
-            if (res?.results && res.results.length > 0) {
-              return jsonResponse({ errors: res.results }, 200);
-            }
-          } catch {}
-        }
-        return jsonResponse({ errors: edgeErrorsBuffer }, 200);
-      }
-
-      if (request.method === 'DELETE') {
-        const parts = url.pathname.split('/');
-        const targetId = parts[4];
-        if (targetId) {
-          if (env.DB) {
-            await env.DB.prepare('DELETE FROM user_errors WHERE id = ?').bind(targetId).run().catch(() => {});
-          }
-          const idx = edgeErrorsBuffer.findIndex((e: any) => e.id === targetId);
-          if (idx !== -1) edgeErrorsBuffer.splice(idx, 1);
-        } else {
-          if (env.DB) {
-            await env.DB.prepare('DELETE FROM user_errors').run().catch(() => {});
-          }
-          edgeErrorsBuffer.length = 0;
-        }
-        return jsonResponse({ ok: true }, 200);
-      }
-
-      return errorResponse('Method Not Allowed', 405);
-    }
 
     // ─── Edge Student Inquiries Endpoint (Cloudflare D1 / Zero-Supabase-Stress) ───
     if ((url.pathname === '/api/contact' || url.pathname === '/api/inquiries') && request.method === 'POST') {

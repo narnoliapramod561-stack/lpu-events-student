@@ -1087,10 +1087,8 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-transparent text-gray-900 dark:text-gray-100 transition-colors duration-300 relative selection:bg-primary/20 selection:text-primary dark:selection:bg-white/20 dark:selection:text-white overflow-x-clip font-sans">
-      <SplashScreen />
-
-      {/* Global Fixed Campus Background Layer (Pure and Unaltered in Light Mode) */}
+    <>
+      {/* Global Fixed Campus Background Layer (100% Motionless on Desktop & Mobile) */}
       <div 
         aria-hidden="true" 
         className="campus-bg-fixed-layer"
@@ -1100,20 +1098,24 @@ export default function App() {
           alt=""
           fetchPriority="high"
           decoding="async"
-          className="absolute inset-0 w-full h-full object-cover object-[center_50%] sm:object-[center_46%] lg:object-[center_42%] 2xl:object-[center_44%] select-none pointer-events-none"
-          style={{
-            transform: 'translate3d(0, 0, 0)',
-            WebkitTransform: 'translate3d(0, 0, 0)',
-            backfaceVisibility: 'hidden',
-            WebkitBackfaceVisibility: 'hidden',
-          }}
+          className={`campus-bg-img-element transition-[filter] duration-500 ${
+            (currentView === 'event-details' || selectedEventId)
+              ? 'blur-[22px]'
+              : ''
+          }`}
         />
+        {/* Subtle Dark Mode Obsidian Tint */}
         <div className="absolute inset-0 hidden dark:block dark:bg-[#0e0e12]/60 pointer-events-none" />
       </div>
 
-      {/* Dark Mode Premium Ambient Canvas — Obsidian Space with Luminous Refractive Depth (Zero heavy blur filters) */}
+      {/* Dark Mode Premium Ambient Canvas — Obsidian Space with Luminous Refractive Depth */}
       <div 
-        className="campus-bg-fixed-layer select-none hidden dark:block"
+        aria-hidden="true"
+        className={`campus-bg-fixed-layer select-none hidden dark:block transition-[filter] duration-500 ${
+          (currentView === 'event-details' || selectedEventId)
+            ? 'blur-[24px]'
+            : ''
+        }`}
       >
         {/* 1. Ethereal Violet-Indigo Top Wash */}
         <div
@@ -1122,25 +1124,37 @@ export default function App() {
         />
         {/* 2. Warm Amber LPU Glow (mid-right depth) */}
         <div
-          className="absolute top-[22%] -right-28 w-[650px] h-[650px] rounded-full pointer-events-none"
+          className="absolute top-[200px] -right-28 w-[650px] h-[650px] rounded-full pointer-events-none"
           style={{ background: 'radial-gradient(circle at center, rgba(255, 107, 0, 0.14) 0%, rgba(245, 158, 11, 0.07) 50%, transparent 75%)' }}
         />
         {/* 3. Deep Sapphire Horizon (mid-left depth) */}
         <div
-          className="absolute top-[48%] -left-32 w-[650px] h-[650px] rounded-full pointer-events-none"
+          className="absolute top-[440px] -left-32 w-[650px] h-[650px] rounded-full pointer-events-none"
           style={{ background: 'radial-gradient(circle at center, rgba(37, 99, 235, 0.15) 0%, rgba(6, 182, 212, 0.07) 50%, transparent 75%)' }}
         />
         {/* 4. Warm Ember Bottom Ambient (footer refraction) */}
         <div
-          className="absolute -bottom-36 left-1/3 -translate-x-1/2 w-[850px] h-[450px] rounded-full pointer-events-none"
+          className="absolute top-[750px] left-1/3 -translate-x-1/2 w-[850px] h-[450px] rounded-full pointer-events-none"
           style={{ background: 'radial-gradient(ellipse at center, rgba(249, 115, 22, 0.12) 0%, rgba(147, 51, 234, 0.06) 50%, transparent 75%)' }}
         />
       </div>
 
-      {/* Scroll Top Reference Anchor */}
-      <div id="top" className="absolute top-0 left-0 h-0 w-0 pointer-events-none" />
+      {/* Whole-Page Background Blur for View Details in Both Desktop and Mobile Mode */}
+      {(currentView === 'event-details' || selectedEventId) && (
+        <div
+          aria-hidden="true"
+          className="event-details-blur-layer"
+        />
+      )}
 
-      <div className="relative z-10">
+      {/* Main Page Flow Container (Clips horizontal overflow of children cleanly) */}
+      <div className="min-h-screen bg-transparent text-gray-900 dark:text-gray-100 transition-colors duration-300 relative selection:bg-primary/20 selection:text-primary dark:selection:bg-white/20 dark:selection:text-white overflow-x-clip font-sans z-10">
+        <SplashScreen />
+
+        {/* Scroll Top Reference Anchor */}
+        <div id="top" className="absolute top-0 left-0 h-0 w-0 pointer-events-none" />
+
+        <div className="relative z-10">
         {/* Campus Announcement Banner (Configured from Super Admin Site Controls) */}
         {campusAnnouncement?.isActive && !announcementDismissed && (
           <aside 
@@ -1362,5 +1376,6 @@ export default function App() {
         </Suspense>
       </div>
     </div>
+    </>
   );
 }

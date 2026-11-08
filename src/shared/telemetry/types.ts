@@ -1,7 +1,7 @@
 // packages/shared/src/telemetry/types.ts
-// Authoritative telemetry type definitions for LPU Events
+// Authoritative telemetry type definitions for LPU Events (PostHog Only)
 
-export type AppIdentifier = 'student' | 'admin';
+export type AppIdentifier = 'student' | 'admin' | 'backend';
 
 export type TelemetryEnvironment = 'development' | 'test' | 'staging' | 'production';
 
@@ -11,19 +11,6 @@ export interface PostHogConfig {
   app: AppIdentifier;
   environment?: TelemetryEnvironment;
   debug?: boolean;
-}
-
-export interface ClarityConfig {
-  projectId?: string;
-  maskAllText?: boolean;
-}
-
-export interface SentryConfig {
-  dsn?: string;
-  environment?: TelemetryEnvironment;
-  release?: string;
-  app: AppIdentifier;
-  tracesSampleRate?: number;
 }
 
 export interface BaseEventProperties {

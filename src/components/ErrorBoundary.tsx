@@ -33,31 +33,6 @@ export class ErrorBoundary extends Component<Props, State> {
       componentStack: errorInfo.componentStack,
       surface: 'student-web-react-root'
     });
-
-    try {
-      const payload = JSON.stringify({
-        error_type: 'SCREEN_CRASH',
-        error_message: error.message || 'React Screen Crash',
-        file_path: 'src/components/ErrorBoundary.tsx',
-        line_number: 1,
-        component: 'student-web-react-root',
-        url: typeof window !== 'undefined' ? window.location.href : 'https://lpuevents.live',
-        user_device: typeof navigator !== 'undefined' ? navigator.userAgent : 'Unknown Device',
-        last_action: 'Screen rendering or component mount',
-        stack_trace: error.stack || errorInfo.componentStack || '',
-      });
-
-      if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
-        navigator.sendBeacon('/api/report-error', payload);
-      } else if (typeof fetch !== 'undefined') {
-        fetch('/api/report-error', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: payload,
-          keepalive: true,
-        }).catch(() => {});
-      }
-    } catch {}
   }
 
   public render() {

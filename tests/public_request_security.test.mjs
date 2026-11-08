@@ -236,12 +236,12 @@ describe('Public Request Security & Cookie Regression Suite', () => {
     const recRes = await worker.fetch(reconcileReq, createMockEnv(), createMockCtx());
     assert.strictEqual(recRes.status, 401, 'Unauthenticated media reconciliation must return 401');
 
-    // 6c: Admin errors endpoint without auth returns 401
+    // 6c: Retired admin errors endpoint cannot expose information (returns 404 Not Found)
     const adminErrorsReq = new Request('https://lpuevents.live/api/admin/errors', {
       method: 'GET',
     });
     const errRes = await worker.fetch(adminErrorsReq, createMockEnv(), createMockCtx());
-    assert.strictEqual(errRes.status, 401, 'Unauthenticated admin errors query must return 401');
+    assert.strictEqual(errRes.status, 404, 'Retired admin errors endpoint must return 404 and expose no information');
   });
 
   // ─── Test 7: No request cookies or user tokens are forwarded to Supabase ──
