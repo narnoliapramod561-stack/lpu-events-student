@@ -3,12 +3,98 @@
 // Replaced legacy Sentry, Clarity, and GA4 telemetry with zero-subscription-cost PostHog integration
 
 import type posthogType from 'posthog-js';
-import type { PostHogConfig, AppIdentifier } from './types.ts';
+import type { PostHogConfig, AppIdentifier, EarlyErrorRecord, ReleaseInfo } from './types.ts';
 import { scrubSensitiveData } from './scrub.ts';
 
 let posthogClient: typeof posthogType | null = null;
 let isInitialized = false;
 let activeApp: AppIdentifier = 'student';
+let configuredRelease: string = '1.0.0';
+let configuredGitCommit: string = 'unknown';
+
+// ─── Pre-Initialization Error Buffer (EarlyErrorBuffer) ──────────────────────
+
+export const EARLY_BUFFER_MAX = 10;
+const earlyBuffer: EarlyErrorRecord[] = [];
+
+/**
+ * Safely resolves an environment variable across browser (Vite import.meta.env)
+ * and server / Node test environments (process.env).
+ */
+function getEnvVar(key: string): string | undefined {
+  if (typeof import.meta !== 'undefined' && (import.meta as any).env && typeof (import.meta as any).env[key] === 'string') {
+    return (import.meta as any).env[key];
+  }
+  if (typeof process !== 'undefined' && process.env && typeof process.env[key] === 'string') {
+    return process.env[key];
+  }
+  return undefined;
+}
+
+/**
+ * Captures an exception immediately if PostHog is ready, or buffers it in a bounded
+ * FIFO queue (max 10 entries) if PostHog has not yet initialized.
+ */
+export function captureOrBufferException(error: unknown, context: Record<string, any> = {}): void {
+  if (isInitialized && posthogClient) {
+    captureSafeException(error, context);
+    return;
+  }
+
+  // FIFO eviction: drop oldest record if capacity reached
+  if (earlyBuffer.length >= EARLY_BUFFER_MAX) {
+    earlyBuffer.shift();
+  }
+
+  const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+
+  earlyBuffer.push({
+    error,
+    context,
+    capturedAt: now
+  });
+}
+
+/**
+ * Drains all pre-initialization buffered errors to PostHog once initialization completes.
+ * Each buffered record is annotated with its dwell time and was_buffered_pre_init flag.
+ */
+export function drainEarlyErrorBuffer(): void {
+  if (earlyBuffer.length === 0) return;
+
+  const recordsToFlush = earlyBuffer.splice(0, earlyBuffer.length);
+  const now = typeof performance !== 'undefined' && typeof performance.now === 'function'
+    ? performance.now()
+    : Date.now();
+
+  for (const record of recordsToFlush) {
+    const dwellMs = Math.max(0, Math.round(now - record.capturedAt));
+    captureSafeException(record.error, {
+      ...record.context,
+      was_buffered_pre_init: true,
+      buffer_dwell_ms: dwellMs
+    });
+  }
+}
+
+/**
+ * Inspect the early error buffer (for testing and verification).
+ */
+export function _getEarlyBufferForTesting(): readonly EarlyErrorRecord[] {
+  return [...earlyBuffer];
+}
+
+/**
+ * Returns current configured release and git commit identification.
+ */
+export function getReleaseInfo(): ReleaseInfo {
+  return {
+    appVersion: configuredRelease,
+    gitCommitSha: configuredGitCommit
+  };
+}
 
 // ─── Fingerprint-Aware Exception Rate Limiter & Deduplicator ───────────────────
 
@@ -135,14 +221,25 @@ export function evaluateExceptionRateLimit(
 }
 
 /**
- * Reset PostHog client and rate limiting state (for test isolation)
+ * Reset PostHog client, early buffer, and rate limiting state (for test isolation)
  */
 export function _resetPostHogForTesting(): void {
   isInitialized = false;
   posthogClient = null;
   activeApp = 'student';
+  configuredRelease = '1.0.0';
+  configuredGitCommit = 'unknown';
+  earlyBuffer.length = 0;
   fingerprintRegistry.clear();
   totalSessionDispatched = 0;
+}
+
+/**
+ * Set mock PostHog client for testing
+ */
+export function _setPostHogClientForTesting(client: any): void {
+  posthogClient = client;
+  isInitialized = true;
 }
 
 /**
@@ -156,13 +253,15 @@ export function initPostHog(config: PostHogConfig): typeof posthogType | null {
   }
 
   activeApp = config.app;
+  configuredRelease = config.appVersion || getEnvVar('VITE_APP_VERSION') || '1.0.0';
+  configuredGitCommit = config.gitCommitSha || getEnvVar('VITE_GIT_COMMIT_SHA') || 'unknown';
 
   if (isInitialized && posthogClient) {
     return posthogClient;
   }
 
-  const apiKey = config.apiKey || (typeof process !== 'undefined' ? process.env?.VITE_POSTHOG_KEY : undefined);
-  const apiHost = config.apiHost || (typeof process !== 'undefined' ? process.env?.VITE_POSTHOG_HOST : undefined) || 'https://us.i.posthog.com';
+  const apiKey = config.apiKey || getEnvVar('VITE_POSTHOG_KEY');
+  const apiHost = config.apiHost || getEnvVar('VITE_POSTHOG_HOST') || 'https://us.i.posthog.com';
 
   if (!apiKey || apiKey.trim() === '' || apiKey === 'placeholder' || apiKey === 'your-posthog-key-here') {
     if (config.debug) {
@@ -185,11 +284,16 @@ export function initPostHog(config: PostHogConfig): typeof posthogType | null {
         loaded: (instance: any) => {
           instance.register({
             app: config.app,
-            environment: config.environment || 'production'
+            environment: config.environment || 'production',
+            $release: configuredRelease,
+            git_commit_sha: configuredGitCommit
           });
+          isInitialized = true;
           if (config.debug) {
-            console.log(`[Telemetry:PostHog] Initialized successfully with app="${config.app}"`);
+            console.log(`[Telemetry:PostHog] Initialized successfully with app="${config.app}" release="${configuredRelease}" commit="${configuredGitCommit}"`);
           }
+          // Drain any errors buffered before PostHog finished initializing
+          drainEarlyErrorBuffer();
         }
       });
       isInitialized = true;
@@ -209,12 +313,14 @@ export function initPostHog(config: PostHogConfig): typeof posthogType | null {
  * Track a custom analytics event with automatic 'app' property tag and sensitive data scrubbing.
  */
 export function trackEvent(eventName: string, properties: Record<string, any> = {}): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' && !posthogClient) return;
 
   try {
     const safeProps = scrubSensitiveData(properties);
     const payload = {
       app: activeApp,
+      $release: configuredRelease,
+      git_commit_sha: configuredGitCommit,
       timestamp: new Date().toISOString(),
       ...safeProps
     };
@@ -237,7 +343,7 @@ export function trackEvent(eventName: string, properties: Record<string, any> = 
  * - Full stack trace preservation.
  */
 export function captureSafeException(error: any, context: Record<string, any> = {}): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' && !posthogClient) return;
 
   try {
     const rateCheck = evaluateExceptionRateLimit(error, context);
@@ -252,6 +358,8 @@ export function captureSafeException(error: any, context: Record<string, any> = 
 
     const payload = {
       app: activeApp,
+      $release: configuredRelease,
+      git_commit_sha: configuredGitCommit,
       $exception_type: errorType,
       $exception_message: errorMsg,
       $exception_stack_trace_raw: errorStack,
@@ -277,7 +385,7 @@ export function captureSafeException(error: any, context: Record<string, any> = 
  * Safely capture an operational or handled message to PostHog.
  */
 export function captureSafeMessage(message: string, level: string = 'info', context: Record<string, any> = {}): void {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' && !posthogClient) return;
   try {
     const safeContext = scrubSensitiveData(context);
     const safeMsg = scrubSensitiveData(message);
@@ -340,5 +448,5 @@ export function trackAdminAction(
 }
 
 export function isPostHogReady(): boolean {
-  return isInitialized;
+  return isInitialized && posthogClient !== null;
 }

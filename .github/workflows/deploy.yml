@@ -1,0 +1,50 @@
+name: Deploy Student Website
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build Application with Hidden Source Maps
+        run: npm run build
+        env:
+          CI: true
+          VITE_GIT_COMMIT_SHA: ${{ github.sha }}
+          VITE_APP_VERSION: ${{ github.ref_name }}
+
+      - name: Upload Source Maps to PostHog
+        uses: PostHog/upload-source-maps@v1
+        with:
+          directory: 'dist'
+          project-id: ${{ secrets.POSTHOG_PROJECT_ID }}
+          api-key: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          host: 'https://us.posthog.com'
+          delete-after-upload: true
+
+      - name: Verify No Source Maps in Dist Artifact
+        run: |
+          MAP_COUNT=$(find dist/ -name "*.map" | wc -l)
+          if [ "$MAP_COUNT" -ne 0 ]; then
+            echo "Security Error: Found unpurged .map files in dist/ directory!"
+            find dist/ -name "*.map"
+            exit 1
+          fi
+          echo "Security Check Passed: Zero .map files in dist directory."
+

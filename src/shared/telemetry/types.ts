@@ -11,6 +11,19 @@ export interface PostHogConfig {
   app: AppIdentifier;
   environment?: TelemetryEnvironment;
   debug?: boolean;
+  appVersion?: string;
+  gitCommitSha?: string;
+}
+
+export interface EarlyErrorRecord {
+  error: unknown;
+  context: Record<string, any>;
+  capturedAt: number; // high-resolution timestamp (performance.now() or Date.now())
+}
+
+export interface ReleaseInfo {
+  appVersion: string;
+  gitCommitSha: string;
 }
 
 export interface BaseEventProperties {
