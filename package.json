@@ -4,9 +4,10 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "npm run build && wrangler dev --ip 0.0.0.0 --port 3000 --show-interactive-dev-session=false",
+    "dev:vite": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview",
+    "preview": "wrangler dev --ip 0.0.0.0 --port 3000 --show-interactive-dev-session=false",
     "typecheck": "tsc --noEmit",
     "test:security": "node --experimental-strip-types --test tests/public_request_security.test.mjs",
     "cleanup:database": "node scripts/database_cleanup.mjs"

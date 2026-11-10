@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import { ErrorBoundary } from './components/ErrorBoundary.tsx';
+import { captureOrBufferException } from './shared/telemetry';
 import './index.css';
 
 // Non-blocking telemetry (PostHog Product Analytics & Error Tracking) loaded dynamically on first user interaction
@@ -48,8 +49,30 @@ if (typeof window !== 'undefined') {
     }
   }, 8000);
 
-  window.addEventListener('error', initDeferredTelemetry, { once: true });
-  window.addEventListener('unhandledrejection', initDeferredTelemetry, { once: true });
+  // Global uncaught JavaScript runtime error listener (non-destructive)
+  window.addEventListener('error', (event: ErrorEvent) => {
+    initDeferredTelemetry();
+    if (!event.error && !event.message) return;
+    captureOrBufferException(event.error || new Error(event.message), {
+      source: 'window.addEventListener_error',
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+    });
+  });
+
+  // Global unhandled promise rejection listener (non-destructive)
+  window.addEventListener('unhandledrejection', (event: PromiseRejectionEvent) => {
+    initDeferredTelemetry();
+    const reason = event.reason;
+    if (reason && (reason.name === 'AbortError' || reason.code === 20)) return;
+    captureOrBufferException(
+      reason instanceof Error ? reason : new Error(String(reason || 'Unhandled Promise Rejection')),
+      {
+        source: 'window.addEventListener_unhandledrejection',
+      }
+    );
+  });
 }
 
 // Configure Google Search Console verification token if provided in environment

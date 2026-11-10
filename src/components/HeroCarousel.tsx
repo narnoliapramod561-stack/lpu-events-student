@@ -383,15 +383,15 @@ export const HeroCarouselComponent = ({
 
                           {/* Venue */}
                           {currentSlide.venue && (
-                            <div className="flex items-center gap-3">
-                              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-orange-500/15 dark:bg-amber-500/20 text-[#ea580c] dark:text-amber-400 border border-orange-300/40 dark:border-amber-500/30 shadow-2xs">
+                            <div className="flex items-start gap-3">
+                              <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-orange-500/15 dark:bg-amber-500/20 text-[#ea580c] dark:text-amber-400 border border-orange-300/40 dark:border-amber-500/30 shadow-2xs mt-0.5">
                                 <MapPin className="h-5 w-5 text-[#ea580c] dark:text-amber-400 stroke-[2.2]" />
                               </div>
                               <div className="flex flex-col min-w-0">
                                 <span className="text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#ea580c] dark:text-amber-400 font-heading">
                                   Venue
                                 </span>
-                                <span className="text-xs sm:text-sm font-bold text-[#0f172a] dark:text-gray-100 truncate">
+                                <span className="text-xs sm:text-sm font-bold text-[#0f172a] dark:text-gray-100 line-clamp-2 break-words leading-snug">
                                   {currentSlide.venue}
                                 </span>
                               </div>
@@ -515,7 +515,7 @@ export const HeroCarouselComponent = ({
           <button
             type="button"
             onClick={() => paginate(-1)}
-            className="flex absolute -left-2.5 sm:-left-4 md:-left-5 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 rounded-full items-center justify-center bg-white/70 dark:bg-white/15 backdrop-blur-md border border-white/85 dark:border-white/25 shadow-md text-slate-700 dark:text-white hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer touch-manipulation outline-none"
+            className="flex absolute left-2 sm:-left-4 md:-left-5 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 rounded-full items-center justify-center bg-white/70 dark:bg-white/15 backdrop-blur-md border border-white/85 dark:border-white/25 shadow-md text-slate-700 dark:text-white hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer touch-manipulation outline-none"
             aria-label="Previous slide"
           >
             <ChevronLeft className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.5]" />
@@ -523,7 +523,7 @@ export const HeroCarouselComponent = ({
           <button
             type="button"
             onClick={() => paginate(1)}
-            className="flex absolute -right-2.5 sm:-right-4 md:-right-5 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 rounded-full items-center justify-center bg-white/70 dark:bg-white/15 backdrop-blur-md border border-white/85 dark:border-white/25 shadow-md text-slate-700 dark:text-white hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer touch-manipulation outline-none"
+            className="flex absolute right-2 sm:-right-4 md:-right-5 top-1/2 -translate-y-1/2 z-30 w-8 h-8 sm:w-10 sm:h-10 rounded-full items-center justify-center bg-white/70 dark:bg-white/15 backdrop-blur-md border border-white/85 dark:border-white/25 shadow-md text-slate-700 dark:text-white hover:scale-110 active:scale-95 transition-all duration-200 cursor-pointer touch-manipulation outline-none"
             aria-label="Next slide"
           >
             <ChevronRight className="h-4 w-4 sm:h-5 sm:w-5 stroke-[2.5]" />
@@ -531,20 +531,20 @@ export const HeroCarouselComponent = ({
         </>
       )}
 
-      {/* 4. Progress Dots — Centered Below the Card in Frosted Glass Capsule */}
+      {/* 4. Progress Dots — Clean Floating Capsule Dots Matching App */}
       {slides.length > 1 && (
-        <div className="flex items-center justify-center mt-3 sm:mt-4 mb-0">
-          <div className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/65 dark:bg-white/12 backdrop-blur-md border border-white/85 dark:border-white/20 shadow-xs">
+        <div className="flex items-center justify-center mt-2.5 sm:mt-4 mb-0">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full bg-white/60 dark:bg-white/10 backdrop-blur-md border border-white/80 dark:border-white/15 shadow-2xs">
             {slides.map((_, idx) => (
               <button
                 key={idx}
                 type="button"
                 onClick={() => goToSlide(idx)}
                 aria-label={`Go to slide ${idx + 1}`}
-                className={`h-2 rounded-full transition-[width,background-color] duration-300 cursor-pointer ${
+                className={`h-1.5 sm:h-2 rounded-full transition-[width,background-color] duration-300 cursor-pointer ${
                   idx === currentIndex
-                    ? "w-6 bg-gradient-to-r from-[#ff7a18] to-[#ea580c] shadow-[0_0_8px_rgba(234,88,12,0.5)]"
-                    : "w-2 bg-slate-300 dark:bg-white/25 hover:bg-slate-400"
+                    ? "w-5 sm:w-6 bg-[#ff6b00] shadow-[0_0_8px_rgba(255,107,0,0.5)]"
+                    : "w-1.5 sm:w-2 bg-slate-400/40 dark:bg-white/25 hover:bg-slate-400"
                 }`}
               />
             ))}

@@ -767,6 +767,65 @@
   contain: layout style;
 }
 
+/* Apple VisionOS Optical Liquid Glass Desktop Discovery Suite (Pure Transparent Glass Feel) */
+.glass-discovery-suite {
+  position: relative;
+  isolation: isolate;
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.42) 0%,
+    rgba(255, 255, 255, 0.20) 50%,
+    rgba(255, 255, 255, 0.30) 100%
+  ) !important;
+  backdrop-filter: blur(28px) saturate(190%) !important;
+  -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.75) !important;
+  box-shadow: 
+    0 24px 60px -12px rgba(15, 23, 42, 0.12),
+    0 8px 24px -4px rgba(15, 23, 42, 0.05),
+    inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1.5px 0 rgba(0, 0, 0, 0.04) !important;
+}
+
+.glass-discovery-suite::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(
+    ellipse 85% 45% at 50% 0%,
+    rgba(255, 255, 255, 0.40) 0%,
+    rgba(255, 255, 255, 0.06) 55%,
+    transparent 100%
+  );
+  pointer-events: none;
+  z-index: 0;
+}
+
+.dark .glass-discovery-suite {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 255, 255, 0.08) 0%,
+    rgba(255, 255, 255, 0.03) 50%,
+    rgba(255, 255, 255, 0.05) 100%
+  ) !important;
+  backdrop-filter: blur(32px) saturate(180%) !important;
+  -webkit-backdrop-filter: blur(32px) saturate(180%) !important;
+  border: 1.5px solid rgba(255, 255, 255, 0.14) !important;
+  box-shadow: 
+    0 28px 70px -12px rgba(0, 0, 0, 0.60),
+    0 8px 24px -4px rgba(0, 0, 0, 0.35),
+    inset 0 1px 1.5px 0 rgba(255, 255, 255, 0.20) !important;
+}
+
+.dark .glass-discovery-suite::before {
+  background: radial-gradient(
+    ellipse 85% 45% at 50% 0%,
+    rgba(255, 255, 255, 0.08) 0%,
+    transparent 100%
+  );
+}
+
 /* Apple VisionOS Translucent Event Card System */
 .glass-event-card {
   background: linear-gradient(
@@ -1035,38 +1094,37 @@
   .glass-modal-sheet {
     background: linear-gradient(
       180deg,
-      rgba(255, 255, 255, 0.48) 0%,
-      rgba(255, 255, 255, 0.30) 50%,
-      rgba(255, 255, 255, 0.22) 100%
+      rgba(255, 255, 255, 0.88) 0%,
+      rgba(255, 255, 255, 0.76) 50%,
+      rgba(255, 255, 255, 0.82) 100%
     ) !important;
-    backdrop-filter: blur(36px) saturate(210%) brightness(104%) !important;
-    -webkit-backdrop-filter: blur(36px) saturate(210%) brightness(104%) !important;
-    border-top: 1.5px solid rgba(255, 255, 255, 0.88) !important;
+    backdrop-filter: blur(28px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+    border-top: 1.5px solid rgba(255, 255, 255, 0.95) !important;
     border-left: none !important;
     border-right: none !important;
     border-bottom: none !important;
     box-shadow: 
       0 -24px 60px -4px rgba(15, 23, 42, 0.18),
-      inset 0 1.5px 2px 0 rgba(255, 255, 255, 0.95),
-      inset 0 -1px 0 0 rgba(255, 255, 255, 0.20) !important;
+      inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.95) !important;
     isolation: isolate;
   }
 
   .dark .glass-modal-sheet {
     background: linear-gradient(
       180deg,
-      rgba(26, 28, 36, 0.68) 0%,
-      rgba(18, 20, 26, 0.55) 100%
+      rgba(30, 33, 45, 0.92) 0%,
+      rgba(20, 22, 30, 0.88) 100%
     ) !important;
-    backdrop-filter: blur(36px) saturate(200%) brightness(108%) !important;
-    -webkit-backdrop-filter: blur(36px) saturate(200%) brightness(108%) !important;
-    border-top: 1.5px solid rgba(255, 255, 255, 0.18) !important;
+    backdrop-filter: blur(28px) saturate(190%) !important;
+    -webkit-backdrop-filter: blur(28px) saturate(190%) !important;
+    border-top: 1.5px solid rgba(255, 255, 255, 0.20) !important;
     border-left: none !important;
     border-right: none !important;
     border-bottom: none !important;
     box-shadow: 
-      0 -28px 70px rgba(0, 0, 0, 0.65),
-      inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.22) !important;
+      0 -28px 70px rgba(0, 0, 0, 0.70),
+      inset 0 1.5px 1.5px 0 rgba(255, 255, 255, 0.20) !important;
     isolation: isolate;
   }
 }

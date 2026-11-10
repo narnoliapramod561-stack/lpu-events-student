@@ -49,9 +49,11 @@ export interface Env {
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
   DB?: D1Database;
+  POSTHOG_API_KEY?: string;
+  POSTHOG_HOST?: string;
 }
 
-interface ExecutionContext {
+export interface ExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException(): void;
 }
@@ -121,8 +123,8 @@ const VIEW_DEBOUNCE_MS = 10 * 60 * 1000;
 const CORS_HEADERS: Record<string, string> = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type, Authorization, If-None-Match',
-  'Access-Control-Expose-Headers': 'ETag, X-Cache-Version, CF-Cache-Status, X-Edge-Cache, X-Cache-Status, X-Origin-Refreshed, Content-Length',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, If-None-Match, x-correlation-id, X-Correlation-Id',
+  'Access-Control-Expose-Headers': 'ETag, X-Cache-Version, CF-Cache-Status, X-Edge-Cache, X-Cache-Status, X-Origin-Refreshed, Content-Length, x-correlation-id',
   'Access-Control-Max-Age': '86400',
 };
 
@@ -165,7 +167,7 @@ const CACHE_CONFIGS: Record<string, CacheConfig> = {
 
 const PROJECTIONS = {
   categories: 'id,key,name,sort_order,subcategories(id,key,name,sort_order)',
-  carousel: 'id,item_type,event_id,media_id,sort_order,is_active,start_at,end_at,display_duration_ms,custom_title,custom_subtitle,custom_cta_text,custom_cta_url,badge_text,events:event_id(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(name),categories(name,key),subcategories(name,key)),media_assets:media_id(id,object_key)',
+  carousel: 'id,item_type,event_id,media_id,sort_order,is_active,start_at,end_at,display_duration_ms,custom_title,custom_subtitle,custom_cta_text,custom_cta_url,badge_text,events:event_id(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(name),categories(name,key),subcategories(name,key)),media_assets:media_id(id,object_key)',
   featured: 'event_id,sort_order,events(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(id,name))',
   trending: 'event_id,sort_order,events(id,name,description,start_at,end_at,venue_name,registration_mode,pricing_type,price_amount,external_registration_url,banner_media_id,status,category_id,subcategory_id,media_assets:banner_media_id(id,object_key),organizations(id,name),categories(name,key),subcategories(name,key))',
   settings: 'key,value',
@@ -190,6 +192,192 @@ function jsonResponse(data: unknown, status = 200, extraHeaders: Record<string, 
 
 function errorResponse(message: string, status = 400, extraHeaders: Record<string, string> = {}): Response {
   return jsonResponse({ error: { message, code: status === 503 ? 'SERVICE_UNAVAILABLE' : 'EDGE_API_ERROR' } }, status, extraHeaders);
+}
+
+// ─── Request Correlation Utilities (Stage 6 / MON-001 / MON-008) ────────────
+
+/**
+ * Extracts and validates incoming x-correlation-id, or generates a new UUID-based ID.
+ * Complies with /^[A-Za-z0-9_.-]{1,64}$/.
+ */
+export function extractOrGenerateCorrelationId(request: Request): string {
+  const incoming = request.headers.get('x-correlation-id') || request.headers.get('X-Correlation-Id');
+  if (incoming) {
+    const trimmed = incoming.trim();
+    if (/^[A-Za-z0-9_.-]{1,64}$/.test(trimmed)) {
+      return trimmed;
+    }
+  }
+  return `req_cf_${crypto.randomUUID()}`;
+}
+
+/**
+ * Attaches x-correlation-id to response headers, handling both mutable and immutable Response objects.
+ */
+export function attachCorrelationId(res: Response, correlationId: string): Response {
+  try {
+    res.headers.set('x-correlation-id', correlationId);
+    return res;
+  } catch {
+    const newHeaders = new Headers(res.headers);
+    newHeaders.set('x-correlation-id', correlationId);
+    return new Response(res.body, {
+      status: res.status,
+      statusText: res.statusText,
+      headers: newHeaders,
+    });
+  }
+}
+
+// ─── PostHog Error Tracking Telemetry for Cloudflare Worker (Stage 4) ──────────
+
+export interface WorkerStackFrame {
+  platform: string;
+  lang: string;
+  function: string;
+  filename: string;
+  lineno?: number;
+  colno?: number;
+  in_app: boolean;
+}
+
+export function parseErrorStackToFrames(stack?: string): WorkerStackFrame[] {
+  if (!stack) return [];
+  const lines = stack.split('\n');
+  const frames: WorkerStackFrame[] = [];
+
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed.startsWith('at ')) continue;
+
+    const match = trimmed.match(/^at (?:(.+?)\s+\((.+):(\d+):(\d+)\)|(.+):(\d+):(\d+))$/);
+    if (match) {
+      const fn = match[1] || 'anonymous';
+      const file = match[2] || match[5] || 'unknown';
+      const lineNum = parseInt(match[3] || match[6] || '0', 10);
+      const colNum = parseInt(match[4] || match[7] || '0', 10);
+
+      frames.push({
+        platform: 'custom',
+        lang: 'typescript',
+        function: fn,
+        filename: file.replace(/^[a-z]+:\/\/[^/]+/i, ''),
+        lineno: lineNum,
+        colno: colNum,
+        in_app: !file.includes('node_modules'),
+      });
+    }
+  }
+  return frames;
+}
+
+export function buildWorkerExceptionPayload(
+  apiKey: string,
+  error: unknown,
+  context: {
+    handler?: string;
+    correlation_id?: string;
+    http_method?: string;
+    pathname?: string;
+    status_code?: number;
+    [key: string]: unknown;
+  }
+) {
+  const errObj = error instanceof Error ? error : new Error(String(error || 'Worker Unknown Error'));
+  const stackFrames = parseErrorStackToFrames(errObj.stack);
+  const errType = errObj.name || 'Error';
+  const errVal = errObj.message || 'Unknown worker error';
+  const correlationId = context.correlation_id || `req_edge_${crypto.randomUUID()}`;
+
+  return {
+    api_key: apiKey,
+    event: '$exception',
+    distinct_id: 'backend-cloudflare-worker',
+    timestamp: new Date().toISOString(),
+    properties: {
+      app: 'backend',
+      environment: 'production',
+      backend_surface: 'cloudflare_worker',
+      correlation_id: correlationId,
+      handler: context.handler || 'fetch',
+      http_method: context.http_method || 'GET',
+      pathname: context.pathname || '/',
+      status_code: context.status_code || 500,
+      $lib: 'lpu-backend-telemetry',
+      $lib_version: '1.0.0',
+      $exception_fingerprint: `${errType}:${context.handler || 'worker'}:${errVal.slice(0, 100)}`,
+      $exception_level: 'error',
+      $exception_list: [
+        {
+          type: errType,
+          value: errVal,
+          mechanism: {
+            handled: false,
+            synthetic: false,
+          },
+          stacktrace: {
+            type: 'raw',
+            frames: stackFrames.length > 0 ? stackFrames : [
+              {
+                platform: 'custom',
+                lang: 'typescript',
+                function: context.handler || 'worker',
+                filename: 'src/worker.ts',
+                in_app: true,
+              }
+            ],
+          },
+        },
+      ],
+    },
+  };
+}
+
+export function captureWorkerException(
+  ctx: ExecutionContext,
+  apiKey: string | undefined,
+  apiHost: string | undefined,
+  error: unknown,
+  context: {
+    handler?: string;
+    correlation_id?: string;
+    http_method?: string;
+    pathname?: string;
+    status_code?: number;
+    [key: string]: unknown;
+  }
+): void {
+  if (!apiKey || apiKey.trim() === '' || apiKey === 'YOUR_POSTHOG_PROJECT_KEY' || apiKey === 'placeholder') {
+    return;
+  }
+
+  const host = apiHost || 'https://us.i.posthog.com';
+  const payload = buildWorkerExceptionPayload(apiKey, error, context);
+
+  try {
+    ctx.waitUntil(
+      fetch(`${host.replace(/\/$/, '')}/capture/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      }).catch((err) => {
+        console.warn('[Worker Telemetry:PostHog] Non-blocking exception capture failed:', err);
+      })
+    );
+  } catch (err) {
+    console.warn('[Worker Telemetry:PostHog] Failed to schedule waitUntil:', err);
+  }
+}
+
+export function handleHealthCheck(cacheVersion: number, correlationId?: string): Response {
+  return jsonResponse({
+    status: 'healthy',
+    version: cacheVersion,
+    timestamp: new Date().toISOString(),
+  }, 200, {
+    'Cache-Control': 'no-cache, no-store, must-revalidate',
+    ...(correlationId ? { 'x-correlation-id': correlationId } : {}),
+  });
 }
 
 /**
@@ -662,9 +850,11 @@ async function handleCachedEndpoint(
   const staleCache = await caches.open(STALE_CACHE_NAME);
   const cacheKey = new Request(cacheKeyUrl, { method: 'GET' });
   const ifNoneMatch = request?.headers.get('If-None-Match');
+  const isNoCache = request?.headers.get('Cache-Control')?.includes('no-cache') ||
+                    request?.headers.get('Pragma')?.includes('no-cache');
 
-  // 1. FAST-PATH: Check primary edge cache (Fresh HIT) (<2ms)
-  const cached = await cache.match(cacheKey);
+  // 1. FAST-PATH: Check primary edge cache (Fresh HIT) (<2ms) if not force-refreshing
+  const cached = !isNoCache ? await cache.match(cacheKey) : null;
   if (cached) {
     const etag = cached.headers.get('ETag') || `W/"v_${currentCacheVersion}"`;
 
@@ -2375,15 +2565,29 @@ async function handleStaticPageSeo(pathname: string, env: Env, origin: string): 
 
 export default {
   async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    const correlationId = extractOrGenerateCorrelationId(request);
     const url = new URL(request.url);
     const origin = url.origin;
 
-    // 1. CORS Preflight
-    if (request.method === 'OPTIONS') {
-      return new Response(null, { status: 204, headers: CORS_HEADERS });
+    // 0. Dedicated /health and /api/health probes (Stage 4)
+    if (url.pathname === '/health' || url.pathname === '/api/health') {
+      return handleHealthCheck(currentCacheVersion, correlationId);
     }
 
-    // ─── SEO & Web Routes (Non-API) ──────────────────────────────────────
+    // 1. CORS Preflight
+    if (request.method === 'OPTIONS') {
+      return new Response(null, {
+        status: 204,
+        headers: {
+          ...CORS_HEADERS,
+          'x-correlation-id': correlationId,
+        },
+      });
+    }
+
+    try {
+      const response = await (async (): Promise<Response> => {
+        // ─── SEO & Web Routes (Non-API) ──────────────────────────────────────
     if (!url.pathname.startsWith('/api/')) {
 
       // Dynamic /robots.txt
@@ -2899,6 +3103,26 @@ export default {
       }
     }
 
-    return errorResponse('API endpoint not found', 404);
-  },
+        return errorResponse('API endpoint not found', 404);
+      })();
+      return attachCorrelationId(response, correlationId);
+  } catch (unhandledErr: any) {
+    captureWorkerException(
+      ctx,
+      env.POSTHOG_API_KEY,
+      env.POSTHOG_HOST,
+      unhandledErr,
+      {
+        handler: 'worker_fetch',
+        correlation_id: correlationId,
+        http_method: request.method,
+        pathname: url.pathname,
+        status_code: 500,
+      }
+    );
+    return errorResponse('Internal Server Error', 500, {
+      'x-correlation-id': correlationId,
+    });
+  }
+},
 };

@@ -8,7 +8,9 @@ import {
   QrCode, 
   Download, 
   Mail, 
-  Sparkles
+  Sparkles,
+  Calendar,
+  MapPin
 } from "lucide-react";
 import { 
   getStudentEventUrl, 
@@ -221,7 +223,7 @@ export const ShareModal: React.FC<ShareModalProps> = ({
 
           {/* Event Mini Preview Card */}
           <div className="px-5 sm:px-6 mb-4">
-            <div className="flex items-center gap-3.5 p-3 rounded-2xl bg-orange-500/[0.06] dark:bg-white/[0.04] border border-orange-500/20 dark:border-white/10">
+            <div className="flex items-start gap-3.5 p-3 rounded-2xl bg-orange-500/[0.06] dark:bg-white/[0.04] border border-orange-500/20 dark:border-white/10">
               <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-slate-900/40 shrink-0 border border-white/20">
                 <ProgressiveImage
                   src={getEventImage(event, "event-card", 400)}
@@ -238,10 +240,15 @@ export const ShareModal: React.FC<ShareModalProps> = ({
                 <h4 className="font-heading font-bold text-sm sm:text-base text-gray-900 dark:text-white truncate">
                   {eventName}
                 </h4>
-                <div className="flex items-center gap-2 text-[11px] text-gray-600 dark:text-gray-400 mt-0.5">
-                  <span className="truncate">{dateFormatted}</span>
-                  <span>•</span>
-                  <span className="truncate">{venueFormatted}</span>
+                <div className="flex flex-col gap-0.5 text-[11px] text-gray-600 dark:text-gray-400 mt-1 min-w-0">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Calendar className="w-3 h-3 text-orange-500 shrink-0" />
+                    <span className="truncate">{dateFormatted}</span>
+                  </div>
+                  <div className="flex items-start gap-1.5 min-w-0">
+                    <MapPin className="w-3 h-3 text-rose-500 shrink-0 mt-0.5" />
+                    <span className="line-clamp-2 break-words leading-tight">{venueFormatted}</span>
+                  </div>
                 </div>
               </div>
             </div>

@@ -19,7 +19,9 @@ import {
 import { slugify, extractEventId } from './slug';
 import { persistentCache, HOMEPAGE_CACHE_KEY } from './persistentCache';
 import { registerMediaAssets } from './images/url';
-import { trackEvent } from './telemetry/posthog';
+import { trackEvent, captureOrBufferException } from './telemetry/posthog';
+import { generateCorrelationId, validateCorrelationId } from './telemetry/correlation.ts';
+export { generateCorrelationId, validateCorrelationId };
 
 interface MemoryCacheEntry<T> {
   data: T;
@@ -194,9 +196,10 @@ export class LpuEventsClient {
     edgePath: string,
     forceFresh: boolean = false,
     existingEtag?: string
-  ): Promise<{ data: T | null; error: any; notModified?: boolean; etag?: string }> {
+  ): Promise<{ data: T | null; error: any; notModified?: boolean; etag?: string; correlationId?: string }> {
+    const cleanPath = edgePath.startsWith('/') ? edgePath : `/${edgePath}`;
+    const reqCorrelationId = generateCorrelationId('req_cli');
     try {
-      const cleanPath = edgePath.startsWith('/') ? edgePath : `/${edgePath}`;
       // In browser, use relative URL if on student app (lpuevents.live or localhost:3000), otherwise use production edge URL
       let baseOrigin = 'https://lpuevents.live';
       if (typeof window !== 'undefined' && window.location) {
@@ -215,7 +218,10 @@ export class LpuEventsClient {
         }
       }
 
-      const headers: Record<string, string> = { 'Accept': 'application/json' };
+      const headers: Record<string, string> = {
+        'Accept': 'application/json',
+        'x-correlation-id': reqCorrelationId,
+      };
       if (existingEtag) {
         headers['If-None-Match'] = existingEtag;
       }
@@ -226,9 +232,10 @@ export class LpuEventsClient {
       });
 
       const responseEtag = res.headers.get('etag') || undefined;
+      const resCorrelationId = res.headers.get('x-correlation-id') || reqCorrelationId;
 
       if (res.status === 304) {
-        return { data: null, error: null, notModified: true, etag: responseEtag || existingEtag };
+        return { data: null, error: null, notModified: true, etag: responseEtag || existingEtag, correlationId: resCorrelationId };
       }
 
       if (res.ok) {
@@ -240,41 +247,73 @@ export class LpuEventsClient {
               message: `Expected JSON response but received ${contentType}`,
               code: 'INVALID_CONTENT_TYPE',
               status: res.status,
+              correlation_id: resCorrelationId,
             },
+            correlationId: resCorrelationId,
           };
         }
         const data = await res.json();
-        return { data: data as T, error: null, notModified: false, etag: responseEtag };
+        return { data: data as T, error: null, notModified: false, etag: responseEtag, correlationId: resCorrelationId };
       }
 
       if (res.status === 503) {
+        captureOrBufferException(new Error('Edge 503 Service Unavailable: Campus event stream initializing'), {
+          source: 'api_client_fetch',
+          status: 503,
+          endpoint: cleanPath,
+          correlation_id: resCorrelationId,
+        });
         return {
           data: null,
           error: {
             code: 'MAINTENANCE_WARMING',
             status: 503,
             message: 'Campus event stream is currently initializing in background. Retrying automatically...',
+            correlation_id: resCorrelationId,
           },
+          correlationId: resCorrelationId,
         };
       }
 
       const errorText = await res.text().catch(() => 'Edge request failed');
+
+      // Capture technical exceptions: 5xx server errors (never 4xx business outcomes)
+      if (res.status >= 500) {
+        captureOrBufferException(new Error(`Server HTTP ${res.status}: ${errorText.substring(0, 100)}`), {
+          source: 'api_client_fetch',
+          status: res.status,
+          endpoint: cleanPath,
+          correlation_id: resCorrelationId,
+        });
+      }
+
       return {
         data: null,
         error: {
           message: `Edge API error (${res.status}): ${errorText.substring(0, 200)}`,
           code: 'EDGE_API_ERROR',
           status: res.status,
+          correlation_id: resCorrelationId,
         },
+        correlationId: resCorrelationId,
       };
     } catch (netErr: any) {
+      if (netErr?.name !== 'AbortError') {
+        captureOrBufferException(netErr instanceof Error ? netErr : new Error(String(netErr || 'Network Error')), {
+          source: 'api_client_network',
+          endpoint: cleanPath,
+          correlation_id: reqCorrelationId,
+        });
+      }
       return {
         data: null,
         error: {
           message: netErr?.message || 'Network connection failed while reaching edge cache.',
           code: 'NETWORK_ERROR',
           status: 0,
+          correlation_id: reqCorrelationId,
         },
+        correlationId: reqCorrelationId,
       };
     }
   }

@@ -2,8 +2,8 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence, useDragControls } from "framer-motion";
 import { CalendarDays, Clock, MapPin, ArrowRight, ChevronLeft, ChevronRight, X } from "lucide-react";
-import { 
-  EventFeedItem, 
+import {
+  EventFeedItem,
   HappeningTodayConfig,
   resolveDefaultEventImage,
   formatEventTime
@@ -220,80 +220,89 @@ export const HappeningTodaySliderComponent = ({
       {/* Soft Atmospheric Ambient Lighting (Borderless, zero hard edges on desktop, lightweight on mobile) */}
       <div className="hidden sm:block absolute inset-x-0 -top-6 -bottom-6 bg-gradient-to-r from-orange-500/[0.06] via-amber-500/[0.03] to-transparent dark:from-orange-500/[0.04] dark:via-purple-500/[0.02] dark:to-transparent rounded-[36px] blur-3xl pointer-events-none -z-10" />
 
-      {/* Floating Dynamic Island Header Bar */}
-      <div className="relative z-10 flex items-center justify-between gap-2 sm:gap-3 mb-3.5 sm:mb-4 px-0.5">
-        {/* Left: Pure Typography */}
-        <div className="relative flex items-center gap-2 sm:gap-3.5 select-none min-w-0 flex-1">
-          <div className="relative flex items-center justify-center w-8 h-8 min-[400px]:w-9 min-[400px]:h-9 sm:w-11 sm:h-11 rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500 via-amber-500 to-orange-600 text-white shadow-[0_4px_12px_rgba(234,88,12,0.25)] shrink-0">
-            <CalendarDays className="h-4 w-4 sm:h-5.5 sm:w-5.5 stroke-[2.2]" />
-            <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2 sm:h-3 sm:w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-300 opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 sm:h-3 sm:w-3 bg-orange-500 border border-white dark:border-slate-900" />
+      {/* Mobile Header (< sm): Exact match with mobile app */}
+      <div className="sm:hidden relative z-10 w-full flex items-center justify-between gap-3 mb-3.5 select-none px-0.5">
+        <div className="flex items-center gap-2.5 min-w-0">
+          {/* Live Indicator Jewel matching app */}
+          <div className="w-8.5 h-8.5 rounded-xl bg-[#ea580c] text-white shadow-md shadow-orange-500/25 flex items-center justify-center shrink-0 relative">
+            <CalendarDays className="w-4.5 h-4.5 stroke-[2.2]" />
+            <span className="absolute -top-1 -right-1 flex h-2.5 w-2.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#ffedd5] border border-white dark:border-[#1c1c1e] items-center justify-center">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#ea580c]" />
+              </span>
             </span>
           </div>
 
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-1.5 sm:gap-2">
-              <h2 className="font-heading font-black tracking-tight leading-tight flex items-center gap-1 sm:gap-2 whitespace-nowrap">
-                <span className="glass-text-crystal text-base min-[360px]:text-lg min-[400px]:text-xl sm:text-3xl md:text-[34px]">
-                  Happening
-                </span>
-                <span className="glass-text-amber text-base min-[360px]:text-lg min-[400px]:text-xl sm:text-3xl md:text-[34px]">
-                  Today
-                </span>
-              </h2>
-              {/* Live Badge: Hidden on mobile to keep Happening Today 100% visible, shown on desktop */}
-              <span className="hidden sm:inline-flex items-center gap-1 text-[10px] uppercase font-black tracking-wider px-2 py-0.5 rounded-full bg-orange-500/15 dark:bg-orange-500/25 text-orange-600 dark:text-orange-400 border border-orange-500/30 backdrop-blur-md shadow-2xs shrink-0">
-                <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
-                Live
-              </span>
-            </div>
-            <p className="text-[10px] sm:text-xs text-slate-800 dark:text-slate-200 font-bold tracking-tight mt-0.5 truncate drop-shadow-[0_1px_2px_rgba(255,255,255,0.8)] dark:drop-shadow-[0_1px_3px_rgba(0,0,0,0.8)]">
+          <div className="flex flex-col min-w-0">
+            <h2 className="font-heading font-black tracking-tight text-xl text-slate-900 dark:text-white leading-tight flex items-center gap-1.5">
+              <span>Happening</span>
+              <span className="text-[#ff6b00]">Today</span>
+            </h2>
+            <p className="text-[11px] text-slate-500 dark:text-slate-400 font-bold truncate mt-0.5">
               Live schedule &amp; campus events
             </p>
           </div>
         </div>
 
-        {/* Right: Floating Glass Action Pills */}
-        <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
-          {events.length > 0 && (
-            <button
-              type="button"
-              onClick={() => setIsAllTodayModalOpen(true)}
-              className="group inline-flex items-center gap-1.5 sm:gap-2 text-orange-600 dark:text-orange-300 font-heading font-bold text-xs sm:text-sm hover:text-orange-700 dark:hover:text-orange-200 transition-all cursor-pointer px-3 sm:px-4 py-1.5 sm:py-2 rounded-full glass-header-island hover:scale-105 active:scale-95 whitespace-nowrap shrink-0 shadow-sm hover:shadow-md"
-              aria-label={`View All ${events.length} Events Happening Today`}
-            >
-              <span className="whitespace-nowrap font-black">View All</span>
-              <span className="inline-flex items-center justify-center min-w-4.5 h-4.5 sm:min-w-5 sm:h-5 px-1.5 rounded-full bg-orange-500/15 dark:bg-white/15 text-orange-700 dark:text-white font-mono font-black text-[10px] sm:text-xs leading-none border border-orange-500/25 dark:border-white/20">
-                {events.length}
-              </span>
-              <ArrowRight className="h-3.5 w-3.5 stroke-[2.4] text-orange-500 dark:text-orange-400 group-hover:translate-x-0.5 transition-transform shrink-0" />
-            </button>
-          )}
+        {/* View All Action Pill with Count Badge (Specular Glass Effect) */}
+        <button
+          type="button"
+          onClick={() => events.length > 0 && setIsAllTodayModalOpen(true)}
+          aria-label={`View all ${events.length} events happening today`}
+          className="group/pill relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/85 dark:bg-[#24252c]/85 backdrop-blur-md border border-white/90 dark:border-white/15 shadow-[0_4px_14px_rgba(15,23,42,0.06),inset_0_1px_1px_rgba(255,255,255,0.95)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.14)] hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+        >
+          <span className="text-xs font-black font-heading text-[#ea580c] dark:text-[#fdba74]">
+            View All
+          </span>
+          <span className="px-1.5 py-0.5 rounded-full bg-orange-500/15 dark:bg-white/15 border border-orange-500/25 dark:border-white/20 text-[10px] font-black text-[#c2410c] dark:text-white leading-none">
+            {events.length}
+          </span>
+          <ArrowRight className="w-3 h-3 text-[#ea580c] dark:text-[#fdba74] stroke-[2.4] group-hover/pill:translate-x-0.5 transition-transform" />
+        </button>
+      </div>
 
-          {hasMultiplePages && (
-            <div className="hidden md:flex items-center gap-1.5">
-              <button
-                type="button"
-                onClick={() => scrollTrack("left")}
-                disabled={!canScrollLeft}
-                className="w-9 h-9 rounded-2xl glass-header-island flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all disabled:opacity-25 disabled:cursor-not-allowed text-slate-800 dark:text-white shadow-xs"
-                aria-label="Scroll left"
-              >
-                <ChevronLeft className="h-4.5 w-4.5 stroke-[2.2]" />
-              </button>
-              <button
-                type="button"
-                onClick={() => scrollTrack("right")}
-                disabled={!canScrollRight}
-                className="w-9 h-9 rounded-2xl glass-header-island flex items-center justify-center cursor-pointer hover:scale-105 active:scale-95 transition-all disabled:opacity-25 disabled:cursor-not-allowed text-slate-800 dark:text-white shadow-xs"
-                aria-label="Scroll right"
-              >
-                <ChevronRight className="h-4.5 w-4.5 stroke-[2.2]" />
-              </button>
-            </div>
-          )}
+      {/* Desktop/Tablet Header (sm+): Horizon Beam with View All Action on right */}
+      <div className="hidden sm:flex relative z-10 w-full items-center justify-between gap-4 md:gap-6 mb-5 sm:mb-6 lg:mb-8 px-1 select-none">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 rounded-xl bg-[#ea580c] text-white shadow-md shadow-orange-500/25 flex items-center justify-center shrink-0 relative">
+            <CalendarDays className="w-5 h-5 stroke-[2.2]" />
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-[#ffedd5] border-2 border-white dark:border-[#1c1c1e] items-center justify-center">
+                <span className="w-1.5 h-1.5 rounded-full bg-[#ea580c]" />
+              </span>
+            </span>
+          </div>
+
+          <div className="flex flex-col min-w-0">
+            <h2 className="font-heading font-black tracking-tight text-2xl sm:text-3xl leading-tight flex items-center gap-2">
+              <span className="text-slate-900 dark:text-white">Happening</span>
+              <span className="text-[#ff6b00]">Today</span>
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 font-bold truncate mt-0.5">
+              Live schedule &amp; campus events
+            </p>
+          </div>
         </div>
+
+        <div className="flex-1 max-w-xs md:max-w-md h-px bg-gradient-to-r from-orange-500/40 via-orange-400/20 to-transparent mx-4 hidden md:block" />
+
+        {/* View All Button */}
+        <button
+          type="button"
+          onClick={() => events.length > 0 && setIsAllTodayModalOpen(true)}
+          aria-label={`View all ${events.length} events happening today`}
+          className="group/pill relative inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/85 dark:bg-[#24252c]/85 backdrop-blur-md border border-white/90 dark:border-white/15 shadow-[0_4px_14px_rgba(15,23,42,0.06),inset_0_1px_1px_rgba(255,255,255,0.95)] dark:shadow-[0_4px_14px_rgba(0,0,0,0.45),inset_0_1px_1px_rgba(255,255,255,0.14)] hover:scale-105 active:scale-95 transition-all cursor-pointer shrink-0"
+        >
+          <span className="text-xs sm:text-[13px] font-black font-heading text-[#ea580c] dark:text-[#fdba74]">
+            View All
+          </span>
+          <span className="px-2 py-0.5 rounded-full bg-orange-500/15 dark:bg-white/15 border border-orange-500/25 dark:border-white/20 text-xs font-black text-[#c2410c] dark:text-white leading-none">
+            {events.length}
+          </span>
+          <ArrowRight className="w-3.5 h-3.5 text-[#ea580c] dark:text-[#fdba74] stroke-[2.4] group-hover/pill:translate-x-0.5 transition-transform" />
+        </button>
       </div>
 
       {/* =========================================================
@@ -304,6 +313,28 @@ export const HappeningTodaySliderComponent = ({
           (calc((100% - 32px) / 3)), 2 on tablet, and swipeable on mobile.
          ========================================================= */}
       <div className="relative group/track w-full">
+        {hasMultiplePages && (
+          <>
+            <button
+              type="button"
+              onClick={() => scrollTrack("left")}
+              disabled={!canScrollLeft}
+              className="hidden md:flex absolute -left-3 lg:-left-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-white/80 dark:border-white/10 shadow-lg text-slate-800 dark:text-white items-center justify-center hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/track:opacity-100 disabled:opacity-0 disabled:pointer-events-none cursor-pointer"
+              aria-label="Scroll left"
+            >
+              <ChevronLeft className="h-5 w-5 stroke-[2.4]" />
+            </button>
+            <button
+              type="button"
+              onClick={() => scrollTrack("right")}
+              disabled={!canScrollRight}
+              className="hidden md:flex absolute -right-3 lg:-right-5 top-1/2 -translate-y-1/2 z-30 w-11 h-11 rounded-full bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border border-white/80 dark:border-white/10 shadow-lg text-slate-800 dark:text-white items-center justify-center hover:scale-110 active:scale-95 transition-all opacity-0 group-hover/track:opacity-100 disabled:opacity-0 disabled:pointer-events-none cursor-pointer"
+              aria-label="Scroll right"
+            >
+              <ChevronRight className="h-5 w-5 stroke-[2.4]" />
+            </button>
+          </>
+        )}
 
         <div
           ref={trackRef}
@@ -351,7 +382,7 @@ export const HappeningTodaySliderComponent = ({
                 </div>
 
                 {/* Bottom Information Deck: Translucent glass deck seamlessly integrated */}
-                <div className="px-3.5 py-3 min-[400px]:px-4 min-[400px]:py-3.5 flex flex-col justify-between h-[84px] min-[400px]:h-[88px] sm:h-[92px] bg-white/10 dark:bg-black/20 backdrop-blur-md border-t border-white/50 dark:border-white/10">
+                <div className="px-3.5 py-3 min-[400px]:px-4 min-[400px]:py-3.5 flex flex-col justify-between min-h-[102px] sm:min-h-[110px] h-auto bg-white/10 dark:bg-black/20 backdrop-blur-md border-t border-white/50 dark:border-white/10 gap-2">
                   {/* Event Name - Big & Premium Single Line */}
                   <h3
                     title={slide.title}
@@ -360,32 +391,17 @@ export const HappeningTodaySliderComponent = ({
                     {slide.title}
                   </h3>
 
-                  {/* Badges Row (Time + Location) & View Action - single row, flex-nowrap */}
-                  <div className="flex items-center justify-between gap-2 flex-nowrap">
-                    <div className="flex items-center gap-1.5 min-w-0 flex-nowrap">
-                      {/* Time Pill: High-contrast Monospace Glass Pill */}
-                      {slide.time && (
-                        <span className="glass-meta-pill inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl shrink-0">
-                          <Clock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 stroke-[2.4] shrink-0" />
-                          <span className="font-mono font-bold text-xs text-slate-950 dark:text-white glass-text-emboss">
-                            {slide.time}
-                          </span>
+                  {/* Tier 1: Time Pill on Left, View Action on Right */}
+                  <div className="flex items-center justify-between gap-2 w-full">
+                    {/* Time Pill: High-contrast Monospace Glass Pill */}
+                    {(slide.time || slide.date) && (
+                      <span className="glass-meta-pill inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl shrink-0">
+                        <Clock className="w-3.5 h-3.5 text-orange-600 dark:text-orange-400 stroke-[2.4] shrink-0" />
+                        <span className="font-mono font-bold text-xs text-slate-950 dark:text-white glass-text-emboss">
+                          {slide.time || slide.date}
                         </span>
-                      )}
-
-                      {/* Location Pill: High-contrast Frosted Glass Pill */}
-                      {slide.venue && (
-                        <span
-                          title={slide.venue}
-                          className="glass-meta-pill inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl truncate min-w-0 max-w-[140px] min-[390px]:max-w-[170px] md:max-w-[210px]"
-                        >
-                          <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 stroke-[2.4] shrink-0" />
-                          <span className="font-heading font-bold text-xs text-slate-900 dark:text-slate-100 truncate glass-text-emboss">
-                            {slide.venue}
-                          </span>
-                        </span>
-                      )}
-                    </div>
+                      </span>
+                    )}
 
                     {/* Tactile Liquid Glass View Action */}
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-orange-500/15 dark:bg-orange-500/20 text-orange-700 dark:text-orange-300 font-heading font-bold text-xs border border-orange-500/30 backdrop-blur-md group-hover:bg-orange-600 group-hover:text-white group-hover:border-orange-600 transition-all duration-200 shrink-0 ml-auto shadow-2xs">
@@ -393,6 +409,19 @@ export const HappeningTodaySliderComponent = ({
                       <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
                     </span>
                   </div>
+
+                  {/* Tier 2: Venue down below date/time, full text wraps naturally below venue only */}
+                  {slide.venue && (
+                    <div
+                      title={slide.venue}
+                      className="glass-meta-pill flex items-start gap-1.5 px-2.5 py-1 rounded-xl w-full min-w-0"
+                    >
+                      <MapPin className="w-3.5 h-3.5 text-amber-600 dark:text-amber-400 stroke-[2.4] shrink-0 mt-0.5" />
+                      <span className="font-heading font-bold text-xs text-slate-900 dark:text-slate-100 glass-text-emboss break-words line-clamp-2 leading-tight flex-1 min-w-0">
+                        {slide.venue}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -418,7 +447,7 @@ export const HappeningTodaySliderComponent = ({
               </div>
 
               {/* Bottom bar matching deck */}
-              <div className="px-3.5 py-3 min-[400px]:px-4 min-[400px]:py-3.5 flex items-center justify-between h-[84px] min-[400px]:h-[88px] sm:h-[92px] bg-white/10 dark:bg-black/20 backdrop-blur-md border-t border-white/50 dark:border-white/10">
+              <div className="px-3.5 py-3 min-[400px]:px-4 min-[400px]:py-3.5 flex items-center justify-between min-h-[102px] sm:min-h-[110px] bg-white/10 dark:bg-black/20 backdrop-blur-md border-t border-white/50 dark:border-white/10">
                 <div>
                   <p className="text-xs font-heading font-black text-slate-900 dark:text-white">
                     Full Campus Schedule
@@ -509,7 +538,7 @@ export const HappeningTodaySliderComponent = ({
                 <div className="absolute top-1/2 left-1/3 -translate-x-1/2 -translate-y-1/2 w-64 sm:w-80 h-64 sm:h-80 bg-orange-500/10 rounded-full blur-2xl sm:blur-3xl pointer-events-none" />
 
                 {/* Mobile Drag Bar */}
-                <div 
+                <div
                   onPointerDown={(e) => dragControls.start(e)}
                   className="w-full pt-3 pb-1.5 flex items-center justify-center sm:hidden shrink-0 cursor-grab active:cursor-grabbing touch-none select-none"
                 >
@@ -517,7 +546,7 @@ export const HappeningTodaySliderComponent = ({
                 </div>
 
                 {/* Header */}
-                <div 
+                <div
                   onPointerDown={(e) => {
                     if ((e.target as HTMLElement).closest('button')) return;
                     dragControls.start(e);
@@ -562,9 +591,9 @@ export const HappeningTodaySliderComponent = ({
 
                 {/* Event Schedule List — Event Name Focused Continuous Schedule Stream */}
                 <div className="relative flex-1 min-h-0 flex flex-col">
-                  <div 
+                  <div
                     className="flex-1 overflow-y-auto px-4 sm:px-6 py-2 pb-[max(1.5rem,env(safe-area-inset-bottom))] relative z-10 premium-modal-scroll"
-                    style={{ 
+                    style={{
                       WebkitOverflowScrolling: "touch",
                       overscrollBehaviorY: "contain",
                       touchAction: "pan-y"
@@ -607,8 +636,8 @@ export const HappeningTodaySliderComponent = ({
                                   </div>
                                 </div>
 
-                                {/* Row 2: Premium Schedule Strip (Time on Left, Venue on Right) */}
-                                <div className="flex items-center justify-between gap-3 pt-0.5">
+                                {/* Row 2: Premium Schedule Strip (Time + Venue Wrap) */}
+                                <div className="flex flex-wrap items-start sm:items-center justify-between gap-y-2 gap-x-3 pt-0.5">
                                   {/* Left: Time */}
                                   <div className="inline-flex items-center gap-1.5 shrink-0">
                                     <span className="w-5.5 h-5.5 rounded-lg bg-orange-500/15 dark:bg-orange-500/25 border border-orange-500/30 flex items-center justify-center text-[#ea580c] dark:text-orange-400 shrink-0 shadow-2xs">
@@ -619,12 +648,12 @@ export const HappeningTodaySliderComponent = ({
                                     </span>
                                   </div>
 
-                                  {/* Right: Venue */}
-                                  <div className="flex items-center gap-1.5 min-w-0 truncate">
-                                    <span className="w-5.5 h-5.5 rounded-lg bg-amber-500/15 dark:bg-amber-500/25 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-2xs">
+                                  {/* Right: Venue (Flows down naturally when long) */}
+                                  <div className="inline-flex items-start gap-1.5 min-w-0 max-w-full sm:max-w-[65%]">
+                                    <span className="w-5.5 h-5.5 rounded-lg bg-amber-500/15 dark:bg-amber-500/25 border border-amber-500/30 flex items-center justify-center text-amber-600 dark:text-amber-400 shrink-0 shadow-2xs mt-0.5 sm:mt-0">
                                       <MapPin className="w-3.5 h-3.5 stroke-[2.6]" />
                                     </span>
-                                    <span className="font-heading font-bold text-[13px] min-[390px]:text-[13.5px] sm:text-[14px] text-slate-900 dark:text-slate-100 tracking-tight truncate">
+                                    <span className="font-heading font-bold text-[13px] min-[390px]:text-[13.5px] sm:text-[14px] text-slate-900 dark:text-slate-100 tracking-tight line-clamp-2 break-words">
                                       {evt.venue_name || "LPU Campus"}
                                     </span>
                                   </div>

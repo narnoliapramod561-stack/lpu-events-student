@@ -734,7 +734,12 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
   }
 
   const hasExternalRegistration = Boolean(event?.external_registration_url);
-  const isPaid = (event?.pricing_type === "PAID" || (typeof event?.price_amount === "number" && event.price_amount > 0)) && event?.pricing_type !== "FREE";
+  const isPaid =
+    Boolean(event && (
+      (typeof event.price_amount === 'number' && event.price_amount > 0) ||
+      (typeof event.price_amount === 'string' && Number(event.price_amount) > 0) ||
+      event.pricing_type?.toUpperCase() === 'PAID'
+    ));
 
   return (
     <div className={`w-full max-w-5xl mx-auto ${hasExternalRegistration ? "pb-28 sm:pb-32" : "pb-12"}`}>
@@ -887,15 +892,15 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
           </div>
 
           {/* Venue Item */}
-          <div className="flex items-center gap-3 sm:gap-3.5 md:gap-4 py-1.5 px-2.5 sm:px-3 md:px-3.5 rounded-xl sm:rounded-2xl hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
-            <div className="w-9 h-9 sm:w-9.5 sm:h-9.5 md:w-10 md:h-10 rounded-xl bg-rose-500/15 dark:bg-rose-500/20 text-[#e11d48] dark:text-rose-400 border border-rose-300/40 dark:border-rose-500/30 flex items-center justify-center shrink-0 shadow-2xs">
+          <div className="flex items-start gap-3 sm:gap-3.5 md:gap-4 py-1.5 px-2.5 sm:px-3 md:px-3.5 rounded-xl sm:rounded-2xl hover:bg-white/40 dark:hover:bg-white/5 transition-colors">
+            <div className="w-9 h-9 sm:w-9.5 sm:h-9.5 md:w-10 md:h-10 rounded-xl bg-rose-500/15 dark:bg-rose-500/20 text-[#e11d48] dark:text-rose-400 border border-rose-300/40 dark:border-rose-500/30 flex items-center justify-center shrink-0 shadow-2xs mt-0.5">
               <MapPin className="h-4.5 w-4.5 sm:h-5 sm:w-5 stroke-[2.2]" />
             </div>
             <div className="min-w-0 flex-1">
               <span className="block text-[10px] sm:text-[10.5px] uppercase font-black tracking-wider text-[#e11d48] dark:text-rose-400 font-heading leading-tight">
                 Venue
               </span>
-              <span className="font-bold text-xs sm:text-sm md:text-[15px] lg:text-base text-[#0f172a] dark:text-white truncate block leading-snug">
+              <span className="font-bold text-xs sm:text-sm md:text-[15px] lg:text-base text-[#0f172a] dark:text-white line-clamp-2 break-words block leading-snug">
                 {event.venue_name || "LPU Campus"}
               </span>
             </div>
@@ -917,40 +922,40 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
               }
             }}
             aria-label="Launch Mobile Pass - Click to enlarge QR code"
-            className="hidden md:flex flex-1 items-center justify-between gap-2.5 sm:gap-3 rounded-2xl sm:rounded-3xl glass-panel border border-white/85 dark:border-white/12 py-2 sm:py-2.5 px-3 md:px-3.5 shadow-xl cursor-pointer hover:border-primary/50 dark:hover:border-primary/40 hover:shadow-2xl transition-all group overflow-hidden"
+            className="hidden md:flex flex-1 items-center justify-between gap-3 sm:gap-4 rounded-2xl sm:rounded-3xl glass-panel border border-white/85 dark:border-white/12 py-3 px-3.5 sm:px-4 shadow-xl cursor-pointer hover:border-primary/50 dark:hover:border-primary/40 hover:shadow-2xl transition-all group overflow-hidden"
           >
-            {/* Left: Content */}
-            <div className="flex flex-col justify-center min-w-0 pr-1 py-0.5 gap-0.5">
-              {/* Top: Header with pulse indicator */}
-              <div className="flex items-center gap-1.5">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" title="Active Mobile Pass" />
-                <h4 className="font-heading font-black text-xs sm:text-[12.5px] md:text-[13px] text-[#0f172a] dark:text-white tracking-tight leading-tight group-hover:text-primary transition-colors truncate">
+            {/* Left: Content (Shifted up with structured vertical distribution) */}
+            <div className="flex flex-col justify-between self-stretch min-w-0 pr-1 py-0.5">
+              {/* Top: Header with pulse indicator - shifted up */}
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0 shadow-[0_0_8px_rgba(16,185,129,0.7)]" title="Active Mobile Pass" />
+                <h4 className="font-heading font-black text-sm sm:text-[14px] md:text-[15px] text-[#0f172a] dark:text-white tracking-tight leading-tight group-hover:text-primary transition-colors truncate">
                   Launch Mobile Pass
                 </h4>
               </div>
 
               {/* Middle: Clear instruction */}
-              <p className="text-[9.5px] sm:text-[10px] text-slate-500 dark:text-slate-400 font-medium leading-tight truncate">
+              <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 font-medium leading-tight truncate my-1">
                 Scan with phone camera
               </p>
 
               {/* Bottom: Context & Action Hint */}
-              <div className="flex items-center gap-1 text-[9px] sm:text-[9.5px] text-primary font-bold">
+              <div className="flex items-center gap-1.5 text-[10.5px] sm:text-[11px] text-primary font-bold">
                 <span className="group-hover:underline">Tap to expand QR</span>
-                <span className="transition-transform group-hover:translate-x-0.5">→</span>
+                <span className="transition-transform group-hover:translate-x-1">→</span>
               </div>
             </div>
 
-            {/* Right: QR Code */}
-            <div className="aspect-square w-[46px] h-[46px] sm:w-[48px] sm:h-[48px] md:w-[48px] md:h-[48px] bg-white rounded-lg sm:rounded-xl p-1 shadow-sm border border-orange-500/25 dark:border-white/15 flex items-center justify-center shrink-0 group-hover:scale-[1.03] group-hover:border-primary/50 group-hover:shadow-md transition-all">
+            {/* Right: QR Code (Enlarged to fill vertical height and eliminate empty space) */}
+            <div className="aspect-square w-[68px] h-[68px] sm:w-[72px] sm:h-[72px] md:w-[76px] md:h-[76px] bg-white rounded-xl sm:rounded-2xl p-1.5 shadow-sm border border-orange-500/25 dark:border-white/15 flex items-center justify-center shrink-0 group-hover:scale-[1.04] group-hover:border-primary/50 group-hover:shadow-md transition-all">
               {qrDataUrl ? (
                 <img
                   src={qrDataUrl}
                   alt={`QR code to launch mobile pass for ${event.name}`}
-                  className="w-full h-full object-contain rounded-md"
+                  className="w-full h-full object-contain rounded-lg"
                 />
               ) : (
-                <div className="w-full h-full flex items-center justify-center text-[10px] text-gray-400 font-mono">
+                <div className="w-full h-full flex items-center justify-center text-xs text-gray-400 font-mono">
                   QR
                 </div>
               )}
@@ -958,14 +963,14 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
           </div>
 
           {/* Card 2: Verified Organizer Card */}
-          <div className="flex-1 flex items-center gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl md:rounded-3xl glass-panel border border-white/85 dark:border-white/12 py-2 sm:py-2.5 px-3 md:px-3.5 shadow-lg md:shadow-xl overflow-hidden">
-            <div className="w-[46px] h-[46px] sm:w-[48px] sm:h-[48px] md:w-[48px] md:h-[48px] rounded-lg sm:rounded-xl bg-gradient-to-br from-orange-500/20 via-orange-500/10 to-amber-500/20 text-[#ea580c] dark:text-orange-400 border border-orange-300/40 dark:border-orange-500/30 flex items-center justify-center shrink-0 shadow-2xs">
-              <Users className="h-4 w-4 sm:h-4.5 sm:w-4.5 stroke-[2.2]" />
+          <div className="flex-1 flex items-center gap-3 sm:gap-4 rounded-xl sm:rounded-2xl md:rounded-3xl glass-panel border border-white/85 dark:border-white/12 py-3 px-3.5 sm:px-4 shadow-lg md:shadow-xl overflow-hidden">
+            <div className="w-[52px] h-[52px] sm:w-[56px] sm:h-[56px] md:w-[60px] md:h-[60px] rounded-xl sm:rounded-2xl bg-gradient-to-br from-orange-500/20 via-orange-500/10 to-amber-500/20 text-[#ea580c] dark:text-orange-400 border border-orange-300/40 dark:border-orange-500/30 flex items-center justify-center shrink-0 shadow-2xs">
+              <Users className="h-5 w-5 sm:h-6 sm:w-6 stroke-[2.2]" />
             </div>
-            <div className="flex flex-col justify-center min-w-0 flex-1 pr-1 py-0.5 gap-0.5">
+            <div className="flex flex-col justify-center min-w-0 flex-1 pr-1 -translate-y-1 sm:-translate-y-1.5 gap-0.5">
               {/* Top: Organized by Label */}
               <div className="flex items-center gap-1.5">
-                <span className="text-[9px] sm:text-[9.5px] uppercase font-black tracking-wider text-[#ea580c] dark:text-orange-400 font-heading leading-none">
+                <span className="text-[9.5px] sm:text-[10px] uppercase font-black tracking-wider text-[#ea580c] dark:text-orange-400 font-heading leading-none">
                   Organized by
                 </span>
                 <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
@@ -973,9 +978,14 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
               {/* Middle: Organization Name */}
               <div className="py-0.5">
-                <h4 className="font-heading font-black text-xs sm:text-[12.5px] md:text-[13px] text-[#0f172a] dark:text-white truncate block leading-tight">
+                <h4 className="font-heading font-black text-xs sm:text-[13.5px] md:text-[14px] text-[#0f172a] dark:text-white truncate block leading-tight">
                   {event.organizations?.name || "Lovely Professional University"}
                 </h4>
+                <div className="flex items-center gap-1.5 mt-0.5">
+                  <span className="text-[10px] text-slate-500 dark:text-zinc-400 font-medium">Verified Host</span>
+                  <span className="text-[10px] text-slate-300 dark:text-zinc-600">·</span>
+                  <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">Official Organization</span>
+                </div>
               </div>
             </div>
           </div>

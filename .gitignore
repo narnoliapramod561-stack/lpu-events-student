@@ -30,6 +30,9 @@ dist-ssr
 .env.production
 !.env.example
 
+# Cloudflare Wrangler
+.wrangler/
+
 # Supabase temp
 supabase/.temp/
 .temp/

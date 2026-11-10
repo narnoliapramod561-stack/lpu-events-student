@@ -560,19 +560,16 @@ export const CategoryFilterComponent = ({
       {/* ======================================================== */}
       {/* 💻 DESKTOP DISCOVERY SUITE (sm:flex)                      */}
       {/* ======================================================== */}
-      <div className="hidden sm:flex sm:flex-col sm:gap-8 max-w-full overflow-hidden">
+      <div className="hidden sm:flex sm:flex-col sm:gap-6 max-w-full overflow-hidden rounded-[32px] p-6 lg:p-8 glass-discovery-suite">
         {/* 1. Schedule Quick Filters */}
         <div className="w-full flex flex-col gap-3.5">
           <div className="relative flex items-center justify-between select-none">
-            <h2 className="font-heading font-black text-2xl sm:text-3xl tracking-tight leading-tight flex items-center gap-2">
-              <span className="glass-text-crystal">
+            <h2 className="font-['Outfit',sans-serif] font-[900] text-2xl sm:text-[28px] tracking-tight leading-none flex items-center gap-2.5">
+              <span className="text-slate-950 dark:text-white drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] dark:drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]">
                 Timeline
               </span>
-              <span className="glass-text-amber">
-                &amp;
-              </span>
-              <span className="glass-text-amber">
-                Schedule
+              <span className="bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 dark:from-orange-400 dark:via-amber-400 dark:to-orange-400 bg-clip-text text-transparent drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)] dark:drop-shadow-none">
+                &amp; Schedule
               </span>
             </h2>
           </div>
@@ -647,14 +644,17 @@ export const CategoryFilterComponent = ({
           </div>
         </div>
 
+        {/* Luxury Frosted Glass Hairline Divider */}
+        <div className="h-px w-full bg-gradient-to-r from-transparent via-white/80 dark:via-white/[0.12] to-transparent" />
+
         {/* 2. Event Type Filters */}
         <div className="w-full flex flex-col gap-3.5">
           <div className="relative flex items-center justify-between select-none">
-            <h2 className="font-heading font-black text-2xl sm:text-3xl tracking-tight leading-tight flex items-center gap-2">
-              <span className="glass-text-crystal">
+            <h2 className="font-['Outfit',sans-serif] font-[900] text-2xl sm:text-[28px] tracking-tight leading-none flex items-center gap-2.5">
+              <span className="text-slate-950 dark:text-white drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] dark:drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]">
                 Event
               </span>
-              <span className="glass-text-amber">
+              <span className="bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 dark:from-orange-400 dark:via-amber-400 dark:to-orange-400 bg-clip-text text-transparent drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)] dark:drop-shadow-none">
                 Type
               </span>
             </h2>
@@ -697,15 +697,18 @@ export const CategoryFilterComponent = ({
           </div>
         </div>
 
+        {/* Luxury Frosted Glass Hairline Divider */}
+        <div className="h-px w-full bg-gradient-to-r from-transparent via-white/80 dark:via-white/[0.12] to-transparent" />
+
         {/* 3. Primary Event Categories Bar & Search */}
         <div className="w-full flex flex-col gap-3.5">
           <div className="flex items-center justify-between lg:justify-start gap-4 lg:gap-6 flex-wrap">
             <div className="relative flex items-center gap-2.5 flex-wrap select-none">
-              <h2 className="font-heading font-black text-2xl sm:text-3xl tracking-tight leading-tight flex items-center gap-2">
-                <span className="glass-text-crystal">
+              <h2 className="font-['Outfit',sans-serif] font-[900] text-2xl sm:text-[28px] tracking-tight leading-none flex items-center gap-2.5">
+                <span className="text-slate-950 dark:text-white drop-shadow-[0_1px_1px_rgba(255,255,255,0.8)] dark:drop-shadow-[0_2px_10px_rgba(0,0,0,0.7)]">
                   Event
                 </span>
-                <span className="glass-text-amber">
+                <span className="bg-gradient-to-r from-orange-600 via-amber-600 to-orange-500 dark:from-orange-400 dark:via-amber-400 dark:to-orange-400 bg-clip-text text-transparent drop-shadow-[0_1px_2px_rgba(255,255,255,0.4)] dark:drop-shadow-none">
                   Categories
                 </span>
               </h2>

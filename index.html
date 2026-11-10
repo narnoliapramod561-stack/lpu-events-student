@@ -138,13 +138,13 @@
       #lpu-startup-backdrop {
         position: absolute;
         inset: 0;
-        background-color: rgba(250, 248, 245, 0.96);
-        backdrop-filter: blur(6px);
-        -webkit-backdrop-filter: blur(6px);
-        transition: opacity 0.2s cubic-bezier(0.16, 1, 0.3, 1), backdrop-filter 0.2s cubic-bezier(0.16, 1, 0.3, 1), -webkit-backdrop-filter 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+        background: radial-gradient(circle at 35% 50%, rgba(30, 41, 59, 0.14) 0%, rgba(30, 41, 59, 0) 60%), radial-gradient(circle at 65% 50%, rgba(251, 146, 60, 0.18) 0%, rgba(251, 146, 60, 0) 60%), rgba(250, 248, 245, 0.98);
+        backdrop-filter: blur(10px);
+        -webkit-backdrop-filter: blur(10px);
+        transition: opacity 0.38s cubic-bezier(0.22, 1, 0.36, 1), backdrop-filter 0.38s ease, -webkit-backdrop-filter 0.38s ease;
       }
       .dark #lpu-startup-backdrop, html.dark #lpu-startup-backdrop {
-        background-color: rgba(12, 13, 18, 0.96);
+        background: radial-gradient(circle at 35% 50%, rgba(30, 41, 59, 0.38) 0%, rgba(30, 41, 59, 0) 60%), radial-gradient(circle at 65% 50%, rgba(234, 88, 12, 0.28) 0%, rgba(234, 88, 12, 0) 60%), rgba(10, 12, 16, 0.98);
       }
       #lpu-startup-logo-container {
         position: fixed;
@@ -153,11 +153,13 @@
         width: 280px;
         height: 280px;
         max-width: 78vw;
-        max-height: 44vh;
+        max-height: 78vw;
+        aspect-ratio: 1 / 1;
         z-index: 10000;
         transform-origin: center center;
-        filter: drop-shadow(0 16px 40px rgba(230,81,0,0.24));
-        animation: shell-enter 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+        border: none;
+        outline: none;
+        animation: shell-enter 0.70s cubic-bezier(0.12, 1, 0.28, 1) forwards;
       }
       @media (min-width: 640px) {
         #lpu-startup-logo-container {
@@ -165,104 +167,110 @@
           left: calc(50vw - 160px);
           width: 320px;
           height: 320px;
+          max-width: 320px;
+          max-height: 320px;
         }
-      }
-      .dark #lpu-startup-logo-container, html.dark #lpu-startup-logo-container {
-        filter: drop-shadow(0 20px 48px rgba(0,0,0,0.7));
       }
       #lpu-startup-svg {
         width: 100%;
         height: 100%;
         display: block;
+        border: none;
+        outline: none;
       }
-      #lpu-startup-svg circle, #lpu-startup-svg g, #lpu-startup-svg text, #lpu-startup-svg line {
+      #lpu-startup-svg circle, #lpu-startup-svg g, #lpu-startup-svg text, #lpu-startup-svg line, #lpu-startup-svg rect {
         transform-box: view-box;
       }
-      #lpu-startup-sheen {
-        position: absolute;
-        inset: 0;
-        width: 40%;
-        height: 100%;
-        border-radius: 9999px;
-        transform: skewX(-14deg);
-        background: linear-gradient(to right, transparent, rgba(255,255,255,0.45), transparent);
-        pointer-events: none;
+      .shell-specular-sheen {
+        transform-origin: 256px 256px;
+        animation: shell-sheen-sweep 0.64s cubic-bezier(0.35, 0, 0.15, 1) 0.82s forwards;
         opacity: 0;
-        animation: shell-sheen 0.55s cubic-bezier(0.4, 0, 0.2, 1) 0.22s forwards;
         will-change: transform, opacity;
       }
       @keyframes shell-enter {
-        0% { opacity: 0; transform: scale(0.92); }
+        0% { opacity: 0; transform: scale(0.91); }
+        40% { opacity: 0.85; }
         100% { opacity: 1; transform: scale(1); }
       }
-      @keyframes shell-sheen {
-        0% { transform: translateX(-140%) skewX(-14deg); opacity: 0; }
-        35% { opacity: 0.45; }
-        70% { opacity: 0.45; }
-        100% { transform: translateX(220%) skewX(-14deg); opacity: 0; }
+      @keyframes shell-sheen-sweep {
+        0% { transform: translateX(-340px) rotate(-24deg); opacity: 0; }
+        25% { opacity: 0.85; }
+        75% { opacity: 0.85; }
+        100% { transform: translateX(340px) rotate(-24deg); opacity: 0; }
       }
-      .shell-c1 { transform-origin: 208px 280px; animation: shell-c1-anim 0.46s cubic-bezier(0.22, 1, 0.36, 1) 0.00s forwards; will-change: transform, opacity; }
-      .shell-c2 { transform-origin: 224px 224px; animation: shell-c2-anim 0.46s cubic-bezier(0.22, 1, 0.36, 1) 0.03s forwards; will-change: transform, opacity; }
-      .shell-c3 { transform-origin: 306px 222px; animation: shell-c3-anim 0.46s cubic-bezier(0.22, 1, 0.36, 1) 0.06s forwards; will-change: transform, opacity; }
-      .shell-c4 { transform-origin: 324px 274px; animation: shell-c4-anim 0.46s cubic-bezier(0.22, 1, 0.36, 1) 0.09s forwards; will-change: transform, opacity; }
-      .shell-c5 { transform-origin: 332px 246px; animation: shell-c5-anim 0.46s cubic-bezier(0.22, 1, 0.36, 1) 0.12s forwards; will-change: transform, opacity; }
-      .shell-c6 { transform-origin: 256px 256px; animation: shell-c6-anim 0.50s cubic-bezier(0.22, 1, 0.36, 1) 0.15s forwards; will-change: transform, opacity; }
-      @keyframes shell-c1-anim { 0% { transform: translate(-3px, 2px) scale(0.95); opacity: 0.3; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
-      @keyframes shell-c2-anim { 0% { transform: translate(-2px, -2px) scale(0.95); opacity: 0.3; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
-      @keyframes shell-c3-anim { 0% { transform: translate(2px, -2px) scale(0.95); opacity: 0.3; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
-      @keyframes shell-c4-anim { 0% { transform: translate(2px, 2px) scale(0.95); opacity: 0.3; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
-      @keyframes shell-c5-anim { 0% { transform: translate(2px, 0) scale(0.95); opacity: 0.3; } 100% { transform: translate(0, 0) scale(1); opacity: 1; } }
-      @keyframes shell-c6-anim { 0% { transform: scale(0.94); opacity: 0.3; } 100% { transform: scale(1); opacity: 0.96; } }
+      /* Act I: Vector Convergence of Spheres */
+      .shell-c1 { transform-origin: 208px 280px; animation: shell-navy-anim 0.65s cubic-bezier(0.12, 1, 0.28, 1) forwards; will-change: transform, opacity; }
+      .shell-c2 { transform-origin: 224px 224px; animation: shell-navy-anim 0.65s cubic-bezier(0.12, 1, 0.28, 1) forwards; will-change: transform, opacity; }
+      .shell-c3 { transform-origin: 306px 222px; animation: shell-orange-anim 0.65s cubic-bezier(0.12, 1, 0.28, 1) forwards; will-change: transform, opacity; }
+      .shell-c4 { transform-origin: 324px 274px; animation: shell-orange-anim 0.65s cubic-bezier(0.12, 1, 0.28, 1) forwards; will-change: transform, opacity; }
+      .shell-c5 { transform-origin: 332px 246px; animation: shell-orange-anim 0.65s cubic-bezier(0.12, 1, 0.28, 1) forwards; will-change: transform, opacity; }
+      .shell-c6 { transform-origin: 256px 256px; animation: shell-lens-anim 0.58s cubic-bezier(0.12, 1, 0.28, 1) 0.22s forwards; will-change: transform, opacity; }
 
-      /* GPU-Accelerated Unified Typography Cascade (Zero clip-path re-rasterization jank) */
+      @keyframes shell-navy-anim {
+        0% { transform: translate(-14px, 10px) scale(0.92); opacity: 0; }
+        40% { opacity: 0.85; }
+        100% { transform: translate(0, 0) scale(1); opacity: 1; }
+      }
+      @keyframes shell-orange-anim {
+        0% { transform: translate(14px, -10px) scale(0.92); opacity: 0; }
+        40% { opacity: 0.85; }
+        100% { transform: translate(0, 0) scale(1); opacity: 1; }
+      }
+      @keyframes shell-lens-anim {
+        0% { transform: scale(0.88); opacity: 0; }
+        50% { opacity: 0.65; }
+        100% { transform: scale(1); opacity: 0.98; }
+      }
+
+      /* Act II: Unified Typography & Constellation Cascade */
       .shell-anim-lpu-group {
         transform-origin: 256px 228px;
-        animation: shell-fade-slide-lpu 0.48s cubic-bezier(0.22, 1, 0.36, 1) 0.12s forwards;
+        animation: shell-fade-slide-lpu 0.56s cubic-bezier(0.12, 1, 0.28, 1) 0.22s forwards;
         opacity: 0;
-        transform: translateY(8px);
+        transform: translateY(10px);
         will-change: transform, opacity;
       }
       .shell-anim-connector-group {
-        animation: shell-fade 0.38s cubic-bezier(0.22, 1, 0.36, 1) 0.16s forwards;
+        animation: shell-fade 0.44s cubic-bezier(0.12, 1, 0.28, 1) 0.28s forwards;
         opacity: 0;
         will-change: opacity;
       }
       .shell-connector-pill {
-        animation: shell-fade 0.32s cubic-bezier(0.22, 1, 0.36, 1) 0.16s forwards;
+        animation: shell-fade 0.40s cubic-bezier(0.12, 1, 0.28, 1) 0.28s forwards;
         opacity: 0;
       }
       .shell-dot-left {
         transform-origin: 178px 268px;
-        animation: shell-scale 0.25s cubic-bezier(0.22, 1, 0.36, 1) 0.16s forwards;
+        animation: shell-scale 0.28s cubic-bezier(0.12, 1, 0.28, 1) 0.28s forwards;
         transform: scale(0);
         will-change: transform;
       }
       .shell-connector-line {
         stroke-dasharray: 144;
         stroke-dashoffset: 144;
-        animation: shell-draw-line 0.32s cubic-bezier(0.22, 1, 0.36, 1) 0.18s forwards;
+        animation: shell-draw-line 0.40s cubic-bezier(0.12, 1, 0.28, 1) 0.34s forwards;
         will-change: stroke-dashoffset;
       }
       .shell-dot-right {
         transform-origin: 334px 268px;
-        animation: shell-scale 0.25s cubic-bezier(0.22, 1, 0.36, 1) 0.38s forwards;
+        animation: shell-scale 0.28s cubic-bezier(0.12, 1, 0.28, 1) 0.68s forwards;
         transform: scale(0);
         will-change: transform;
       }
       .shell-anim-events-group {
         transform-origin: 256px 323px;
-        animation: shell-fade-slide-events 0.46s cubic-bezier(0.22, 1, 0.36, 1) 0.18s forwards;
+        animation: shell-fade-slide-events 0.56s cubic-bezier(0.12, 1, 0.28, 1) 0.32s forwards;
         opacity: 0;
-        transform: translateY(6px);
+        transform: translateY(10px);
         will-change: transform, opacity;
       }
 
       @keyframes shell-fade-slide-lpu {
-        0% { opacity: 0; transform: translateY(8px); }
+        0% { opacity: 0; transform: translateY(10px); }
         100% { opacity: 1; transform: translateY(0); }
       }
       @keyframes shell-fade-slide-events {
-        0% { opacity: 0; transform: translateY(6px); }
+        0% { opacity: 0; transform: translateY(10px); }
         100% { opacity: 1; transform: translateY(0); }
       }
       @keyframes shell-fade { 0% { opacity: 0; } 100% { opacity: 1; } }
@@ -428,9 +436,16 @@
               <stop offset="75%" stop-color="#ea580c" stop-opacity="0.25" />
               <stop offset="100%" stop-color="#0f172a" stop-opacity="0.35" />
             </linearGradient>
-            <filter id="shell-text-shadow" x="-20%" y="-20%" width="140%" height="140%">
-              <feDropShadow dx="0" dy="2.5" stdDeviation="3" flood-color="#000000" flood-opacity="0.45" />
-            </filter>
+            <clipPath id="shell-lens-clip">
+              <circle cx="256" cy="256" r="168" />
+            </clipPath>
+            <linearGradient id="shell-specular-gleam" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" stop-color="#ffffff" stop-opacity="0" />
+              <stop offset="35%" stop-color="#ffffff" stop-opacity="0.30" />
+              <stop offset="50%" stop-color="#ffffff" stop-opacity="0.55" />
+              <stop offset="65%" stop-color="#ffffff" stop-opacity="0.30" />
+              <stop offset="100%" stop-color="#ffffff" stop-opacity="0" />
+            </linearGradient>
           </defs>
 
           <!-- Circular glass layers -->
@@ -443,29 +458,33 @@
             <circle class="shell-c6" cx="256" cy="256" r="168" fill="url(#shell-dark-glass)" stroke="url(#shell-rim-sheen)" stroke-width="1.5" />
           </g>
 
+          <!-- Act III: Specular Light Sweep across Dark Lens -->
+          <g clip-path="url(#shell-lens-clip)" pointer-events="none">
+            <rect class="shell-specular-sheen" x="156" y="-100" width="200" height="712" fill="url(#shell-specular-gleam)" />
+          </g>
+
           <!-- Typography: Unified GPU-Composited Cascade -->
           <g style="transform-origin: 256px 268px">
             <g class="shell-anim-lpu-group">
-              <text x="256" y="228" text-anchor="middle" filter="url(#shell-text-shadow)" style="font-family: 'Outfit', 'Inter', -apple-system, sans-serif; font-weight: 900; font-size: 106px; fill: #ffffff; letter-spacing: 5px;">
+              <text x="256" y="228" text-anchor="middle" style="font-family: 'Outfit', 'Inter', -apple-system, sans-serif; font-weight: 900; font-size: 106px; fill: #ffffff; letter-spacing: 5px;">
                 LPU
               </text>
             </g>
 
             <g class="shell-anim-connector-group">
               <rect class="shell-connector-pill" x="162" y="257" width="188" height="22" rx="11" fill="rgba(255, 255, 255, 0.14)" stroke="rgba(255, 255, 255, 0.18)" stroke-width="1" />
-              <circle class="shell-dot-left" cx="178" cy="268" r="5.5" fill="#ffffff" filter="url(#shell-text-shadow)" />
-              <line class="shell-connector-line" x1="184" y1="268" x2="328" y2="268" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" filter="url(#shell-text-shadow)" />
-              <circle class="shell-dot-right" cx="334" cy="268" r="5.5" fill="#ffffff" filter="url(#shell-text-shadow)" />
+              <circle class="shell-dot-left" cx="178" cy="268" r="5.5" fill="#ffffff" />
+              <line class="shell-connector-line" x1="184" y1="268" x2="328" y2="268" stroke="#ffffff" stroke-width="3.2" stroke-linecap="round" />
+              <circle class="shell-dot-right" cx="334" cy="268" r="5.5" fill="#ffffff" />
             </g>
 
             <g class="shell-anim-events-group">
-              <text x="256" y="323" text-anchor="middle" filter="url(#shell-text-shadow)" style="font-family: 'Outfit', 'Inter', -apple-system, sans-serif; font-weight: 800; font-size: 35px; fill: #ffffff; letter-spacing: 13px;">
+              <text x="256" y="323" text-anchor="middle" style="font-family: 'Outfit', 'Inter', -apple-system, sans-serif; font-weight: 800; font-size: 35px; fill: #ffffff; letter-spacing: 13px;">
                 EVENTS
               </text>
             </g>
           </g>
         </svg>
-        <div id="lpu-startup-sheen"></div>
       </div>
     </div>
 
@@ -473,7 +492,7 @@
     <script>
       (function() {
         var path = window.location.pathname.toLowerCase();
-        var isHome = path === '/' || path === '' || window.location.search.indexOf('page=home') !== -1;
+        var isHome = path === '/' || path === '' || path === '/index.html' || path.endsWith('/index.html') || window.location.search.indexOf('page=home') !== -1;
         var shell = document.getElementById('lpu-startup-shell');
 
         // Non-homepage routes (about, privacy, terms, event-details) skip startup shell completely
@@ -487,26 +506,23 @@
           return;
         }
 
-        if (window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-          if (shell && shell.parentNode) shell.parentNode.removeChild(shell);
-          window.__LPU_STARTUP__ = {
-            isHome: true,
-            status: 'REVEALED',
-            notifyCriticalReady: function() {}
-          };
-          return;
-        }
-
         var startTime = Date.now();
-        var MAX_SAFETY_MS = 120;
+        var MIN_VISUAL_MS = 1680;      // Luxury hold (~1.68s) so user admires the crystallized emblem and specular gleam
+        var MAX_SAFETY_MS = 3800;      // Safety timeout before forcing handoff
         var isCriticalReady = false;
-        var isAnimationComplete = false;
         var isHandoffStarted = false;
         var handoffAttempts = 0;
-        var MAX_HANDOFF_ATTEMPTS = 20;
+        var MAX_HANDOFF_ATTEMPTS = 200;
 
         function checkAndTriggerHandoff() {
-          triggerHandoff();
+          var elapsed = Date.now() - startTime;
+          if (elapsed >= MIN_VISUAL_MS && isCriticalReady) {
+            triggerHandoff();
+          } else if (isCriticalReady) {
+            setTimeout(function() {
+              triggerHandoff();
+            }, Math.max(0, MIN_VISUAL_MS - elapsed));
+          }
         }
 
         // Dismiss immediately if user initiates scroll gesture during startup
@@ -516,23 +532,6 @@
             fallbackDismiss();
           }
         }, { passive: true, once: true });
-
-        // Coordinate with the actual completion of the logo sheen sweep
-        var sheenEl = document.getElementById('lpu-startup-sheen');
-        if (sheenEl) {
-          sheenEl.addEventListener('animationend', function() {
-            isAnimationComplete = true;
-            checkAndTriggerHandoff();
-          }, { once: true });
-        }
-
-        // Guaranteed fast animation fallback so user NEVER waits for slow network
-        setTimeout(function() {
-          if (!isHandoffStarted) {
-            isAnimationComplete = true;
-            checkAndTriggerHandoff();
-          }
-        }, 100);
 
         function fallbackDismiss() {
           if (isHandoffStarted) return;
@@ -547,12 +546,12 @@
           if (navEl) navEl.style.opacity = '1';
 
           if (container) {
-            container.style.transition = 'opacity 0.1s ease, transform 0.1s ease';
+            container.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
             container.style.opacity = '0';
             container.style.transform = 'scale(0.95)';
           }
           if (backdrop) {
-            backdrop.style.transition = 'opacity 0.1s ease, backdrop-filter 0.1s ease, -webkit-backdrop-filter 0.1s ease';
+            backdrop.style.transition = 'opacity 0.25s ease, backdrop-filter 0.25s ease, -webkit-backdrop-filter 0.25s ease';
             backdrop.style.opacity = '0';
             backdrop.style.backdropFilter = 'blur(0px)';
             backdrop.style.webkitBackdropFilter = 'blur(0px)';
@@ -563,7 +562,7 @@
             if (shell && shell.parentNode) {
               shell.parentNode.removeChild(shell);
             }
-          }, 110);
+          }, 260);
         }
 
         var state = {
@@ -633,21 +632,20 @@
           container.style.animation = 'none';
           void container.offsetWidth;
 
-          // Smooth, cinematic shared-element FLIP transition into navbar slot
+          // Smooth, cinematic shared-element FLIP transition into navbar slot (Act IV: 0.56s)
           container.style.transformOrigin = 'top left';
-          container.style.transition = 'transform 0.3s cubic-bezier(0.22, 1, 0.36, 1), filter 0.3s cubic-bezier(0.22, 1, 0.36, 1)';
+          container.style.transition = 'transform 0.56s cubic-bezier(0.22, 1, 0.36, 1)';
           container.style.transform = 'translate(' + deltaX + 'px, ' + deltaY + 'px) scale(' + targetScale + ')';
-          container.style.filter = 'drop-shadow(0 2px 8px rgba(0,0,0,0.18))';
 
-          // Fade out blur backdrop as logo approaches docked position
+          // Fade out blur backdrop as logo approaches docked position (starts 180ms into flight)
           setTimeout(function() {
             if (backdrop) {
-              backdrop.style.transition = 'opacity 0.22s cubic-bezier(0.22, 1, 0.36, 1), backdrop-filter 0.22s ease, -webkit-backdrop-filter 0.22s ease';
+              backdrop.style.transition = 'opacity 0.38s cubic-bezier(0.22, 1, 0.36, 1), backdrop-filter 0.38s ease, -webkit-backdrop-filter 0.38s ease';
               backdrop.style.opacity = '0';
               backdrop.style.backdropFilter = 'blur(0px)';
               backdrop.style.webkitBackdropFilter = 'blur(0px)';
             }
-          }, 80);
+          }, 180);
 
           // Clean handoff to real navbar logo
           setTimeout(function() {
@@ -655,19 +653,14 @@
             if (navEl) navEl.style.opacity = '1';
             var s = document.getElementById('lpu-startup-shell');
             if (s && s.parentNode) s.parentNode.removeChild(s);
-          }, 310);
+          }, 560);
         }
 
         // Hard safety timeout so slow networks or late APIs never block the site indefinitely
         setTimeout(function() {
           if (!isHandoffStarted) {
-            isAnimationComplete = true;
             isCriticalReady = true;
-            if (document.getElementById('navbar-brand-logo')) {
-              triggerHandoff();
-            } else {
-              fallbackDismiss();
-            }
+            checkAndTriggerHandoff();
           }
         }, MAX_SAFETY_MS);
       })();

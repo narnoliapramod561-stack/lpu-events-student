@@ -1212,7 +1212,7 @@ export default function App() {
           allEvents={allAvailableEvents}
         />
 
-        <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-3 sm:px-4 md:px-6 flex flex-col gap-3.5 sm:gap-12 mt-2 sm:mt-6">
+        <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-4 sm:px-6 md:px-8 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6">
           <Suspense fallback={
             <div className="min-h-[40vh] flex items-center justify-center">
               <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
@@ -1275,9 +1275,9 @@ export default function App() {
 
                       {/* Event Grid Skeleton */}
                       <div className="w-full">
-                        <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 lg:gap-8">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5 sm:gap-6 lg:gap-8">
                           {Array.from({ length: 6 }).map((_, i) => (
-                            <div key={i} className="flex flex-col h-full rounded-[20px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md">
+                            <div key={i} className="flex flex-col h-full rounded-[26px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md max-w-[390px] sm:max-w-none mx-auto w-full">
                               <div className="w-full aspect-[16/9] bg-gray-200/70 dark:bg-white/5 skeleton-base" />
                               <div className="p-3.5 sm:p-5 flex flex-col flex-1 space-y-3">
                                 <div className="h-4 w-20 rounded-md skeleton-base" />

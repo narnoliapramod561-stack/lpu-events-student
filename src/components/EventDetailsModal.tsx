@@ -180,12 +180,12 @@ export const EventDetailsModal = ({ eventId, onClose }: {
                   </div>
 
                   <div className="flex items-start gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-rose-500/15 dark:bg-white/10 border border-rose-300/60 dark:border-white/15 flex items-center justify-center shrink-0">
+                    <div className="w-8 h-8 rounded-lg bg-rose-500/15 dark:bg-white/10 border border-rose-300/60 dark:border-white/15 flex items-center justify-center shrink-0 mt-0.5">
                       <MapPin className="h-4 w-4 text-rose-600 dark:text-rose-400" />
                     </div>
-                    <div className="flex flex-col min-w-0">
+                    <div className="flex flex-col min-w-0 flex-1">
                       <span className="text-[10px] font-black text-gray-500 dark:text-gray-400 uppercase tracking-wider font-heading">Venue</span>
-                      <span className="text-xs sm:text-sm font-bold truncate text-gray-900 dark:text-white">{event.venue_name}</span>
+                      <span className="text-xs sm:text-sm font-bold line-clamp-2 break-words text-gray-900 dark:text-white">{event.venue_name || "LPU Campus"}</span>
                     </div>
                   </div>
 

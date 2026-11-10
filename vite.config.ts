@@ -123,7 +123,7 @@ export default defineConfig({
   },
   build: {
     target: 'es2022',
-    sourcemap: false,   // Disable sourcemaps in prod to save 30-50% build size
+    sourcemap: process.env.CI ? 'hidden' : false,
     cssCodeSplit: true, // Critical: split CSS by chunk so unused styles don't load
     cssMinify: 'lightningcss', // 20-30% smaller than default esbuild CSS minifier
     chunkSizeWarningLimit: 500,

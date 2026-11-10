@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Search, Sun, Moon, Menu, X, Home, LayoutGrid, Flame, Users, HelpCircle, Info, Mail } from "lucide-react";
+import { Search, Sun, Moon, Menu, X, Home, LayoutGrid, Flame, Users, HelpCircle, Info, Mail, ArrowRight } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { searchEventsClientSide } from "../shared/clientSearch";
 import type { EventFeedItem } from "@lpu-events/shared";
@@ -229,18 +229,18 @@ export const NavbarComponent = ({
   return (
     <>
       <header className="sticky top-0 z-50 w-full glass-nav transition-all duration-300">
-        <div className="mx-auto flex h-18 sm:h-20 max-w-[98%] items-center justify-between px-3 sm:px-4 md:px-6">
+        <div className="mx-auto flex h-14 sm:h-20 max-w-[98%] items-center justify-between px-3.5 sm:px-4 md:px-6">
         
         {/* Brand Logo & Title */}
         <div 
-          className="flex items-center gap-2.5 sm:gap-3 cursor-pointer shrink-0 group select-none" 
+          className="flex items-center gap-2 sm:gap-3 cursor-pointer shrink-0 group select-none" 
           onClick={handleBrandClick}
           title="Go to Student Dashboard"
         >
-          <LpuLogo id="navbar-brand-logo" className="h-11 w-11 sm:h-12 sm:w-12 md:h-14 md:w-14 shrink-0 drop-shadow-sm group-hover:scale-105 transition-transform" />
-          <div className="flex items-center text-xl sm:text-2xl md:text-[25px] font-black tracking-tight font-heading leading-tight">
+          <LpuLogo id="navbar-brand-logo" className="h-9 w-9 sm:h-12 sm:w-12 md:h-14 md:w-14 shrink-0 drop-shadow-sm group-hover:scale-105 transition-transform" />
+          <div className="flex items-center text-lg sm:text-2xl md:text-[25px] font-black tracking-tight font-heading leading-tight">
             <span className="text-[#0f172a] dark:text-white group-hover:text-primary transition-colors">LPU</span>
-            <span className="ml-1.5 text-[#ea580c] dark:text-[#ff7f24]">Events</span>
+            <span className="ml-1 text-[#ea580c] dark:text-[#ff7f24]">Events</span>
           </div>
         </div>
 
@@ -334,7 +334,7 @@ export const NavbarComponent = ({
           </div>
 
           {/* Action Buttons Group */}
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 sm:gap-2">
             
             {/* Mobile Search Toggle Button (Visible only on < md) */}
             <button
@@ -345,11 +345,11 @@ export const NavbarComponent = ({
                 }
               }}
               aria-label="Toggle mobile search"
-              className={`flex md:hidden h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill-white active:scale-95 transition-transform duration-150 cursor-pointer ${
+              className={`flex md:hidden h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full glass-pill-white active:scale-95 transition-transform duration-150 cursor-pointer ${
                 mobileSearchOpen || localSearch ? "glass-pill-orange text-white" : ""
               }`}
             >
-              <Search className="h-4.5 w-4.5" />
+              <Search className="h-4 w-4" />
             </button>
 
             {/* Theme Toggle Button */}
@@ -357,18 +357,18 @@ export const NavbarComponent = ({
               type="button"
               onClick={onToggleTheme}
               aria-label="Toggle light/dark mode"
-              className="flex h-9.5 w-9.5 sm:h-10 sm:w-10 items-center justify-center rounded-full glass-pill-white hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer pointer-events-auto select-none"
+              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full glass-pill-white hover:scale-105 active:scale-95 transition-all duration-150 cursor-pointer pointer-events-auto select-none"
             >
-              {theme === "dark" ? <Sun className="h-4.5 w-4.5 text-amber-400 pointer-events-none" /> : <Moon className="h-4.5 w-4.5 text-indigo-600 stroke-[2.2] pointer-events-none" />}
+              {theme === "dark" ? <Sun className="h-4 w-4 text-amber-400 pointer-events-none" /> : <Moon className="h-4 w-4 text-indigo-600 stroke-[2.2] pointer-events-none" />}
             </button>
 
             {/* Mobile Menu Hamburger Button */}
             <button
               onClick={() => setMobileMenuOpen((prev) => !prev)}
               aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
-              className="flex h-10 w-10 sm:h-11 sm:w-11 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary lg:hidden cursor-pointer active:scale-95 transition-transform duration-150"
+              className="flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full glass-pill text-gray-700 dark:text-gray-200 hover:text-primary lg:hidden cursor-pointer active:scale-95 transition-transform duration-150"
             >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              {mobileMenuOpen ? <X className="h-4.5 w-4.5" /> : <Menu className="h-4.5 w-4.5" />}
             </button>
           </div>
         </div>
@@ -433,7 +433,7 @@ export const NavbarComponent = ({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
               onClick={() => setMobileMenuOpen(false)}
-              className="fixed inset-0 top-[72px] sm:top-[80px] z-40 bg-black/20 dark:bg-black/40 backdrop-blur-[2px] lg:hidden"
+              className="fixed inset-0 top-[56px] sm:top-[80px] z-40 bg-black/20 dark:bg-black/40 backdrop-blur-[2px] lg:hidden"
             />
 
             {/* Top Half-Screen Glass Sheet (Full width horizontally edge-to-edge, top half vertically) */}
@@ -442,28 +442,49 @@ export const NavbarComponent = ({
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -16 }}
               transition={{ duration: 0.22, ease: "easeOut" }}
-              className="fixed top-[72px] sm:top-[80px] left-0 right-0 w-full z-50 glass-menu-overlay rounded-b-[32px] sm:rounded-b-[40px] px-4 sm:px-6 py-4 sm:py-5 flex flex-col justify-between min-h-[46dvh] max-h-[52dvh] lg:hidden overflow-y-auto shadow-[0_24px_60px_rgba(0,0,0,0.18)] dark:shadow-[0_28px_70px_rgba(0,0,0,0.7)]"
+              className="fixed top-[56px] sm:top-[80px] left-0 right-0 w-full z-50 glass-menu-overlay rounded-b-[32px] sm:rounded-b-[40px] px-4 sm:px-6 py-4 sm:py-5 flex flex-col justify-between min-h-[46dvh] max-h-[58dvh] lg:hidden overflow-y-auto shadow-[0_24px_60px_rgba(0,0,0,0.18)] dark:shadow-[0_28px_70px_rgba(0,0,0,0.7)]"
             >
+              {/* Drawer Top Row: Brand & Close matching mobile app */}
+              <div className="flex items-center justify-between pb-3 border-b border-black/[0.08] dark:border-white/[0.12] mb-1.5 px-1">
+                <div className="flex items-center gap-2.5">
+                  <LpuLogo className="h-8 w-8 shrink-0" />
+                  <span className="font-heading font-black text-lg tracking-tight text-[#0f172a] dark:text-white leading-tight">
+                    LPU <span className="text-[#ea580c] dark:text-[#ff7f24]">Events</span>
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="w-8 h-8 rounded-full flex items-center justify-center bg-black/[0.06] dark:bg-white/[0.12] text-slate-700 dark:text-white hover:scale-105 active:scale-95 transition-all cursor-pointer"
+                  aria-label="Close menu"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
               <div className="relative z-10 flex flex-col gap-1 text-[15.5px] font-heading">
                 {/* Home */}
                 <button
                   type="button"
                   onClick={handleBrandClick}
-                  className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-left ${
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-left ${
                     !isTrendingActive && !isCategoriesActive && !searchQuery
                       ? "bg-white/85 dark:bg-white/15 text-[#ea580c] dark:text-[#ff802b] font-black border border-white/90 dark:border-white/20 shadow-xs"
                       : "text-[#0f172a] dark:text-white font-extrabold hover:bg-black/[0.04] dark:hover:bg-white/[0.08] active:bg-black/[0.08]"
                   }`}
                   title="Go to Student Dashboard"
                 >
-                  <div className={`w-9.5 h-9.5 rounded-xl flex items-center justify-center shrink-0 ${
-                    !isTrendingActive && !isCategoriesActive && !searchQuery
-                      ? "bg-gradient-to-tr from-[#ea580c] to-[#ff802b] text-white shadow-[0_4px_12px_rgba(234,88,12,0.35)]"
-                      : "bg-white/85 dark:bg-white/12 border border-black/5 dark:border-white/10 text-[#ea580c] dark:text-[#ff802b] shadow-2xs"
-                  }`}>
-                    <Home className="h-5 w-5 stroke-[2.4]" />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className={`w-9.5 h-9.5 rounded-xl flex items-center justify-center shrink-0 ${
+                      !isTrendingActive && !isCategoriesActive && !searchQuery
+                        ? "bg-gradient-to-tr from-[#ea580c] to-[#ff802b] text-white shadow-[0_4px_12px_rgba(234,88,12,0.35)]"
+                        : "bg-white/85 dark:bg-white/12 border border-black/5 dark:border-white/10 text-[#ea580c] dark:text-[#ff802b] shadow-2xs"
+                    }`}>
+                      <Home className="h-5 w-5 stroke-[2.4]" />
+                    </div>
+                    <span className="tracking-tight">Home</span>
                   </div>
-                  <span className="tracking-tight">Home</span>
+                  <ArrowRight className="h-4 w-4 text-slate-400 dark:text-slate-500 shrink-0 ml-2" />
                 </button>
 
                 {/* Event Categories */}
@@ -477,20 +498,23 @@ export const NavbarComponent = ({
                       handleNavigate("#categories");
                     }
                   }}
-                  className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-left ${
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-left ${
                     isCategoriesActive && !isTrendingActive
                       ? "bg-white/85 dark:bg-white/15 text-[#ea580c] dark:text-[#ff802b] font-black border border-white/90 dark:border-white/20 shadow-xs"
                       : "text-[#0f172a] dark:text-white font-extrabold hover:bg-black/[0.04] dark:hover:bg-white/[0.08] active:bg-black/[0.08]"
                   }`}
                 >
-                  <div className={`w-9.5 h-9.5 rounded-xl flex items-center justify-center shrink-0 ${
-                    isCategoriesActive && !isTrendingActive
-                      ? "bg-gradient-to-tr from-[#ea580c] to-[#ff802b] text-white shadow-[0_4px_12px_rgba(234,88,12,0.35)]"
-                      : "bg-white/85 dark:bg-white/12 border border-black/5 dark:border-white/10 text-[#ea580c] dark:text-[#ff802b] shadow-2xs"
-                  }`}>
-                    <LayoutGrid className="h-5 w-5 stroke-[2.4]" />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className={`w-9.5 h-9.5 rounded-xl flex items-center justify-center shrink-0 ${
+                      isCategoriesActive && !isTrendingActive
+                        ? "bg-gradient-to-tr from-[#ea580c] to-[#ff802b] text-white shadow-[0_4px_12px_rgba(234,88,12,0.35)]"
+                        : "bg-white/85 dark:bg-white/12 border border-black/5 dark:border-white/10 text-[#ea580c] dark:text-[#ff802b] shadow-2xs"
+                    }`}>
+                      <LayoutGrid className="h-5 w-5 stroke-[2.4]" />
+                    </div>
+                    <span className="tracking-tight">Event Categories</span>
                   </div>
-                  <span className="tracking-tight">Event Categories</span>
+                  <ArrowRight className="h-4 w-4 text-slate-400 dark:text-slate-500 shrink-0 ml-2" />
                 </button>
 
                 {/* Trending Events */}
@@ -501,55 +525,67 @@ export const NavbarComponent = ({
                     if (onSelectTrending) onSelectTrending();
                     handleNavigate("#events");
                   }}
-                  className={`flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-left ${
+                  className={`flex items-center justify-between px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-left ${
                     isTrendingActive
                       ? "bg-white/85 dark:bg-white/15 text-[#ea580c] dark:text-[#ff802b] font-black border border-white/90 dark:border-white/20 shadow-xs"
                       : "text-[#0f172a] dark:text-white font-extrabold hover:bg-black/[0.04] dark:hover:bg-white/[0.08] active:bg-black/[0.08]"
                   }`}
                 >
-                  <div className={`w-9.5 h-9.5 rounded-xl flex items-center justify-center shrink-0 ${
-                    isTrendingActive
-                      ? "bg-gradient-to-tr from-[#ea580c] to-[#ff802b] text-white shadow-[0_4px_12px_rgba(234,88,12,0.35)]"
-                      : "bg-white/85 dark:bg-white/12 border border-black/5 dark:border-white/10 text-[#ea580c] dark:text-[#ff802b] shadow-2xs"
-                  }`}>
-                    <Flame className="h-5 w-5 stroke-[2.4]" />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className={`w-9.5 h-9.5 rounded-xl flex items-center justify-center shrink-0 ${
+                      isTrendingActive
+                        ? "bg-gradient-to-tr from-[#ea580c] to-[#ff802b] text-white shadow-[0_4px_12px_rgba(234,88,12,0.35)]"
+                        : "bg-white/85 dark:bg-white/12 border border-black/5 dark:border-white/10 text-[#ea580c] dark:text-[#ff802b] shadow-2xs"
+                    }`}>
+                      <Flame className="h-5 w-5 stroke-[2.4]" />
+                    </div>
+                    <span className="tracking-tight">Trending Events</span>
                   </div>
-                  <span className="tracking-tight">Trending Events</span>
+                  <ArrowRight className="h-4 w-4 text-slate-400 dark:text-slate-500 shrink-0 ml-2" />
                 </button>
 
                 {/* Student Clubs & Organizations */}
                 <button
                   onClick={() => handleNavigate("#events")}
-                  className="flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-left text-[#0f172a] dark:text-white font-extrabold hover:bg-black/[0.04] dark:hover:bg-white/[0.08] active:bg-black/[0.08]"
+                  className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-left text-[#0f172a] dark:text-white font-extrabold hover:bg-black/[0.04] dark:hover:bg-white/[0.08] active:bg-black/[0.08]"
                 >
-                  <div className="w-9.5 h-9.5 rounded-xl flex items-center justify-center bg-white/85 dark:bg-white/12 border border-black/5 dark:border-white/10 text-[#ea580c] dark:text-[#ff802b] shadow-2xs shrink-0">
-                    <Users className="h-5 w-5 stroke-[2.4]" />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-9.5 h-9.5 rounded-xl flex items-center justify-center bg-white/85 dark:bg-white/12 border border-black/5 dark:border-white/10 text-[#ea580c] dark:text-[#ff802b] shadow-2xs shrink-0">
+                      <Users className="h-5 w-5 stroke-[2.4]" />
+                    </div>
+                    <span className="tracking-tight">Student Clubs & Organizations</span>
                   </div>
-                  <span className="tracking-tight">Student Clubs & Organizations</span>
+                  <ArrowRight className="h-4 w-4 text-slate-400 dark:text-slate-500 shrink-0 ml-2" />
                 </button>
 
                 {/* About LPU Events */}
                 <a
                   href="/about"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-left text-[#0f172a] dark:text-white font-extrabold hover:bg-black/[0.04] dark:hover:bg-white/[0.08] active:bg-black/[0.08]"
+                  className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-left text-[#0f172a] dark:text-white font-extrabold hover:bg-black/[0.04] dark:hover:bg-white/[0.08] active:bg-black/[0.08]"
                 >
-                  <div className="w-9.5 h-9.5 rounded-xl flex items-center justify-center bg-white/85 dark:bg-white/12 border border-black/5 dark:border-white/10 text-[#ea580c] dark:text-[#ff802b] shadow-2xs shrink-0">
-                    <Info className="h-5 w-5 stroke-[2.4]" />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-9.5 h-9.5 rounded-xl flex items-center justify-center bg-white/85 dark:bg-white/12 border border-black/5 dark:border-white/10 text-[#ea580c] dark:text-[#ff802b] shadow-2xs shrink-0">
+                      <Info className="h-5 w-5 stroke-[2.4]" />
+                    </div>
+                    <span className="tracking-tight">About LPU Events</span>
                   </div>
-                  <span className="tracking-tight">About LPU Events</span>
+                  <ArrowRight className="h-4 w-4 text-slate-400 dark:text-slate-500 shrink-0 ml-2" />
                 </a>
 
                 {/* Contact Support */}
                 <a
                   href="/contact"
                   onClick={() => setMobileMenuOpen(false)}
-                  className="flex items-center gap-3.5 px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-left text-[#0f172a] dark:text-white font-extrabold hover:bg-black/[0.04] dark:hover:bg-white/[0.08] active:bg-black/[0.08]"
+                  className="flex items-center justify-between px-3.5 py-2.5 rounded-2xl transition-all cursor-pointer text-left text-[#0f172a] dark:text-white font-extrabold hover:bg-black/[0.04] dark:hover:bg-white/[0.08] active:bg-black/[0.08]"
                 >
-                  <div className="w-9.5 h-9.5 rounded-xl flex items-center justify-center bg-white/85 dark:bg-white/12 border border-black/5 dark:border-white/10 text-[#ea580c] dark:text-[#ff802b] shadow-2xs shrink-0">
-                    <Mail className="h-5 w-5 stroke-[2.4]" />
+                  <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="w-9.5 h-9.5 rounded-xl flex items-center justify-center bg-white/85 dark:bg-white/12 border border-black/5 dark:border-white/10 text-[#ea580c] dark:text-[#ff802b] shadow-2xs shrink-0">
+                      <Mail className="h-5 w-5 stroke-[2.4]" />
+                    </div>
+                    <span className="tracking-tight">Contact Support</span>
                   </div>
-                  <span className="tracking-tight">Contact Support</span>
+                  <ArrowRight className="h-4 w-4 text-slate-400 dark:text-slate-500 shrink-0 ml-2" />
                 </a>
               </div>
 
