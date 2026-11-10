@@ -1,0 +1,43 @@
+name: Scheduled Synthetic Health Automation
+
+on:
+  schedule:
+    # Run every 6 hours (00:00, 06:00, 12:00, 18:00 UTC) -> 4 runs/day = 120 runs/month
+    # Baseline: 120 runs * 2 billable min = 240 min/mo (well under 2,000 min allowance)
+    - cron: '0 */6 * * *'
+  workflow_dispatch:
+
+concurrency:
+  group: synthetic-health
+  cancel-in-progress: true
+
+jobs:
+  synthetic-probe:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5 # Hard safety cap (5 min * 120 runs = 600 min/mo ceiling)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install Playwright & Test Runner
+        run: |
+          npm install -D @playwright/test
+          npx playwright install --with-deps chromium
+
+      - name: Run Synthetic Health Checks (Student & Admin)
+        run: |
+          npx playwright test tests/synthetic/platform.health.spec.ts --project=chromium
+
+      - name: Upload Test Report on Failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-synthetic-failure-report
+          path: playwright-report/
+          retention-days: 7
