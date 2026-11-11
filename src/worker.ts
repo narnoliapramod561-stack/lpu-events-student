@@ -372,6 +372,8 @@ export function captureWorkerException(
 export function handleHealthCheck(cacheVersion: number, correlationId?: string): Response {
   return jsonResponse({
     status: 'healthy',
+    service: 'lpu-events-student-worker',
+    correlationId: correlationId || null,
     version: cacheVersion,
     timestamp: new Date().toISOString(),
   }, 200, {
@@ -971,7 +973,8 @@ async function handleCarousel(origin: string, env: Env, ctx: ExecutionContext, r
     // They stay in the hero carousel regardless of event end time until superadmin deactivates or removes them.
     const filtered = (res.data as any[]).filter((slide: any) => {
       if (slide.item_type === 'EVENT') {
-        if (!slide.events || !['PUBLISHED', 'COMPLETED'].includes(slide.events.status)) return false;
+        const rawEvt = Array.isArray(slide.events) ? slide.events[0] : slide.events;
+        if (!rawEvt || !['PUBLISHED', 'COMPLETED'].includes(rawEvt.status)) return false;
       }
       return true;
     });
@@ -1258,7 +1261,8 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext, r
     if (carouselRes.ok && Array.isArray(carouselRes.data)) {
       carousel = (carouselRes.data as any[]).filter((slide: any) => {
         if (slide.item_type === 'EVENT') {
-          if (!slide.events || !['PUBLISHED', 'COMPLETED'].includes(slide.events.status)) return false;
+          const rawEvt = Array.isArray(slide.events) ? slide.events[0] : slide.events;
+          if (!rawEvt || !['PUBLISHED', 'COMPLETED'].includes(rawEvt.status)) return false;
         }
         return true;
       });

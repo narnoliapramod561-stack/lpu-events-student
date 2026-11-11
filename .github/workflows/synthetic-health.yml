@@ -32,7 +32,7 @@ jobs:
 
       - name: Run Synthetic Health Checks (Student & Admin)
         run: |
-          npx playwright test tests/synthetic/platform.health.spec.ts --project=chromium
+          npx playwright test tests/synthetic/platform.health.spec.ts --config=playwright.config.ts --project=chromium
 
       - name: Upload Test Report on Failure
         if: failure()

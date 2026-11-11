@@ -1240,7 +1240,7 @@ export default function App() {
                   {/* Top Hero Carousel */}
                   <HeroCarousel
                     carouselItems={carouselSlides}
-                    featuredEvents={featuredEvents}
+                    allEvents={allAvailableEvents}
                     onSelectEvent={handleSelectEvent}
                   />
 

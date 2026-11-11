@@ -17,6 +17,7 @@ export interface HeroSlideModel {
   description?: string;
   image: string;
   fallbackImage?: string;
+  badge?: string;
   category: string;
   date?: string;
   time?: string;
@@ -77,10 +78,12 @@ const formatHeroTime = (dateStr?: string | null) => {
 export const HeroCarouselComponent = ({
   carouselItems,
   featuredEvents = [],
+  allEvents = [],
   onSelectEvent,
 }: {
   carouselItems?: CarouselItemFeedItem[];
   featuredEvents?: EventFeedItem[];
+  allEvents?: EventFeedItem[];
   onSelectEvent: (id: string, name?: string) => void;
 }) => {
   const [[currentIndex, direction], setPage] = useState<[number, number]>([0, 0]);
@@ -110,36 +113,48 @@ export const HeroCarouselComponent = ({
       for (const item of carouselItems) {
         if (!item.is_active) continue;
 
-        if (item.item_type === "EVENT" && item.events) {
-          const matchedEvt = featuredEvents?.find(f => f.id === item.event_id || f.id === item.events?.id);
-          const evt = matchedEvt ? { ...item.events, ...matchedEvt } : item.events;
+        if (item.item_type === "EVENT") {
+          // Robustly handle single object or array relation from PostgREST
+          const rawEvt: any = Array.isArray(item.events) ? item.events[0] : item.events;
+          const eventId = item.event_id || rawEvt?.id;
+          const matchedEvt = (allEvents && allEvents.length > 0 ? allEvents.find(e => e.id === eventId) : null)
+            || (featuredEvents && featuredEvents.length > 0 ? featuredEvents.find(f => f.id === eventId) : null);
+          const evt = matchedEvt ? { ...rawEvt, ...matchedEvt } : rawEvt;
+
+          if (!evt && !item.custom_title) continue;
+
+          const categoryName = evt?.categories?.name || "";
+          const badgeText = item.badge_text?.trim() || categoryName || "Featured";
+
           baseSlides.push({
             id: item.id,
-            eventId: evt.id,
+            eventId: evt?.id || item.event_id || null,
             type: "event",
-            title: item.custom_title?.trim() || evt.name,
-            description: item.custom_subtitle?.trim() || evt.description,
-            image: getEventImage(evt, "hero", heroImageTargetWidth),
-            fallbackImage: resolveDefaultEventImage(evt),
-            category: item.badge_text?.trim() || evt.categories?.name || "Featured Event",
-            date: formatHeroDate(evt.start_at),
-            time: formatHeroTime(evt.start_at),
-            venue: evt.venue_name,
-            organizer: evt.organizations?.name || "LPU Club",
+            title: item.custom_title?.trim() || evt?.name || "Campus Event",
+            description: item.custom_subtitle?.trim() || evt?.description || "",
+            image: evt ? getEventImage(evt, "hero", heroImageTargetWidth) : "/defaults/hero_default.webp",
+            fallbackImage: evt ? resolveDefaultEventImage(evt) : "/defaults/hero_default.webp",
+            badge: badgeText,
+            category: categoryName,
+            date: formatHeroDate(evt?.start_at),
+            time: formatHeroTime(evt?.start_at),
+            venue: evt?.venue_name || "LPU Campus",
+            organizer: evt?.organizations?.name || "LPU Club",
             ctaText: item.custom_cta_text?.trim() || "View Details",
             ctaUrl: item.custom_cta_url,
             duration: item.display_duration_ms || 5000,
           });
         } else if (item.item_type === "MEDIA") {
-          const media = item.media_assets;
+          const rawMedia: any = Array.isArray(item.media_assets) ? item.media_assets[0] : item.media_assets;
           baseSlides.push({
             id: item.id,
             type: "media",
             title: item.custom_title?.trim() || "Campus Spotlight",
             description: item.custom_subtitle?.trim() || "Featured university stories and announcements.",
-            image: getEventImage(media, "hero", heroImageTargetWidth),
+            image: getEventImage(rawMedia, "hero", heroImageTargetWidth),
             fallbackImage: "/defaults/hero_default.webp",
-            category: item.badge_text?.trim() || "Spotlight",
+            badge: item.badge_text?.trim() || "Spotlight",
+            category: "Spotlight",
             date: "Special",
             time: "Announcements",
             venue: "University Wide",
@@ -152,25 +167,6 @@ export const HeroCarouselComponent = ({
       }
     }
 
-    if (baseSlides.length === 0 && featuredEvents && featuredEvents.length > 0) {
-      baseSlides = featuredEvents.map((fe) => ({
-        type: "event",
-        id: fe.id,
-        eventId: fe.id,
-        title: fe.name,
-        description: fe.description,
-        image: getEventImage(fe, "hero", heroImageTargetWidth),
-        fallbackImage: resolveDefaultEventImage(fe),
-        category: fe.categories?.name || "Featured Event",
-        date: formatHeroDate(fe.start_at),
-        time: formatHeroTime(fe.start_at),
-        venue: fe.venue_name,
-        organizer: fe.organizations?.name || "LPU Club",
-        ctaText: "View Details",
-        duration: 5000,
-      }));
-    }
-
     if (baseSlides.length === 0) {
       baseSlides = [{
         id: "lpu-hero-default",
@@ -179,6 +175,7 @@ export const HeroCarouselComponent = ({
         description: "Explore tech hackathons, cultural nights, conferences, workshops, and student community gatherings happening across Lovely Professional University.",
         image: "/defaults/hero_default.webp",
         fallbackImage: "/defaults/hero_default.webp",
+        badge: "Campus Life",
         category: "Campus Life",
         date: "Upcoming",
         time: "All Semesters",
@@ -190,7 +187,7 @@ export const HeroCarouselComponent = ({
     }
 
     return baseSlides;
-  }, [carouselItems, featuredEvents]);
+  }, [carouselItems, allEvents, featuredEvents]);
 
   useEffect(() => {
     if (currentIndex >= slides.length && slides.length > 0) {
@@ -330,9 +327,9 @@ export const HeroCarouselComponent = ({
                       <div className="flex items-center gap-2 flex-wrap shrink-0">
                         <span className="inline-flex items-center gap-2 px-3 py-1 bg-white/60 dark:bg-white/14 text-[#c2410c] dark:text-orange-400 border border-white/80 dark:border-white/20 rounded-full font-heading text-[11px] sm:text-xs font-black uppercase tracking-wider shadow-2xs backdrop-blur-md">
                           <span className="w-1.5 h-1.5 rounded-full bg-[#ea580c] dark:bg-orange-400" />
-                          Featured Event
+                          {currentSlide.badge || currentSlide.category || "Hero Event"}
                         </span>
-                        {currentSlide.category && (
+                        {currentSlide.category && currentSlide.badge && currentSlide.category !== currentSlide.badge && (
                           <span className="inline-flex items-center gap-1.5 text-[11px] sm:text-xs font-black uppercase tracking-wide font-heading text-slate-800 dark:text-slate-200">
                             • {currentSlide.category}
                           </span>

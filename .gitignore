@@ -37,3 +37,8 @@ dist-ssr
 supabase/.temp/
 .temp/
 
+# Playwright
+playwright-report/
+test-results/
+
+
