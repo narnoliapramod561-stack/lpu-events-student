@@ -24,7 +24,7 @@ test.describe('Platform Production Synthetic Health', () => {
     await expect(errorHeading).not.toBeVisible();
 
     // 4. Verify critical navigation bar rendered
-    await expect(page.getByRole('navigation')).toBeVisible({ timeout: 6000 });
+    await expect(page.getByRole('navigation').first()).toBeVisible({ timeout: 6000 });
 
     // 5. Verify zero uncaught JavaScript exceptions (ignoring benign ResizeObserver loop noise)
     const fatalErrors = pageErrors.filter(
@@ -54,12 +54,14 @@ test.describe('Platform Production Synthetic Health', () => {
     expect(fatalErrors).toHaveLength(0);
   });
 
-  test('Cloudflare Worker /health route returns healthy status and correlation ID', async ({ request }) => {
-    const res = await request.get('https://lpuevents.live/health');
-    expect(res.status()).toBe(200);
-    const correlationHeader = res.headers()['x-correlation-id'];
+  test('Cloudflare Worker /health route returns healthy status and correlation ID', async ({ page }) => {
+    const res = await page.goto('https://lpuevents.live/health', { waitUntil: 'domcontentloaded' });
+    expect(res).toBeTruthy();
+    expect(res!.status()).toBe(200);
+    const correlationHeader = res!.headers()['x-correlation-id'];
     expect(correlationHeader).toBeTruthy();
-    const body = await res.json();
+    const text = await res!.text();
+    const body = JSON.parse(text);
     expect(body.status).toBe('healthy');
     if (body.service) {
       expect(body.service).toBe('lpu-events-student-worker');
