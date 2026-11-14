@@ -1,11 +1,22 @@
 # LPU Events
 
-> Central discovery hub for student events, workshops, technical competitions, cultural fests, clubs, and campus life at Lovely Professional University.
+> Official student events discovery platform for Lovely Professional University (LPU), Phagwara, Punjab, India. Covers campus fests, hackathons, workshops, cultural events, student clubs, guest lectures, and academic conferences for 35,000+ students.
+
+## Key Information
+
+- University: Lovely Professional University (LPU)
+- Location: GT Road, Phagwara, Punjab 144411, India
+- Student Count: 35,000+
+- Event Categories: Academics, Cultural, Innovation, Co-Curricular, Student Clubs, NSS, NCC, Fashion, Day Celebrations, Community Services
 
 ## Links
 
-- [Events Directory](https://lpuevents.live/): Explore upcoming and ongoing campus events.
-- [About](https://lpuevents.live/about): About the LPU Events discovery platform.
-- [Contact Us](https://lpuevents.live/contact): Contact the LPU Events team.
-- [Privacy Policy](https://lpuevents.live/privacy): User privacy and data protection guidelines.
-- [Terms of Service](https://lpuevents.live/terms): Terms and conditions for platform usage.
+- [Live Events Feed](https://lpuevents.live/): Discover upcoming and ongoing campus events
+- [Events Directory](https://lpuevents.live/directory): Full directory of all campus events
+- [Academic Events](https://lpuevents.live/category/academics): Academic conferences, seminars, workshops, guest lectures
+- [Cultural Events](https://lpuevents.live/category/cultural): Cultural fests, performances, music, dance, theatre
+- [Innovation & Tech](https://lpuevents.live/category/innovation): Hackathons, project expos, tech workshops
+- [Student Clubs](https://lpuevents.live/category/student-clubs): Technical, cultural, literary, and startup clubs
+- [RSS Feed](https://lpuevents.live/feed.xml): Live RSS feed of upcoming campus events
+- [About](https://lpuevents.live/about): About the LPU Events discovery platform
+- [Contact](https://lpuevents.live/contact): Contact the LPU Events team

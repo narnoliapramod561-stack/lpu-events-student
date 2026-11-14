@@ -48,6 +48,7 @@ export interface Env {
   };
   SUPABASE_URL?: string;
   SUPABASE_ANON_KEY?: string;
+  GOOGLE_SITE_VERIFICATION?: string;
   DB?: D1Database;
   POSTHOG_API_KEY?: string;
   POSTHOG_HOST?: string;
@@ -1426,6 +1427,11 @@ function getInvalidationUrls(origin: string, tags: string[]): string[] {
   for (const tag of tags) {
     if (tag === 'homepage' || tag === 'events') {
       urls.add(buildCacheKey(origin, '/api/public/homepage', {}));
+      urls.add(`${origin}/`);
+      urls.add(`${origin}/sitemap.xml`);
+      urls.add(`${origin}/directory`);
+      urls.add(`${origin}/feed.xml`);
+      urls.add(`${origin}/rss.xml`);
     }
     if (tag === 'events') {
       urls.add(buildCacheKey(origin, '/api/public/events', {}));
@@ -1547,6 +1553,27 @@ async function handleInvalidation(
         try {
           await handleCacheRebuild(origin, env, ctx);
         } catch { /* non-fatal */ }
+
+        // Proactive search engine notification via IndexNow
+        if (tags.some((t: string) => t === 'events' || t.startsWith('event:') || t === 'homepage')) {
+          try {
+            await fetch('https://api.indexnow.org/indexnow', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json; charset=utf-8' },
+              body: JSON.stringify({
+                host: 'lpuevents.live',
+                key: 'lpueventslive2026indexnowkey',
+                keyLocation: `${SITE_ORIGIN}/lpueventslive2026indexnowkey.txt`,
+                urlList: [
+                  `${SITE_ORIGIN}/`,
+                  `${SITE_ORIGIN}/sitemap.xml`,
+                  `${SITE_ORIGIN}/directory`,
+                  `${SITE_ORIGIN}/feed.xml`,
+                ],
+              }),
+            });
+          } catch { /* non-fatal */ }
+        }
       })()
     );
 
@@ -1916,6 +1943,26 @@ function buildEventJsonLd(event: any, canonicalUrl: string): string {
   }
   // If no venue name exists, location is omitted (no fabrication)
 
+  // Always provide location fallback for Google Rich Snippets
+  if (!jsonLd['location']) {
+    jsonLd['location'] = {
+      '@type': 'Place',
+      'name': 'Lovely Professional University',
+      'address': {
+        '@type': 'PostalAddress',
+        'streetAddress': 'Jalandhar - Delhi G.T. Road',
+        'addressLocality': 'Phagwara',
+        'addressRegion': 'Punjab',
+        'postalCode': '144411',
+        'addressCountry': 'IN',
+      },
+    };
+  }
+  // Always provide image fallback for Google Rich Snippets
+  if (!jsonLd['image']) {
+    jsonLd['image'] = [getEventImageUrl(event)];
+  }
+
   // 5. Image (Only if event has an actual banner media asset)
   if (event?.media_assets?.object_key) {
     const imageUrl = getEventImageUrl(event);
@@ -1963,6 +2010,12 @@ function buildEventJsonLd(event: any, canonicalUrl: string): string {
     jsonLd['about'] = { '@type': 'Thing', 'name': categoryName };
   }
 
+  // 10. Speakable Specification for voice search & Google Assistant
+  jsonLd['speakable'] = {
+    '@type': 'SpeakableSpecification',
+    'cssSelector': ['h1[itemprop="name"]', 'p[itemprop="description"]', 'time[itemprop="startDate"]'],
+  };
+
   return safeJsonLd(jsonLd);
 }
 
@@ -1972,7 +2025,7 @@ function buildEventJsonLd(event: any, canonicalUrl: string): string {
 function buildBreadcrumbJsonLd(event: any, canonicalUrl: string): string {
   const categoryName = event.categories?.name || 'Events';
   const categoryKey = event.categories?.key || '';
-  const categoryUrl = categoryKey ? `${SITE_ORIGIN}/?category=${encodeURIComponent(categoryKey)}` : `${SITE_ORIGIN}/`;
+  const categoryUrl = categoryKey ? `${SITE_ORIGIN}/category/${encodeURIComponent(categoryKey)}` : `${SITE_ORIGIN}/`;
 
   const items = [
     { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': `${SITE_ORIGIN}/` },
@@ -1997,7 +2050,7 @@ function buildSemanticHtml(event: any, _canonicalUrl: string): string {
   const organizerName = escapeHtml(event.organizations?.name || 'LPU Events');
   const categoryName = escapeHtml(event.categories?.name || 'Events');
   const categoryKey = event.categories?.key || '';
-  const categoryUrl = categoryKey ? `/?category=${encodeURIComponent(categoryKey)}` : '/';
+  const categoryUrl = categoryKey ? `/category/${encodeURIComponent(categoryKey)}` : '/';
   const venueName = escapeHtml(event.venue_name || '');
   const dateRange = escapeHtml(formatDateRangeIST(event.start_at, event.end_at));
   const description = escapeHtml(event.description || '');
@@ -2155,11 +2208,9 @@ Sitemap: ${SITE_ORIGIN}/sitemap.xml
  * Uses authentic modification timestamps and clean RESTful URLs for optimal search indexing.
  */
 async function handleSitemapXml(env: Env): Promise<Response> {
-  const nowIso = new Date().toISOString();
-
   // Fetch published events (lightweight projection for sitemap)
   const res = await fetchFromSupabase(
-    `events?select=${encodeURIComponent(PROJECTIONS.sitemapEvents)}&status=eq.PUBLISHED&end_at=gte.${nowIso}&order=updated_at.desc&limit=500`,
+    `events?select=${encodeURIComponent(PROJECTIONS.sitemapEvents)}&status=in.(PUBLISHED,COMPLETED)&order=updated_at.desc&limit=500`,
     'GET', undefined, env
   );
 
@@ -2349,11 +2400,7 @@ async function handleEventPageSeo(
           el.setAttribute('content', title);
         },
       })
-      .on('link[rel="canonical"]', {
-        element(el: CFElement) {
-          el.setAttribute('href', `${SITE_ORIGIN}/`);
-        },
-      });
+
 
     const rewritten = rewriter.transform(indexHtml);
     return new Response(rewritten.body, {
@@ -2370,6 +2417,11 @@ async function handleEventPageSeo(
   // Build SEO data
   const eventSlug = slugify(event.name) || event.id;
   const canonicalUrl = `${SITE_ORIGIN}/events/${eventSlug}`;
+
+  // 301 redirect UUID access to canonical slug URL
+  if (slugOrId !== eventSlug && /^[a-f0-9-]{36}$/i.test(slugOrId)) {
+    return Response.redirect(canonicalUrl, 301);
+  }
   const imageUrl = getEventImageUrl(event);
   const categoryName = event.categories?.name || 'Events';
   const organizerName = event.organizations?.name || 'LPU Events';
@@ -2459,9 +2511,19 @@ async function handleEventPageSeo(
         el.setAttribute('content', imageUrl);
       },
     })
+    .on('meta[name="google-site-verification"]', {
+      element(el: CFElement) {
+        if (env.GOOGLE_SITE_VERIFICATION) {
+          el.setAttribute('content', env.GOOGLE_SITE_VERIFICATION);
+        }
+      },
+    })
     // Inject JSON-LD structured data and semantic HTML before </head> and into <div id="root">
     .on('head', {
       element(el: CFElement) {
+        el.append(`<link rel="alternate" hreflang="en-IN" href="${canonicalUrl}" />`, { html: true });
+        el.append(`<link rel="alternate" hreflang="en" href="${canonicalUrl}" />`, { html: true });
+        el.append(`<link rel="alternate" hreflang="x-default" href="${canonicalUrl}" />`, { html: true });
         el.append(`<script type="application/ld+json">${eventJsonLd}</script>`, { html: true });
         el.append(`<script type="application/ld+json">${breadcrumbJsonLd}</script>`, { html: true });
       },
@@ -2589,14 +2651,19 @@ async function handleImageProxy(request: Request, env: Env, ctx: ExecutionContex
 async function handleDirectoryPageSeo(env: Env, origin: string): Promise<Response> {
   const indexHtml = await fetchIndexHtml(env, origin);
 
-  const [eventsRes, catsRes] = await Promise.all([
-    fetchFromSupabaseCoalesced(
-      `events?select=id,name,description,start_at,end_at,venue_name,pricing_type,price_amount,category_id,categories(name,key),organizations(name)&status=in.(PUBLISHED,COMPLETED,CANCELLED)&order=start_at.desc&limit=100`,
-      'GET', undefined, env
-    ),
-    fetchFromSupabaseCoalesced(
-      `categories?select=id,name,key&is_active=eq.true&order=sort_order.asc`,
-      'GET', undefined, env
+  const [eventsRes, catsRes] = await Promise.race([
+    Promise.all([
+      fetchFromSupabaseCoalesced(
+        `events?select=id,name,description,start_at,end_at,venue_name,pricing_type,price_amount,category_id,categories(name,key),organizations(name)&status=in.(PUBLISHED,COMPLETED,CANCELLED)&order=start_at.desc&limit=100`,
+        'GET', undefined, env
+      ),
+      fetchFromSupabaseCoalesced(
+        `categories?select=id,name,key&is_active=eq.true&order=sort_order.asc`,
+        'GET', undefined, env
+      ),
+    ]),
+    new Promise<[any, any]>((resolve) =>
+      setTimeout(() => resolve([{ ok: false, data: [] }, { ok: false, data: [] }]), 4500)
     ),
   ]);
 
@@ -2680,6 +2747,13 @@ async function handleDirectoryPageSeo(env: Env, origin: string): Promise<Respons
     .on('meta[property="og:title"]', { element(el: CFElement) { el.setAttribute('content', pageTitle); } })
     .on('meta[property="og:description"]', { element(el: CFElement) { el.setAttribute('content', pageDesc); } })
     .on('meta[property="og:url"]', { element(el: CFElement) { el.setAttribute('content', canonicalUrl); } })
+    .on('meta[name="google-site-verification"]', {
+      element(el: CFElement) {
+        if (env.GOOGLE_SITE_VERIFICATION) {
+          el.setAttribute('content', env.GOOGLE_SITE_VERIFICATION);
+        }
+      },
+    })
     .on('head', {
       element(el: CFElement) {
         el.append(`<script type="application/ld+json">${itemListJsonLd}</script>`, { html: true });
@@ -2823,20 +2897,23 @@ async function handleHomepageSeo(env: Env, origin: string, url?: URL, explicitCa
       return {
         '@type': 'ListItem',
         'position': idx + 1,
-        'url': `${SITE_ORIGIN}/events/${slug}`,
-        'name': ev.name,
-        'startDate': ev.start_at,
-        'endDate': ev.end_at,
-        'location': {
-          '@type': 'Place',
-          'name': ev.venue_name || 'LPU Campus, Phagwara',
-          'address': {
-            '@type': 'PostalAddress',
-            'streetAddress': 'Grand Trunk Road',
-            'addressLocality': 'Phagwara',
-            'addressRegion': 'Punjab',
-            'postalCode': '144411',
-            'addressCountry': 'IN',
+        'item': {
+          '@type': 'Event',
+          'name': ev.name,
+          'url': `${SITE_ORIGIN}/events/${slug}`,
+          'startDate': ev.start_at,
+          'endDate': ev.end_at,
+          'location': {
+            '@type': 'Place',
+            'name': ev.venue_name || 'LPU Campus, Phagwara',
+            'address': {
+              '@type': 'PostalAddress',
+              'streetAddress': 'Grand Trunk Road',
+              'addressLocality': 'Phagwara',
+              'addressRegion': 'Punjab',
+              'postalCode': '144411',
+              'addressCountry': 'IN',
+            },
           },
         },
       };
@@ -3051,8 +3128,19 @@ async function handleHomepageSeo(env: Env, origin: string, url?: URL, explicitCa
         el.setAttribute('content', categoryDesc);
       },
     })
+    .on('meta[name="google-site-verification"]', {
+      element(el: CFElement) {
+        if (env.GOOGLE_SITE_VERIFICATION) {
+          el.setAttribute('content', env.GOOGLE_SITE_VERIFICATION);
+        }
+      },
+    })
     .on('head', {
       element(el: CFElement) {
+        el.append(`<link rel="alternate" type="application/rss+xml" title="LPU Events — Campus Feed" href="${SITE_ORIGIN}/feed.xml" />`, { html: true });
+        el.append(`<link rel="alternate" hreflang="en-IN" href="${categoryCanonical}" />`, { html: true });
+        el.append(`<link rel="alternate" hreflang="en" href="${categoryCanonical}" />`, { html: true });
+        el.append(`<link rel="alternate" hreflang="x-default" href="${categoryCanonical}" />`, { html: true });
         el.append(`<script type="application/ld+json">${websiteJsonLd}</script>`, { html: true });
         el.append(`<script type="application/ld+json">${orgJsonLd}</script>`, { html: true });
         el.append(`<script type="application/ld+json">${appOrgJsonLd}</script>`, { html: true });
@@ -3277,6 +3365,13 @@ async function handleStaticPageSeo(pathname: string, env: Env, origin: string): 
         el.setAttribute('content', config.description);
       },
     })
+    .on('meta[name="google-site-verification"]', {
+      element(el: CFElement) {
+        if (env.GOOGLE_SITE_VERIFICATION) {
+          el.setAttribute('content', env.GOOGLE_SITE_VERIFICATION);
+        }
+      },
+    })
     .on('head', {
       element(el: CFElement) {
         el.append(`<script type="application/ld+json">${breadcrumbJsonLd}</script>`, { html: true });
@@ -3360,6 +3455,12 @@ export default {
       const response = await (async (): Promise<Response> => {
         // ─── SEO & Web Routes (Non-API) ──────────────────────────────────────
         if (!url.pathname.startsWith('/api/')) {
+
+          // Normalize trailing slashes → 301 to canonical non-trailing version
+          if (url.pathname.endsWith('/') && url.pathname.length > 1) {
+            const canonical = url.pathname.slice(0, -1) + (url.search || '');
+            return Response.redirect(`${SITE_ORIGIN}${canonical}`, 301);
+          }
 
           // Dynamic /robots.txt
           if (url.pathname === '/robots.txt') {

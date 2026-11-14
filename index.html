@@ -286,6 +286,19 @@
       @keyframes shell-fade { 0% { opacity: 0; } 100% { opacity: 1; } }
       @keyframes shell-scale { 0% { transform: scale(0); } 100% { transform: scale(1); } }
       @keyframes shell-draw-line { 0% { stroke-dashoffset: 144; } 100% { stroke-dashoffset: 0; } }
+
+      /* Accessible Off-Screen Content for SEO & Assistive Tech */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border-width: 0;
+      }
     </style>
     
     <link rel="preconnect" href="https://images.lpuevents.live" crossorigin />
@@ -375,11 +388,73 @@
     </noscript>
 
     <!-- Primary SEO Metadata -->
-    <title>LPU Events | Official Campus Events, Fests & Hackathons — Lovely Professional University</title>
+    <title>LPU Events — Campus Events, Fests & Hackathons</title>
     <meta name="description" content="Discover official campus events, technical hackathons, cultural festivals, workshops, guest lectures, and student clubs at Lovely Professional University (LPU)." />
     <meta name="keywords" content="LPU Events, Lovely Professional University, Campus Events, Student Clubs, Workshops, Hackathons, Fests, LPU Fest, LPU News, Phagwara" />
     <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1" />
+    <meta name="author" content="Lovely Professional University" />
+    <meta name="language" content="en-IN" />
     <link rel="canonical" href="https://lpuevents.live/" />
+    <link rel="alternate" type="application/rss+xml" title="LPU Events — Campus Feed" href="https://lpuevents.live/feed.xml" />
+
+    <!-- Structured Data: Schema.org (WebSite, CollegeOrUniversity, Organization) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "WebSite",
+          "@id": "https://lpuevents.live/#website",
+          "url": "https://lpuevents.live/",
+          "name": "LPU Events",
+          "alternateName": ["Lovely Professional University Events", "LPU Student Discovery Hub"],
+          "description": "Discover official campus events, hackathons, cultural fests, workshops, and student clubs at Lovely Professional University.",
+          "inLanguage": "en-IN",
+          "potentialAction": {
+            "@type": "SearchAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://lpuevents.live/?search={search_term_string}"
+            },
+            "query-input": "required name=search_term_string"
+          }
+        },
+        {
+          "@type": "CollegeOrUniversity",
+          "@id": "https://www.lpu.in/#organization",
+          "name": "Lovely Professional University",
+          "alternateName": "LPU",
+          "url": "https://www.lpu.in/",
+          "logo": {
+            "@type": "ImageObject",
+            "url": "https://lpuevents.live/logo.png?v=20260927",
+            "width": 1200,
+            "height": 630
+          },
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "Jalandhar - Delhi, G.T. Road",
+            "addressLocality": "Phagwara",
+            "addressRegion": "Punjab",
+            "postalCode": "144411",
+            "addressCountry": "IN"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 31.2536,
+            "longitude": 75.7037
+          },
+          "sameAs": [
+            "https://www.facebook.com/LPUUniversity",
+            "https://twitter.com/lpuuniversity",
+            "https://www.instagram.com/lpuuniversity",
+            "https://www.youtube.com/@LPUUniversity",
+            "https://www.linkedin.com/school/lovely-professional-university/"
+          ]
+        }
+      ]
+    }
+    </script>
 
     <!-- University Geographical Location (Lovely Professional University, Phagwara, Punjab) -->
     <meta name="geo.region" content="IN-PB" />
@@ -396,12 +471,16 @@
     <meta property="og:image" content="https://lpuevents.live/logo.png?v=20260927" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="LPU Events — Discover Student Events at Lovely Professional University" />
 
     <!-- Twitter / X -->
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="LPU Events — Discover Campus Life" />
     <meta name="twitter:description" content="Discover and participate in student events, workshops, clubs, and campus life at Lovely Professional University." />
     <meta name="twitter:image" content="https://lpuevents.live/logo.png?v=20260927" />
+    <meta name="twitter:image:alt" content="LPU Events — Discover Campus Events at LPU" />
+    <meta name="twitter:site" content="@lpuuniversity" />
+    <meta name="twitter:creator" content="@lpuuniversity" />
 
     <!-- Google Search Console Verification (configured dynamically or via build) -->
     <meta name="google-site-verification" content="" />
@@ -682,7 +761,27 @@
       })();
     </script>
 
-    <div id="root"></div>
+    <div id="root">
+      <main id="main-content" class="sr-only">
+        <article>
+          <h1>LPU Events — Discover Official Campus Events, Fests &amp; Hackathons</h1>
+          <p>Welcome to LPU Events, the central real-time campus events discovery and engagement portal for over 35,000 students, faculty, and research scholars at Lovely Professional University (LPU), Phagwara, Punjab. Our platform unites academic excellence, technical innovation, entrepreneurial initiatives, and vibrant cultural celebrations under a single unified student feed.</p>
+          <p>Discover premier technical hackathons, coding contests, robotics challenges, guest lectures by industry leaders, and national-level university conventions. Explore international conferences, scientific symposiums, hands-on masterclasses, cultural fests, live concerts, theatrical performances, dance spectacles, and literary debates happening across the LPU campus.</p>
+          <p>Connect with active student organizations including technical societies, robotics clubs, aerospace initiatives, coding forums, arts societies, music bands, debating circles, entrepreneurship cells, sports teams, NSS social outreach chapters, and NCC cadet wings. Stay updated with live event schedules, registration deadlines, venue directions, event guidelines, and real-time announcements.</p>
+          <section aria-labelledby="categories-heading">
+            <h2 id="categories-heading">Explore Event Categories at Lovely Professional University</h2>
+            <ul>
+              <li><a href="/category/cultural">Cultural Events — Live concerts, drama, music, dance fests, and arts exhibitions at LPU.</a></li>
+              <li><a href="/category/innovation">Technical &amp; Innovation — Hackathons, coding marathons, robotics showcases, and tech expos.</a></li>
+              <li><a href="/category/academics">Academic Conferences — Research seminars, workshops, guest lectures, and symposiums.</a></li>
+              <li><a href="/category/student-clubs">Student Clubs &amp; Societies — Technical, cultural, literary, and student community chapters.</a></li>
+              <li><a href="/category/co-curricular">Co-Curricular &amp; Sports — Inter-university athletics, tournaments, and fitness competitions.</a></li>
+              <li><a href="/category/community">Community Service — Social welfare, health camps, NSS, and NCC volunteer activities.</a></li>
+            </ul>
+          </section>
+        </article>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
