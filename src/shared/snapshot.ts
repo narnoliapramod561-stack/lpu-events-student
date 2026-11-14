@@ -88,6 +88,32 @@ export interface CompactCatalogueEvent {
   status: 'PUBLISHED';
 }
 
+export function catalogueEventToFeedItem(event: CompactCatalogueEvent): EventFeedItem {
+  return {
+    id: event.id,
+    name: event.name,
+    description: event.description || '',
+    start_at: event.start_at,
+    end_at: event.end_at,
+    venue_name: event.venue_name || 'LPU Campus',
+    registration_mode: event.registration_mode || 'NONE',
+    external_registration_url: event.external_registration_url || null,
+    pricing_type: event.pricing_type || 'FREE',
+    registration_format: event.registration_format || null,
+    price_amount: 0,
+    banner_media_id: null,
+    media_assets: event.poster_url ? { id: event.id, object_key: event.poster_url } : null,
+    status: event.status,
+    deleted_at: null,
+    organizations: event.organization_name ? { name: event.organization_name } : null,
+    category_id: event.category_id || null,
+    subcategory_id: event.subcategory_id || null,
+    categories: event.category_name ? { name: event.category_name } : null,
+    subcategories: event.subcategory_name ? { name: event.subcategory_name } : null,
+    is_trending: event.is_trending,
+  };
+}
+
 /**
  * Events catalogue payload: public-content/revisions/{revision}/events-catalogue.json
  * Supports complete discovery across published events without unbounded raw objects.

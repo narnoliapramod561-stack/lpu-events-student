@@ -65,9 +65,16 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
   const [error, setError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<string>("about");
   const [qrDataUrl, setQrDataUrl] = useState<string>("");
-  const [qrModalOpen, setQrModalOpen] = useState(false);
-  const [shareModalOpen, setShareModalOpen] = useState(false);
-  const [bookingDisclaimerOpen, setBookingDisclaimerOpen] = useState(false);
+
+  // Explicit mutually-exclusive modal state machine preventing illegal overlay stacking
+  type ActiveModal = 'qr' | 'share' | 'booking' | null;
+  const [activeModal, setActiveModal] = useState<ActiveModal>(null);
+  const qrModalOpen = activeModal === 'qr';
+  const shareModalOpen = activeModal === 'share';
+  const bookingDisclaimerOpen = activeModal === 'booking';
+  const setQrModalOpen = (open: boolean) => setActiveModal(open ? 'qr' : null);
+  const setShareModalOpen = (open: boolean) => setActiveModal(open ? 'share' : null);
+  const setBookingDisclaimerOpen = (open: boolean) => setActiveModal(open ? 'booking' : null);
 
   // Close QR modal on Escape key
   useEffect(() => {
@@ -252,20 +259,22 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
   }, [calculateTitleFit, event?.name]);
 
   const handleRegister = () => {
-    if (event?.external_registration_url) {
+    const rawUrl = event?.external_registration_url?.trim();
+    if (rawUrl && /^https?:\/\//i.test(rawUrl)) {
       setBookingDisclaimerOpen(true);
     }
   };
 
   const handleConfirmRegistration = () => {
-    if (event?.external_registration_url) {
+    const rawUrl = event?.external_registration_url?.trim();
+    if (rawUrl && /^https?:\/\//i.test(rawUrl)) {
       trackRegistrationClick(
         event.id,
         event.name,
-        event.external_registration_url,
+        rawUrl,
         event.pricing_type || 'FREE'
       );
-      window.open(event.external_registration_url, "_blank", "noopener,noreferrer");
+      window.open(rawUrl, "_blank", "noopener,noreferrer");
       setBookingDisclaimerOpen(false);
     }
   };

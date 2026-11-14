@@ -110,6 +110,10 @@ export interface Event {
   view_count: number;
   cancellation_reason?: string | null;
   deleted_at?: string | null;
+  search_tokens?: string[];
+  search_index?: string;
+  start_epoch?: number;
+  end_epoch?: number;
   created_at: string;
   updated_at: string;
 }
@@ -273,6 +277,10 @@ export interface EventFeedItem {
   } | null;
   is_trending?: boolean;
   trending_sort_order?: number;
+  search_tokens?: string[];
+  search_index?: string;
+  start_epoch?: number;
+  end_epoch?: number;
 }
 
 export interface TrendingEvent {

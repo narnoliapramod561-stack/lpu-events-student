@@ -25,6 +25,7 @@ const initDeferredTelemetry = async () => {
 };
 
 if (typeof window !== 'undefined') {
+  (window as any).__INIT_TELEMETRY__ = initDeferredTelemetry;
   const triggerTelemetry = () => {
     ['pointerdown', 'keydown'].forEach((ev) => {
       window.removeEventListener(ev, triggerTelemetry);

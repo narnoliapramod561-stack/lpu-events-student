@@ -41,10 +41,53 @@ export const ContactUsView: React.FC<ContactUsViewProps> = ({ onBack }) => {
   const [message, setMessage] = useState("");
   const [honeypot, setHoneypot] = useState(""); // Anti-bot honeypot
 
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submissionId, setSubmissionId] = useState<string>("");
-  const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  // Form Submission State Machine (eliminates contradictory boolean states)
+  type SubmissionStatus = 'idle' | 'submitting' | 'submitted' | 'error';
+  const [submissionState, setSubmissionState] = useState<{
+    status: SubmissionStatus;
+    submissionId: string;
+    errorMessage: string | null;
+  }>({
+    status: 'idle',
+    submissionId: '',
+    errorMessage: null,
+  });
+
+  const isSubmitting = submissionState.status === 'submitting';
+  const isSubmitted = submissionState.status === 'submitted';
+  const submissionId = submissionState.submissionId;
+  const errorMessage = submissionState.errorMessage;
+
+  const setErrorMessage = (msg: string | null) => {
+    setSubmissionState((prev) => ({
+      ...prev,
+      status: msg ? 'error' : (prev.status === 'error' ? 'idle' : prev.status),
+      errorMessage: msg,
+    }));
+  };
+
+  const setIsSubmitting = (submitting: boolean) => {
+    setSubmissionState((prev) => ({
+      ...prev,
+      status: submitting ? 'submitting' : (prev.status === 'submitting' ? 'idle' : prev.status),
+      errorMessage: submitting ? null : prev.errorMessage,
+    }));
+  };
+
+  const setIsSubmitted = (submitted: boolean) => {
+    setSubmissionState((prev) => ({
+      ...prev,
+      status: submitted ? 'submitted' : 'idle',
+      errorMessage: null,
+    }));
+  };
+
+  const setSubmissionId = (id: string) => {
+    setSubmissionState((prev) => ({
+      ...prev,
+      submissionId: id,
+    }));
+  };
 
   // Platform admin kill-switch state
   const [isReceptionActive, setIsReceptionActive] = useState<boolean>(true);
@@ -53,33 +96,45 @@ export const ContactUsView: React.FC<ContactUsViewProps> = ({ onBack }) => {
   // Cooldown countdown state
   const [cooldownRemaining, setCooldownRemaining] = useState<number>(0);
 
-  // Check reception status from platform config on mount
+  // Check reception status from edge settings endpoint on mount (zero direct Supabase egress)
   useEffect(() => {
+    let isMounted = true;
     const checkReceptionStatus = async () => {
       try {
-        const { data } = await supabase
-          .from("global_settings")
-          .select("value")
-          .eq("key", "contact_messages_config")
-          .maybeSingle();
-
-        if (data?.value && typeof data.value === "object") {
-          const cfg = data.value as any;
-          if (cfg.is_enabled === false) {
-            setIsReceptionActive(false);
-            setPausedNotice(
-              cfg.paused_notice ||
-                "The message desk is currently paused by platform administrators. For urgent matters, please email contact@lpuevents.live directly."
-            );
-          } else {
-            setIsReceptionActive(true);
-            setPausedNotice(null);
+        const res = await fetch("/api/public/settings");
+        if (res.ok) {
+          const settings = await res.json().catch(() => null);
+          if (Array.isArray(settings)) {
+            const found = settings.find((s: any) => s.key === "contact_messages_config");
+            if (found?.value && typeof found.value === "object" && isMounted) {
+              const cfg = found.value as any;
+              if (cfg.is_enabled === false) {
+                setIsReceptionActive(false);
+                setPausedNotice(
+                  cfg.paused_notice ||
+                    "The message desk is currently paused by platform administrators. For urgent matters, please email contact@lpuevents.live directly."
+                );
+                return;
+              }
+            }
           }
         }
-      } catch {}
+        if (isMounted) {
+          setIsReceptionActive(true);
+          setPausedNotice(null);
+        }
+      } catch {
+        if (isMounted) {
+          setIsReceptionActive(true);
+          setPausedNotice(null);
+        }
+      }
     };
 
     checkReceptionStatus();
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   // Check cooldown on mount and tick

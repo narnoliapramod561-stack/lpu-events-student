@@ -450,3 +450,14 @@ export function trackAdminAction(
 export function isPostHogReady(): boolean {
   return isInitialized && posthogClient !== null;
 }
+
+/**
+ * Safely captures a caught or handled application exception.
+ * Preserves error details, context, and execution metadata without crashing.
+ */
+export function reportHandledError(error: unknown, context: Record<string, any> = {}): void {
+  captureOrBufferException(error, {
+    ...context,
+    handled: true,
+  });
+}

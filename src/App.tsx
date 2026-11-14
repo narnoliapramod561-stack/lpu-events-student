@@ -17,9 +17,9 @@ const CookieConsentBanner = lazy(() => import("./components/CookieConsentBanner"
 import { OFFICIAL_PLATFORM_CATEGORIES } from "./utils/categories";
 import { lpuClient } from "./supabase";
 import { searchEventsClientSide } from "./shared/clientSearch";
-import { 
-  CategoryFeedItem, 
-  EventFeedItem, 
+import {
+  CategoryFeedItem,
+  EventFeedItem,
   CarouselItemFeedItem,
   HappeningTodayConfig,
   PlatformMaintenanceConfig,
@@ -32,7 +32,10 @@ import {
   createEventSlug,
   slugify,
   extractEventId,
-  registerMediaAssets
+  registerMediaAssets,
+  reportHandledError,
+  SnapshotClient,
+  catalogueEventToFeedItem
 } from "@lpu-events/shared";
 
 export type StudentRoute = 'home' | 'about' | 'privacy' | 'terms' | 'contact' | 'event-details';
@@ -62,8 +65,11 @@ const parseCurrentRoute = (): RouteState => {
   if (pathname === '/terms' || pageParam === 'terms') {
     return { route: 'terms', eventId: null };
   }
+  if (pathname.startsWith('/category/') || pathname === '/directory' || pathname === '/sitemap') {
+    return { route: 'home', eventId: null };
+  }
 
-  const match = window.location.pathname.match(/^\/events\/([^\/?#]+)/);
+  const match = window.location.pathname.match(/^\/events?\/([^\/?#]+)/);
   if (match && match[1]) {
     return { route: 'event-details', eventId: extractEventId(decodeURIComponent(match[1])) };
   }
@@ -127,7 +133,9 @@ const parseFilterStateFromUrl = (): InitialFilterState => {
     : '';
 
   // 4. Category & Subcategory
-  const catParam = params.get('category')?.trim();
+  const catMatch = window.location.pathname.match(/^\/category\/([^\/?#]+)/);
+  const catFromPath = catMatch ? decodeURIComponent(catMatch[1]).toLowerCase() : '';
+  const catParam = params.get('category')?.trim() || catFromPath;
   const subcatParam = params.get('subcategory')?.trim();
   const category = (!isTrending && catParam && catParam !== 'all') ? catParam : 'all';
   const subcategory = (!isTrending && subcatParam) ? subcatParam : '';
@@ -151,10 +159,15 @@ const normalizeEventDates = (evts: EventFeedItem[]): EventFeedItem[] => {
   return evts
     .filter((e) => e && e.start_at)
     .slice()
-    .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
+    .sort((a, b) => {
+      const timeDelta = new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
+      return timeDelta || a.id.localeCompare(b.id);
+    });
 };
 
 import { persistentCache, HOMEPAGE_CACHE_KEY } from "./shared/persistentCache";
+
+const publicSnapshotClient = new SnapshotClient();
 
 export default function App() {
   const initialBundle = useMemo(() => {
@@ -182,7 +195,7 @@ export default function App() {
     }
     try {
       localStorage.setItem('theme', theme);
-    } catch {}
+    } catch { }
     const metaTheme = document.querySelector('meta[name="theme-color"]');
     if (metaTheme) {
       metaTheme.setAttribute('content', theme === 'dark' ? '#1c1c1e' : '#f7f9fc');
@@ -221,14 +234,13 @@ export default function App() {
           return typeof htSetting.value === 'string'
             ? JSON.parse(htSetting.value)
             : htSetting.value;
-        } catch {}
+        } catch { }
       }
     }
     return null;
   });
   // Configurable limits (with PRD defaults)
-  const [, setLimit] = useState(9);
-  const [showMoreIncrement, setShowMoreIncrement] = useState(5);
+  const [showMoreIncrement] = useState(6);
 
 
   // Filter States initialized from URL query parameters
@@ -254,11 +266,8 @@ export default function App() {
   const [events, setEvents] = useState<EventFeedItem[]>(() => (initialBundle?.events ? initialBundle.events : []));
   const [eventsLoading, setEventsLoading] = useState(!initialBundle?.events?.length);
   const [visibleEventsCount, setVisibleEventsCount] = useState(9);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [hasMoreEvents, setHasMoreEvents] = useState(() => (initialBundle?.events?.length || 0) >= 100);
   const [appLoading, setAppLoading] = useState(!initialBundle);
   const [isMaintenanceWarming, setIsMaintenanceWarming] = useState(false);
-  const searchReqIdRef = useRef(0);
   const lastManualRefreshRef = useRef<number>(0);
 
   // Platform Maintenance & Campus Announcement state from global_settings
@@ -508,120 +517,288 @@ export default function App() {
   // Load all homepage data (categories, carousel, featured, trending, settings, live events).
   // Supports forceFresh to revalidate with Cloudflare Edge via HTTP ETag / 304 Not Modified.
   const loadAllData = useCallback(async (forceFresh = false) => {
+    try {
+      let bundle: any = null;
+      let error: any = null;
+      let catalogueEvents: EventFeedItem[] | null = null;
+
+      if (forceFresh) {
+        publicSnapshotClient.invalidate();
+      }
+
       try {
-        const { data: bundle, error } = await lpuClient.fetchHomepageBundle(forceFresh);
-        if (error || !bundle) {
-          if (error?.code === 'MAINTENANCE_WARMING' || error?.status === 503) {
-            setIsMaintenanceWarming(true);
-            return;
-          }
-          console.error("Failed to load homepage bundle:", error);
+        const [homepageSnapshot, catalogueSnapshot] = await Promise.all([
+          publicSnapshotClient.getHomepageSnapshot(),
+          publicSnapshotClient.getEventsCatalogueSnapshot(),
+        ]);
+        if (
+          homepageSnapshot &&
+          catalogueSnapshot
+        ) {
+          bundle = homepageSnapshot;
+          catalogueEvents = catalogueSnapshot.map(catalogueEventToFeedItem);
+        }
+      } catch (snapshotError) {
+        reportHandledError(snapshotError, { source: 'StudentApp:loadAllData:snapshot' });
+      }
+
+      if (!bundle) {
+        const edgeResult = await lpuClient.fetchHomepageBundle(forceFresh);
+        bundle = edgeResult.data;
+        error = edgeResult.error;
+      }
+      if (error || !bundle) {
+        if (error?.code === 'MAINTENANCE_WARMING' || error?.status === 503) {
+          setIsMaintenanceWarming(true);
           return;
         }
+        console.error("Failed to load homepage bundle:", error);
+        reportHandledError(error, { source: 'StudentApp:loadAllData:homepage_bundle' });
+        return;
+      }
 
-        setIsMaintenanceWarming(false);
+      setIsMaintenanceWarming(false);
 
-        // Categories
-        if (bundle.categories) {
-          setCategories(prev => {
-            if (prev.length === bundle.categories.length && prev.every((c, i) => c.id === bundle.categories[i]?.id)) {
-              return prev;
-            }
-            return bundle.categories;
-          });
+      // Categories
+      if (bundle.categories) {
+        setCategories(prev => {
+          if (prev.length === bundle.categories.length && prev.every((c, i) => c.id === bundle.categories[i]?.id)) {
+            return prev;
+          }
+          return bundle.categories;
+        });
+      }
+
+      // Featured Events
+      if (bundle.featured) {
+        const resolved: EventFeedItem[] = bundle.featured
+          .map((fe: any) => fe.events || fe)
+          .filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at);
+        const normalized = normalizeEventDates(resolved);
+        setFeaturedEvents(prev => {
+          if (prev.length === normalized.length && prev.every((e, i) => e.id === normalized[i]?.id)) {
+            return prev;
+          }
+          return normalized;
+        });
+      }
+
+      // Trending Events
+      if (bundle.trending) {
+        const validTrending = bundle.trending.filter(
+          (evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at
+        );
+        const normalized = normalizeEventDates(validTrending);
+        setTrendingEvents(prev => {
+          if (prev.length === normalized.length && prev.every((e, i) => e.id === normalized[i]?.id)) {
+            return prev;
+          }
+          return normalized;
+        });
+      }
+
+      // Carousel
+      if (bundle.carousel) {
+        setCarouselSlides(prev => {
+          if (prev.length === bundle.carousel.length && prev.every((c, i) => c.id === bundle.carousel[i]?.id)) {
+            return prev;
+          }
+          return bundle.carousel;
+        });
+      }
+
+      // Global Settings
+      if (bundle.settings && Array.isArray(bundle.settings)) {
+        const allSettings = bundle.settings;
+        const htSetting = allSettings.find((s: any) => s.key === "happening_today_config");
+        if (htSetting) {
+          try {
+            const parsed = typeof htSetting.value === 'string'
+              ? JSON.parse(htSetting.value)
+              : htSetting.value;
+            setHappeningTodayConfig(parsed);
+          } catch { }
         }
 
-        // Featured Events
-        if (bundle.featured) {
-          const resolved: EventFeedItem[] = bundle.featured
+        // Check platform maintenance mode
+        const maintSetting = allSettings.find((s: any) => s.key === "platform_maintenance_mode");
+        if (maintSetting) {
+          setPlatformMaintenance(parsePlatformMaintenanceConfig(maintSetting.value));
+        }
+
+        // Check campus announcement banner
+        const bannerSetting = allSettings.find((s: any) => s.key === "site_notice_banner");
+        if (bannerSetting) {
+          const val = bannerSetting.value;
+          if (typeof val === 'string' && val.trim().length > 0) {
+            setCampusAnnouncement({
+              isActive: true,
+              message: val,
+              urgency: 'info'
+            });
+          } else if (typeof val === 'object' && val !== null) {
+            setCampusAnnouncement({
+              isActive: Boolean(val.is_active ?? true),
+              message: String(val.message || ''),
+              urgency: (val.urgency === 'warning' || val.urgency === 'critical') ? val.urgency : 'info',
+              ctaLabel: val.cta_label,
+              ctaUrl: val.cta_url
+            });
+          }
+        }
+      }
+
+      // Happening Today events & initial Event Hub feed populated directly from homepage bundle
+      if (bundle.events) {
+        const now = new Date();
+        const published = bundle.events.filter((evt: any) => evt.status === 'PUBLISHED' && !evt.deleted_at);
+        const normalized = normalizeEventDates(published);
+        const validLive = normalized.filter(
+          (evt) =>
+            evt.status !== 'CANCELLED' &&
+            evt.status !== 'DELETED' &&
+            !evt.deleted_at &&
+            isEventToday(evt.start_at, evt.end_at, now)
+        );
+        setHappeningTodayEvents(prev => {
+          if (prev.length === validLive.length && prev.every((e, i) => e.id === validLive[i]?.id)) {
+            return prev;
+          }
+          return validLive;
+        });
+        const canonicalEvents = catalogueEvents
+          ? normalizeEventDates(catalogueEvents)
+          : normalized;
+        setVisibleEventsCount(9);
+        setEvents(prev => {
+          if (prev.length === canonicalEvents.length && prev.every((e, i) => e.id === canonicalEvents[i]?.id)) {
+            return prev;
+          }
+          return canonicalEvents;
+        });
+        setEventsLoading(false);
+      }
+    } catch (err) {
+      console.error("Failed to load homepage data:", err);
+      reportHandledError(err, { source: 'StudentApp:loadAllData:catch' });
+    } finally {
+      setAppLoading(false);
+      if (typeof window !== 'undefined') {
+        (window as any).__LPU_STARTUP__?.notifyCriticalReady();
+      }
+    }
+  }, []);
+
+  // Filters are applied to the immutable in-memory catalogue. No browse-time API request is needed.
+  const fetchUpcomingEvents = useCallback(async (forceFresh = false) => {
+    if (forceFresh) {
+      await loadAllData(true);
+    }
+  }, [loadAllData]);
+
+  // Server-side pagination: load next increment on demand
+  const handleLoadMoreEvents = useCallback(async () => {
+    setVisibleEventsCount((count) => count + showMoreIncrement);
+  }, [showMoreIncrement]);
+
+  // Critical readiness gate signal for instant-cached bundle
+  useEffect(() => {
+    if (initialBundle && (initialBundle.events?.length || initialBundle.carousel?.length)) {
+      if (typeof window !== 'undefined') {
+        (window as any).__LPU_STARTUP__?.notifyCriticalReady();
+      }
+    }
+  }, [initialBundle]);
+
+  // Initial mount: load theme and page title/analytics
+  useEffect(() => {
+    const { route } = parseCurrentRoute();
+    const titles: Record<string, string> = {
+      home: 'LPU Events — Student Website',
+      about: 'About Us — LPU Events',
+      privacy: 'Privacy Policy — LPU Events',
+      terms: 'Terms of Service — LPU Events',
+      'event-details': 'Event Details — LPU Events',
+    };
+    document.title = titles[route] || 'LPU Events — Student Website';
+    trackPageView(route === 'home' ? 'Home Discovery' : `${route.toUpperCase()} Page`);
+
+    const storedTheme = (() => {
+      try {
+        const initialized = localStorage.getItem("theme_initialized_v2");
+        if (!initialized) {
+          localStorage.setItem("theme_initialized_v2", "true");
+          localStorage.setItem("theme", "light");
+          return "light";
+        }
+        return localStorage.getItem("theme") || "light";
+      } catch {
+        return "light";
+      }
+    })();
+    setTheme(storedTheme);
+    if (storedTheme === "dark") {
+      document.documentElement.classList.add("dark");
+    } else {
+      document.documentElement.classList.remove("dark");
+    }
+    const metaTheme = document.querySelector('meta[name="theme-color"]');
+    if (metaTheme) {
+      metaTheme.setAttribute('content', storedTheme === 'dark' ? '#1c1c1e' : '#f7f9fc');
+    }
+  }, []);
+
+  // Route-aware homepage data boot: ONLY fetch bundle on home route
+  const homepageLoadedRef = useRef(false);
+  useEffect(() => {
+    if (currentView === 'home' && !homepageLoadedRef.current) {
+      homepageLoadedRef.current = true;
+      loadAllData(false);
+    }
+  }, [currentView, loadAllData]);
+
+  // Realtime synchronization across Supabase Postgres CDC, Realtime Broadcast, and Storage events
+  useEffect(() => {
+    const handleSync = () => {
+      lpuClient.invalidateClientCache('public:');
+      if (currentView === 'home') {
+        loadAllData(true);
+        fetchUpcomingEvents(true);
+      }
+    };
+
+    // Cross-tab storage sync (same origin) & local cache invalidation
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'lpu_cache_bust') handleSync();
+    };
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('lpu:cache-invalidated', handleSync);
+
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('lpu:cache-invalidated', handleSync);
+    };
+  }, [loadAllData, fetchUpcomingEvents, currentView]);
+
+  // Background SWR update subscriber: reflect fresh edge data into UI without reload
+  useEffect(() => {
+    const unsubscribe = persistentCache.subscribe((key, data: any) => {
+      if (key === HOMEPAGE_CACHE_KEY && data && typeof data === 'object') {
+        if (data.categories) setCategories(data.categories);
+        if (data.featured) {
+          const resolved = data.featured
             .map((fe: any) => fe.events || fe)
             .filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at);
-          const normalized = normalizeEventDates(resolved);
-          setFeaturedEvents(prev => {
-            if (prev.length === normalized.length && prev.every((e, i) => e.id === normalized[i]?.id)) {
-              return prev;
-            }
-            return normalized;
-          });
+          setFeaturedEvents(normalizeEventDates(resolved));
         }
-
-        // Trending Events
-        if (bundle.trending) {
-          const validTrending = bundle.trending.filter(
-            (evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at
-          );
-          const normalized = normalizeEventDates(validTrending);
-          setTrendingEvents(prev => {
-            if (prev.length === normalized.length && prev.every((e, i) => e.id === normalized[i]?.id)) {
-              return prev;
-            }
-            return normalized;
-          });
+        if (data.trending) {
+          const valid = data.trending.filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at);
+          setTrendingEvents(normalizeEventDates(valid));
         }
-
-        // Carousel
-        if (bundle.carousel) {
-          setCarouselSlides(prev => {
-            if (prev.length === bundle.carousel.length && prev.every((c, i) => c.id === bundle.carousel[i]?.id)) {
-              return prev;
-            }
-            return bundle.carousel;
-          });
-        }
-
-        // Global Settings
-        if (bundle.settings && Array.isArray(bundle.settings)) {
-          const allSettings = bundle.settings;
-          const limitSetting = allSettings.find((s: any) => s.key === "initial_event_limit");
-          if (limitSetting) {
-            setLimit(Number(limitSetting.value) || 9);
-            setVisibleEventsCount(Number(limitSetting.value) || 9);
-          }
-          const incSetting = allSettings.find((s: any) => s.key === "show_more_increment");
-          if (incSetting) setShowMoreIncrement(Number(incSetting.value) || 5);
-
-          const htSetting = allSettings.find((s: any) => s.key === "happening_today_config");
-          if (htSetting) {
-            try {
-              const parsed = typeof htSetting.value === 'string'
-                ? JSON.parse(htSetting.value)
-                : htSetting.value;
-              setHappeningTodayConfig(parsed);
-            } catch {}
-          }
-
-          // Check platform maintenance mode
-          const maintSetting = allSettings.find((s: any) => s.key === "platform_maintenance_mode");
-          if (maintSetting) {
-            setPlatformMaintenance(parsePlatformMaintenanceConfig(maintSetting.value));
-          }
-
-          // Check campus announcement banner
-          const bannerSetting = allSettings.find((s: any) => s.key === "site_notice_banner");
-          if (bannerSetting) {
-            const val = bannerSetting.value;
-            if (typeof val === 'string' && val.trim().length > 0) {
-              setCampusAnnouncement({
-                isActive: true,
-                message: val,
-                urgency: 'info'
-              });
-            } else if (typeof val === 'object' && val !== null) {
-              setCampusAnnouncement({
-                isActive: Boolean(val.is_active ?? true),
-                message: String(val.message || ''),
-                urgency: (val.urgency === 'warning' || val.urgency === 'critical') ? val.urgency : 'info',
-                ctaLabel: val.cta_label,
-                ctaUrl: val.cta_url
-              });
-            }
-          }
-        }
-
-        // Happening Today events & initial Event Hub feed populated directly from homepage bundle
-        if (bundle.events) {
+        if (data.carousel) setCarouselSlides(data.carousel);
+        if (data.events) {
           const now = new Date();
-          const published = bundle.events.filter((evt: any) => evt.status === 'PUBLISHED' && !evt.deleted_at);
+          const published = data.events.filter((evt: any) => evt.status === 'PUBLISHED' && !evt.deleted_at);
           const normalized = normalizeEventDates(published);
           const validLive = normalized.filter(
             (evt) =>
@@ -630,257 +807,31 @@ export default function App() {
               !evt.deleted_at &&
               isEventToday(evt.start_at, evt.end_at, now)
           );
-          setHappeningTodayEvents(prev => {
-            if (prev.length === validLive.length && prev.every((e, i) => e.id === validLive[i]?.id)) {
-              return prev;
-            }
-            return validLive;
-          });
-          setEvents(prev => {
-            if (prev.length === normalized.length && prev.every((e, i) => e.id === normalized[i]?.id)) {
-              return prev;
-            }
-            return normalized;
-          });
-          setEventsLoading(false);
-          setHasMoreEvents(normalized.length >= 100);
-        }
-      } catch (err) {
-        console.error("Failed to load homepage data:", err);
-      } finally {
-        setAppLoading(false);
-        if (typeof window !== 'undefined') {
-          (window as any).__LPU_STARTUP__?.notifyCriticalReady();
-        }
-      }
-    }, []);
-
-    // Fetch upcoming events feed dynamically based on filter states.
-    // Server fetch only executes when server-level filters (category, date, pricing, timeline) change.
-    const fetchUpcomingEvents = useCallback(async (forceFresh = false) => {
-      const currentReqId = ++searchReqIdRef.current;
-      setEventsLoading(true);
-      try {
-        if (forceFresh) {
-          lpuClient.invalidateClientCache('public:events');
-        }
-
-        let filters: any = {};
-        if (selectedCategory && selectedCategory !== "all") {
-          filters.category_id = selectedCategory;
-        }
-        if (selectedSubcategory) {
-          filters.subcategory_id = selectedSubcategory;
-        }
-        if (selectedPricingType !== 'ALL') {
-          filters.pricing_type = selectedPricingType;
-        }
-        if (activeScheduleFilter && activeScheduleFilter !== 'all') {
-          filters.timeline = activeScheduleFilter;
-        }
-        if (selectedDate) {
-          filters.date = selectedDate;
-        }
-        if (forceFresh) {
-          filters.force_fresh = true;
-        }
-
-        const { data, error } = await lpuClient.fetchEventFeed(filters);
-        if (!error && data && currentReqId === searchReqIdRef.current) {
-          const validEvents = data.filter(
-            (evt) => evt.status === 'PUBLISHED' && !evt.deleted_at
-          );
-          const normalized = normalizeEventDates(validEvents);
-          setEvents(normalized);
-          setHasMoreEvents(normalized.length >= 9);
-        }
-      } catch (err) {
-        console.error("Failed to fetch event feed:", err);
-      } finally {
-        if (currentReqId === searchReqIdRef.current) {
-          setEventsLoading(false);
-        }
-      }
-    }, [selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
-
-    // Server-side pagination: load next increment on demand
-    const handleLoadMoreEvents = useCallback(async () => {
-      if (isLoadingMore || !hasMoreEvents) return;
-      setIsLoadingMore(true);
-      try {
-        let filters: any = {
-          offset: events.length,
-          limit: showMoreIncrement,
-        };
-        if (selectedCategory && selectedCategory !== "all") {
-          filters.category_id = selectedCategory;
-        }
-        if (selectedSubcategory) {
-          filters.subcategory_id = selectedSubcategory;
-        }
-        if (selectedPricingType !== 'ALL') {
-          filters.pricing_type = selectedPricingType;
-        }
-        if (activeScheduleFilter && activeScheduleFilter !== 'all') {
-          filters.timeline = activeScheduleFilter;
-        }
-        if (selectedDate) {
-          filters.date = selectedDate;
-        }
-
-        const { data, error } = await lpuClient.fetchEventFeed(filters);
-        if (!error && data) {
-          const valid = data.filter((evt) => evt.status === 'PUBLISHED' && !evt.deleted_at);
-          if (valid.length < showMoreIncrement) {
-            setHasMoreEvents(false);
-          }
+          setHappeningTodayEvents(validLive);
           setEvents((prev) => {
-            const existingIds = new Set(prev.map((e) => e.id));
-            const newItems = valid.filter((e) => !existingIds.has(e.id));
-            return normalizeEventDates([...prev, ...newItems]);
+            if (selectedCategory === 'all' && !selectedSubcategory && selectedPricingType === 'ALL' && activeScheduleFilter === 'all' && !selectedDate) {
+              return normalized.slice(0, Math.max(prev.length, 9));
+            }
+            return prev;
           });
-        } else {
-          setHasMoreEvents(false);
-        }
-      } catch (err) {
-        console.error("Failed to load more events:", err);
-        setHasMoreEvents(false);
-      } finally {
-        setIsLoadingMore(false);
-      }
-    }, [events.length, showMoreIncrement, selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate, isLoadingMore, hasMoreEvents]);
-
-    // Critical readiness gate signal for instant-cached bundle
-    useEffect(() => {
-      if (initialBundle && (initialBundle.events?.length || initialBundle.carousel?.length)) {
-        if (typeof window !== 'undefined') {
-          (window as any).__LPU_STARTUP__?.notifyCriticalReady();
         }
       }
-    }, [initialBundle]);
+    });
+    return unsubscribe;
+  }, [selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
 
-    // Initial mount: load theme and page title/analytics
-    useEffect(() => {
-      const { route } = parseCurrentRoute();
-      const titles: Record<string, string> = {
-        home: 'LPU Events — Student Website',
-        about: 'About Us — LPU Events',
-        privacy: 'Privacy Policy — LPU Events',
-        terms: 'Terms of Service — LPU Events',
-        'event-details': 'Event Details — LPU Events',
-      };
-      document.title = titles[route] || 'LPU Events — Student Website';
-      trackPageView(route === 'home' ? 'Home Discovery' : `${route.toUpperCase()} Page`);
+  const lastFetchedFiltersRef = useRef<string>("all||ALL|all|");
 
-      const storedTheme = (() => {
-        try {
-          const initialized = localStorage.getItem("theme_initialized_v2");
-          if (!initialized) {
-            localStorage.setItem("theme_initialized_v2", "true");
-            localStorage.setItem("theme", "light");
-            return "light";
-          }
-          return localStorage.getItem("theme") || "light";
-        } catch {
-          return "light";
-        }
-      })();
-      setTheme(storedTheme);
-      if (storedTheme === "dark") {
-        document.documentElement.classList.add("dark");
-      } else {
-        document.documentElement.classList.remove("dark");
-      }
-      const metaTheme = document.querySelector('meta[name="theme-color"]');
-      if (metaTheme) {
-        metaTheme.setAttribute('content', storedTheme === 'dark' ? '#1c1c1e' : '#f7f9fc');
-      }
-    }, []);
-
-    // Route-aware homepage data boot: ONLY fetch bundle on home route
-    const homepageLoadedRef = useRef(false);
-    useEffect(() => {
-      if (currentView === 'home' && !homepageLoadedRef.current) {
-        homepageLoadedRef.current = true;
-        loadAllData(false);
-      }
-    }, [currentView, loadAllData]);
-
-    // Realtime synchronization across Supabase Postgres CDC, Realtime Broadcast, and Storage events
-    useEffect(() => {
-      const handleSync = () => {
-        lpuClient.invalidateClientCache('public:');
-        if (currentView === 'home') {
-          loadAllData(true);
-          fetchUpcomingEvents(true);
-        }
-      };
-
-      // Cross-tab storage sync (same origin) & local cache invalidation
-      const handleStorage = (e: StorageEvent) => {
-        if (e.key === 'lpu_cache_bust') handleSync();
-      };
-      window.addEventListener('storage', handleStorage);
-      window.addEventListener('lpu:cache-invalidated', handleSync);
-
-      return () => {
-        window.removeEventListener('storage', handleStorage);
-        window.removeEventListener('lpu:cache-invalidated', handleSync);
-      };
-    }, [loadAllData, fetchUpcomingEvents, currentView]);
-
-    // Background SWR update subscriber: reflect fresh edge data into UI without reload
-    useEffect(() => {
-      const unsubscribe = persistentCache.subscribe((key, data: any) => {
-        if (key === HOMEPAGE_CACHE_KEY && data && typeof data === 'object') {
-          if (data.categories) setCategories(data.categories);
-          if (data.featured) {
-            const resolved = data.featured
-              .map((fe: any) => fe.events || fe)
-              .filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at);
-            setFeaturedEvents(normalizeEventDates(resolved));
-          }
-          if (data.trending) {
-            const valid = data.trending.filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at);
-            setTrendingEvents(normalizeEventDates(valid));
-          }
-          if (data.carousel) setCarouselSlides(data.carousel);
-          if (data.events) {
-            const now = new Date();
-            const published = data.events.filter((evt: any) => evt.status === 'PUBLISHED' && !evt.deleted_at);
-            const normalized = normalizeEventDates(published);
-            const validLive = normalized.filter(
-              (evt) =>
-                evt.status !== 'CANCELLED' &&
-                evt.status !== 'DELETED' &&
-                !evt.deleted_at &&
-                isEventToday(evt.start_at, evt.end_at, now)
-            );
-            setHappeningTodayEvents(validLive);
-            setEvents((prev) => {
-              if (selectedCategory === 'all' && !selectedSubcategory && selectedPricingType === 'ALL' && activeScheduleFilter === 'all' && !selectedDate) {
-                return normalized.slice(0, Math.max(prev.length, 9));
-              }
-              return prev;
-            });
-          }
-        }
-      });
-      return unsubscribe;
-    }, [selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
-
-    const lastFetchedFiltersRef = useRef<string>("all||ALL|all|");
-
-    // Fetch upcoming events dynamically when filter states update (skipping initial duplicate on home)
-    useEffect(() => {
-      if (currentView !== 'home') return;
-      const currentFilterKey = `${selectedCategory}|${selectedSubcategory}|${selectedPricingType}|${activeScheduleFilter}|${selectedDate}`;
-      if (currentFilterKey === lastFetchedFiltersRef.current) {
-        return; // Zero duplicate request on initial home mount or unchanged filters!
-      }
-      lastFetchedFiltersRef.current = currentFilterKey;
-      fetchUpcomingEvents(false);
-    }, [fetchUpcomingEvents, currentView, selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
+  // Fetch upcoming events dynamically when filter states update (skipping initial duplicate on home)
+  useEffect(() => {
+    if (currentView !== 'home') return;
+    const currentFilterKey = `${selectedCategory}|${selectedSubcategory}|${selectedPricingType}|${activeScheduleFilter}|${selectedDate}`;
+    if (currentFilterKey === lastFetchedFiltersRef.current) {
+      return; // Zero duplicate request on initial home mount or unchanged filters!
+    }
+    lastFetchedFiltersRef.current = currentFilterKey;
+    fetchUpcomingEvents(false);
+  }, [fetchUpcomingEvents, currentView, selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
 
   const toggleTheme = useCallback(() => {
     setTheme((prevTheme) => (prevTheme === "dark" ? "light" : "dark"));
@@ -1062,8 +1013,20 @@ export default function App() {
       return matchesScheduleFilter(e, activeScheduleFilter, selectedDate, now);
     });
 
-    return result.slice().sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
+    // When actively searching, preserve ProSearchEngine relevance score ranking
+    if (isSearching) {
+      return result;
+    }
+
+    return result.slice().sort((a, b) => {
+      const timeDelta = new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
+      return timeDelta || a.id.localeCompare(b.id);
+    });
   }, [events, trendingEvents, isTrendingActive, activeScheduleFilter, selectedDate, selectedPricingType, isSearching, searchQuery, allAvailableEvents]);
+
+  useEffect(() => {
+    setVisibleEventsCount(9);
+  }, [activeScheduleFilter, selectedDate, selectedPricingType, selectedCategory, selectedSubcategory, isTrendingActive, searchQuery]);
 
   // Paginated/Limited display list for upcoming events feed
   const displayedEvents = useMemo(() => {
@@ -1089,8 +1052,8 @@ export default function App() {
   return (
     <>
       {/* Global Fixed Campus Background Layer (100% Motionless on Desktop & Mobile) */}
-      <div 
-        aria-hidden="true" 
+      <div
+        aria-hidden="true"
         className="campus-bg-fixed-layer"
       >
         <img
@@ -1098,24 +1061,22 @@ export default function App() {
           alt=""
           fetchPriority="high"
           decoding="async"
-          className={`campus-bg-img-element transition-[filter] duration-500 ${
-            (currentView === 'event-details' || selectedEventId)
+          className={`campus-bg-img-element transition-[filter] duration-500 ${(currentView === 'event-details' || selectedEventId)
               ? 'blur-[22px]'
               : ''
-          }`}
+            }`}
         />
         {/* Subtle Dark Mode Obsidian Tint */}
         <div className="absolute inset-0 hidden dark:block dark:bg-[#0e0e12]/60 pointer-events-none" />
       </div>
 
       {/* Dark Mode Premium Ambient Canvas — Obsidian Space with Luminous Refractive Depth */}
-      <div 
+      <div
         aria-hidden="true"
-        className={`campus-bg-fixed-layer select-none hidden dark:block transition-[filter] duration-500 ${
-          (currentView === 'event-details' || selectedEventId)
+        className={`campus-bg-fixed-layer select-none hidden dark:block transition-[filter] duration-500 ${(currentView === 'event-details' || selectedEventId)
             ? 'blur-[24px]'
             : ''
-        }`}
+          }`}
       >
         {/* 1. Ethereal Violet-Indigo Top Wash */}
         <div
@@ -1155,227 +1116,225 @@ export default function App() {
         <div id="top" className="absolute top-0 left-0 h-0 w-0 pointer-events-none" />
 
         <div className="relative z-10">
-        {/* Campus Announcement Banner (Configured from Super Admin Site Controls) */}
-        {campusAnnouncement?.isActive && !announcementDismissed && (
-          <aside 
-            aria-label="Campus Announcement"
-            className={`w-full py-2.5 px-3 sm:px-6 text-xs font-semibold flex items-center justify-between gap-3 shadow-sm transition-all z-[60] relative ${
-              campusAnnouncement.urgency === 'critical'
-                ? 'bg-red-600 text-white'
-                : campusAnnouncement.urgency === 'warning'
-                ? 'bg-amber-500 text-neutral-950 font-bold'
-                : 'bg-gradient-to-r from-[#ff6b00] to-[#ff8533] text-white'
-            }`}
-          >
-            <div className="flex items-center gap-2 max-w-[92%] mx-auto overflow-hidden">
-              <span className="shrink-0 text-sm">📢</span>
-              <span className="truncate">{campusAnnouncement.message}</span>
-              {campusAnnouncement.ctaLabel && campusAnnouncement.ctaUrl && (() => {
-                const url = campusAnnouncement.ctaUrl.trim();
-                const isExternal = /^https?:\/\//i.test(url);
-                const isSafeInternal = url.startsWith('/') && !url.startsWith('//');
-                if (!isExternal && !isSafeInternal) return null;
-                return (
-                  <a
-                    href={url}
-                    target={isExternal ? "_blank" : undefined}
-                    rel={isExternal ? "noopener noreferrer" : undefined}
-                    className="shrink-0 underline font-black ml-2 hover:opacity-80"
-                  >
-                    {campusAnnouncement.ctaLabel} →
-                  </a>
-                );
-              })()}
-            </div>
-            <button
-              type="button"
-              onClick={() => setAnnouncementDismissed(true)}
-              className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 shrink-0 text-current transition-colors cursor-pointer"
-              aria-label="Dismiss banner"
+          {/* Campus Announcement Banner (Configured from Super Admin Site Controls) */}
+          {campusAnnouncement?.isActive && !announcementDismissed && (
+            <aside
+              aria-label="Campus Announcement"
+              className={`w-full py-2.5 px-3 sm:px-6 text-xs font-semibold flex items-center justify-between gap-3 shadow-sm transition-all z-[60] relative ${campusAnnouncement.urgency === 'critical'
+                  ? 'bg-red-600 text-white'
+                  : campusAnnouncement.urgency === 'warning'
+                    ? 'bg-amber-500 text-neutral-950 font-bold'
+                    : 'bg-gradient-to-r from-[#ff6b00] to-[#ff8533] text-white'
+                }`}
             >
-              ✕
-            </button>
-          </aside>
-        )}
+              <div className="flex items-center gap-2 max-w-[92%] mx-auto overflow-hidden">
+                <span className="shrink-0 text-sm">📢</span>
+                <span className="truncate">{campusAnnouncement.message}</span>
+                {campusAnnouncement.ctaLabel && campusAnnouncement.ctaUrl && (() => {
+                  const url = campusAnnouncement.ctaUrl.trim();
+                  const isExternal = /^https?:\/\//i.test(url);
+                  const isSafeInternal = url.startsWith('/') && !url.startsWith('//');
+                  if (!isExternal && !isSafeInternal) return null;
+                  return (
+                    <a
+                      href={url}
+                      target={isExternal ? "_blank" : undefined}
+                      rel={isExternal ? "noopener noreferrer" : undefined}
+                      className="shrink-0 underline font-black ml-2 hover:opacity-80"
+                    >
+                      {campusAnnouncement.ctaLabel} →
+                    </a>
+                  );
+                })()}
+              </div>
+              <button
+                type="button"
+                onClick={() => setAnnouncementDismissed(true)}
+                className="p-1 rounded-md hover:bg-black/10 dark:hover:bg-white/10 shrink-0 text-current transition-colors cursor-pointer"
+                aria-label="Dismiss banner"
+              >
+                ✕
+              </button>
+            </aside>
+          )}
 
-        <Navbar
-          searchQuery={searchQuery}
-          onSearch={handleSearch}
-          theme={theme}
-          onToggleTheme={toggleTheme}
-          isTrendingActive={isTrendingActive}
-          isCategoriesActive={isCategoriesActive}
-          onSelectTrending={handleSelectTrending}
-          onSelectEvent={handleSelectEvent}
-          onGoHome={handleGoToDashboard}
-          onSelectCategories={handleGoToCategories}
-          allEvents={allAvailableEvents}
-        />
+          <Navbar
+            searchQuery={searchQuery}
+            onSearch={handleSearch}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            isTrendingActive={isTrendingActive}
+            isCategoriesActive={isCategoriesActive}
+            onSelectTrending={handleSelectTrending}
+            onSelectEvent={handleSelectEvent}
+            onGoHome={handleGoToDashboard}
+            onSelectCategories={handleGoToCategories}
+            allEvents={allAvailableEvents}
+          />
 
-        <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-4 sm:px-6 md:px-8 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6">
-          <Suspense fallback={
-            <div className="min-h-[40vh] flex items-center justify-center">
-              <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-            </div>
-          }>
-          {currentView === 'about' ? (
-            <AboutUsView onBack={() => handleNavigate('home')} />
-          ) : currentView === 'contact' ? (
-            <ContactUsView onBack={() => handleNavigate('home')} />
-          ) : currentView === 'privacy' ? (
-            <PrivacyPolicyView onBack={() => handleNavigate('home')} onNavigateContact={() => handleNavigate('contact')} />
-          ) : currentView === 'terms' ? (
-            <TermsOfServiceView onBack={() => handleNavigate('home')} />
-          ) : (currentView === 'event-details' || selectedEventId) ? (
-            <EventDetailsView
-              eventId={selectedEventId!}
-              onBack={() => handleSelectEvent(null)}
-              onSelectEvent={handleSelectEvent}
-              allEvents={allAvailableEvents}
-            />
-          ) : (
-            <>
-              {/* If user is actively searching, hide top modules gracefully via CSS rather than unmounting */}
-              <div className={searchQuery.trim().length >= 2 ? "hidden" : "contents"}>
-                  {/* Top Hero Carousel */}
-                  <HeroCarousel
-                    carouselItems={carouselSlides}
-                    allEvents={allAvailableEvents}
-                    onSelectEvent={handleSelectEvent}
-                  />
-
-                  {/* Lower Content: Skeletons during initial load, otherwise live modules */}
-                  {appLoading ? (
-                    <div className="w-full space-y-6 sm:space-y-10 mt-2 sm:mt-4">
-                      {/* Happening Today Skeleton */}
-                      <div className="w-full">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="h-6 w-32 rounded-md skeleton-base" />
-                          <div className="h-8 w-20 rounded-full skeleton-base" />
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                          {Array.from({ length: 4 }).map((_, i) => (
-                            <div key={i} className="h-[180px] rounded-[20px] skeleton-base" />
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Categories Skeleton */}
-                      <div className="w-full">
-                        <div className="flex items-center justify-between mb-4">
-                          <div className="h-6 w-24 rounded-md skeleton-base" />
-                          <div className="h-8 w-20 rounded-full skeleton-base" />
-                        </div>
-                        <div className="flex gap-2 overflow-x-auto pb-2">
-                          {Array.from({ length: 8 }).map((_, i) => (
-                            <div key={i} className="h-8 w-20 rounded-full skeleton-base flex-shrink-0" />
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* Event Grid Skeleton */}
-                      <div className="w-full">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5 sm:gap-6 lg:gap-8">
-                          {Array.from({ length: 6 }).map((_, i) => (
-                            <div key={i} className="flex flex-col h-full rounded-[26px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md max-w-[390px] sm:max-w-none mx-auto w-full">
-                              <div className="w-full aspect-[16/9] bg-gray-200/70 dark:bg-white/5 skeleton-base" />
-                              <div className="p-3.5 sm:p-5 flex flex-col flex-1 space-y-3">
-                                <div className="h-4 w-20 rounded-md skeleton-base" />
-                                <div className="h-6 w-3/4 rounded-md skeleton-base" />
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  ) : (
-                    <>
-                      {/* Happening Today Slider */}
-                      <HappeningTodaySlider
-                        events={happeningTodayEvents}
-                        config={happeningTodayConfig}
-                        onSelectEvent={handleSelectEvent}
-                      />
-
-                  {/* Categories & Filter Bar */}
-                  <div id="categories" className="scroll-mt-24">
-                    <CategoryFilter
-                      categories={categories}
-                      selectedCategory={selectedCategory}
-                      selectedSubcategory={selectedSubcategory}
-                      onSelectCategory={handleSelectCategory}
-                      onSelectSubcategory={handleSelectSubcategory}
-                      selectedDate={selectedDate}
-                      onSelectDate={handleSelectDate}
-                      activeScheduleFilter={activeScheduleFilter}
-                      onSelectScheduleFilter={handleSelectScheduleFilter}
-                      selectedPricingType={selectedPricingType}
-                      onSelectPricingType={handleSelectPricingType}
-                      isTrendingActive={isTrendingActive}
-                      onSelectTrending={handleSelectTrending}
+          <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-4 sm:px-6 md:px-8 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6">
+            <Suspense fallback={
+              <div className="min-h-[40vh] flex items-center justify-center">
+                <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+              </div>
+            }>
+              {currentView === 'about' ? (
+                <AboutUsView onBack={() => handleNavigate('home')} />
+              ) : currentView === 'contact' ? (
+                <ContactUsView onBack={() => handleNavigate('home')} />
+              ) : currentView === 'privacy' ? (
+                <PrivacyPolicyView onBack={() => handleNavigate('home')} onNavigateContact={() => handleNavigate('contact')} />
+              ) : currentView === 'terms' ? (
+                <TermsOfServiceView onBack={() => handleNavigate('home')} />
+              ) : (currentView === 'event-details' || selectedEventId) ? (
+                <EventDetailsView
+                  eventId={selectedEventId!}
+                  onBack={() => handleSelectEvent(null)}
+                  onSelectEvent={handleSelectEvent}
+                  allEvents={allAvailableEvents}
+                />
+              ) : (
+                <>
+                  {/* If user is actively searching, hide top modules gracefully via CSS rather than unmounting */}
+                  <div className={searchQuery.trim().length >= 2 ? "hidden" : "contents"}>
+                    {/* Top Hero Carousel */}
+                    <HeroCarousel
+                      carouselItems={carouselSlides}
+                      allEvents={allAvailableEvents}
+                      onSelectEvent={handleSelectEvent}
                     />
+
+                    {/* Lower Content: Skeletons during initial load, otherwise live modules */}
+                    {appLoading ? (
+                      <div className="w-full space-y-6 sm:space-y-10 mt-2 sm:mt-4">
+                        {/* Happening Today Skeleton */}
+                        <div className="w-full">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="h-6 w-32 rounded-md skeleton-base" />
+                            <div className="h-8 w-20 rounded-full skeleton-base" />
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {Array.from({ length: 4 }).map((_, i) => (
+                              <div key={i} className="h-[180px] rounded-[20px] skeleton-base" />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Categories Skeleton */}
+                        <div className="w-full">
+                          <div className="flex items-center justify-between mb-4">
+                            <div className="h-6 w-24 rounded-md skeleton-base" />
+                            <div className="h-8 w-20 rounded-full skeleton-base" />
+                          </div>
+                          <div className="flex gap-2 overflow-x-auto pb-2">
+                            {Array.from({ length: 8 }).map((_, i) => (
+                              <div key={i} className="h-8 w-20 rounded-full skeleton-base flex-shrink-0" />
+                            ))}
+                          </div>
+                        </div>
+
+                        {/* Event Grid Skeleton */}
+                        <div className="w-full">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5 sm:gap-6 lg:gap-8">
+                            {Array.from({ length: 6 }).map((_, i) => (
+                              <div key={i} className="flex flex-col h-full rounded-[26px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md max-w-[390px] sm:max-w-none mx-auto w-full">
+                                <div className="w-full aspect-[16/9] bg-gray-200/70 dark:bg-white/5 skeleton-base" />
+                                <div className="p-3.5 sm:p-5 flex flex-col flex-1 space-y-3">
+                                  <div className="h-4 w-20 rounded-md skeleton-base" />
+                                  <div className="h-6 w-3/4 rounded-md skeleton-base" />
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Happening Today Slider */}
+                        <HappeningTodaySlider
+                          events={happeningTodayEvents}
+                          config={happeningTodayConfig}
+                          onSelectEvent={handleSelectEvent}
+                        />
+
+                        {/* Categories & Filter Bar */}
+                        <div id="categories" className="scroll-mt-24">
+                          <CategoryFilter
+                            categories={categories}
+                            selectedCategory={selectedCategory}
+                            selectedSubcategory={selectedSubcategory}
+                            onSelectCategory={handleSelectCategory}
+                            onSelectSubcategory={handleSelectSubcategory}
+                            selectedDate={selectedDate}
+                            onSelectDate={handleSelectDate}
+                            activeScheduleFilter={activeScheduleFilter}
+                            onSelectScheduleFilter={handleSelectScheduleFilter}
+                            selectedPricingType={selectedPricingType}
+                            onSelectPricingType={handleSelectPricingType}
+                            isTrendingActive={isTrendingActive}
+                            onSelectTrending={handleSelectTrending}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Event hub upcoming grid / Search Results Grid */}
+                  <div id="events" className="scroll-mt-24">
+                    <EventGrid
+                      events={displayedEvents}
+                      loading={isSearching ? false : eventsLoading}
+                      onResetFilters={handleResetFilters}
+                      onSelectEvent={handleSelectEvent}
+                      title={
+                        isSearching
+                          ? "Search Results"
+                          : isTrendingActive
+                            ? "🔥 Trending Events"
+                            : "Event Hub"
+                      }
+                      searchQuery={searchQuery.trim()}
+                    />
+
+                    {/* Show More upcoming events */}
+                    {!eventsLoading && (
+                      isSearching
+                        ? filteredEvents.length > visibleEventsCount
+                        : visibleEventsCount < filteredEvents.length
+                    ) && (
+                        <div className="flex justify-center mt-6 sm:mt-8">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              if (isSearching || visibleEventsCount < filteredEvents.length) {
+                                setVisibleEventsCount(prev => prev + showMoreIncrement);
+                              } else {
+                                handleLoadMoreEvents();
+                              }
+                            }}
+                            className="glass-pill px-7 sm:px-9 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-heading font-black text-xs sm:text-sm text-gray-900 dark:text-gray-100 hover:text-primary hover:border-primary/50 cursor-pointer shadow-lg hover:scale-103 active:scale-95 transition-all touch-target border border-white/95 dark:border-white/10"
+                          >
+                            View More Events
+                          </button>
+                        </div>
+                      )}
                   </div>
                 </>
               )}
-            </div>
+            </Suspense>
+          </main>
 
-              {/* Event hub upcoming grid / Search Results Grid */}
-              <div id="events" className="scroll-mt-24">
-                <EventGrid
-                  events={displayedEvents}
-                  loading={isSearching ? false : eventsLoading}
-                  onResetFilters={handleResetFilters}
-                  onSelectEvent={handleSelectEvent}
-                  title={
-                    isSearching
-                      ? "Search Results"
-                      : isTrendingActive
-                      ? "🔥 Trending Events"
-                      : "Event Hub"
-                  }
-                  searchQuery={searchQuery.trim()}
-                />
+          <Footer
+            onNavigate={handleNavigate}
+            onGoToCategories={handleGoToCategories}
+          />
 
-                {/* Show More upcoming events */}
-                {!eventsLoading && (
-                  isSearching
-                    ? filteredEvents.length > visibleEventsCount
-                    : (visibleEventsCount < filteredEvents.length || hasMoreEvents)
-                ) && (
-                  <div className="flex justify-center mt-6 sm:mt-8">
-                    <button
-                      type="button"
-                      disabled={isLoadingMore}
-                      onClick={() => {
-                        if (isSearching || visibleEventsCount < filteredEvents.length) {
-                          setVisibleEventsCount(prev => prev + showMoreIncrement);
-                        } else {
-                          handleLoadMoreEvents();
-                        }
-                      }}
-                      className="glass-pill px-7 sm:px-9 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-heading font-black text-xs sm:text-sm text-gray-900 dark:text-gray-100 hover:text-primary hover:border-primary/50 cursor-pointer shadow-lg hover:scale-103 active:scale-95 transition-all touch-target border border-white/95 dark:border-white/10"
-                    >
-                      {isLoadingMore ? "Loading..." : "View More Events"}
-                    </button>
-                  </div>
-                )}
-              </div>
-            </>
-          )}
+          {/* GDPR, CCPA & Google AdSense Cookie Consent Notification */}
+          <Suspense fallback={null}>
+            <CookieConsentBanner onNavigatePrivacy={() => handleNavigate('privacy')} />
           </Suspense>
-        </main>
-
-        <Footer
-          onNavigate={handleNavigate}
-          onGoToCategories={handleGoToCategories}
-        />
-
-        {/* GDPR, CCPA & Google AdSense Cookie Consent Notification */}
-        <Suspense fallback={null}>
-          <CookieConsentBanner onNavigatePrivacy={() => handleNavigate('privacy')} />
-        </Suspense>
+        </div>
       </div>
-    </div>
     </>
   );
 }

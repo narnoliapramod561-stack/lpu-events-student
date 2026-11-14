@@ -69,6 +69,9 @@ test.describe('Platform Production Synthetic Health', () => {
     if (body.correlationId) {
       expect(body.correlationId).toBe(correlationHeader);
     }
+    if (body.dependencies) {
+      expect(body.dependencies.worker_runtime).toBe('healthy');
+    }
   });
 
   test('Supabase Edge Health endpoint returns healthy status and service status', async ({ request }) => {

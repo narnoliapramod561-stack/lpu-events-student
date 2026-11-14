@@ -5,7 +5,7 @@
 ## Links
 
 - [Events Directory](https://lpuevents.live/): Explore upcoming and ongoing campus events.
-- [About](https://lpuevents.live/?page=about): About the LPU Events discovery platform.
-- [Privacy Policy](https://lpuevents.live/?page=privacy): User privacy and data protection guidelines.
-- [Terms of Service](https://lpuevents.live/?page=terms): Terms and conditions for platform usage.
-- [Contact Us](https://lpuevents.live/?page=contact): Contact the LPU Events team.
+- [About](https://lpuevents.live/about): About the LPU Events discovery platform.
+- [Contact Us](https://lpuevents.live/contact): Contact the LPU Events team.
+- [Privacy Policy](https://lpuevents.live/privacy): User privacy and data protection guidelines.
+- [Terms of Service](https://lpuevents.live/terms): Terms and conditions for platform usage.

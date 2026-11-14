@@ -1,6 +1,6 @@
 import { Component, ErrorInfo, ReactNode } from "react";
 import { ShieldAlert, RotateCcw, Home } from "lucide-react";
-import { captureSafeException } from "@lpu-events/shared";
+import { captureOrBufferException } from "@lpu-events/shared";
 
 interface Props {
   children: ReactNode;
@@ -28,8 +28,11 @@ export class ErrorBoundary extends Component<Props, State> {
       if (startup?.dismiss) startup.dismiss();
       const shell = document.getElementById('lpu-startup-shell');
       if (shell && shell.parentNode) shell.parentNode.removeChild(shell);
+      if (typeof (window as any).__INIT_TELEMETRY__ === 'function') {
+        (window as any).__INIT_TELEMETRY__();
+      }
     }
-    captureSafeException(error, {
+    captureOrBufferException(error, {
       componentStack: errorInfo.componentStack,
       surface: 'student-web-react-root'
     });

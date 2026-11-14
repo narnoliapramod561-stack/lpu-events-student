@@ -138,7 +138,13 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Cross-Origin-Resource-Policy': 'same-origin',
   'X-Permitted-Cross-Domain-Policies': 'none',
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
-  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://*.adtrafficquality.google https://*.google.com https://*.posthog.com https://us-assets.i.posthog.com https://pagead2.googlesyndication.com https://adservice.google.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://images.unsplash.com https://upload.wikimedia.org https://*.supabase.co https://*.lpuevents.live https://lpuevents.live https://images.lpuevents.live https://pagead2.googlesyndication.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; connect-src 'self' http://localhost:* ws://localhost:* https://*.supabase.co wss://*.supabase.co https://*.lpuevents.live wss://*.lpuevents.live https://images.lpuevents.live https://*.posthog.com https://us-assets.i.posthog.com https://*.cloudflareinsights.com https://pagead2.googlesyndication.com https://adservice.google.com https://*.doubleclick.net https://*.google.com https://*.adtrafficquality.google; frame-src 'self' https://*.doubleclick.net https://pagead2.googlesyndication.com https://tpc.googlesyndication.com https://*.google.com https://*.adtrafficquality.google; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none';",
+  'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://*.posthog.com https://us-assets.i.posthog.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://images.unsplash.com https://upload.wikimedia.org https://*.supabase.co https://*.lpuevents.live https://lpuevents.live https://images.lpuevents.live https://*.google-analytics.com https://*.googletagmanager.com; connect-src 'self' http://localhost:* ws://localhost:* https://*.supabase.co wss://*.supabase.co https://*.lpuevents.live wss://*.lpuevents.live https://images.lpuevents.live https://*.posthog.com https://us-assets.i.posthog.com https://*.cloudflareinsights.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none';",
+};
+
+const ADMIN_NO_CACHE_HEADERS: Record<string, string> = {
+  'Cache-Control': 'no-store, no-cache, must-revalidate, private',
+  'Pragma': 'no-cache',
+  'Expires': '0',
 };
 
 // ─── Cache TTL & SWR Policy Matrix (99.999% Target) ─────────────────────────
@@ -151,15 +157,15 @@ interface CacheConfig {
 }
 
 const CACHE_CONFIGS: Record<string, CacheConfig> = {
-  homepage:       { edgeTtl: 1800,  browserTtl: 0,  swrTtl: 86400,  staleTtl: 604800 },   // 30m Edge cache, 0s browser (revalidates via ETag/304), 24h swr
-  events:         { edgeTtl: 900,   browserTtl: 0,  swrTtl: 43200,  staleTtl: 604800 },   // 15m Edge cache, 0s browser (revalidates via ETag/304)
-  featured:       { edgeTtl: 1800,  browserTtl: 0,  swrTtl: 43200,  staleTtl: 604800 },   // 30m Edge cache, 0s browser (revalidates via ETag/304)
-  trending:       { edgeTtl: 1800,  browserTtl: 0,  swrTtl: 43200,  staleTtl: 604800 },   // 30m Edge cache, 0s browser (revalidates via ETag/304)
-  search:         { edgeTtl: 300,   browserTtl: 0,  swrTtl: 3600,   staleTtl: 604800 },   // 5m Edge cache, 0s browser (revalidates via ETag/304)
-  categories:     { edgeTtl: 86400, browserTtl: 0,  swrTtl: 604800, staleTtl: 2592000 }, // 24h Edge cache, 0s browser (revalidates via ETag/304)
-  eventDetail:    { edgeTtl: 600,   browserTtl: 0,  swrTtl: 14400,  staleTtl: 604800 },   // 10m Edge cache, 0s browser (revalidates via ETag/304)
-  settings:       { edgeTtl: 3600,  browserTtl: 0,  swrTtl: 86400,  staleTtl: 604800 },   // 1h Edge cache, 0s browser (revalidates via ETag/304)
-  carousel:       { edgeTtl: 1800,  browserTtl: 0,  swrTtl: 43200,  staleTtl: 604800 },   // 30m Edge cache, 0s browser (revalidates via ETag/304)
+  homepage: { edgeTtl: 1800, browserTtl: 0, swrTtl: 86400, staleTtl: 604800 },   // 30m Edge cache, 0s browser (revalidates via ETag/304), 24h swr
+  events: { edgeTtl: 900, browserTtl: 0, swrTtl: 43200, staleTtl: 604800 },   // 15m Edge cache, 0s browser (revalidates via ETag/304)
+  featured: { edgeTtl: 1800, browserTtl: 0, swrTtl: 43200, staleTtl: 604800 },   // 30m Edge cache, 0s browser (revalidates via ETag/304)
+  trending: { edgeTtl: 1800, browserTtl: 0, swrTtl: 43200, staleTtl: 604800 },   // 30m Edge cache, 0s browser (revalidates via ETag/304)
+  search: { edgeTtl: 300, browserTtl: 0, swrTtl: 3600, staleTtl: 604800 },   // 5m Edge cache, 0s browser (revalidates via ETag/304)
+  categories: { edgeTtl: 86400, browserTtl: 0, swrTtl: 604800, staleTtl: 2592000 }, // 24h Edge cache, 0s browser (revalidates via ETag/304)
+  eventDetail: { edgeTtl: 600, browserTtl: 0, swrTtl: 14400, staleTtl: 604800 },   // 10m Edge cache, 0s browser (revalidates via ETag/304)
+  settings: { edgeTtl: 3600, browserTtl: 0, swrTtl: 86400, staleTtl: 604800 },   // 1h Edge cache, 0s browser (revalidates via ETag/304)
+  carousel: { edgeTtl: 1800, browserTtl: 0, swrTtl: 43200, staleTtl: 604800 },   // 30m Edge cache, 0s browser (revalidates via ETag/304)
 };
 
 
@@ -369,17 +375,60 @@ export function captureWorkerException(
   }
 }
 
-export function handleHealthCheck(cacheVersion: number, correlationId?: string): Response {
+export function handleHealthCheck(
+  cacheVersion: number,
+  correlationId?: string,
+  dependencies: Record<string, string> = { worker_runtime: 'healthy' }
+): Response {
+  const isDegraded = Object.values(dependencies).some(
+    (s) => s === 'degraded' || s === 'unreachable' || s === 'offline'
+  );
   return jsonResponse({
-    status: 'healthy',
+    status: isDegraded ? 'degraded' : 'healthy',
     service: 'lpu-events-student-worker',
     correlationId: correlationId || null,
     version: cacheVersion,
     timestamp: new Date().toISOString(),
-  }, 200, {
+    dependencies,
+  }, isDegraded ? 503 : 200, {
     'Cache-Control': 'no-cache, no-store, must-revalidate',
     ...(correlationId ? { 'x-correlation-id': correlationId } : {}),
   });
+}
+
+export async function performDeepHealthCheck(
+  cacheVersion: number,
+  correlationId?: string,
+  env?: Env
+): Promise<Response> {
+  const dependencies: Record<string, string> = {
+    worker_runtime: 'healthy',
+  };
+
+  // 1. D1 Database connectivity probe if configured
+  if (env?.DB) {
+    try {
+      await env.DB.prepare('SELECT 1').first();
+      dependencies.database = 'healthy';
+    } catch {
+      dependencies.database = 'degraded';
+    }
+  }
+
+  // 2. R2 snapshot CDN accessibility probe if configured in production
+  if (env?.SUPABASE_URL || env?.POSTHOG_API_KEY) {
+    try {
+      const r2Res = await fetch(`${R2_IMAGE_CDN}/public-content/manifest.json`, {
+        method: 'HEAD',
+        signal: AbortSignal.timeout(3000),
+      });
+      dependencies.r2_snapshots = r2Res.ok ? 'healthy' : 'degraded';
+    } catch {
+      dependencies.r2_snapshots = 'unreachable';
+    }
+  }
+
+  return handleHealthCheck(cacheVersion, correlationId, dependencies);
 }
 
 /**
@@ -500,6 +549,18 @@ function getEventImageUrl(event: any): string {
   if (!objectKey) return `${SITE_ORIGIN}/logo.jpeg`;
   if (objectKey.startsWith('http://') || objectKey.startsWith('https://')) return objectKey;
   return `${R2_IMAGE_CDN}/${objectKey.replace(/^\/+/, '')}`;
+}
+
+/**
+ * Defensive protocol whitelist for external URLs to prevent javascript: or data: injection.
+ */
+function sanitizeHttpUrl(url?: string | null): string | null {
+  if (!url) return null;
+  const trimmed = url.trim();
+  if (/^https?:\/\//i.test(trimmed)) {
+    return trimmed;
+  }
+  return null;
 }
 
 /**
@@ -698,7 +759,7 @@ async function executeSingleFlightOriginFetch(
           ];
           try {
             await cache.put(cacheKey, new Response(notFoundBody, { status: 404, headers: new Headers(headersList) }));
-          } catch {}
+          } catch { }
           resolveLeader({ status: 404, headers: headersList, bodyText: notFoundBody });
           return;
         }
@@ -731,7 +792,7 @@ async function executeSingleFlightOriginFetch(
             resolveLeader({ status: staleFallback.status, headers: headersList, bodyText: text });
             return;
           }
-        } catch {}
+        } catch { }
 
         // Fail-Closed: Return HTTP 503 instead of blowing up Supabase
         const maintBody = JSON.stringify({
@@ -759,6 +820,7 @@ async function executeSingleFlightOriginFetch(
       const cacheControlHeader = `public, s-maxage=${config.edgeTtl}, max-age=${config.browserTtl}, must-revalidate, no-transform, stale-while-revalidate=${config.swrTtl}, stale-if-error=${config.staleTtl}`;
 
       const headersList: [string, string][] = [
+        ['Date', new Date().toUTCString()],
         ['Content-Type', 'application/json; charset=utf-8'],
         ['Cache-Control', cacheControlHeader],
         ['ETag', etag],
@@ -786,7 +848,7 @@ async function executeSingleFlightOriginFetch(
           headers: new Headers(headersList),
         });
         await cache.put(cacheKey, edgeResp);
-      } catch {}
+      } catch { }
 
       // Store in stale backup (Stale TTL, up to 7-30 days)
       try {
@@ -794,7 +856,7 @@ async function executeSingleFlightOriginFetch(
         staleHeaders.set('Cache-Control', `public, s-maxage=${config.staleTtl}, max-age=${config.staleTtl}`);
         const staleResp = new Response(body, { status: 200, headers: staleHeaders });
         await staleCache.put(cacheKey, staleResp);
-      } catch {}
+      } catch { }
 
       resolveLeader({ status: 200, headers: headersList, bodyText: body });
     } catch (err: any) {
@@ -811,7 +873,7 @@ async function executeSingleFlightOriginFetch(
           resolveLeader({ status: staleFallback.status, headers: headersList, bodyText: text });
           return;
         }
-      } catch {}
+      } catch { }
 
       // Fail-Closed HTTP 503
       const errBody = JSON.stringify({
@@ -853,35 +915,82 @@ async function handleCachedEndpoint(
   const cacheKey = new Request(cacheKeyUrl, { method: 'GET' });
   const ifNoneMatch = request?.headers.get('If-None-Match');
   const isNoCache = request?.headers.get('Cache-Control')?.includes('no-cache') ||
-                    request?.headers.get('Pragma')?.includes('no-cache');
+    request?.headers.get('Pragma')?.includes('no-cache');
 
-  // 1. FAST-PATH: Check primary edge cache (Fresh HIT) (<2ms) if not force-refreshing
+  // 1. FAST-PATH: Check primary edge cache if not force-refreshing
   const cached = !isNoCache ? await cache.match(cacheKey) : null;
   if (cached) {
-    const etag = cached.headers.get('ETag') || `W/"v_${currentCacheVersion}"`;
+    const dateHeader = cached.headers.get('Date');
+    const cachedTime = dateHeader ? new Date(dateHeader).getTime() : 0;
+    const ageMs = cachedTime > 0 ? Date.now() - cachedTime : 0;
+    const isFresh = cachedTime > 0 && ageMs < config.edgeTtl * 1000;
 
-    // ─── Guardrail: Return HTTP 304 Not Modified if client already has this version ───
-    if (ifNoneMatch && isEtagMatch(ifNoneMatch, etag)) {
-      const notModifiedHeaders = new Headers();
-      notModifiedHeaders.set('ETag', etag);
-      notModifiedHeaders.set('CF-Cache-Status', 'HIT');
-      notModifiedHeaders.set('X-Edge-Cache', 'HIT');
-      notModifiedHeaders.set('X-Cache-Status', 'NOT_MODIFIED');
-      notModifiedHeaders.set('X-Cache-Version', String(currentCacheVersion));
-      notModifiedHeaders.set('Cache-Control', `public, s-maxage=${config.edgeTtl}, max-age=${config.browserTtl}, must-revalidate`);
-      for (const [k, v] of Object.entries(CORS_HEADERS)) notModifiedHeaders.set(k, v);
-      return new Response(null, { status: 304, headers: notModifiedHeaders });
+    if (isFresh) {
+      const etag = cached.headers.get('ETag') || `W/"v_${currentCacheVersion}"`;
+
+      // ─── Guardrail: Return HTTP 304 Not Modified if client already has this version ───
+      if (ifNoneMatch && isEtagMatch(ifNoneMatch, etag)) {
+        const notModifiedHeaders = new Headers();
+        notModifiedHeaders.set('ETag', etag);
+        notModifiedHeaders.set('CF-Cache-Status', 'HIT');
+        notModifiedHeaders.set('X-Edge-Cache', 'HIT');
+        notModifiedHeaders.set('X-Cache-Status', 'NOT_MODIFIED');
+        notModifiedHeaders.set('X-Cache-Version', String(currentCacheVersion));
+        notModifiedHeaders.set('Cache-Control', `public, s-maxage=${config.edgeTtl}, max-age=${config.browserTtl}, must-revalidate`);
+        for (const [k, v] of Object.entries(CORS_HEADERS)) notModifiedHeaders.set(k, v);
+        return new Response(null, { status: 304, headers: notModifiedHeaders });
+      }
+
+      const headers = new Headers(cached.headers);
+      if (!headers.has('ETag')) headers.set('ETag', etag);
+      headers.set('CF-Cache-Status', 'HIT');
+      headers.set('X-Edge-Cache', 'HIT');
+      headers.set('X-Cache-Status', 'HIT');
+      headers.set('X-Origin-Refreshed', 'false');
+      headers.set('X-Cache-Version', String(currentCacheVersion));
+      for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
+      return new Response(cached.body, { status: cached.status, headers });
+    } else {
+      // Primary cache expired. Trigger background SWR revalidation if gate allows
+      const now = Date.now();
+      const lastRefresh = lastRefreshTimestamps.get(cacheKeyUrl) || 0;
+      if (now - lastRefresh >= MIN_ORIGIN_REFRESH_MS) {
+        ctx.waitUntil(
+          executeSingleFlightOriginFetch(cacheKeyUrl, config, fetcher, cache, staleCache, cacheKey)
+            .catch(() => { /* non-fatal background SWR error */ })
+        );
+      }
+
+      // If within SWR window (edgeTtl + swrTtl), serve stale response immediately
+      const isWithinSwr = ageMs < (config.edgeTtl + config.swrTtl) * 1000;
+      if (isWithinSwr) {
+        const etag = cached.headers.get('ETag') || `W/"v_${currentCacheVersion}"`;
+        if (ifNoneMatch && isEtagMatch(ifNoneMatch, etag)) {
+          const notModifiedHeaders = new Headers();
+          notModifiedHeaders.set('ETag', etag);
+          notModifiedHeaders.set('CF-Cache-Status', 'STALE');
+          notModifiedHeaders.set('X-Edge-Cache', 'STALE');
+          notModifiedHeaders.set('X-Cache-Status', 'NOT_MODIFIED');
+          notModifiedHeaders.set('X-Cache-Version', String(currentCacheVersion));
+          notModifiedHeaders.set('Cache-Control', `public, s-maxage=${config.edgeTtl}, max-age=${config.browserTtl}, must-revalidate`);
+          for (const [k, v] of Object.entries(CORS_HEADERS)) notModifiedHeaders.set(k, v);
+          return new Response(null, { status: 304, headers: notModifiedHeaders });
+        }
+
+        const headers = new Headers(cached.headers);
+        if (!headers.has('ETag')) headers.set('ETag', etag);
+        headers.set('CF-Cache-Status', 'STALE');
+        headers.set('X-Edge-Cache', 'STALE');
+        headers.set('X-Cache-Status', 'STALE');
+        headers.set('X-Origin-Refreshed', 'false');
+        headers.set('X-Cache-Version', String(currentCacheVersion));
+        for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
+        return new Response(cached.body, { status: cached.status, headers });
+      } else {
+        // Expired beyond SWR window: purge from primary cache and fall through to SWR/fetcher
+        ctx.waitUntil(cache.delete(cacheKey).catch(() => {}));
+      }
     }
-
-    const headers = new Headers(cached.headers);
-    if (!headers.has('ETag')) headers.set('ETag', etag);
-    headers.set('CF-Cache-Status', 'HIT');
-    headers.set('X-Edge-Cache', 'HIT');
-    headers.set('X-Cache-Status', 'HIT');
-    headers.set('X-Origin-Refreshed', 'false');
-    headers.set('X-Cache-Version', String(currentCacheVersion));
-    for (const [k, v] of Object.entries(CORS_HEADERS)) headers.set(k, v);
-    return new Response(cached.body, { status: cached.status, headers });
   }
 
   // 2. STALE-WHILE-REVALIDATE (SWR) PATH: Serve Stale Backup (<5ms)
@@ -1426,7 +1535,7 @@ async function handleInvalidation(
     for (const urlStr of targetUrls) {
       const req = new Request(urlStr, { method: 'GET' });
       await cache.delete(req);
-      try { await staleCache.delete(req); } catch {}
+      try { await staleCache.delete(req); } catch { }
       lastRefreshTimestamps.delete(urlStr);
       invalidated.push(urlStr);
     }
@@ -1472,7 +1581,7 @@ async function handleCacheRebuild(
     if (homepageRes.status === 200) {
       const hpKey = new Request(`${origin}/api/public/homepage`, { method: 'GET' });
       await cache.put(hpKey, homepageRes.clone());
-      try { await staleCache.put(hpKey, homepageRes.clone()); } catch {}
+      try { await staleCache.put(hpKey, homepageRes.clone()); } catch { }
       warmedEndpoints.push('/api/public/homepage');
     }
 
@@ -1481,7 +1590,7 @@ async function handleCacheRebuild(
     if (catRes.status === 200) {
       const catKey = new Request(`${origin}/api/public/categories`, { method: 'GET' });
       await cache.put(catKey, catRes.clone());
-      try { await staleCache.put(catKey, catRes.clone()); } catch {}
+      try { await staleCache.put(catKey, catRes.clone()); } catch { }
       warmedEndpoints.push('/api/public/categories');
     }
 
@@ -1491,7 +1600,7 @@ async function handleCacheRebuild(
     if (eventsRes.status === 200) {
       const evtKey = new Request(buildCacheKey(origin, '/api/public/events', { limit: '20', offset: '0' }), { method: 'GET' });
       await cache.put(evtKey, eventsRes.clone());
-      try { await staleCache.put(evtKey, eventsRes.clone()); } catch {}
+      try { await staleCache.put(evtKey, eventsRes.clone()); } catch { }
       warmedEndpoints.push('/api/public/events?limit=20&offset=0');
     }
 
@@ -1500,7 +1609,7 @@ async function handleCacheRebuild(
     if (featRes.status === 200) {
       const featKey = new Request(`${origin}/api/public/featured`, { method: 'GET' });
       await cache.put(featKey, featRes.clone());
-      try { await staleCache.put(featKey, featRes.clone()); } catch {}
+      try { await staleCache.put(featKey, featRes.clone()); } catch { }
       warmedEndpoints.push('/api/public/featured');
     }
 
@@ -1509,7 +1618,7 @@ async function handleCacheRebuild(
     if (trendRes.status === 200) {
       const trendKey = new Request(`${origin}/api/public/trending`, { method: 'GET' });
       await cache.put(trendKey, trendRes.clone());
-      try { await staleCache.put(trendKey, trendRes.clone()); } catch {}
+      try { await staleCache.put(trendKey, trendRes.clone()); } catch { }
       warmedEndpoints.push('/api/public/trending');
     }
 
@@ -1518,7 +1627,7 @@ async function handleCacheRebuild(
     if (carRes.status === 200) {
       const carKey = new Request(`${origin}/api/public/carousel`, { method: 'GET' });
       await cache.put(carKey, carRes.clone());
-      try { await staleCache.put(carKey, carRes.clone()); } catch {}
+      try { await staleCache.put(carKey, carRes.clone()); } catch { }
       warmedEndpoints.push('/api/public/carousel');
     }
 
@@ -1585,17 +1694,45 @@ async function resolveEventForSeo(slugOrId: string, env: Env): Promise<any | nul
     return null;
   }
 
-  // 2. Slug-based lookup: search by reconstructed name from slug
+  // 2. Deterministic slug match against published events (Zero False-404s)
+  const listRes = await fetchFromSupabaseCoalesced(
+    'events?select=id,name&status=in.(PUBLISHED,COMPLETED,CANCELLED)&order=updated_at.desc&limit=200',
+    'GET', undefined, env
+  );
+  if (listRes.ok && Array.isArray(listRes.data)) {
+    const matched = (listRes.data as any[]).find((e: any) => slugify(e.name) === trimmed || e.id === trimmed);
+    if (matched?.id) {
+      const detailRes = await fetchFromSupabaseCoalesced(
+        `events?id=eq.${matched.id}&status=in.(PUBLISHED,COMPLETED,CANCELLED)&select=${encodeURIComponent(PROJECTIONS.eventDetail)}`,
+        'GET', undefined, env
+      );
+      if (detailRes.ok && Array.isArray(detailRes.data) && (detailRes.data as any[]).length > 0) {
+        return (detailRes.data as any[])[0];
+      }
+    }
+  }
+
+  // 3. Slug-based fallback search via RPC if slug was modified or partial
   const searchTerms = trimmed.replace(/-/g, ' ').trim();
   if (!searchTerms || searchTerms.length < 2) return null;
 
-  // Try RPC search first for best matching
-  const rpcRes = await fetchFromSupabase('rpc/search_events', 'POST', {
+  // Try RPC search: first upcoming/active events (p_show_past: false)
+  let rpcRes = await fetchFromSupabase('rpc/search_events', 'POST', {
     query_text: searchTerms,
     limit_count: 10,
     offset_count: 0,
-    p_show_past: true,
+    p_show_past: false,
   }, env);
+
+  // Fallback to past/completed events if not found among upcoming
+  if (!rpcRes.ok || !Array.isArray(rpcRes.data) || (rpcRes.data as any[]).length === 0) {
+    rpcRes = await fetchFromSupabase('rpc/search_events', 'POST', {
+      query_text: searchTerms,
+      limit_count: 10,
+      offset_count: 0,
+      p_show_past: true,
+    }, env);
+  }
 
   if (rpcRes.ok && Array.isArray(rpcRes.data) && (rpcRes.data as any[]).length > 0) {
     const events = rpcRes.data as any[];
@@ -1613,6 +1750,17 @@ async function resolveEventForSeo(slugOrId: string, env: Env): Promise<any | nul
         return (detailRes.data as any[])[0];
       }
     }
+  }
+
+  // 3. Fallback direct ILIKE lookup if RPC did not resolve
+  const directRes = await fetchFromSupabase(
+    `events?name=ilike.*${encodeURIComponent(searchTerms)}*&status=in.(PUBLISHED,COMPLETED,CANCELLED)&order=updated_at.desc&limit=5&select=${encodeURIComponent(PROJECTIONS.eventDetail)}`,
+    'GET', undefined, env
+  );
+  if (directRes.ok && Array.isArray(directRes.data) && (directRes.data as any[]).length > 0) {
+    const events = directRes.data as any[];
+    const exactMatch = events.find((e: any) => slugify(e.name) === trimmed);
+    return exactMatch || events[0];
   }
 
   return null;
@@ -1718,7 +1866,8 @@ function buildEventJsonLd(event: any, canonicalUrl: string): string {
 
   // 4. Attendance Mode & Location
   const venue = event.venue_name?.trim();
-  const regUrl = event.external_registration_url || canonicalUrl;
+  const safeRegistrationUrl = sanitizeHttpUrl(event.external_registration_url);
+  const regUrl = safeRegistrationUrl || canonicalUrl;
 
   if (isHybridVenue(venue)) {
     jsonLd['eventAttendanceMode'] = 'https://schema.org/MixedEventAttendanceMode';
@@ -1795,13 +1944,13 @@ function buildEventJsonLd(event: any, canonicalUrl: string): string {
     };
   } else if (event.pricing_type === 'FREE') {
     jsonLd['isAccessibleForFree'] = true;
-    if (event.registration_mode === 'EXTERNAL' && event.external_registration_url) {
+    if (event.registration_mode === 'EXTERNAL' && safeRegistrationUrl) {
       jsonLd['offers'] = {
         '@type': 'Offer',
         'price': '0',
         'priceCurrency': 'INR',
         'availability': 'https://schema.org/InStock',
-        'url': event.external_registration_url,
+        'url': safeRegistrationUrl,
       };
     }
     // Unticketed walk-in events (NONE) omit offers
@@ -1933,9 +2082,10 @@ function buildSemanticHtml(event: any, _canonicalUrl: string): string {
     }
   }
 
-  // Registration CTA
-  if (event.external_registration_url) {
-    html += `<a href="${escapeHtml(event.external_registration_url)}" itemprop="url" rel="noopener" style="display:inline-block;padding:12px 24px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;margin-top:16px">Register Now</a>`;
+  // Registration CTA (defensive scheme validation against javascript: / data: protocols)
+  const safeRegistrationUrl = sanitizeHttpUrl(event.external_registration_url);
+  if (safeRegistrationUrl) {
+    html += `<a href="${escapeHtml(safeRegistrationUrl)}" itemprop="url" rel="noopener" style="display:inline-block;padding:12px 24px;background:#6366f1;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;margin-top:16px">Register Now</a>`;
   }
 
   html += `</article>`;
@@ -1972,11 +2122,16 @@ Disallow: /api/
 User-agent: *
 Allow: /
 Allow: /events/
+Allow: /category/
+Allow: /directory
 Allow: /about
 Allow: /contact
 Allow: /privacy
 Allow: /terms
 Allow: /ads.txt
+Allow: /feed.xml
+Allow: /rss.xml
+Allow: /sitemap.xml
 Disallow: /api/
 
 # Sitemap location
@@ -1996,7 +2151,7 @@ Sitemap: ${SITE_ORIGIN}/sitemap.xml
 
 /**
  * Handle /sitemap.xml — Dynamic sitemap with published events from Supabase.
- * Uses authentic modification timestamps and omits obsolete ranking signals (changefreq, priority).
+ * Uses authentic modification timestamps and clean RESTful URLs for optimal search indexing.
  */
 async function handleSitemapXml(env: Env): Promise<Response> {
   const nowIso = new Date().toISOString();
@@ -2037,7 +2192,7 @@ async function handleSitemapXml(env: Env): Promise<Response> {
     }
   }
 
-  // Fetch categories for category pages
+  // Fetch categories for category pages (Clean RESTful /category/:key URLs)
   const catRes = await fetchFromSupabase(
     `categories?select=key,name&is_active=eq.true&order=sort_order.asc`,
     'GET', undefined, env
@@ -2048,7 +2203,7 @@ async function handleSitemapXml(env: Env): Promise<Response> {
     for (const cat of (catRes.data as any[])) {
       if (cat.key) {
         const catLastmod = categoryLatestMap.get(cat.key) || latestEventUpdated;
-        categoryEntries += `  <url>\n    <loc>${escapeXml(`${SITE_ORIGIN}/?category=${encodeURIComponent(cat.key)}`)}</loc>\n`;
+        categoryEntries += `  <url>\n    <loc>${escapeXml(`${SITE_ORIGIN}/category/${encodeURIComponent(cat.key)}`)}</loc>\n`;
         if (catLastmod) {
           categoryEntries += `    <lastmod>${escapeXml(catLastmod)}</lastmod>\n`;
         }
@@ -2057,13 +2212,17 @@ async function handleSitemapXml(env: Env): Promise<Response> {
     }
   }
 
-  // Static pages have authentic release / update dates (not fake today dates)
+  // Static pages have authentic release / update dates
   const staticLaunchDate = '2026-09-01';
 
   const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
     <loc>${SITE_ORIGIN}/</loc>
+    <lastmod>${latestEventUpdated}</lastmod>
+  </url>
+  <url>
+    <loc>${SITE_ORIGIN}/directory</loc>
     <lastmod>${latestEventUpdated}</lastmod>
   </url>
   <url>
@@ -2097,6 +2256,56 @@ ${categoryEntries}${eventEntries}</urlset>
 }
 
 /**
+ * Handle /feed.xml & /rss.xml — Dynamic RSS 2.0 feed for Google News and search crawlers.
+ */
+async function handleRssFeed(env: Env): Promise<Response> {
+  const nowIso = new Date().toISOString();
+  const res = await fetchFromSupabase(
+    `events?select=id,name,description,start_at,created_at,updated_at,categories(name)&status=eq.PUBLISHED&end_at=gte.${nowIso}&order=created_at.desc&limit=30`,
+    'GET', undefined, env
+  );
+
+  let itemsXml = '';
+  if (res.ok && Array.isArray(res.data)) {
+    for (const ev of (res.data as any[])) {
+      const slug = slugify(ev.name) || ev.id;
+      const pubDate = new Date(ev.created_at || ev.updated_at || nowIso).toUTCString();
+      const catName = ev.categories?.name || 'Campus Events';
+      itemsXml += `    <item>\n`;
+      itemsXml += `      <title>${escapeXml(ev.name)}</title>\n`;
+      itemsXml += `      <link>${SITE_ORIGIN}/events/${slug}</link>\n`;
+      itemsXml += `      <guid isPermaLink="true">${SITE_ORIGIN}/events/${slug}</guid>\n`;
+      itemsXml += `      <category>${escapeXml(catName)}</category>\n`;
+      itemsXml += `      <description>${escapeXml(ev.description || ev.name)}</description>\n`;
+      itemsXml += `      <pubDate>${pubDate}</pubDate>\n`;
+      itemsXml += `    </item>\n`;
+    }
+  }
+
+  const rss = `<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>LPU Events — Official Campus Life, Fests &amp; Hackathons</title>
+    <link>${SITE_ORIGIN}</link>
+    <description>Live updates and upcoming campus events, technical hackathons, cultural fests, and workshops at Lovely Professional University.</description>
+    <language>en-in</language>
+    <atom:link href="${SITE_ORIGIN}/feed.xml" rel="self" type="application/rss+xml" />
+    <lastBuildDate>${new Date().toUTCString()}</lastBuildDate>
+${itemsXml}  </channel>
+</rss>`;
+
+  return new Response(rss, {
+    status: 200,
+    headers: {
+      'Content-Type': 'application/rss+xml; charset=utf-8',
+      'Cache-Control': 'public, s-maxage=1800, max-age=300, stale-while-revalidate=86400',
+      'X-Content-Type-Options': 'nosniff',
+      'Strict-Transport-Security': 'max-age=31536000; includeSubDomains',
+    },
+  });
+}
+
+/**
  * Handle event page SEO: /events/:slugOrId
  * Uses HTMLRewriter to inject dynamic metadata into the SPA shell.
  */
@@ -2109,12 +2318,19 @@ async function handleEventPageSeo(
   const event = await resolveEventForSeo(slugOrId, env);
 
   if (!event) {
-    // Return 404 with noindex meta for crawlers
+    const isLegacyMongoId = /^[a-f0-9]{24}$/i.test(slugOrId);
+    const status = isLegacyMongoId ? 410 : 404;
+    const title = isLegacyMongoId ? 'Event Archived or Removed — LPU Events' : 'Event Not Found — LPU Events';
+    const desc = isLegacyMongoId
+      ? 'This legacy event from an earlier academic session has been permanently removed or archived.'
+      : 'This event was not found or is no longer available on LPU Events.';
+
+    // Return 410 Gone for legacy IDs or 404 with noindex meta for crawlers
     const indexHtml = await fetchIndexHtml(env, origin);
     const rewriter = new HTMLRewriter()
       .on('title', {
         element(el: CFElement) {
-          el.setInnerContent('Event Not Found — LPU Events');
+          el.setInnerContent(title);
         },
       })
       .on('meta[name="robots"]', {
@@ -2124,12 +2340,12 @@ async function handleEventPageSeo(
       })
       .on('meta[name="description"]', {
         element(el: CFElement) {
-          el.setAttribute('content', 'This event was not found or is no longer available on LPU Events.');
+          el.setAttribute('content', desc);
         },
       })
       .on('meta[property="og:title"]', {
         element(el: CFElement) {
-          el.setAttribute('content', 'Event Not Found — LPU Events');
+          el.setAttribute('content', title);
         },
       })
       .on('link[rel="canonical"]', {
@@ -2140,10 +2356,10 @@ async function handleEventPageSeo(
 
     const rewritten = rewriter.transform(indexHtml);
     return new Response(rewritten.body, {
-      status: 404,
+      status,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
-        'Cache-Control': 'public, s-maxage=60, max-age=60',
+        'Cache-Control': isLegacyMongoId ? 'public, s-maxage=86400, max-age=86400' : 'public, s-maxage=60, max-age=60',
         'X-Robots-Tag': 'noindex, nofollow',
         ...SECURITY_HEADERS,
       },
@@ -2156,7 +2372,7 @@ async function handleEventPageSeo(
   const imageUrl = getEventImageUrl(event);
   const categoryName = event.categories?.name || 'Events';
   const organizerName = event.organizations?.name || 'LPU Events';
-  const venueName = event.venue_name || 'Lovely Professional University';
+  const venueName = event.venue_name || 'LPU Campus';
   const dateRange = formatDateRangeIST(event.start_at, event.end_at);
 
   const pageTitle = `${event.name} | LPU Events — Lovely Professional University`;
@@ -2304,7 +2520,7 @@ async function handleImageProxy(request: Request, env: Env, ctx: ExecutionContex
         },
       });
     }
-  } catch {}
+  } catch { }
 
   const cache = (caches as any).default;
   const cacheKey = new Request(url.origin + url.pathname + '?v=v3&url=' + encodeURIComponent(targetUrl), { method: 'GET' });
@@ -2367,10 +2583,149 @@ async function handleImageProxy(request: Request, env: Env, ctx: ExecutionContex
 }
 
 /**
- * Handle homepage SEO: Inject WebSite and EducationalOrganization schema.
+ * Handle /directory and /sitemap — Complete HTML Campus Directory & Sitemaps for Googlebot and users.
  */
-async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
+async function handleDirectoryPageSeo(env: Env, origin: string): Promise<Response> {
   const indexHtml = await fetchIndexHtml(env, origin);
+
+  const [eventsRes, catsRes] = await Promise.all([
+    fetchFromSupabaseCoalesced(
+      `events?select=id,name,description,start_at,end_at,venue_name,pricing_type,price_amount,category_id,categories(name,key),organizations(name)&status=in.(PUBLISHED,COMPLETED,CANCELLED)&order=start_at.desc&limit=100`,
+      'GET', undefined, env
+    ),
+    fetchFromSupabaseCoalesced(
+      `categories?select=id,name,key&is_active=eq.true&order=sort_order.asc`,
+      'GET', undefined, env
+    ),
+  ]);
+
+  const events = (eventsRes.ok && Array.isArray(eventsRes.data)) ? (eventsRes.data as any[]) : [];
+  const categories = (catsRes.ok && Array.isArray(catsRes.data)) ? (catsRes.data as any[]) : [];
+
+  const pageTitle = 'Campus Events Directory | LPU Events — Lovely Professional University';
+  const pageDesc = 'Comprehensive campus directory of all student activities, hackathons, academic conferences, cultural festivals, and workshops at Lovely Professional University.';
+  const canonicalUrl = `${SITE_ORIGIN}/directory`;
+
+  let html = `<main style="padding:28px 16px;max-width:1100px;margin:0 auto;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">`;
+  html += `<header style="margin-bottom:32px;text-align:center">`;
+  html += `<h1 style="font-size:32px;font-weight:800;color:#0f172a;margin-bottom:12px">LPU Campus Events Directory</h1>`;
+  html += `<p style="font-size:16px;color:#475569;max-width:720px;margin:0 auto;line-height:1.6">${escapeHtml(pageDesc)}</p>`;
+  html += `</header>`;
+
+  // Categories hub section
+  html += `<section style="margin-bottom:40px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:22px">`;
+  html += `<h2 style="font-size:20px;font-weight:700;color:#1e293b;margin-bottom:14px">Browse by Campus Category</h2>`;
+  html += `<div style="display:flex;flex-wrap:wrap;gap:10px">`;
+  for (const cat of categories) {
+    if (cat.key) {
+      html += `<a href="/category/${encodeURIComponent(cat.key)}" style="display:inline-block;padding:8px 16px;background:#ffffff;border:1px solid #cbd5e1;border-radius:9999px;color:#334155;text-decoration:none;font-weight:600;font-size:14px">${escapeHtml(cat.name)}</a>`;
+    }
+  }
+  html += `</div>`;
+  html += `</section>`;
+
+  // Complete events list
+  html += `<section style="margin-bottom:48px">`;
+  html += `<h2 style="font-size:22px;font-weight:700;color:#1e293b;margin-bottom:18px">All Campus Events & Activities (${events.length})</h2>`;
+  html += `<div style="display:flex;flex-direction:column;gap:16px">`;
+  for (const ev of events) {
+    const slug = slugify(ev.name) || ev.id;
+    const catName = ev.categories?.name || 'General';
+    const venue = ev.venue_name || 'LPU Campus';
+    const dates = formatDateRangeIST(ev.start_at, ev.end_at);
+    const org = ev.organizations?.name || 'LPU Events';
+    html += `<article style="border:1px solid #e2e8f0;border-radius:10px;padding:18px;background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.04)">`;
+    html += `<div style="font-size:12px;font-weight:600;color:#f97316;text-transform:uppercase;margin-bottom:4px">${escapeHtml(catName)}</div>`;
+    html += `<h3 style="font-size:18px;font-weight:700;color:#0f172a;margin:0 0 8px 0"><a href="/events/${slug}" style="color:#2563eb;text-decoration:none">${escapeHtml(ev.name)}</a></h3>`;
+    html += `<p style="font-size:13px;color:#64748b;margin:0 0 8px 0">📅 ${escapeHtml(dates)} · 📍 ${escapeHtml(venue)} · 🏛️ ${escapeHtml(org)}</p>`;
+    if (ev.description) {
+      html += `<p style="font-size:14px;color:#475569;margin:0;line-height:1.5">${escapeHtml(truncateDescription(ev.description, 220))}</p>`;
+    }
+    html += `</article>`;
+  }
+  html += `</div>`;
+  html += `</section>`;
+
+  // Footer links
+  html += `<footer style="margin-top:40px;padding-top:20px;border-top:1px solid #e2e8f0;text-align:center;font-size:14px;color:#64748b">`;
+  html += `<a href="/" style="color:#2563eb;text-decoration:none;margin:0 8px">Home</a> · `;
+  html += `<a href="/about" style="color:#64748b;text-decoration:none;margin:0 8px">About</a> · `;
+  html += `<a href="/contact" style="color:#64748b;text-decoration:none;margin:0 8px">Contact</a> · `;
+  html += `<a href="/privacy" style="color:#64748b;text-decoration:none;margin:0 8px">Privacy</a> · `;
+  html += `<a href="/terms" style="color:#64748b;text-decoration:none;margin:0 8px">Terms</a> · `;
+  html += `<a href="/feed.xml" style="color:#64748b;text-decoration:none;margin:0 8px">RSS Feed</a>`;
+  html += `<p style="margin:12px 0 0 0;font-size:13px">© 2026 LPU Events · Lovely Professional University, GT Road, Phagwara, Punjab 144411.</p>`;
+  html += `</footer>`;
+  html += `</main>`;
+
+  // JSON-LD ItemList
+  const itemListJsonLd = safeJsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    'name': 'LPU Campus Events Directory',
+    'numberOfItems': events.length,
+    'itemListElement': events.map((ev: any, idx: number) => ({
+      '@type': 'ListItem',
+      'position': idx + 1,
+      'url': `${SITE_ORIGIN}/events/${slugify(ev.name) || ev.id}`,
+      'name': ev.name,
+    })),
+  });
+
+  const rewriter = new HTMLRewriter()
+    .on('title', { element(el: CFElement) { el.setInnerContent(pageTitle); } })
+    .on('meta[name="description"]', { element(el: CFElement) { el.setAttribute('content', pageDesc); } })
+    .on('link[rel="canonical"]', { element(el: CFElement) { el.setAttribute('href', canonicalUrl); } })
+    .on('meta[property="og:title"]', { element(el: CFElement) { el.setAttribute('content', pageTitle); } })
+    .on('meta[property="og:description"]', { element(el: CFElement) { el.setAttribute('content', pageDesc); } })
+    .on('meta[property="og:url"]', { element(el: CFElement) { el.setAttribute('content', canonicalUrl); } })
+    .on('head', {
+      element(el: CFElement) {
+        el.append(`<script type="application/ld+json">${itemListJsonLd}</script>`, { html: true });
+      },
+    })
+    .on('div#root', {
+      element(el: CFElement) {
+        el.setInnerContent(html, { html: true });
+      },
+    });
+
+  const rewritten = rewriter.transform(indexHtml);
+  return new Response(rewritten.body, {
+    status: 200,
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, s-maxage=3600, max-age=300, stale-while-revalidate=86400',
+      'X-Robots-Tag': 'index, follow',
+      'x-seo-engine': 'edge-directory',
+      ...SECURITY_HEADERS,
+    },
+  });
+}
+
+/**
+ * Handle homepage & category landing SEO: Inject WebSite/Org/ItemList schema and semantic pre-rendered HTML.
+ */
+async function handleHomepageSeo(env: Env, origin: string, url?: URL, explicitCategoryKey?: string): Promise<Response> {
+  const indexHtml = await fetchIndexHtml(env, origin);
+
+  const categoryKey = explicitCategoryKey || url?.searchParams.get('category')?.trim().toLowerCase();
+  let categoryTitle = '';
+  let categoryDesc = '';
+  let categoryCanonical = `${SITE_ORIGIN}/`;
+
+  if (categoryKey) {
+    const formattedCat = categoryKey
+      .split('-')
+      .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+      .join(' ');
+    categoryTitle = `${formattedCat} Events & Fests | LPU Events — Lovely Professional University`;
+    categoryDesc = `Discover upcoming ${formattedCat} events, workshops, student clubs, hackathons, and competitions at Lovely Professional University.`;
+    categoryCanonical = `${SITE_ORIGIN}/category/${encodeURIComponent(categoryKey)}`;
+  } else {
+    categoryTitle = 'LPU Events | Official Campus Events, Fests & Hackathons — Lovely Professional University';
+    categoryDesc = 'The official student events and campus discovery hub for Lovely Professional University (LPU). Explore upcoming hackathons, cultural festivals, workshops, guest lectures, and student clubs.';
+  }
 
   // Dynamic edge discovery of top hero image to eliminate client render delay on Desktop & Mobile
   let heroImageUrl = '';
@@ -2387,7 +2742,7 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
         heroImageUrl = getEventImageUrl(item);
       }
     }
-  } catch {}
+  } catch { }
 
   const heroDesktopUrl = heroImageUrl || '/defaults/hero_default_desktop.webp';
   const heroMobileUrl = heroImageUrl || '/defaults/hero_default_mobile.webp';
@@ -2395,12 +2750,18 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
   const heroDesktopProxy = heroDesktopUrl;
   const heroMobileProxy = heroMobileUrl;
 
+  // 1. Google Sitelinks Searchbox & Site Authority Schema
   const websiteJsonLd = safeJsonLd({
     '@context': 'https://schema.org',
     '@type': 'WebSite',
     'name': 'LPU Events',
-    'alternateName': 'Lovely Professional University Events',
+    'alternateName': ['Lovely Professional University Events', 'LPU Campus Events', 'LPU Fests', 'LPU Event Hub'],
     'url': SITE_ORIGIN,
+    'potentialAction': {
+      '@type': 'SearchAction',
+      'target': `${SITE_ORIGIN}/?search={search_term_string}`,
+      'query-input': 'required name=search_term_string',
+    },
   });
 
   const orgJsonLd = safeJsonLd({
@@ -2439,18 +2800,276 @@ async function handleHomepageSeo(env: Env, origin: string): Promise<Response> {
     ],
   });
 
+  // 2. Fetch upcoming events for ItemList schema & semantic crawler pre-render
+  let eventsData: any[] = [];
+  try {
+    const nowIso = new Date().toISOString();
+    const catFilter = categoryKey ? `&categories.key=eq.${encodeURIComponent(categoryKey)}` : '';
+    const res = await fetchFromSupabaseCoalesced(
+      `events?select=id,name,description,start_at,end_at,venue_name,pricing_type,price_amount,category_id,organizations(name),categories(name,key)&status=eq.PUBLISHED&end_at=gte.${nowIso}${catFilter}&order=start_at.asc&limit=16`,
+      'GET', undefined, env
+    );
+    if (res.ok && Array.isArray(res.data)) {
+      eventsData = res.data as any[];
+    }
+  } catch { }
+
+  // 3. Structured Data ItemList for Google Event Carousel Rich Results
+  let itemListJsonLd = '';
+  if (eventsData.length > 0) {
+    const items = eventsData.map((ev: any, idx: number) => {
+      const slug = slugify(ev.name) || ev.id;
+      return {
+        '@type': 'ListItem',
+        'position': idx + 1,
+        'url': `${SITE_ORIGIN}/events/${slug}`,
+        'name': ev.name,
+        'startDate': ev.start_at,
+        'endDate': ev.end_at,
+        'location': {
+          '@type': 'Place',
+          'name': ev.venue_name || 'LPU Campus, Phagwara',
+          'address': {
+            '@type': 'PostalAddress',
+            'streetAddress': 'Grand Trunk Road',
+            'addressLocality': 'Phagwara',
+            'addressRegion': 'Punjab',
+            'postalCode': '144411',
+            'addressCountry': 'IN',
+          },
+        },
+      };
+    });
+    itemListJsonLd = safeJsonLd({
+      '@context': 'https://schema.org',
+      '@type': 'ItemList',
+      'name': categoryKey ? `${categoryTitle}` : 'Upcoming LPU Events & Campus Happenings',
+      'description': categoryKey ? categoryDesc : 'Schedule of upcoming conferences, hackathons, and cultural fests at Lovely Professional University.',
+      'numberOfItems': items.length,
+      'itemListElement': items,
+    });
+  }
+
+  // 4. FAQPage Schema for SERP Expandable Rich Snippets
+  const faqJsonLd = safeJsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    'mainEntity': [
+      {
+        '@type': 'Question',
+        'name': 'What is LPU Events?',
+        'acceptedAnswer': {
+          '@type': 'Answer',
+          'text': 'LPU Events is the official student events discovery hub for Lovely Professional University (LPU), providing verified schedules, venues, and registrations for campus fests, hackathons, guest lectures, cultural fests, and student club workshops.',
+        },
+      },
+      {
+        '@type': 'Question',
+        'name': 'Where are events held at Lovely Professional University?',
+        'acceptedAnswer': {
+          '@type': 'Answer',
+          'text': 'LPU events take place across iconic campus locations including Shanti Devi Mittal Auditorium, Baldev Raj Mittal Unipolis, Uni-Mall Studios, Central Innovation Labs, and academic blocks (such as Block 29 and Block 34) across the university campus in Phagwara, Punjab.',
+        },
+      },
+      {
+        '@type': 'Question',
+        'name': 'Are events on LPU Events free for students?',
+        'acceptedAnswer': {
+          '@type': 'Answer',
+          'text': 'Most academic conferences, club workshops, guest lectures, and cultural fests are completely free for LPU students. Specialized competitions and national hackathons may feature nominal ticket registration tiers as indicated on each event detail page.',
+        },
+      },
+      {
+        '@type': 'Question',
+        'name': 'How do student clubs list events on LPU Events?',
+        'acceptedAnswer': {
+          '@type': 'Answer',
+          'text': 'Authorized student organizations, societies, and department coordinators submit and manage events via the official LPU Events Admin Portal with approval from the Division of Student Welfare (DSW).',
+        },
+      },
+    ],
+  });
+
+  // 5. Build crawler-accessible semantic HTML for the homepage/category shell
+  let semanticHtml = `<main style="padding:24px 16px;max-width:1200px;margin:0 auto;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">`;
+  
+  // Header
+  semanticHtml += `<header style="margin-bottom:32px;text-align:center">`;
+  semanticHtml += `<h1 style="font-size:30px;font-weight:800;color:#0f172a;line-height:1.25;margin-bottom:12px">${escapeHtml(categoryTitle)}</h1>`;
+  semanticHtml += `<p style="font-size:16px;color:#475569;max-width:760px;margin:0 auto;line-height:1.6">${escapeHtml(categoryDesc)}</p>`;
+  semanticHtml += `</header>`;
+
+  // Categories Navigation Bar
+  semanticHtml += `<section style="margin-bottom:36px">`;
+  semanticHtml += `<h2 style="font-size:20px;font-weight:700;color:#1e293b;margin-bottom:14px">Campus Event Categories</h2>`;
+  semanticHtml += `<nav aria-label="Event Categories" style="display:flex;flex-wrap:wrap;gap:8px">`;
+  const categoriesList = [
+    { key: 'academics', name: 'Academics' },
+    { key: 'cultural', name: 'Cultural' },
+    { key: 'innovation', name: 'Innovation' },
+    { key: 'co-curricular', name: 'Co-Curricular' },
+    { key: 'student-clubs', name: 'Student Clubs' },
+    { key: 'community-services', name: 'Community Services' },
+    { key: 'day-celebrations', name: 'Day Celebrations' },
+    { key: 'ncc', name: 'NCC' },
+    { key: 'nss', name: 'NSS' },
+    { key: 'fashion', name: 'Fashion' },
+    { key: 'others', name: 'Others' },
+  ];
+  for (const cat of categoriesList) {
+    const isSelected = categoryKey === cat.key;
+    const catStyle = isSelected
+      ? 'display:inline-block;padding:6px 14px;border-radius:20px;background:#f97316;color:#ffffff;text-decoration:none;font-weight:600;font-size:14px'
+      : 'display:inline-block;padding:6px 14px;border-radius:20px;background:#f1f5f9;color:#334155;text-decoration:none;font-size:14px';
+    semanticHtml += `<a href="/category/${cat.key}" style="${catStyle}">${cat.name}</a>`;
+  }
+  semanticHtml += `</nav>`;
+  semanticHtml += `</section>`;
+
+  // Events Grid
+  semanticHtml += `<section style="margin-bottom:48px">`;
+  semanticHtml += `<h2 style="font-size:22px;font-weight:700;color:#1e293b;margin-bottom:20px">${categoryKey ? 'Category Events' : 'Upcoming Events & Campus Schedule'}</h2>`;
+
+  if (eventsData.length > 0) {
+    semanticHtml += `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:20px">`;
+    for (const ev of eventsData) {
+      const slug = slugify(ev.name) || ev.id;
+      const orgName = ev.organizations?.name || 'LPU Events';
+      const catName = ev.categories?.name || 'General';
+      const dateStr = formatDateRangeIST(ev.start_at, ev.end_at);
+      const isFree = ev.pricing_type === 'FREE' || !ev.price_amount || ev.price_amount === 0;
+      const priceText = isFree ? 'Free Admission' : `₹${ev.price_amount}`;
+
+      semanticHtml += `<article itemscope itemtype="https://schema.org/Event" style="border:1px solid #e2e8f0;border-radius:12px;padding:18px;background:#ffffff;box-shadow:0 1px 3px rgba(0,0,0,0.05)">`;
+      semanticHtml += `<div style="font-size:12px;font-weight:600;color:#f97316;text-transform:uppercase;margin-bottom:6px">${escapeHtml(catName)}</div>`;
+      semanticHtml += `<h3 itemprop="name" style="font-size:18px;font-weight:700;color:#0f172a;margin:0 0 8px 0;line-height:1.35"><a href="/events/${slug}" style="color:#0f172a;text-decoration:none">${escapeHtml(ev.name)}</a></h3>`;
+      semanticHtml += `<p style="font-size:13px;color:#64748b;margin:0 0 6px 0">📅 ${escapeHtml(dateStr)}</p>`;
+      if (ev.venue_name) {
+        semanticHtml += `<p itemprop="location" itemscope itemtype="https://schema.org/Place" style="font-size:13px;color:#64748b;margin:0 0 6px 0">📍 <span itemprop="name">${escapeHtml(ev.venue_name)}</span></p>`;
+      }
+      semanticHtml += `<p itemprop="organizer" itemscope itemtype="https://schema.org/Organization" style="font-size:13px;color:#64748b;margin:0 0 12px 0">🏛️ <span itemprop="name">${escapeHtml(orgName)}</span></p>`;
+      semanticHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding-top:10px;border-top:1px solid #f1f5f9">`;
+      semanticHtml += `<span style="font-size:13px;font-weight:600;color:#16a34a">${priceText}</span>`;
+      semanticHtml += `<a href="/events/${slug}" style="display:inline-block;padding:6px 12px;border-radius:6px;background:#0f172a;color:#ffffff;text-decoration:none;font-size:13px;font-weight:500">View Details →</a>`;
+      semanticHtml += `</div>`;
+      semanticHtml += `</article>`;
+    }
+    semanticHtml += `</div>`;
+  } else {
+    semanticHtml += `<p style="color:#64748b;font-size:15px">No upcoming events found for this filter. Check back soon for new campus announcements.</p>`;
+  }
+  semanticHtml += `</section>`;
+
+  // Campus Venues Section (Long-tail Geotargeting for Google Rankings)
+  semanticHtml += `<section style="margin-bottom:44px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:22px">`;
+  semanticHtml += `<h2 style="font-size:20px;font-weight:700;color:#1e293b;margin-bottom:12px">Key Campus Venues & Landmark Locations</h2>`;
+  semanticHtml += `<p style="font-size:14px;color:#64748b;line-height:1.6;margin-bottom:14px">Official campus events take place across dedicated university venues at Lovely Professional University, Phagwara, Punjab:</p>`;
+  semanticHtml += `<ul style="font-size:14px;color:#334155;line-height:1.8;padding-left:20px;margin:0">`;
+  semanticHtml += `<li><strong>Shanti Devi Mittal Auditorium:</strong> Air-conditioned auditorium hosting major academic conferences, convocation events, and international guest lectures.</li>`;
+  semanticHtml += `<li><strong>Baldev Raj Mittal Unipolis:</strong> Iconic open-air amphitheater and cultural center hosting large-scale university fests (Youth Vibe, Spectra) and student concerts.</li>`;
+  semanticHtml += `<li><strong>Uni-Mall Innovation Studios:</strong> Modern creative spaces for student clubs, exhibitions, startups, and live hackathon coding sprints.</li>`;
+  semanticHtml += `<li><strong>Block 29 & Block 34 Tech Centers:</strong> High-performance computing labs, robotics workshops, and engineering competitions.</li>`;
+  semanticHtml += `</ul>`;
+  semanticHtml += `</section>`;
+
+  // FAQ Section (Direct Semantic Mirror of FAQPage Schema)
+  semanticHtml += `<section style="margin-bottom:48px">`;
+  semanticHtml += `<h2 style="font-size:20px;font-weight:700;color:#1e293b;margin-bottom:16px">Frequently Asked Questions — LPU Events</h2>`;
+  semanticHtml += `<div style="display:flex;flex-direction:column;gap:14px">`;
+  semanticHtml += `<article style="border:1px solid #e2e8f0;border-radius:8px;padding:16px;background:#ffffff">`;
+  semanticHtml += `<h3 style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px 0">What is LPU Events?</h3>`;
+  semanticHtml += `<p style="font-size:14px;color:#475569;margin:0;line-height:1.6">LPU Events is the official student events discovery hub for Lovely Professional University (LPU), providing verified schedules, venues, and registrations for campus fests, hackathons, guest lectures, cultural fests, and student club workshops.</p>`;
+  semanticHtml += `</article>`;
+  semanticHtml += `<article style="border:1px solid #e2e8f0;border-radius:8px;padding:16px;background:#ffffff">`;
+  semanticHtml += `<h3 style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px 0">Where are events held at Lovely Professional University?</h3>`;
+  semanticHtml += `<p style="font-size:14px;color:#475569;margin:0;line-height:1.6">LPU events take place across iconic campus locations including Shanti Devi Mittal Auditorium, Baldev Raj Mittal Unipolis, Uni-Mall Studios, Central Innovation Labs, and academic blocks across the university campus in Phagwara, Punjab.</p>`;
+  semanticHtml += `</article>`;
+  semanticHtml += `<article style="border:1px solid #e2e8f0;border-radius:8px;padding:16px;background:#ffffff">`;
+  semanticHtml += `<h3 style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px 0">Are events on LPU Events free for students?</h3>`;
+  semanticHtml += `<p style="font-size:14px;color:#475569;margin:0;line-height:1.6">Most academic conferences, club workshops, guest lectures, and cultural fests are completely free for LPU students. Specialized competitions and national hackathons may feature nominal ticket registration tiers as indicated on each event detail page.</p>`;
+  semanticHtml += `</article>`;
+  semanticHtml += `<article style="border:1px solid #e2e8f0;border-radius:8px;padding:16px;background:#ffffff">`;
+  semanticHtml += `<h3 style="font-size:16px;font-weight:700;color:#0f172a;margin:0 0 6px 0">How do student clubs list events on LPU Events?</h3>`;
+  semanticHtml += `<p style="font-size:14px;color:#475569;margin:0;line-height:1.6">Authorized student organizations, societies, and department coordinators submit and manage events via the official LPU Events Admin Portal with approval from the Division of Student Welfare (DSW).</p>`;
+  semanticHtml += `</article>`;
+  semanticHtml += `</div>`;
+  semanticHtml += `</section>`;
+
+  // Footer Navigation
+  semanticHtml += `<footer style="margin-top:48px;padding-top:24px;border-top:1px solid #e2e8f0;font-size:14px;color:#64748b;text-align:center">`;
+  semanticHtml += `<nav aria-label="Footer Quick Links" style="margin-bottom:12px">`;
+  semanticHtml += `<a href="/about" style="color:#64748b;text-decoration:none;margin:0 8px">About LPU Events</a> · `;
+  semanticHtml += `<a href="/contact" style="color:#64748b;text-decoration:none;margin:0 8px">Contact Us</a> · `;
+  semanticHtml += `<a href="/privacy" style="color:#64748b;text-decoration:none;margin:0 8px">Privacy Policy</a> · `;
+  semanticHtml += `<a href="/terms" style="color:#64748b;text-decoration:none;margin:0 8px">Terms of Service</a> · `;
+  semanticHtml += `<a href="/directory" style="color:#64748b;text-decoration:none;margin:0 8px">Campus Events Directory</a> · `;
+  semanticHtml += `<a href="/feed.xml" style="color:#64748b;text-decoration:none;margin:0 8px">RSS Feed</a>`;
+  semanticHtml += `</nav>`;
+  semanticHtml += `<p style="margin:0;font-size:13px">© 2026 LPU Events · Lovely Professional University, GT Road, Phagwara, Punjab 144411.</p>`;
+  semanticHtml += `</footer>`;
+  semanticHtml += `</main>`;
+
   const rewriter = new HTMLRewriter()
+    .on('title', {
+      element(el: CFElement) {
+        el.setInnerContent(categoryTitle);
+      },
+    })
+    .on('meta[name="description"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', categoryDesc);
+      },
+    })
+    .on('link[rel="canonical"]', {
+      element(el: CFElement) {
+        el.setAttribute('href', categoryCanonical);
+      },
+    })
+    .on('meta[property="og:url"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', categoryCanonical);
+      },
+    })
+    .on('meta[property="og:title"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', categoryTitle);
+      },
+    })
+    .on('meta[property="og:description"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', categoryDesc);
+      },
+    })
+    .on('meta[name="twitter:title"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', categoryTitle);
+      },
+    })
+    .on('meta[name="twitter:description"]', {
+      element(el: CFElement) {
+        el.setAttribute('content', categoryDesc);
+      },
+    })
     .on('head', {
       element(el: CFElement) {
         el.append(`<script type="application/ld+json">${websiteJsonLd}</script>`, { html: true });
         el.append(`<script type="application/ld+json">${orgJsonLd}</script>`, { html: true });
         el.append(`<script type="application/ld+json">${appOrgJsonLd}</script>`, { html: true });
+        if (itemListJsonLd) {
+          el.append(`<script type="application/ld+json">${itemListJsonLd}</script>`, { html: true });
+        }
+        el.append(`<script type="application/ld+json">${faqJsonLd}</script>`, { html: true });
         if (heroMobileProxy && heroDesktopProxy && heroMobileProxy !== heroDesktopProxy) {
           el.append(`<link rel="preload" as="image" href="${escapeHtml(heroMobileProxy)}" media="(max-width: 640px)" fetchpriority="high" />`, { html: true });
           el.append(`<link rel="preload" as="image" href="${escapeHtml(heroDesktopProxy)}" media="(min-width: 641px)" fetchpriority="high" />`, { html: true });
         } else if (heroDesktopProxy) {
           el.append(`<link rel="preload" as="image" href="${escapeHtml(heroDesktopProxy)}" fetchpriority="high" />`, { html: true });
         }
+      },
+    })
+    .on('div#root', {
+      element(el: CFElement) {
+        el.setInnerContent(semanticHtml, { html: true });
       },
     });
 
@@ -2511,6 +3130,111 @@ async function handleStaticPageSeo(pathname: string, env: Env, origin: string): 
   const canonicalUrl = `${SITE_ORIGIN}${pathname}`;
   const indexHtml = await fetchIndexHtml(env, origin);
 
+  const breadcrumbJsonLd = safeJsonLd({
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    'itemListElement': [
+      { '@type': 'ListItem', 'position': 1, 'name': 'Home', 'item': `${SITE_ORIGIN}/` },
+      { '@type': 'ListItem', 'position': 2, 'name': config.title.split('—')[0].trim(), 'item': canonicalUrl },
+    ],
+  });
+
+  let contactJsonLd = '';
+  if (pathname === '/contact') {
+    contactJsonLd = safeJsonLd({
+      '@context': 'https://schema.org',
+      '@type': 'ContactPage',
+      'name': 'Contact LPU Events Helpdesk',
+      'url': canonicalUrl,
+      'description': config.description,
+      'mainEntity': {
+        '@type': 'EducationalOrganization',
+        'name': 'Lovely Professional University',
+        'email': 'contact@lpuevents.live',
+        'telephone': '+91-1824-517000',
+        'address': {
+          '@type': 'PostalAddress',
+          'streetAddress': 'Grand Trunk Road',
+          'addressLocality': 'Phagwara',
+          'addressRegion': 'Punjab',
+          'postalCode': '144411',
+          'addressCountry': 'IN',
+        },
+      },
+    });
+  }
+
+  // Pre-render rich semantic content into <div id="root">
+  let bodyContent = '';
+  if (pathname === '/about') {
+    bodyContent = `
+      <section style="margin-bottom:28px">
+        <h2 style="font-size:22px;font-weight:700;color:#1e293b;margin-bottom:12px">Our Mission</h2>
+        <p style="font-size:15px;color:#475569;line-height:1.7;margin-bottom:16px">LPU Events is the central student discovery portal for campus life, academic conferences, cultural fests, technical hackathons, workshops, and student clubs at Lovely Professional University, Phagwara, Punjab. Our goal is to connect over 35,000 students across campus with extracurricular opportunities, professional networking, and institutional events.</p>
+      </section>
+      <section style="margin-bottom:28px">
+        <h2 style="font-size:22px;font-weight:700;color:#1e293b;margin-bottom:12px">Campus Life & Student Welfare</h2>
+        <p style="font-size:15px;color:#475569;line-height:1.7;margin-bottom:16px">In collaboration with the Division of Student Welfare (DSW), university student organizations, academic departments, and student societies, LPU Events provides real-time event schedules, venue details, eligibility guidelines, and ticket registration for university fests such as Spectra, Youth Vibe, One India, One World, and tech symposiums.</p>
+      </section>
+      <section style="margin-bottom:28px">
+        <h2 style="font-size:22px;font-weight:700;color:#1e293b;margin-bottom:12px">Key Features</h2>
+        <ul style="font-size:15px;color:#475569;line-height:1.8;padding-left:20px;margin:0">
+          <li><strong>Real-Time Schedule:</strong> Live updates on ongoing, upcoming, and featured campus activities.</li>
+          <li><strong>Virtual & Physical Venues:</strong> Direct venue navigation to Shanti Devi Mittal Auditorium, Baldev Raj Mittal Unipolis, Uni-Mall studios, and campus blocks.</li>
+          <li><strong>Direct Registration:</strong> Single-click student sign-ups for individual and team hackathons.</li>
+          <li><strong>Multi-Category Discovery:</strong> Filter across Technical, Cultural, Innovation, Sports, NSS, and NCC initiatives.</li>
+        </ul>
+      </section>
+    `;
+  } else if (pathname === '/contact') {
+    bodyContent = `
+      <section style="margin-bottom:28px">
+        <h2 style="font-size:22px;font-weight:700;color:#1e293b;margin-bottom:12px">Get in Touch</h2>
+        <p style="font-size:15px;color:#475569;line-height:1.7;margin-bottom:16px">Have questions regarding an upcoming event, student registration, or collaborating as an organizer? The LPU Events helpdesk and Student Welfare team are here to support you.</p>
+        <div style="background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:20px;margin-bottom:24px">
+          <p style="font-size:15px;color:#1e293b;margin:0 0 10px 0"><strong>Email:</strong> <a href="mailto:contact@lpuevents.live" style="color:#f97316;text-decoration:none">contact@lpuevents.live</a></p>
+          <p style="font-size:15px;color:#1e293b;margin:0 0 10px 0"><strong>Office Location:</strong> Division of Student Welfare (DSW), Block 13, Lovely Professional University Campus</p>
+          <p style="font-size:15px;color:#1e293b;margin:0 0 10px 0"><strong>Address:</strong> Jalandhar - Delhi G.T. Road, Phagwara, Punjab 144411, India</p>
+          <p style="font-size:15px;color:#1e293b;margin:0"><strong>Hours:</strong> Monday – Saturday: 9:00 AM – 5:00 PM IST</p>
+        </div>
+      </section>
+      <section style="margin-bottom:28px">
+        <h2 style="font-size:22px;font-weight:700;color:#1e293b;margin-bottom:12px">Organizer & Club Partnerships</h2>
+        <p style="font-size:15px;color:#475569;line-height:1.7">University clubs, departments, and external guest organizations wishing to list an event or publish tickets can reach out directly via administrative login or email our campus coordination desk.</p>
+      </section>
+    `;
+  } else if (pathname === '/privacy') {
+    bodyContent = `
+      <section style="margin-bottom:28px">
+        <h2 style="font-size:22px;font-weight:700;color:#1e293b;margin-bottom:12px">Student Data & Privacy Policy</h2>
+        <p style="font-size:15px;color:#475569;line-height:1.7;margin-bottom:16px">LPU Events is dedicated to protecting student privacy. Public browsing is completely anonymous: no tracking cookies, authentication tokens, or personal identifiers are stored or shared. When registering for specific event tickets or campus workshops, student registration numbers and official university email addresses are securely handled in compliance with institutional data safety standards.</p>
+      </section>
+    `;
+  } else if (pathname === '/terms') {
+    bodyContent = `
+      <section style="margin-bottom:28px">
+        <h2 style="font-size:22px;font-weight:700;color:#1e293b;margin-bottom:12px">Terms of Platform Use</h2>
+        <p style="font-size:15px;color:#475569;line-height:1.7;margin-bottom:16px">LPU Events is intended solely for students, faculty, and authorized attendees of Lovely Professional University. Users must adhere to university guidelines, event code of conduct, and campus safety protocols during all hosted sessions, workshops, and competitions.</p>
+      </section>
+    `;
+  }
+
+  const staticSemanticHtml = `
+    <main style="padding:32px 16px;max-width:800px;margin:0 auto;font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif">
+      <nav aria-label="Breadcrumb" style="margin-bottom:20px;font-size:14px;color:#64748b">
+        <a href="/" style="color:#f97316;text-decoration:none">Home</a> &rsaquo; <span>${escapeHtml(config.title.split('—')[0].trim())}</span>
+      </nav>
+      <header style="margin-bottom:28px;border-bottom:1px solid #e2e8f0;padding-bottom:16px">
+        <h1 style="font-size:28px;font-weight:800;color:#0f172a;margin:0 0 8px 0">${escapeHtml(config.title.split('—')[0].trim())}</h1>
+        <p style="font-size:16px;color:#64748b;margin:0;line-height:1.6">${escapeHtml(config.description)}</p>
+      </header>
+      ${bodyContent}
+      <footer style="margin-top:40px;padding-top:20px;border-top:1px solid #e2e8f0;font-size:14px;color:#64748b;text-align:center">
+        <a href="/" style="color:#f97316;text-decoration:none;font-weight:600">&larr; Return to Campus Events Schedule</a>
+      </footer>
+    </main>
+  `;
+
   const rewriter = new HTMLRewriter()
     .on('title', {
       element(el: CFElement) {
@@ -2551,6 +3275,19 @@ async function handleStaticPageSeo(pathname: string, env: Env, origin: string): 
       element(el: CFElement) {
         el.setAttribute('content', config.description);
       },
+    })
+    .on('head', {
+      element(el: CFElement) {
+        el.append(`<script type="application/ld+json">${breadcrumbJsonLd}</script>`, { html: true });
+        if (contactJsonLd) {
+          el.append(`<script type="application/ld+json">${contactJsonLd}</script>`, { html: true });
+        }
+      },
+    })
+    .on('div#root', {
+      element(el: CFElement) {
+        el.setInnerContent(staticSemanticHtml, { html: true });
+      },
     });
 
   const rewritten = rewriter.transform(indexHtml);
@@ -2573,9 +3310,38 @@ export default {
     const url = new URL(request.url);
     const origin = url.origin;
 
-    // 0. Dedicated /health and /api/health probes (Stage 4)
-    if (url.pathname === '/health' || url.pathname === '/api/health') {
+    // Canonical Host Enforcement: Redirect www.lpuevents.live -> lpuevents.live
+    if (url.hostname === 'www.lpuevents.live') {
+      const canonicalUrl = new URL(request.url);
+      canonicalUrl.hostname = 'lpuevents.live';
+      canonicalUrl.protocol = 'https:';
+      return new Response(null, {
+        status: 301,
+        headers: {
+          'Location': canonicalUrl.toString(),
+          'Cache-Control': 'public, max-age=31536000, immutable',
+        },
+      });
+    }
+
+    // Legacy Route Canonicalization: 301 redirect /event/:slugOrId -> /events/:slugOrId
+    if (url.pathname.startsWith('/event/')) {
+      const targetSlug = url.pathname.slice(7);
+      return new Response(null, {
+        status: 301,
+        headers: {
+          'Location': `${SITE_ORIGIN}/events/${targetSlug}${url.search}`,
+          'Cache-Control': 'public, max-age=31536000, immutable',
+        },
+      });
+    }
+
+    // 0. Dedicated /health, /api/health and /health/live probes (Stage 4)
+    if (url.pathname === '/health/live') {
       return handleHealthCheck(currentCacheVersion, correlationId);
+    }
+    if (url.pathname === '/health' || url.pathname === '/api/health') {
+      return await performDeepHealthCheck(currentCacheVersion, correlationId, env);
     }
 
     // 1. CORS Preflight
@@ -2592,541 +3358,601 @@ export default {
     try {
       const response = await (async (): Promise<Response> => {
         // ─── SEO & Web Routes (Non-API) ──────────────────────────────────────
-    if (!url.pathname.startsWith('/api/')) {
+        if (!url.pathname.startsWith('/api/')) {
 
-      // Dynamic /robots.txt
-      if (url.pathname === '/robots.txt') {
-        return handleRobotsTxt();
-      }
+          // Dynamic /robots.txt
+          if (url.pathname === '/robots.txt') {
+            return handleRobotsTxt();
+          }
 
-      // Dynamic /sitemap.xml
-      if (url.pathname === '/sitemap.xml') {
-        return handleSitemapXml(env);
-      }
+          // Dynamic /sitemap.xml
+          if (url.pathname === '/sitemap.xml') {
+            return handleSitemapXml(env);
+          }
 
-      // Event detail pages: /events/:slugOrId — Edge SEO injection
-      const eventMatch = url.pathname.match(/^\/events\/([^/?#]+)$/);
-      if (eventMatch && eventMatch[1]) {
-        const slugOrId = decodeURIComponent(eventMatch[1]);
-        return handleEventPageSeo(slugOrId, env, origin);
-      }
+          // Dynamic /feed.xml & /rss.xml (Google News / RSS Feeds)
+          if (url.pathname === '/feed.xml' || url.pathname === '/rss.xml') {
+            return handleRssFeed(env);
+          }
 
-      // Static utility pages: /about, /contact, /privacy, /terms — Edge meta injection
-      if (['/about', '/contact', '/privacy', '/terms'].includes(url.pathname)) {
-        return handleStaticPageSeo(url.pathname, env, origin);
-      }
+          // IndexNow verification key for instant search engine indexing
+          if (url.pathname === '/lpueventslive2026indexnowkey.txt') {
+            return new Response('lpueventslive2026indexnowkey', {
+              status: 200,
+              headers: {
+                'Content-Type': 'text/plain; charset=utf-8',
+                'Cache-Control': 'public, max-age=31536000, immutable',
+              },
+            });
+          }
 
-      // AI Agentic Resource Discovery (.well-known/ai-catalog.json -> /ai-catalog.json)
-      if (url.pathname === '/.well-known/ai-catalog.json') {
-        return env.ASSETS.fetch(new Request(`${origin}/ai-catalog.json`, request));
-      }
+          // Campus Events Directory (HTML Sitemap for Googlebot & Users)
+          if (url.pathname === '/directory' || url.pathname === '/sitemap') {
+            return handleDirectoryPageSeo(env, origin);
+          }
 
-      // Homepage: / — Inject WebSite & Organization schema
-      if (url.pathname === '/') {
-        return handleHomepageSeo(env, origin);
-      }
+          // Clean Category Landing: /category/:slug
+          const categoryMatch = url.pathname.match(/^\/category\/([^/?#]+)$/);
+          if (categoryMatch && categoryMatch[1]) {
+            const catKey = decodeURIComponent(categoryMatch[1]).toLowerCase();
+            return handleHomepageSeo(env, origin, url, catKey);
+          }
 
-      // All other non-API routes → SPA static assets (CSS, JS, images, fonts, etc.)
-      const assetResp = await env.ASSETS.fetch(request);
+          // Legacy /?category= 301 Permanent Redirect to /category/:slug
+          if (url.pathname === '/' && url.searchParams.has('category') && url.searchParams.size === 1) {
+            const rawCat = url.searchParams.get('category')?.trim().toLowerCase();
+            if (rawCat && rawCat !== 'all') {
+              return Response.redirect(`${SITE_ORIGIN}/category/${encodeURIComponent(rawCat)}`, 301);
+            }
+          }
 
-      // Invariant 1: Content-hashed immutable JS and CSS assets (1 year browser cache, zero network latency)
-      if (url.pathname.startsWith('/assets/')) {
-        const headers = new Headers(assetResp.headers);
-        headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-        headers.set('X-Content-Cache', 'IMMUTABLE_HASHED');
-        return new Response(assetResp.body, { status: assetResp.status, headers });
-      }
+          // Event detail pages: /events/:slugOrId — Edge SEO injection
+          const eventMatch = url.pathname.match(/^\/events\/([^/?#]+)$/);
+          if (eventMatch && eventMatch[1]) {
+            const slugOrId = decodeURIComponent(eventMatch[1]);
+            return handleEventPageSeo(slugOrId, env, origin);
+          }
 
-      // Invariant 2: Static defaults and WebP images (30 days browser cache with SWR)
-      if (url.pathname.startsWith('/defaults/') || /\.(webp|png|jpe?g|svg|woff2?|ico)$/i.test(url.pathname)) {
-        const headers = new Headers(assetResp.headers);
-        headers.set('Cache-Control', 'public, max-age=2592000, stale-while-revalidate=86400');
-        headers.set('X-Content-Cache', 'STATIC_MEDIA');
-        return new Response(assetResp.body, { status: assetResp.status, headers });
-      }
+          // Static utility pages: /about, /contact, /privacy, /terms — Edge meta injection
+          if (['/about', '/contact', '/privacy', '/terms'].includes(url.pathname)) {
+            return handleStaticPageSeo(url.pathname, env, origin);
+          }
 
-      // Invariant: Service Worker script must revalidate immediately and allow root scope
-      if (url.pathname === '/sw.js') {
-        const headers = new Headers(assetResp.headers);
-        headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
-        headers.set('Service-Worker-Allowed', '/');
-        headers.set('Content-Type', 'application/javascript; charset=utf-8');
-        return new Response(assetResp.body, { status: assetResp.status, headers });
-      }
+          // AI Agentic Resource Discovery (.well-known/ai-catalog.json -> /ai-catalog.json)
+          if (url.pathname === '/.well-known/ai-catalog.json') {
+            return env.ASSETS.fetch(new Request(`${origin}/ai-catalog.json`, request));
+          }
 
-      // Invariant 3: HTML entry points (revalidate immediately so fresh deployments are instantly live)
-      if (url.pathname === '/' || url.pathname.endsWith('.html') || !url.pathname.includes('.')) {
-        const headers = new Headers(assetResp.headers);
-        headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
-        return new Response(assetResp.body, { status: assetResp.status, headers });
-      }
+          // Homepage & Category Landing: / — Inject WebSite & Organization schema + Category SEO
+          if (url.pathname === '/') {
+            return handleHomepageSeo(env, origin, url);
+          }
 
-      return assetResp;
-    }
+          // All other non-API routes → SPA static assets (CSS, JS, images, fonts, etc.)
+          const assetResp = await env.ASSETS.fetch(request);
 
-    // ─── API Routes ──────────────────────────────────────────────────────
+          // Invariant 1: Content-hashed immutable JS and CSS assets (1 year browser cache, zero network latency)
+          if (url.pathname.startsWith('/assets/')) {
+            const headers = new Headers(assetResp.headers);
+            headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+            headers.set('X-Content-Cache', 'IMMUTABLE_HASHED');
+            return new Response(assetResp.body, { status: assetResp.status, headers });
+          }
 
-    // 3. Cache Version & Health Endpoint (always fresh)
-    if (url.pathname === '/api/public/version') {
-      return jsonResponse({
-        ok: true,
-        version: currentCacheVersion,
-        status: isRebuildingCache ? 'REBUILDING' : 'READY',
-        timestamp: new Date().toISOString(),
-      }, 200, {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-      });
-    }
+          // Invariant 2: Static defaults and WebP images (30 days browser cache with SWR)
+          if (url.pathname.startsWith('/defaults/') || /\.(webp|png|jpe?g|svg|woff2?|ico)$/i.test(url.pathname)) {
+            const headers = new Headers(assetResp.headers);
+            headers.set('Cache-Control', 'public, max-age=2592000, stale-while-revalidate=86400');
+            headers.set('X-Content-Cache', 'STATIC_MEDIA');
+            return new Response(assetResp.body, { status: assetResp.status, headers });
+          }
 
-    // 4. Cache Rebuild Endpoint
-    if (url.pathname === '/api/cache/rebuild') {
-      if (!await isCacheMutationAuthorized(request, env, true)) {
-        return errorResponse('Unauthorized cache rebuild request', 401);
-      }
-      return handleCacheRebuild(origin, env, ctx);
-    }
+          // Invariant: Service Worker script must revalidate immediately and allow root scope
+          if (url.pathname === '/sw.js') {
+            const headers = new Headers(assetResp.headers);
+            headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+            headers.set('Service-Worker-Allowed', '/');
+            headers.set('Content-Type', 'application/javascript; charset=utf-8');
+            return new Response(assetResp.body, { status: assetResp.status, headers });
+          }
 
-    // 4b. Cloudflare Self-Healing Image Variant Reconciliation Endpoint
-    if (url.pathname === '/api/media/reconcile' && request.method === 'POST') {
-      if (!await isCacheMutationAuthorized(request, env)) {
-        return errorResponse('Unauthorized reconciliation request', 401);
-      }
-      try {
-        const body = (await request.json().catch(() => ({}))) as any;
-        const mediaId = String(body.media_id || '').trim();
-        if (!mediaId) {
-          return jsonResponse({ ok: false, error: 'media_id is required' }, 400);
+          // Invariant 3: HTML entry points (revalidate immediately so fresh deployments are instantly live)
+          if (url.pathname === '/' || url.pathname.endsWith('.html') || !url.pathname.includes('.')) {
+            const headers = new Headers(assetResp.headers);
+            headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+            return new Response(assetResp.body, { status: assetResp.status, headers });
+          }
+
+          return assetResp;
         }
 
-        const supabaseUrl = env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
-        const anonKey = env.SUPABASE_ANON_KEY || DEFAULT_ANON_KEY;
-        const authHeader = request.headers.get('Authorization') || '';
+        // ─── API Routes ──────────────────────────────────────────────────────
 
-        // First attempt direct Edge R2 physical reconciliation pipeline
-        try {
-          const edgeFormData = new FormData();
-          edgeFormData.append('action', 'reconcile');
-          edgeFormData.append('media_id', mediaId);
-
-          const edgeRes = await fetch(`${supabaseUrl}/functions/v1/r2-upload`, {
-            method: 'POST',
-            headers: {
-              apikey: anonKey,
-              Authorization: authHeader || `Bearer ${anonKey}`,
-            },
-            body: edgeFormData
+        // 3. Cache Version & Health Endpoint (always fresh)
+        if (url.pathname === '/api/public/version') {
+          return jsonResponse({
+            ok: true,
+            version: currentCacheVersion,
+            status: isRebuildingCache ? 'REBUILDING' : 'READY',
+            timestamp: new Date().toISOString(),
+          }, 200, {
+            'Cache-Control': 'no-cache, no-store, must-revalidate',
           });
+        }
 
-          if (edgeRes.ok) {
-            const edgeData = await edgeRes.json() as any;
+        // 4. Cache Rebuild Endpoint
+        if (url.pathname === '/api/cache/rebuild') {
+          if (!await isCacheMutationAuthorized(request, env, true)) {
+            return errorResponse('Unauthorized cache rebuild request', 401);
+          }
+          return handleCacheRebuild(origin, env, ctx);
+        }
+
+        // 4b. Cloudflare Self-Healing Image Variant Reconciliation Endpoint
+        if (url.pathname === '/api/media/reconcile' && request.method === 'POST') {
+          if (!await isCacheMutationAuthorized(request, env)) {
+            return errorResponse('Unauthorized reconciliation request', 401);
+          }
+          try {
+            const body = (await request.json().catch(() => ({}))) as any;
+            const mediaId = String(body.media_id || '').trim();
+            if (!mediaId) {
+              return jsonResponse({ ok: false, error: 'media_id is required' }, 400);
+            }
+
+            const supabaseUrl = env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
+            const anonKey = env.SUPABASE_ANON_KEY || DEFAULT_ANON_KEY;
+            const authHeader = request.headers.get('Authorization') || '';
+
+            // First attempt direct Edge R2 physical reconciliation pipeline
+            try {
+              const edgeFormData = new FormData();
+              edgeFormData.append('action', 'reconcile');
+              edgeFormData.append('media_id', mediaId);
+
+              const edgeRes = await fetch(`${supabaseUrl}/functions/v1/r2-upload`, {
+                method: 'POST',
+                headers: {
+                  apikey: anonKey,
+                  Authorization: authHeader || `Bearer ${anonKey}`,
+                },
+                body: edgeFormData
+              });
+
+              if (edgeRes.ok) {
+                const edgeData = await edgeRes.json() as any;
+                return jsonResponse({
+                  ok: true,
+                  media_id: mediaId,
+                  healed_count: edgeData.added_count || 0,
+                  complete: true,
+                  variants: edgeData.variants
+                }, 200);
+              }
+            } catch (_) { }
+
+            // Fallback: Query asset from Supabase and patch metadata
+            const assetRes = await fetch(`${supabaseUrl}/rest/v1/media_assets?id=eq.${encodeURIComponent(mediaId)}&select=*`, {
+              headers: {
+                apikey: anonKey,
+                Authorization: authHeader || `Bearer ${anonKey}`,
+                'Content-Type': 'application/json'
+              }
+            });
+
+            if (!assetRes.ok) {
+              return jsonResponse({ ok: false, error: 'Failed to query media asset from database' }, 502);
+            }
+
+            const assets = (await assetRes.json()) as any[];
+            if (!assets || assets.length === 0) {
+              return jsonResponse({ ok: false, error: 'Media asset not found' }, 404);
+            }
+
+            const asset = assets[0];
+            const meta = asset.metadata || {};
+            const variants = meta.variants || {};
+            const originalKey = meta.original_object_key || asset.object_key;
+            const hashPrefix = asset.checksum ? asset.checksum.slice(0, 4) : 'misc';
+            const tenantScope = meta.tenant_scope || asset.created_by || 'global';
+            const publicBaseUrl = R2_IMAGE_CDN;
+
+            const REQUIRED = [
+              { key: 'hero_desktop', width: 1200, height: 675 },
+              { key: 'hero_mobile', width: 640, height: 360 },
+              { key: 'card_desktop', width: 800, height: 450 },
+              { key: 'card_mobile', width: 480, height: 270 },
+              { key: 'details', width: 1280, height: 720 }
+            ];
+
+            let healedCount = 0;
+            for (const reqVar of REQUIRED) {
+              if (!variants[reqVar.key]) {
+                const vKey = asset.context && asset.context !== 'hero'
+                  ? `events/variants/${tenantScope}/${hashPrefix}/${asset.checksum}/${reqVar.key}.webp`
+                  : `variants/${asset.context || 'event-banner'}/${hashPrefix}/${asset.checksum}/${reqVar.key}.webp`;
+
+                variants[reqVar.key] = {
+                  name: reqVar.key,
+                  object_key: vKey,
+                  public_url: `${publicBaseUrl}/${vKey}`,
+                  width: reqVar.width,
+                  height: reqVar.height,
+                  mime_type: 'image/webp',
+                  source_ref: originalKey,
+                  healed_by: 'cloudflare-edge'
+                };
+                healedCount++;
+              }
+            }
+
+            if (healedCount > 0) {
+              const updatedMeta = {
+                ...meta,
+                has_variants: true,
+                variants,
+                reconciled_by: 'cloudflare-edge',
+                reconciled_at: new Date().toISOString()
+              };
+
+              await fetch(`${supabaseUrl}/rest/v1/media_assets?id=eq.${encodeURIComponent(mediaId)}`, {
+                method: 'PATCH',
+                headers: {
+                  apikey: anonKey,
+                  Authorization: authHeader || `Bearer ${anonKey}`,
+                  'Content-Type': 'application/json',
+                  Prefer: 'return=minimal'
+                },
+                body: JSON.stringify({ metadata: updatedMeta })
+              });
+            }
+
             return jsonResponse({
               ok: true,
               media_id: mediaId,
-              healed_count: edgeData.added_count || 0,
+              healed_count: healedCount,
               complete: true,
-              variants: edgeData.variants
+              variants
             }, 200);
+          } catch (err: any) {
+            return jsonResponse({ ok: false, error: err?.message || 'Reconciliation error' }, 500);
           }
-        } catch (_) {}
-
-        // Fallback: Query asset from Supabase and patch metadata
-        const assetRes = await fetch(`${supabaseUrl}/rest/v1/media_assets?id=eq.${encodeURIComponent(mediaId)}&select=*`, {
-          headers: {
-            apikey: anonKey,
-            Authorization: authHeader || `Bearer ${anonKey}`,
-            'Content-Type': 'application/json'
-          }
-        });
-
-        if (!assetRes.ok) {
-          return jsonResponse({ ok: false, error: 'Failed to query media asset from database' }, 502);
         }
 
-        const assets = (await assetRes.json()) as any[];
-        if (!assets || assets.length === 0) {
-          return jsonResponse({ ok: false, error: 'Media asset not found' }, 404);
-        }
 
-        const asset = assets[0];
-        const meta = asset.metadata || {};
-        const variants = meta.variants || {};
-        const originalKey = meta.original_object_key || asset.object_key;
-        const hashPrefix = asset.checksum ? asset.checksum.slice(0, 4) : 'misc';
-        const tenantScope = meta.tenant_scope || asset.created_by || 'global';
-        const publicBaseUrl = R2_IMAGE_CDN;
+        // ─── Edge Student Inquiries Endpoint (Cloudflare D1 / Zero-Supabase-Stress) ───
+        if ((url.pathname === '/api/contact' || url.pathname === '/api/inquiries') && request.method === 'POST') {
+          try {
+            // 0. SuperAdmin Kill-Switch Check: Immediate edge rejection if message requests are paused (0 DB hit)
+            if (!isMessagesReceptionEnabled) {
+              return jsonResponse({
+                ok: false,
+                code: 'MESSAGES_PAUSED',
+                error: messagesPausedNotice
+              }, 503);
+            }
 
-        const REQUIRED = [
-          { key: 'hero_desktop', width: 1200, height: 675 },
-          { key: 'hero_mobile', width: 640, height: 360 },
-          { key: 'card_desktop', width: 800, height: 450 },
-          { key: 'card_mobile', width: 480, height: 270 },
-          { key: 'details', width: 1280, height: 720 }
-        ];
+            const clientIp = request.headers.get('CF-Connecting-IP') || request.headers.get('x-forwarded-for') || '127.0.0.1';
+            const now = Date.now();
 
-        let healedCount = 0;
-        for (const reqVar of REQUIRED) {
-          if (!variants[reqVar.key]) {
-            const vKey = asset.context && asset.context !== 'hero'
-              ? `events/variants/${tenantScope}/${hashPrefix}/${asset.checksum}/${reqVar.key}.webp`
-              : `variants/${asset.context || 'event-banner'}/${hashPrefix}/${asset.checksum}/${reqVar.key}.webp`;
+            // 1. IP Rate Limiting (Cyber Specialist Safeguard: Zero Supabase Hit)
+            const ipTimestamps = recentInquiries.get(clientIp) || [];
+            const recentTimestamps = ipTimestamps.filter(t => now - t < INQUIRY_RATE_LIMIT_WINDOW_MS);
+            if (recentTimestamps.length >= INQUIRY_MAX_PER_WINDOW) {
+              return jsonResponse({
+                ok: false,
+                code: 'RATE_LIMIT_EXCEEDED',
+                error: 'Anti-spam protection: Too many inquiries from this network. Please wait a few minutes.'
+              }, 429);
+            }
 
-            variants[reqVar.key] = {
-              name: reqVar.key,
-              object_key: vKey,
-              public_url: `${publicBaseUrl}/${vKey}`,
-              width: reqVar.width,
-              height: reqVar.height,
-              mime_type: 'image/webp',
-              source_ref: originalKey,
-              healed_by: 'cloudflare-edge'
+            const body = (await request.json()) as any;
+
+            // 2. Honeypot check: If filled, bot trap -> silent success, 0 DB write
+            if (body.honeypot || body._hp_company_url) {
+              return jsonResponse({ ok: true, id: `inq_bot_${now}` }, 200);
+            }
+
+            const name = String(body.name || '').trim().slice(0, 100);
+            const email = body.email ? String(body.email).trim().toLowerCase().slice(0, 254) : null;
+            const subject = String(body.subject || 'General Inquiry').trim().slice(0, 100);
+            const message = String(body.message || '').trim().slice(0, 2500);
+            const deviceId = String(body.device_id || `dev_${Math.random().toString(36).substring(2, 10)}`).slice(0, 128);
+
+            // Validation
+            if (name.length < 2) {
+              return jsonResponse({ ok: false, error: 'Name must be at least 2 characters' }, 400);
+            }
+            const wordCount = message.split(/\s+/).filter(Boolean).length;
+            if (wordCount < 3 || wordCount > 250) {
+              return jsonResponse({ ok: false, error: 'Message must be between 3 and 250 words' }, 400);
+            }
+            if (email && !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
+              return jsonResponse({ ok: false, error: 'Invalid email address' }, 400);
+            }
+
+            recentTimestamps.push(now);
+            recentInquiries.set(clientIp, recentTimestamps);
+
+            const inquiryRecord = {
+              id: `inq_${now}_${Math.random().toString(36).substring(2, 7)}`,
+              name,
+              email,
+              subject,
+              message,
+              device_id: deviceId,
+              device_date: new Date().toISOString().slice(0, 10),
+              status: 'OPEN',
+              created_at: new Date().toISOString(),
+              admin_notes: null,
+              resolved_at: null
             };
-            healedCount++;
-          }
-        }
 
-        if (healedCount > 0) {
-          const updatedMeta = {
-            ...meta,
-            has_variants: true,
-            variants,
-            reconciled_by: 'cloudflare-edge',
-            reconciled_at: new Date().toISOString()
-          };
-
-          await fetch(`${supabaseUrl}/rest/v1/media_assets?id=eq.${encodeURIComponent(mediaId)}`, {
-            method: 'PATCH',
-            headers: {
-              apikey: anonKey,
-              Authorization: authHeader || `Bearer ${anonKey}`,
-              'Content-Type': 'application/json',
-              Prefer: 'return=minimal'
-            },
-            body: JSON.stringify({ metadata: updatedMeta })
-          });
-        }
-
-        return jsonResponse({
-          ok: true,
-          media_id: mediaId,
-          healed_count: healedCount,
-          complete: true,
-          variants
-        }, 200);
-      } catch (err: any) {
-        return jsonResponse({ ok: false, error: err?.message || 'Reconciliation error' }, 500);
-      }
-    }
-
-
-    // ─── Edge Student Inquiries Endpoint (Cloudflare D1 / Zero-Supabase-Stress) ───
-    if ((url.pathname === '/api/contact' || url.pathname === '/api/inquiries') && request.method === 'POST') {
-      try {
-        // 0. SuperAdmin Kill-Switch Check: Immediate edge rejection if message requests are paused (0 DB hit)
-        if (!isMessagesReceptionEnabled) {
-          return jsonResponse({
-            ok: false,
-            code: 'MESSAGES_PAUSED',
-            error: messagesPausedNotice
-          }, 503);
-        }
-
-        const clientIp = request.headers.get('CF-Connecting-IP') || request.headers.get('x-forwarded-for') || '127.0.0.1';
-        const now = Date.now();
-
-        // 1. IP Rate Limiting (Cyber Specialist Safeguard: Zero Supabase Hit)
-        const ipTimestamps = recentInquiries.get(clientIp) || [];
-        const recentTimestamps = ipTimestamps.filter(t => now - t < INQUIRY_RATE_LIMIT_WINDOW_MS);
-        if (recentTimestamps.length >= INQUIRY_MAX_PER_WINDOW) {
-          return jsonResponse({
-            ok: false,
-            code: 'RATE_LIMIT_EXCEEDED',
-            error: 'Anti-spam protection: Too many inquiries from this network. Please wait a few minutes.'
-          }, 429);
-        }
-
-        const body = (await request.json()) as any;
-
-        // 2. Honeypot check: If filled, bot trap -> silent success, 0 DB write
-        if (body.honeypot || body._hp_company_url) {
-          return jsonResponse({ ok: true, id: `inq_bot_${now}` }, 200);
-        }
-
-        const name = String(body.name || '').trim().slice(0, 100);
-        const email = body.email ? String(body.email).trim().toLowerCase().slice(0, 254) : null;
-        const subject = String(body.subject || 'General Inquiry').trim().slice(0, 100);
-        const message = String(body.message || '').trim().slice(0, 2500);
-        const deviceId = String(body.device_id || `dev_${Math.random().toString(36).substring(2, 10)}`).slice(0, 128);
-
-        // Validation
-        if (name.length < 2) {
-          return jsonResponse({ ok: false, error: 'Name must be at least 2 characters' }, 400);
-        }
-        const wordCount = message.split(/\s+/).filter(Boolean).length;
-        if (wordCount < 3 || wordCount > 250) {
-          return jsonResponse({ ok: false, error: 'Message must be between 3 and 250 words' }, 400);
-        }
-        if (email && !/^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/.test(email)) {
-          return jsonResponse({ ok: false, error: 'Invalid email address' }, 400);
-        }
-
-        recentTimestamps.push(now);
-        recentInquiries.set(clientIp, recentTimestamps);
-
-        const inquiryRecord = {
-          id: `inq_${now}_${Math.random().toString(36).substring(2, 7)}`,
-          name,
-          email,
-          subject,
-          message,
-          device_id: deviceId,
-          device_date: new Date().toISOString().slice(0, 10),
-          status: 'OPEN',
-          created_at: new Date().toISOString(),
-          admin_notes: null,
-          resolved_at: null
-        };
-
-        // Primary: Store in Cloudflare D1 (Free Tier, 0 Supabase Stress)
-        if (env.DB) {
-          await env.DB.prepare(`
+            // Primary: Store in Cloudflare D1 (Free Tier, 0 Supabase Stress)
+            if (env.DB) {
+              await env.DB.prepare(`
             INSERT INTO student_inquiries (id, name, email, subject, message, device_id, device_date, status, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, 'OPEN', ?)
           `).bind(
-            inquiryRecord.id, inquiryRecord.name, inquiryRecord.email, inquiryRecord.subject, inquiryRecord.message,
-            inquiryRecord.device_id, inquiryRecord.device_date, inquiryRecord.created_at
-          ).run().catch(() => {});
-        }
-
-        // Secondary: Edge In-Memory Buffer
-        edgeInquiriesBuffer.unshift(inquiryRecord);
-        if (edgeInquiriesBuffer.length > 200) edgeInquiriesBuffer.pop();
-
-        // 100% Cloudflare D1 Native: Zero Supabase egress or database connections
-        return jsonResponse({ ok: true, id: inquiryRecord.id }, 200);
-      } catch {
-        return jsonResponse({ ok: false, error: 'Malformed request' }, 400);
-      }
-    }
-
-    if (url.pathname.startsWith('/api/admin/inquiries')) {
-      if (!await isCacheMutationAuthorized(request, env, true)) {
-        return errorResponse('Unauthorized administrative request', 401);
-      }
-
-      const parts = url.pathname.split('/');
-      const targetId = parts[4]; // e.g. /api/admin/inquiries/:id
-
-      // 0. Message Reception Kill-Switch Query / Toggle
-      if (url.pathname === '/api/admin/inquiries/settings') {
-        if (request.method === 'GET') {
-          return jsonResponse({
-            is_enabled: isMessagesReceptionEnabled,
-            paused_notice: messagesPausedNotice
-          }, 200);
-        }
-        if (request.method === 'POST') {
-          try {
-            const body = (await request.json().catch(() => ({}))) as any;
-            if (typeof body.is_enabled === 'boolean') {
-              isMessagesReceptionEnabled = body.is_enabled;
+                inquiryRecord.id, inquiryRecord.name, inquiryRecord.email, inquiryRecord.subject, inquiryRecord.message,
+                inquiryRecord.device_id, inquiryRecord.device_date, inquiryRecord.created_at
+              ).run().catch((error) => {
+                console.error('[Worker] Failed to persist student inquiry:', error);
+                return Promise.reject(error);
+              });
             }
-            if (typeof body.paused_notice === 'string' && body.paused_notice.trim()) {
-              messagesPausedNotice = body.paused_notice.trim();
-            }
-            return jsonResponse({
-              ok: true,
-              is_enabled: isMessagesReceptionEnabled,
-              paused_notice: messagesPausedNotice
-            }, 200);
+
+            // Secondary: Edge In-Memory Buffer
+            edgeInquiriesBuffer.unshift(inquiryRecord);
+            if (edgeInquiriesBuffer.length > 200) edgeInquiriesBuffer.pop();
+
+            // 100% Cloudflare D1 Native: Zero Supabase egress or database connections
+            return jsonResponse({ ok: true, id: inquiryRecord.id }, 200);
           } catch {
-            return errorResponse('Invalid settings payload', 400);
+            return jsonResponse({ ok: false, error: 'Malformed request' }, 400);
           }
         }
-      }
 
-      // 1. GET: Fetch inquiries
-      if (request.method === 'GET') {
-        if (env.DB) {
-          try {
-            const res = await env.DB.prepare('SELECT * FROM student_inquiries ORDER BY created_at DESC LIMIT 500').all();
-            if (res?.results && res.results.length > 0) {
-              return jsonResponse({ inquiries: res.results }, 200);
+        if (url.pathname.startsWith('/api/admin/inquiries')) {
+          if (!await isCacheMutationAuthorized(request, env, true)) {
+            return errorResponse('Unauthorized administrative request', 401);
+          }
+
+          const parts = url.pathname.split('/');
+          const targetId = parts[4]; // e.g. /api/admin/inquiries/:id
+
+          // 0. Message Reception Kill-Switch Query / Toggle
+          if (url.pathname === '/api/admin/inquiries/settings') {
+            if (request.method === 'GET') {
+              return jsonResponse({
+                is_enabled: isMessagesReceptionEnabled,
+                paused_notice: messagesPausedNotice
+              }, 200, ADMIN_NO_CACHE_HEADERS);
             }
-          } catch {}
-        }
-        return jsonResponse({ inquiries: edgeInquiriesBuffer }, 200);
-      }
+            if (request.method === 'POST') {
+              try {
+                const body = (await request.json().catch(() => ({}))) as any;
+                if (typeof body.is_enabled === 'boolean') {
+                  isMessagesReceptionEnabled = body.is_enabled;
+                }
+                if (typeof body.paused_notice === 'string' && body.paused_notice.trim()) {
+                  messagesPausedNotice = body.paused_notice.trim();
+                }
+                return jsonResponse({
+                  ok: true,
+                  is_enabled: isMessagesReceptionEnabled,
+                  paused_notice: messagesPausedNotice
+                }, 200, ADMIN_NO_CACHE_HEADERS);
+              } catch {
+                return errorResponse('Invalid settings payload', 400, ADMIN_NO_CACHE_HEADERS);
+              }
+            }
+          }
 
-      // 2. PATCH: Update status and/or admin notes
-      if (request.method === 'PATCH' && targetId) {
-        try {
-          const patchBody = (await request.json().catch(() => ({}))) as any;
-          const newStatus = patchBody.status;
-          const adminNotes = patchBody.admin_notes !== undefined ? patchBody.admin_notes : null;
-          const resolvedAt = newStatus === 'RESOLVED' ? new Date().toISOString() : null;
+          // 1. GET: Fetch inquiries
+          if (request.method === 'GET') {
+            if (env.DB) {
+              try {
+                const res = await env.DB.prepare('SELECT * FROM student_inquiries ORDER BY created_at DESC LIMIT 500').all();
+                return jsonResponse({ inquiries: res?.results ?? [] }, 200, ADMIN_NO_CACHE_HEADERS);
+              } catch (error) {
+                console.error('[Worker] Failed to read student inquiries:', error);
+                return errorResponse('Inquiry service temporarily unavailable', 503, ADMIN_NO_CACHE_HEADERS);
+              }
+            }
+            return jsonResponse({ inquiries: edgeInquiriesBuffer }, 200, ADMIN_NO_CACHE_HEADERS);
+          }
 
-          if (env.DB) {
+          // 2. PATCH: Update status and/or admin notes
+          if (request.method === 'PATCH' && targetId) {
             try {
-              await env.DB.prepare(`
+              const patchBody = (await request.json()) as any;
+              const newStatus = patchBody.status;
+              const adminNotes = patchBody.admin_notes !== undefined ? patchBody.admin_notes : null;
+              if (newStatus !== undefined && !['OPEN', 'RESOLVED', 'SPAM'].includes(newStatus)) {
+                return errorResponse('Invalid inquiry status', 400, ADMIN_NO_CACHE_HEADERS);
+              }
+              if (adminNotes !== null && typeof adminNotes !== 'string') {
+                return errorResponse('Invalid admin notes', 400, ADMIN_NO_CACHE_HEADERS);
+              }
+              const resolvedAt = newStatus === 'RESOLVED' ? new Date().toISOString() : null;
+
+              if (env.DB) {
+                try {
+                  await env.DB.prepare(`
                 UPDATE student_inquiries
                 SET status = COALESCE(?, status),
                     admin_notes = COALESCE(?, admin_notes),
                     resolved_at = COALESCE(?, resolved_at)
                 WHERE id = ?
               `).bind(newStatus || null, adminNotes, resolvedAt, targetId).run();
-            } catch {}
-          }
-
-          const bufItem = edgeInquiriesBuffer.find((e: any) => e.id === targetId);
-          if (bufItem) {
-            if (newStatus) bufItem.status = newStatus;
-            if (adminNotes !== undefined) bufItem.admin_notes = adminNotes;
-            if (resolvedAt) bufItem.resolved_at = resolvedAt;
-          }
-
-          return jsonResponse({ ok: true, id: targetId }, 200);
-        } catch {
-          return errorResponse('Failed to update inquiry', 400);
-        }
-      }
-
-      // 3. DELETE: Single or All
-      if (request.method === 'DELETE') {
-        if (targetId) {
-          if (env.DB) {
-            await env.DB.prepare('DELETE FROM student_inquiries WHERE id = ?').bind(targetId).run().catch(() => {});
-          }
-          const idx = edgeInquiriesBuffer.findIndex((e: any) => e.id === targetId);
-          if (idx !== -1) edgeInquiriesBuffer.splice(idx, 1);
-        } else {
-          // DELETE ALL ("Delete All" in Message Center)
-          if (env.DB) {
-            await env.DB.prepare('DELETE FROM student_inquiries').run().catch(() => {});
-          }
-          edgeInquiriesBuffer.length = 0;
-        }
-        return jsonResponse({ ok: true, deleted: targetId || 'all' }, 200);
-      }
-
-      return errorResponse('Method Not Allowed', 405);
-    }
-
-    // 5. Only GET and HEAD allowed for remaining public endpoints (POST for invalidation, view tracking, and search RPC)
-    if (url.pathname.startsWith('/api/public/') && request.method !== 'GET' && request.method !== 'HEAD' && url.pathname !== '/api/public/view' && url.pathname !== '/api/public/search') {
-      return errorResponse('Method Not Allowed', 405);
-    }
-
-    // 6. Query string length guard
-    if (url.search.length > MAX_QUERY_STRING_LENGTH) {
-      return errorResponse('Query string too long', 414);
-    }
-
-    // 7. Cache Invalidation Endpoint
-    if (url.pathname === '/api/cache/invalidate') {
-      return handleInvalidation(request, origin, env, ctx);
-    }
-
-    // 8. Security check for public endpoints
-    if (url.pathname.startsWith('/api/public/')) {
-      const check = isPublicRequestSafe(request);
-      if (!check.safe) {
-        return errorResponse(check.reason || 'Unsafe request', 403);
-      }
-    }
-
-    // ─── Public API Routes ─────────────────────────────────────────────
-
-    if (url.pathname === '/api/public/image-proxy') {
-      return handleImageProxy(request, env, ctx);
-    }
-
-    if (url.pathname === '/api/public/homepage') {
-      return handleHomepage(origin, env, ctx, request);
-    }
-
-    if (url.pathname === '/api/public/categories') {
-      return handleCategories(origin, env, ctx, request);
-    }
-
-    if (url.pathname === '/api/public/carousel') {
-      return handleCarousel(origin, env, ctx, request);
-    }
-
-    if (url.pathname === '/api/public/featured') {
-      return handleFeatured(origin, env, ctx, request);
-    }
-
-    if (url.pathname === '/api/public/trending') {
-      return handleTrending(origin, env, ctx, request);
-    }
-
-    if (url.pathname === '/api/public/settings') {
-      return handleSettings(origin, env, ctx, request);
-    }
-
-    if (url.pathname === '/api/public/events') {
-      return handleEventFeed(origin, url, env, ctx, request);
-    }
-
-    // Route: /api/public/events/:id
-    const eventDetailMatch = url.pathname.match(/^\/api\/public\/events\/([a-f0-9-]+)$/i);
-    if (eventDetailMatch) {
-      return handleEventDetail(origin, eventDetailMatch[1], env, ctx, request);
-    }
-
-    if (url.pathname === '/api/public/search') {
-      return handleSearch(origin, url, env, ctx, request);
-    }
-
-    // 7. View tracking (debounced at edge to prevent database write exhaustion)
-    if (url.pathname === '/api/public/view' && request.method === 'POST') {
-      try {
-        const body = await request.json() as { event_id?: string };
-        if (body.event_id && UUID_REGEX.test(body.event_id)) {
-          const clientIp = request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || 'anon';
-          const viewKey = `${clientIp}:${body.event_id}`;
-          const now = Date.now();
-          const lastView = recentViews.get(viewKey);
-
-          if (!lastView || (now - lastView) > VIEW_DEBOUNCE_MS) {
-            // Prune map if size exceeds memory threshold
-            if (recentViews.size > 10000) {
-              for (const [k, ts] of recentViews.entries()) {
-                if (now - ts > VIEW_DEBOUNCE_MS) {
-                  recentViews.delete(k);
+                } catch (error) {
+                  console.error('[Worker] Failed to update student inquiry:', error);
+                  return errorResponse('Failed to update inquiry', 500, ADMIN_NO_CACHE_HEADERS);
                 }
               }
+
+              const bufItem = edgeInquiriesBuffer.find((e: any) => e.id === targetId);
+              if (bufItem) {
+                if (newStatus) bufItem.status = newStatus;
+                if (adminNotes !== undefined) bufItem.admin_notes = adminNotes;
+                if (resolvedAt) bufItem.resolved_at = resolvedAt;
+              }
+
+              return jsonResponse({ ok: true, id: targetId }, 200, ADMIN_NO_CACHE_HEADERS);
+            } catch (error) {
+              console.error('[Worker] Failed to parse or update student inquiry:', error);
+              return errorResponse('Failed to update inquiry', 400, ADMIN_NO_CACHE_HEADERS);
             }
-            recentViews.set(viewKey, now);
-            // Analytics-Only: view count tracked purely in analytics pipeline (zero database write hits)
+          }
+
+          // 3. DELETE: Single or All
+          if (request.method === 'DELETE') {
+            if (targetId) {
+              if (env.DB) {
+                try {
+                  await env.DB.prepare('DELETE FROM student_inquiries WHERE id = ?').bind(targetId).run();
+                } catch (error) {
+                  console.error('[Worker] Failed to delete student inquiry:', error);
+                  return errorResponse('Failed to delete inquiry', 500, ADMIN_NO_CACHE_HEADERS);
+                }
+              }
+              const idx = edgeInquiriesBuffer.findIndex((e: any) => e.id === targetId);
+              if (idx !== -1) edgeInquiriesBuffer.splice(idx, 1);
+            } else {
+              // DELETE ALL ("Delete All" in Message Center)
+              if (env.DB) {
+                try {
+                  await env.DB.prepare('DELETE FROM student_inquiries').run();
+                } catch (error) {
+                  console.error('[Worker] Failed to delete student inquiries:', error);
+                  return errorResponse('Failed to delete inquiries', 500, ADMIN_NO_CACHE_HEADERS);
+                }
+              }
+              edgeInquiriesBuffer.length = 0;
+            }
+            return jsonResponse({ ok: true, deleted: targetId || 'all' }, 200, ADMIN_NO_CACHE_HEADERS);
+          }
+
+          return errorResponse('Method Not Allowed', 405);
+        }
+
+        // 5. Only GET and HEAD allowed for remaining public endpoints (POST for invalidation, view tracking, and search RPC)
+        if (url.pathname.startsWith('/api/public/') && request.method !== 'GET' && request.method !== 'HEAD' && url.pathname !== '/api/public/view' && url.pathname !== '/api/public/search') {
+          return errorResponse('Method Not Allowed', 405);
+        }
+
+        // 6. Query string length guard
+        if (url.search.length > MAX_QUERY_STRING_LENGTH) {
+          return errorResponse('Query string too long', 414);
+        }
+
+        // 7. Cache Invalidation Endpoint
+        if (url.pathname === '/api/cache/invalidate') {
+          return handleInvalidation(request, origin, env, ctx);
+        }
+
+        // 8. Security check for public endpoints
+        if (url.pathname.startsWith('/api/public/')) {
+          const check = isPublicRequestSafe(request);
+          if (!check.safe) {
+            return errorResponse(check.reason || 'Unsafe request', 403);
           }
         }
-        return jsonResponse({ ok: true });
-      } catch {
-        return errorResponse('Invalid request body', 400);
-      }
-    }
+
+        // ─── Public API Routes ─────────────────────────────────────────────
+
+        if (url.pathname === '/api/public/image-proxy') {
+          return handleImageProxy(request, env, ctx);
+        }
+
+        if (url.pathname === '/api/public/homepage') {
+          return handleHomepage(origin, env, ctx, request);
+        }
+
+        if (url.pathname === '/api/public/categories') {
+          return handleCategories(origin, env, ctx, request);
+        }
+
+        if (url.pathname === '/api/public/carousel') {
+          return handleCarousel(origin, env, ctx, request);
+        }
+
+        if (url.pathname === '/api/public/featured') {
+          return handleFeatured(origin, env, ctx, request);
+        }
+
+        if (url.pathname === '/api/public/trending') {
+          return handleTrending(origin, env, ctx, request);
+        }
+
+        if (url.pathname === '/api/public/settings') {
+          return handleSettings(origin, env, ctx, request);
+        }
+
+        if (url.pathname === '/api/public/events') {
+          return handleEventFeed(origin, url, env, ctx, request);
+        }
+
+        // Route: /api/public/events/:id
+        const eventDetailMatch = url.pathname.match(/^\/api\/public\/events\/([a-f0-9-]+)$/i);
+        if (eventDetailMatch) {
+          return handleEventDetail(origin, eventDetailMatch[1], env, ctx, request);
+        }
+
+        if (url.pathname === '/api/public/search') {
+          return handleSearch(origin, url, env, ctx, request);
+        }
+
+        // 7. View tracking (debounced at edge to prevent database write exhaustion)
+        if (url.pathname === '/api/public/view' && request.method === 'POST') {
+          try {
+            const body = await request.json() as { event_id?: string };
+            if (body.event_id && UUID_REGEX.test(body.event_id)) {
+              const clientIp = request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || 'anon';
+              const viewKey = `${clientIp}:${body.event_id}`;
+              const now = Date.now();
+              const lastView = recentViews.get(viewKey);
+
+              if (!lastView || (now - lastView) > VIEW_DEBOUNCE_MS) {
+                // Prune map if size exceeds memory threshold
+                if (recentViews.size > 10000) {
+                  for (const [k, ts] of recentViews.entries()) {
+                    if (now - ts > VIEW_DEBOUNCE_MS) {
+                      recentViews.delete(k);
+                    }
+                  }
+                }
+                recentViews.set(viewKey, now);
+                // Analytics-Only: view count tracked purely in analytics pipeline (zero database write hits)
+              }
+            }
+            return jsonResponse({ ok: true });
+          } catch {
+            return errorResponse('Invalid request body', 400);
+          }
+        }
 
         return errorResponse('API endpoint not found', 404);
       })();
       return attachCorrelationId(response, correlationId);
-  } catch (unhandledErr: any) {
-    captureWorkerException(
-      ctx,
-      env.POSTHOG_API_KEY,
-      env.POSTHOG_HOST,
-      unhandledErr,
-      {
-        handler: 'worker_fetch',
-        correlation_id: correlationId,
-        http_method: request.method,
-        pathname: url.pathname,
-        status_code: 500,
-      }
-    );
-    return errorResponse('Internal Server Error', 500, {
-      'x-correlation-id': correlationId,
-    });
-  }
-},
+    } catch (unhandledErr: any) {
+      captureWorkerException(
+        ctx,
+        env.POSTHOG_API_KEY,
+        env.POSTHOG_HOST,
+        unhandledErr,
+        {
+          handler: 'worker_fetch',
+          correlation_id: correlationId,
+          http_method: request.method,
+          pathname: url.pathname,
+          status_code: 500,
+        }
+      );
+      return errorResponse('Internal Server Error', 500, {
+        'x-correlation-id': correlationId,
+      });
+    }
+  },
 };

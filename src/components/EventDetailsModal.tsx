@@ -42,14 +42,16 @@ export const EventDetailsModal = ({ eventId, onClose }: {
   if (!eventId) return null;
 
   const handleRegisterRedirect = () => {
-    if (event?.external_registration_url) {
+    const rawUrl = event?.external_registration_url?.trim();
+    if (rawUrl && /^https?:\/\//i.test(rawUrl)) {
       setDisclaimerOpen(true);
     }
   };
 
   const handleConfirmRedirect = () => {
-    if (event?.external_registration_url) {
-      window.open(event.external_registration_url, "_blank", "noopener,noreferrer");
+    const rawUrl = event?.external_registration_url?.trim();
+    if (rawUrl && /^https?:\/\//i.test(rawUrl)) {
+      window.open(rawUrl, "_blank", "noopener,noreferrer");
       setDisclaimerOpen(false);
     }
   };

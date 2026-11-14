@@ -20,6 +20,7 @@ import {
 } from './snapshot';
 import { persistentCache } from './persistentCache';
 import { registerMediaAssets } from './images/url';
+import { captureOrBufferException } from './telemetry/posthog';
 import type { CategoryFeedItem, Event, EventFeedItem } from './types';
 
 export interface SnapshotClientOptions {
@@ -161,8 +162,18 @@ export class SnapshotClient {
             persistentCache.set(cacheKey, json, this._manifestTtlMs);
             return json;
           }
+        } else {
+          captureOrBufferException(new Error(`Snapshot manifest fetch failed HTTP ${res.status}`), {
+            source: 'SnapshotClient:getManifest',
+            status: res.status,
+            url: manifestUrl,
+          });
         }
       } catch (err) {
+        captureOrBufferException(err, {
+          source: 'SnapshotClient:getManifest',
+          url: manifestUrl,
+        });
         // Non-blocking network error; fall back to stale persistent cache if available
         const stale = persistentCache.get<SnapshotManifest>(cacheKey);
         if (stale) return stale;
@@ -203,8 +214,18 @@ export class SnapshotClient {
           this._payloadCache.set(cacheKey, { data, expiresAt: Date.now() + this._payloadTtlMs });
           persistentCache.set(cacheKey, data, this._payloadTtlMs);
           return data;
+        } else {
+          captureOrBufferException(new Error(`Snapshot payload fetch failed HTTP ${res.status}`), {
+            source: 'SnapshotClient:fetchPayload',
+            status: res.status,
+            url: targetUrl,
+          });
         }
-      } catch {
+      } catch (err) {
+        captureOrBufferException(err, {
+          source: 'SnapshotClient:fetchPayload',
+          url: targetUrl,
+        });
         // Fall through on error
       }
       return null;
