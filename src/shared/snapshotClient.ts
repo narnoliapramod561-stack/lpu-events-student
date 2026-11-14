@@ -243,6 +243,14 @@ export class SnapshotClient {
 
     const payload = await this.fetchPayload<HomepageSnapshotPayload>(manifest.resources.homepage);
     if (payload && payload.events) {
+      // Staleness Invariant: if snapshot contains events but ALL events ended in the past, reject stale snapshot to allow fallback
+      const now = Date.now();
+      const hasActiveOrUpcoming = payload.events.some((e: any) => !e.end_at || new Date(e.end_at).getTime() > now);
+      if (payload.events.length > 0 && !hasActiveOrUpcoming) {
+        console.warn('[SnapshotClient] All homepage snapshot events are in the past. Rejecting stale snapshot to trigger live edge fallback.');
+        return null;
+      }
+
       registerMediaAssets([
         ...(payload.events || []),
         ...(payload.featured || []).map((f: any) => f.events || f),
@@ -290,6 +298,12 @@ export class SnapshotClient {
 
     const payload = await this.fetchPayload<EventsCatalogueSnapshotPayload>(manifest.resources.catalogue);
     if (payload?.events && Array.isArray(payload.events)) {
+      const now = Date.now();
+      const hasActiveOrUpcoming = payload.events.some((e: any) => !e.end_at || new Date(e.end_at).getTime() > now);
+      if (payload.events.length > 0 && !hasActiveOrUpcoming) {
+        console.warn('[SnapshotClient] All catalogue snapshot events are in the past. Rejecting stale catalogue to trigger live edge fallback.');
+        return null;
+      }
       this._catalogueCache = payload.events;
       return payload.events;
     }

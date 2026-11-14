@@ -1078,12 +1078,13 @@ async function handleCarousel(origin: string, env: Env, ctx: ExecutionContext, r
       'GET', undefined, env
     );
     if (!res.ok || !Array.isArray(res.data)) return res;
-    // Carousel items are curated directly by superadmin:
-    // They stay in the hero carousel regardless of event end time until superadmin deactivates or removes them.
+    const now = Date.now();
     const filtered = (res.data as any[]).filter((slide: any) => {
       if (slide.item_type === 'EVENT') {
         const rawEvt = Array.isArray(slide.events) ? slide.events[0] : slide.events;
-        if (!rawEvt || !['PUBLISHED', 'COMPLETED'].includes(rawEvt.status)) return false;
+        if (!rawEvt || !['PUBLISHED'].includes(rawEvt.status)) return false;
+        // Auto-expire past events from hero carousel after their end date passes
+        if (rawEvt.end_at && new Date(rawEvt.end_at).getTime() < now) return false;
       }
       return true;
     });
@@ -1364,14 +1365,14 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext, r
 
     const now = new Date();
 
-    // Carousel items are curated directly by superadmin:
-    // They stay in the hero carousel regardless of event end time until superadmin deactivates or removes them.
     let carousel: any[] = [];
     if (carouselRes.ok && Array.isArray(carouselRes.data)) {
       carousel = (carouselRes.data as any[]).filter((slide: any) => {
         if (slide.item_type === 'EVENT') {
           const rawEvt = Array.isArray(slide.events) ? slide.events[0] : slide.events;
-          if (!rawEvt || !['PUBLISHED', 'COMPLETED'].includes(rawEvt.status)) return false;
+          if (!rawEvt || !['PUBLISHED'].includes(rawEvt.status)) return false;
+          // Auto-expire past events from hero carousel after their end date passes
+          if (rawEvt.end_at && new Date(rawEvt.end_at).getTime() < now.getTime()) return false;
         }
         return true;
       });
@@ -3954,5 +3955,27 @@ export default {
         'x-correlation-id': correlationId,
       });
     }
+  },
+
+  async scheduled(_event: unknown, _env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(
+      (async () => {
+        try {
+          const res = await fetch('https://images.lpuevents.live/public-content/manifest.json', {
+            headers: { Accept: 'application/json' },
+          });
+          if (res.ok) {
+            const manifest = (await res.json()) as any;
+            const publishedAt = manifest?.published_at ? new Date(manifest.published_at).getTime() : 0;
+            const ageMs = Date.now() - publishedAt;
+            if (ageMs > 6 * 3600 * 1000) {
+              console.warn(`[ScheduledReconciler] Stale R2 snapshot detected (${Math.round(ageMs / 36e5)}h old).`);
+            }
+          }
+        } catch (err) {
+          console.error('[ScheduledReconciler] Health check error:', err);
+        }
+      })()
+    );
   },
 };

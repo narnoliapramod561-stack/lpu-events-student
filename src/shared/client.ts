@@ -734,6 +734,24 @@ export class LpuEventsClient {
           headers,
           body: JSON.stringify({ tags }),
         });
+
+        // Trigger snapshot publication queue and edge function
+        try {
+          await this.supabase.rpc('enqueue_snapshot_publication', {
+            p_trigger_source: 'MUTATION',
+          });
+          const supabaseUrl = (this.supabase as any)?.supabaseUrl || 'https://nhjphyqiqhmxdhppljap.supabase.co';
+          fetch(`${supabaseUrl}/functions/v1/publish-snapshots`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ trigger_source: 'MUTATION' }),
+          }).catch(() => {});
+        } catch {
+          // Non-blocking
+        }
       } catch {
         // Non-blocking telemetry
       }

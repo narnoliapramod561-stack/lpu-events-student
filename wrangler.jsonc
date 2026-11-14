@@ -16,6 +16,9 @@
     "not_found_handling": "single-page-application",
     "run_worker_first": true
   },
+  "triggers": {
+    "crons": ["*/15 * * * *"]
+  },
   "vars": {
     "SUPABASE_URL": "https://nhjphyqiqhmxdhppljap.supabase.co",
     "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oanBoeXFpcWhteGRocHBsamFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMjE3ODAsImV4cCI6MjEwMjc5Nzc4MH0.MdESnKpZVkhVlNoXLTEaTpm0smosL3D2ikwIzzJf3HQ"
