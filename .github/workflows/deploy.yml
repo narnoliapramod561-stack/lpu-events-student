@@ -30,16 +30,20 @@ jobs:
           VITE_APP_VERSION: ${{ github.ref_name }}
 
       - name: Upload Source Maps to PostHog
+        if: env.POSTHOG_CLI_TOKEN != ''
         uses: PostHog/upload-source-maps@v1
+        env:
+          POSTHOG_CLI_TOKEN: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
         with:
           directory: 'dist'
-          project-id: ${{ secrets.POSTHOG_PROJECT_ID }}
-          api-key: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
+          project: ${{ secrets.POSTHOG_PROJECT_ID }}
+          cli-token: ${{ secrets.POSTHOG_PERSONAL_API_KEY }}
           host: 'https://us.posthog.com'
           delete-after-upload: true
 
-      - name: Verify No Source Maps in Dist Artifact
+      - name: Purge and Verify Zero Source Maps in Dist Artifact
         run: |
+          find dist/ -name "*.map" -type f -delete
           MAP_COUNT=$(find dist/ -name "*.map" | wc -l)
           if [ "$MAP_COUNT" -ne 0 ]; then
             echo "Security Error: Found unpurged .map files in dist/ directory!"
