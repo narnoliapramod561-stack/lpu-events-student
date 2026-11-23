@@ -8,12 +8,13 @@ import { SplashScreen } from "./components/SplashScreen";
 
 import { CategoryFilter } from "./components/CategoryFilter";
 import { HappeningTodaySlider } from "./components/HappeningTodaySlider";
+import { PanoramicBannerAd } from "./components/ads/PanoramicBannerAd";
+import { PullToRefresh } from "./components/PullToRefresh";
 const EventDetailsView = lazy(() => import("./components/EventDetailsView").then(m => ({ default: m.EventDetailsView })));
 const AboutUsView = lazy(() => import("./components/AboutUsView").then(m => ({ default: m.AboutUsView })));
 const PrivacyPolicyView = lazy(() => import("./components/PrivacyPolicyView").then(m => ({ default: m.PrivacyPolicyView })));
 const TermsOfServiceView = lazy(() => import("./components/TermsOfServiceView").then(m => ({ default: m.TermsOfServiceView })));
 const ContactUsView = lazy(() => import("./components/ContactUsView").then(m => ({ default: m.ContactUsView })));
-const CookieConsentBanner = lazy(() => import("./components/CookieConsentBanner").then(m => ({ default: m.CookieConsentBanner })));
 import { OFFICIAL_PLATFORM_CATEGORIES } from "./utils/categories";
 import { lpuClient } from "./supabase";
 import { searchEventsClientSide } from "./shared/clientSearch";
@@ -28,6 +29,7 @@ import {
   trackPageView,
   trackEvent,
   isEventToday,
+  isEventFinished,
   matchesScheduleFilter,
   createEventSlug,
   slugify,
@@ -35,7 +37,9 @@ import {
   registerMediaAssets,
   reportHandledError,
   SnapshotClient,
-  catalogueEventToFeedItem
+  catalogueEventToFeedItem,
+  MasterAdsPlacementManifest,
+  interleaveCarouselAds
 } from "@lpu-events/shared";
 
 export type StudentRoute = 'home' | 'about' | 'privacy' | 'terms' | 'contact' | 'event-details';
@@ -204,12 +208,21 @@ export default function App() {
   const [categories, setCategories] = useState<CategoryFeedItem[]>(
     initialBundle?.categories || OFFICIAL_PLATFORM_CATEGORIES
   );
-  const [featuredEvents, setFeaturedEvents] = useState<EventFeedItem[]>(
-    initialBundle?.featured ? normalizeEventDates(initialBundle.featured.map((fe: any) => fe.events || fe).filter(Boolean)) : []
-  );
-  const [trendingEvents, setTrendingEvents] = useState<EventFeedItem[]>(
-    initialBundle?.trending ? normalizeEventDates(initialBundle.trending.filter(Boolean)) : []
-  );
+  const [featuredEvents, setFeaturedEvents] = useState<EventFeedItem[]>(() => {
+    if (!initialBundle?.featured) return [];
+    const now = new Date();
+    const resolved: EventFeedItem[] = initialBundle.featured
+      .map((fe: any) => fe.events || fe)
+      .filter((evt: any) => evt && !isEventFinished(evt, now));
+    return normalizeEventDates(resolved);
+  });
+  const [trendingEvents, setTrendingEvents] = useState<EventFeedItem[]>(() => {
+    if (!initialBundle?.trending) return [];
+    const now = new Date();
+    const valid: EventFeedItem[] = initialBundle.trending
+      .filter((evt: any) => evt && !isEventFinished(evt, now));
+    return normalizeEventDates(valid);
+  });
   const [carouselSlides, setCarouselSlides] = useState<CarouselItemFeedItem[]>(
     initialBundle?.carousel || []
   );
@@ -223,8 +236,12 @@ export default function App() {
         evt.status !== 'CANCELLED' &&
         evt.status !== 'DELETED' &&
         !evt.deleted_at &&
-        isEventToday(evt.start_at, evt.end_at, now)
+        isEventToday(evt.start_at, evt.end_at, now) &&
+        !isEventFinished(evt, now)
     );
+  });
+  const [adsManifest, setAdsManifest] = useState<MasterAdsPlacementManifest | null>(() => {
+    return initialBundle?.ads_manifest || null;
   });
   const [happeningTodayConfig, setHappeningTodayConfig] = useState<HappeningTodayConfig | null>(() => {
     if (initialBundle?.settings && Array.isArray(initialBundle.settings)) {
@@ -311,16 +328,30 @@ export default function App() {
 
   const [announcementDismissed, setAnnouncementDismissed] = useState(false);
 
-  // Aggregated in-memory events for instant detail-view lookup
+  const activeHeroStripAd = useMemo(() => {
+    if (!adsManifest?.hero_strip?.is_enabled || !adsManifest.hero_strip.selected_ad_id) return null;
+    return adsManifest.ads?.[adsManifest.hero_strip.selected_ad_id] || null;
+  }, [adsManifest]);
+
+  const interleavedCarouselSlides = useMemo(() => {
+    return interleaveCarouselAds(carouselSlides, adsManifest);
+  }, [carouselSlides, adsManifest]);
   const allAvailableEvents = useMemo(() => {
     const map = new Map<string, EventFeedItem>();
     [...events, ...featuredEvents, ...trendingEvents, ...happeningTodayEvents].forEach(evt => {
       if (evt && evt.id) map.set(evt.id, evt);
     });
+    // Hero carousel is exempt: preserve carousel-featured events in memory for navigation and details
+    carouselSlides.forEach((item) => {
+      const cEvt: any = Array.isArray(item.events) ? item.events[0] : item.events;
+      if (cEvt && cEvt.id && !map.has(cEvt.id)) {
+        map.set(cEvt.id, cEvt);
+      }
+    });
     const list = Array.from(map.values());
     registerMediaAssets(list);
     return list;
-  }, [events, featuredEvents, trendingEvents, happeningTodayEvents]);
+  }, [events, featuredEvents, trendingEvents, happeningTodayEvents, carouselSlides]);
 
   // Route state
   const initialRouteState = useMemo(() => parseCurrentRoute(), []);
@@ -527,9 +558,10 @@ export default function App() {
       }
 
       try {
-        const [homepageSnapshot, catalogueSnapshot] = await Promise.all([
-          publicSnapshotClient.getHomepageSnapshot(),
-          publicSnapshotClient.getEventsCatalogueSnapshot(),
+        const [homepageSnapshot, catalogueSnapshot, adsSnapshot] = await Promise.all([
+          publicSnapshotClient.getHomepageSnapshot(forceFresh),
+          publicSnapshotClient.getEventsCatalogueSnapshot(forceFresh),
+          publicSnapshotClient.getAdsManifest(forceFresh),
         ]);
         if (
           homepageSnapshot &&
@@ -537,6 +569,11 @@ export default function App() {
         ) {
           bundle = homepageSnapshot;
           catalogueEvents = catalogueSnapshot.map(catalogueEventToFeedItem);
+        }
+        if (adsSnapshot) {
+          setAdsManifest(adsSnapshot);
+        } else if (homepageSnapshot?.ads_manifest) {
+          setAdsManifest(homepageSnapshot.ads_manifest);
         }
       } catch (snapshotError) {
         reportHandledError(snapshotError, { source: 'StudentApp:loadAllData:snapshot' });
@@ -571,9 +608,10 @@ export default function App() {
 
       // Featured Events
       if (bundle.featured) {
+        const now = new Date();
         const resolved: EventFeedItem[] = bundle.featured
           .map((fe: any) => fe.events || fe)
-          .filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at);
+          .filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at && !isEventFinished(evt, now));
         const normalized = normalizeEventDates(resolved);
         setFeaturedEvents(prev => {
           if (prev.length === normalized.length && prev.every((e, i) => e.id === normalized[i]?.id)) {
@@ -585,8 +623,9 @@ export default function App() {
 
       // Trending Events
       if (bundle.trending) {
+        const now = new Date();
         const validTrending = bundle.trending.filter(
-          (evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at
+          (evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at && !isEventFinished(evt, now)
         );
         const normalized = normalizeEventDates(validTrending);
         setTrendingEvents(prev => {
@@ -600,7 +639,22 @@ export default function App() {
       // Carousel
       if (bundle.carousel) {
         setCarouselSlides(prev => {
-          if (prev.length === bundle.carousel.length && prev.every((c, i) => c.id === bundle.carousel[i]?.id)) {
+          if (
+            prev.length === bundle.carousel.length &&
+            prev.every((c, i) => {
+              const next = bundle.carousel[i];
+              return (
+                c.id === next?.id &&
+                c.display_duration_ms === next?.display_duration_ms &&
+                c.custom_title === next?.custom_title &&
+                c.custom_subtitle === next?.custom_subtitle &&
+                c.custom_cta_text === next?.custom_cta_text &&
+                c.custom_cta_url === next?.custom_cta_url &&
+                c.badge_text === next?.badge_text &&
+                c.is_active === next?.is_active
+              );
+            })
+          ) {
             return prev;
           }
           return bundle.carousel;
@@ -650,6 +704,9 @@ export default function App() {
 
       // Happening Today events & initial Event Hub feed populated directly from homepage bundle
       if (bundle.events) {
+        if (bundle.ads_manifest) {
+          setAdsManifest(bundle.ads_manifest);
+        }
         const now = new Date();
         const published = bundle.events.filter((evt: any) => evt.status === 'PUBLISHED' && !evt.deleted_at);
         const normalized = normalizeEventDates(published);
@@ -658,7 +715,8 @@ export default function App() {
             evt.status !== 'CANCELLED' &&
             evt.status !== 'DELETED' &&
             !evt.deleted_at &&
-            isEventToday(evt.start_at, evt.end_at, now)
+            isEventToday(evt.start_at, evt.end_at, now) &&
+            !isEventFinished(evt, now)
         );
         setHappeningTodayEvents(prev => {
           if (prev.length === validLive.length && prev.every((e, i) => e.id === validLive[i]?.id)) {
@@ -666,8 +724,27 @@ export default function App() {
           }
           return validLive;
         });
+        // Enrich catalogue events with full descriptions & content sections from bundle.events
+        const richEventsMap = new Map<string, any>();
+        if (Array.isArray(bundle.events)) {
+          bundle.events.forEach((e: any) => {
+            if (e?.id) richEventsMap.set(e.id, e);
+          });
+        }
+
         const canonicalEvents = catalogueEvents
-          ? normalizeEventDates(catalogueEvents)
+          ? normalizeEventDates(
+            catalogueEvents.map((catEvt) => {
+              const rich = richEventsMap.get(catEvt.id);
+              return rich
+                ? {
+                  ...catEvt,
+                  description: rich.description || catEvt.description,
+                  event_content_sections: rich.event_content_sections || (catEvt as any).event_content_sections,
+                }
+                : catEvt;
+            })
+          )
           : normalized;
         setVisibleEventsCount(9);
         setEvents(prev => {
@@ -760,6 +837,7 @@ export default function App() {
   // Realtime synchronization across Supabase Postgres CDC, Realtime Broadcast, and Storage events
   useEffect(() => {
     const handleSync = () => {
+      publicSnapshotClient.invalidate();
       lpuClient.invalidateClientCache('public:');
       if (currentView === 'home') {
         loadAllData(true);
@@ -771,12 +849,57 @@ export default function App() {
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'lpu_cache_bust') handleSync();
     };
+
+    const handleFocus = () => {
+      if (document.visibilityState === 'visible') {
+        handleSync();
+      }
+    };
+
     window.addEventListener('storage', handleStorage);
     window.addEventListener('lpu:cache-invalidated', handleSync);
+    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleFocus);
+
+    // Instant cross-tab broadcast channel synchronization
+    let devBc: BroadcastChannel | null = null;
+    try {
+      devBc = new BroadcastChannel('lpu-events-dev-sync');
+      devBc.onmessage = () => handleSync();
+    } catch { }
+
+    // Instant local dev synchronization via Vite HMR WebSocket
+    if (import.meta.hot) {
+      import.meta.hot.on('lpu:cache-invalidate', handleSync);
+    }
+
+    // Periodic lightweight background version handshake to auto-detect Super Admin changes without reload
+    const backgroundHandshakeTimer = setInterval(async () => {
+      try {
+        const manifest = await publicSnapshotClient.getManifest();
+        const currentRev = manifest?.revision || manifest?.active_revision || null;
+        if (!currentRev) return;
+        const handshake = await publicSnapshotClient.executeVersionHandshake(currentRev);
+        if (handshake.status === 'UPDATED') {
+          handleSync();
+        }
+      } catch {
+        // Non-blocking background polling
+      }
+    }, 30_000);
 
     return () => {
+      clearInterval(backgroundHandshakeTimer);
       window.removeEventListener('storage', handleStorage);
       window.removeEventListener('lpu:cache-invalidated', handleSync);
+      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleFocus);
+      if (devBc) {
+        devBc.close();
+      }
+      if (import.meta.hot) {
+        import.meta.hot.off('lpu:cache-invalidate', handleSync);
+      }
     };
   }, [loadAllData, fetchUpcomingEvents, currentView]);
 
@@ -786,16 +909,19 @@ export default function App() {
       if (key === HOMEPAGE_CACHE_KEY && data && typeof data === 'object') {
         if (data.categories) setCategories(data.categories);
         if (data.featured) {
+          const now = new Date();
           const resolved = data.featured
             .map((fe: any) => fe.events || fe)
-            .filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at);
+            .filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at && !isEventFinished(evt, now));
           setFeaturedEvents(normalizeEventDates(resolved));
         }
         if (data.trending) {
-          const valid = data.trending.filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at);
+          const now = new Date();
+          const valid = data.trending.filter((evt: any) => evt && evt.status === 'PUBLISHED' && !evt.deleted_at && !isEventFinished(evt, now));
           setTrendingEvents(normalizeEventDates(valid));
         }
         if (data.carousel) setCarouselSlides(data.carousel);
+        if (data.ads_manifest) setAdsManifest(data.ads_manifest);
         if (data.events) {
           const now = new Date();
           const published = data.events.filter((evt: any) => evt.status === 'PUBLISHED' && !evt.deleted_at);
@@ -805,7 +931,8 @@ export default function App() {
               evt.status !== 'CANCELLED' &&
               evt.status !== 'DELETED' &&
               !evt.deleted_at &&
-              isEventToday(evt.start_at, evt.end_at, now)
+              isEventToday(evt.start_at, evt.end_at, now) &&
+              !isEventFinished(evt, now)
           );
           setHappeningTodayEvents(validLive);
           setEvents((prev) => {
@@ -819,6 +946,27 @@ export default function App() {
     });
     return unsubscribe;
   }, [selectedCategory, selectedSubcategory, selectedPricingType, activeScheduleFilter, selectedDate]);
+
+  const handlePullToRefresh = useCallback(async () => {
+    try {
+      const manifest = await publicSnapshotClient.getManifest();
+      const currentRev = manifest?.active_revision || manifest?.revision || null;
+      const handshake = await publicSnapshotClient.executeVersionHandshake(currentRev);
+
+      if (handshake.status === 'UP_TO_DATE') {
+        return { status: 'UP_TO_DATE' };
+      }
+
+      await Promise.all([
+        loadAllData(true),
+        fetchUpcomingEvents(true),
+      ]);
+      return { status: 'UPDATED' };
+    } catch {
+      await loadAllData(true);
+      return { status: 'UPDATED' };
+    }
+  }, [loadAllData, fetchUpcomingEvents]);
 
   const lastFetchedFiltersRef = useRef<string>("all||ALL|all|");
 
@@ -1007,6 +1155,29 @@ export default function App() {
     const now = new Date();
 
     const result = list.filter((e) => {
+      // Strictly exclude finished events from Event Hub
+      if (isEventFinished(e, now)) return false;
+
+      // Category filter
+      if (!isTrendingActive && !isSearching && selectedCategory && selectedCategory !== 'all') {
+        const catId = e.category_id;
+        const catKey = (e.categories?.key || '').toLowerCase();
+        const selCat = selectedCategory.toLowerCase();
+        if (catId !== selectedCategory && catKey !== selCat) {
+          return false;
+        }
+      }
+
+      // Subcategory filter
+      if (!isTrendingActive && !isSearching && selectedSubcategory) {
+        const subId = e.subcategory_id;
+        const subKey = (e.subcategories?.key || '').toLowerCase();
+        const selSub = selectedSubcategory.toLowerCase();
+        if (subId !== selectedSubcategory && subKey !== selSub) {
+          return false;
+        }
+      }
+
       if (!isTrendingActive && !isSearching && selectedPricingType !== 'ALL') {
         if (e.pricing_type !== selectedPricingType) return false;
       }
@@ -1022,7 +1193,7 @@ export default function App() {
       const timeDelta = new Date(a.start_at).getTime() - new Date(b.start_at).getTime();
       return timeDelta || a.id.localeCompare(b.id);
     });
-  }, [events, trendingEvents, isTrendingActive, activeScheduleFilter, selectedDate, selectedPricingType, isSearching, searchQuery, allAvailableEvents]);
+  }, [events, trendingEvents, isTrendingActive, activeScheduleFilter, selectedDate, selectedPricingType, selectedCategory, selectedSubcategory, isSearching, searchQuery, allAvailableEvents]);
 
   useEffect(() => {
     setVisibleEventsCount(9);
@@ -1062,8 +1233,8 @@ export default function App() {
           fetchPriority="high"
           decoding="async"
           className={`campus-bg-img-element transition-[filter] duration-500 ${(currentView === 'event-details' || selectedEventId)
-              ? 'blur-[22px]'
-              : ''
+            ? 'blur-[22px]'
+            : ''
             }`}
         />
         {/* Subtle Dark Mode Obsidian Tint */}
@@ -1074,8 +1245,8 @@ export default function App() {
       <div
         aria-hidden="true"
         className={`campus-bg-fixed-layer select-none hidden dark:block transition-[filter] duration-500 ${(currentView === 'event-details' || selectedEventId)
-            ? 'blur-[24px]'
-            : ''
+          ? 'blur-[24px]'
+          : ''
           }`}
       >
         {/* 1. Ethereal Violet-Indigo Top Wash */}
@@ -1121,10 +1292,10 @@ export default function App() {
             <aside
               aria-label="Campus Announcement"
               className={`w-full py-2.5 px-3 sm:px-6 text-xs font-semibold flex items-center justify-between gap-3 shadow-sm transition-all z-[60] relative ${campusAnnouncement.urgency === 'critical'
-                  ? 'bg-red-600 text-white'
-                  : campusAnnouncement.urgency === 'warning'
-                    ? 'bg-amber-500 text-neutral-950 font-bold'
-                    : 'bg-gradient-to-r from-[#ff6b00] to-[#ff8533] text-white'
+                ? 'bg-red-600 text-white'
+                : campusAnnouncement.urgency === 'warning'
+                  ? 'bg-amber-500 text-neutral-950 font-bold'
+                  : 'bg-gradient-to-r from-[#ff6b00] to-[#ff8533] text-white'
                 }`}
             >
               <div className="flex items-center gap-2 max-w-[92%] mx-auto overflow-hidden">
@@ -1172,167 +1343,181 @@ export default function App() {
             allEvents={allAvailableEvents}
           />
 
-          <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-4 sm:px-6 md:px-8 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6">
-            <Suspense fallback={
-              <div className="min-h-[40vh] flex items-center justify-center">
-                <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
-              </div>
-            }>
-              {currentView === 'about' ? (
-                <AboutUsView onBack={() => handleNavigate('home')} />
-              ) : currentView === 'contact' ? (
-                <ContactUsView onBack={() => handleNavigate('home')} />
-              ) : currentView === 'privacy' ? (
-                <PrivacyPolicyView onBack={() => handleNavigate('home')} onNavigateContact={() => handleNavigate('contact')} />
-              ) : currentView === 'terms' ? (
-                <TermsOfServiceView onBack={() => handleNavigate('home')} />
-              ) : (currentView === 'event-details' || selectedEventId) ? (
-                <EventDetailsView
-                  eventId={selectedEventId!}
-                  onBack={() => handleSelectEvent(null)}
-                  onSelectEvent={handleSelectEvent}
-                  allEvents={allAvailableEvents}
-                />
-              ) : (
-                <>
-                  {/* If user is actively searching, hide top modules gracefully via CSS rather than unmounting */}
-                  <div className={searchQuery.trim().length >= 2 ? "hidden" : "contents"}>
-                    {/* Top Hero Carousel */}
-                    <HeroCarousel
-                      carouselItems={carouselSlides}
-                      allEvents={allAvailableEvents}
-                      onSelectEvent={handleSelectEvent}
-                    />
+          <PullToRefresh onRefresh={handlePullToRefresh}>
+            <main className="w-full max-w-full sm:max-w-[98%] mx-auto px-4 sm:px-6 md:px-8 flex flex-col gap-6 sm:gap-12 mt-2 sm:mt-6">
+              <Suspense fallback={
+                <div className="min-h-[40vh] flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+                </div>
+              }>
+                {currentView === 'about' ? (
+                  <AboutUsView onBack={() => handleNavigate('home')} />
+                ) : currentView === 'contact' ? (
+                  <ContactUsView onBack={() => handleNavigate('home')} />
+                ) : currentView === 'privacy' ? (
+                  <PrivacyPolicyView onBack={() => handleNavigate('home')} onNavigateContact={() => handleNavigate('contact')} />
+                ) : currentView === 'terms' ? (
+                  <TermsOfServiceView onBack={() => handleNavigate('home')} />
+                ) : (currentView === 'event-details' || selectedEventId) ? (
+                  <EventDetailsView
+                    eventId={selectedEventId!}
+                    onBack={() => handleSelectEvent(null)}
+                    onSelectEvent={handleSelectEvent}
+                    allEvents={allAvailableEvents}
+                  />
+                ) : (
+                  <>
+                    {/* If user is actively searching, hide top modules gracefully via CSS rather than unmounting */}
+                    <div className={searchQuery.trim().length >= 2 ? "hidden" : "contents"}>
+                      {/* Top Hero Carousel */}
+                      <HeroCarousel
+                        carouselItems={interleavedCarouselSlides}
+                        allEvents={allAvailableEvents}
+                        onSelectEvent={handleSelectEvent}
+                      />
 
-                    {/* Lower Content: Skeletons during initial load, otherwise live modules */}
-                    {appLoading ? (
-                      <div className="w-full space-y-6 sm:space-y-10 mt-2 sm:mt-4">
-                        {/* Happening Today Skeleton */}
-                        <div className="w-full">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="h-6 w-32 rounded-md skeleton-base" />
-                            <div className="h-8 w-20 rounded-full skeleton-base" />
-                          </div>
-                          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                            {Array.from({ length: 4 }).map((_, i) => (
-                              <div key={i} className="h-[180px] rounded-[20px] skeleton-base" />
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Categories Skeleton */}
-                        <div className="w-full">
-                          <div className="flex items-center justify-between mb-4">
-                            <div className="h-6 w-24 rounded-md skeleton-base" />
-                            <div className="h-8 w-20 rounded-full skeleton-base" />
-                          </div>
-                          <div className="flex gap-2 overflow-x-auto pb-2">
-                            {Array.from({ length: 8 }).map((_, i) => (
-                              <div key={i} className="h-8 w-20 rounded-full skeleton-base flex-shrink-0" />
-                            ))}
-                          </div>
-                        </div>
-
-                        {/* Event Grid Skeleton */}
-                        <div className="w-full">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5 sm:gap-6 lg:gap-8">
-                            {Array.from({ length: 6 }).map((_, i) => (
-                              <div key={i} className="flex flex-col h-full rounded-[26px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md max-w-[390px] sm:max-w-none mx-auto w-full">
-                                <div className="w-full aspect-[16/9] bg-gray-200/70 dark:bg-white/5 skeleton-base" />
-                                <div className="p-3.5 sm:p-5 flex flex-col flex-1 space-y-3">
-                                  <div className="h-4 w-20 rounded-md skeleton-base" />
-                                  <div className="h-6 w-3/4 rounded-md skeleton-base" />
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <>
-                        {/* Happening Today Slider */}
-                        <HappeningTodaySlider
-                          events={happeningTodayEvents}
-                          config={happeningTodayConfig}
-                          onSelectEvent={handleSelectEvent}
-                        />
-
-                        {/* Categories & Filter Bar */}
-                        <div id="categories" className="scroll-mt-24">
-                          <CategoryFilter
-                            categories={categories}
-                            selectedCategory={selectedCategory}
-                            selectedSubcategory={selectedSubcategory}
-                            onSelectCategory={handleSelectCategory}
-                            onSelectSubcategory={handleSelectSubcategory}
-                            selectedDate={selectedDate}
-                            onSelectDate={handleSelectDate}
-                            activeScheduleFilter={activeScheduleFilter}
-                            onSelectScheduleFilter={handleSelectScheduleFilter}
-                            selectedPricingType={selectedPricingType}
-                            onSelectPricingType={handleSelectPricingType}
-                            isTrendingActive={isTrendingActive}
-                            onSelectTrending={handleSelectTrending}
+                      {/* 8:1 Panoramic Hero Ribbon Ad */}
+                      {activeHeroStripAd && (
+                        <div className="w-full my-4 sm:my-6">
+                          <PanoramicBannerAd
+                            adId={activeHeroStripAd.id}
+                            imageUrl={activeHeroStripAd.image_url}
+                            redirectUrl={activeHeroStripAd.redirect_url}
+                            title={activeHeroStripAd.name}
+                            ctaText={activeHeroStripAd.cta_text}
+                            badgeText={activeHeroStripAd.badge_text}
                           />
                         </div>
-                      </>
-                    )}
-                  </div>
-
-                  {/* Event hub upcoming grid / Search Results Grid */}
-                  <div id="events" className="scroll-mt-24">
-                    <EventGrid
-                      events={displayedEvents}
-                      loading={isSearching ? false : eventsLoading}
-                      onResetFilters={handleResetFilters}
-                      onSelectEvent={handleSelectEvent}
-                      title={
-                        isSearching
-                          ? "Search Results"
-                          : isTrendingActive
-                            ? "🔥 Trending Events"
-                            : "Event Hub"
-                      }
-                      searchQuery={searchQuery.trim()}
-                    />
-
-                    {/* Show More upcoming events */}
-                    {!eventsLoading && (
-                      isSearching
-                        ? filteredEvents.length > visibleEventsCount
-                        : visibleEventsCount < filteredEvents.length
-                    ) && (
-                        <div className="flex justify-center mt-6 sm:mt-8">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (isSearching || visibleEventsCount < filteredEvents.length) {
-                                setVisibleEventsCount(prev => prev + showMoreIncrement);
-                              } else {
-                                handleLoadMoreEvents();
-                              }
-                            }}
-                            className="glass-pill px-7 sm:px-9 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-heading font-black text-xs sm:text-sm text-gray-900 dark:text-gray-100 hover:text-primary hover:border-primary/50 cursor-pointer shadow-lg hover:scale-103 active:scale-95 transition-all touch-target border border-white/95 dark:border-white/10"
-                          >
-                            View More Events
-                          </button>
-                        </div>
                       )}
-                  </div>
-                </>
-              )}
-            </Suspense>
-          </main>
+
+                      {/* Lower Content: Skeletons during initial load, otherwise live modules */}
+                      {appLoading ? (
+                        <div className="w-full space-y-6 sm:space-y-10 mt-2 sm:mt-4">
+                          {/* Happening Today Skeleton */}
+                          <div className="w-full">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="h-6 w-32 rounded-md skeleton-base" />
+                              <div className="h-8 w-20 rounded-full skeleton-base" />
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                              {Array.from({ length: 4 }).map((_, i) => (
+                                <div key={i} className="h-[180px] rounded-[20px] skeleton-base" />
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Categories Skeleton */}
+                          <div className="w-full">
+                            <div className="flex items-center justify-between mb-4">
+                              <div className="h-6 w-24 rounded-md skeleton-base" />
+                              <div className="h-8 w-20 rounded-full skeleton-base" />
+                            </div>
+                            <div className="flex gap-2 overflow-x-auto pb-2">
+                              {Array.from({ length: 8 }).map((_, i) => (
+                                <div key={i} className="h-8 w-20 rounded-full skeleton-base flex-shrink-0" />
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Event Grid Skeleton */}
+                          <div className="w-full">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5 sm:gap-6 lg:gap-8">
+                              {Array.from({ length: 6 }).map((_, i) => (
+                                <div key={i} className="flex flex-col h-full rounded-[26px] sm:rounded-[28px] glass-panel overflow-hidden border border-white/90 dark:border-white/5 shadow-md max-w-[390px] sm:max-w-none mx-auto w-full">
+                                  <div className="w-full aspect-[16/9] bg-gray-200/70 dark:bg-white/5 skeleton-base" />
+                                  <div className="p-3.5 sm:p-5 flex flex-col flex-1 space-y-3">
+                                    <div className="h-4 w-20 rounded-md skeleton-base" />
+                                    <div className="h-6 w-3/4 rounded-md skeleton-base" />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Happening Today Slider */}
+                          <HappeningTodaySlider
+                            events={happeningTodayEvents}
+                            config={happeningTodayConfig}
+                            adsManifest={adsManifest}
+                            onSelectEvent={handleSelectEvent}
+                          />
+
+                          {/* Categories & Filter Bar */}
+                          <div id="categories" className="scroll-mt-24">
+                            <CategoryFilter
+                              categories={categories}
+                              selectedCategory={selectedCategory}
+                              selectedSubcategory={selectedSubcategory}
+                              onSelectCategory={handleSelectCategory}
+                              onSelectSubcategory={handleSelectSubcategory}
+                              selectedDate={selectedDate}
+                              onSelectDate={handleSelectDate}
+                              activeScheduleFilter={activeScheduleFilter}
+                              onSelectScheduleFilter={handleSelectScheduleFilter}
+                              selectedPricingType={selectedPricingType}
+                              onSelectPricingType={handleSelectPricingType}
+                              isTrendingActive={isTrendingActive}
+                              onSelectTrending={handleSelectTrending}
+                            />
+                          </div>
+                        </>
+                      )}
+                    </div>
+
+                    {/* Event hub upcoming grid / Search Results Grid */}
+                    <div id="events" className="scroll-mt-24">
+                      <EventGrid
+                        events={displayedEvents}
+                        loading={isSearching ? false : eventsLoading}
+                        onResetFilters={handleResetFilters}
+                        onSelectEvent={handleSelectEvent}
+                        title={
+                          isSearching
+                            ? "Search Results"
+                            : isTrendingActive
+                              ? "🔥 Trending Events"
+                              : "Event Hub"
+                        }
+                        searchQuery={searchQuery.trim()}
+                        adsManifest={adsManifest}
+                        isSearchingOrFiltering={isSearching || isTrendingActive || isCategoriesActive || selectedPricingType !== 'ALL' || activeScheduleFilter !== 'all' || Boolean(selectedDate)}
+                      />
+
+                      {/* Show More upcoming events */}
+                      {!eventsLoading && (
+                        isSearching
+                          ? filteredEvents.length > visibleEventsCount
+                          : visibleEventsCount < filteredEvents.length
+                      ) && (
+                          <div className="flex justify-center mt-6 sm:mt-8">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isSearching || visibleEventsCount < filteredEvents.length) {
+                                  setVisibleEventsCount(prev => prev + showMoreIncrement);
+                                } else {
+                                  handleLoadMoreEvents();
+                                }
+                              }}
+                              className="glass-pill px-7 sm:px-9 py-3 sm:py-3.5 rounded-xl sm:rounded-2xl font-heading font-black text-xs sm:text-sm text-gray-900 dark:text-gray-100 hover:text-primary hover:border-primary/50 cursor-pointer shadow-lg hover:scale-103 active:scale-95 transition-all touch-target border border-white/95 dark:border-white/10"
+                            >
+                              View More Events
+                            </button>
+                          </div>
+                        )}
+                    </div>
+                  </>
+                )}
+              </Suspense>
+            </main>
+          </PullToRefresh>
 
           <Footer
             onNavigate={handleNavigate}
             onGoToCategories={handleGoToCategories}
           />
-
-          {/* GDPR, CCPA & Google AdSense Cookie Consent Notification */}
-          <Suspense fallback={null}>
-            <CookieConsentBanner onNavigatePrivacy={() => handleNavigate('privacy')} />
-          </Suspense>
         </div>
       </div>
     </>

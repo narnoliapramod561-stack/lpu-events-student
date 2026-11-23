@@ -3,11 +3,14 @@ import { Calendar, Clock, MapPin, SearchX, RefreshCw, ArrowRight } from "lucide-
 import { 
   EventFeedItem, 
   formatEventDateRange,
-  formatEventTime
+  formatEventTime,
+  MasterAdsPlacementManifest,
+  interleaveGridAds
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { resolveDefaultEventImage } from "../shared/images/defaults";
 import { ProgressiveImage } from "./ProgressiveImage";
+import { AdGridCard } from "./ads/AdGridCard";
 
 export const EventCardComponent = ({
   event,
@@ -29,9 +32,20 @@ export const EventCardComponent = ({
 
   const categoryName = (event.categories?.name || event.category_id || "CAMPUS EVENT").toUpperCase();
 
+  const isExternalSponsor = Boolean((event as any).external_registration_url && ((event as any).is_sponsored || (event as any).pricing_type === 'SPONSORED'));
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (isExternalSponsor) {
+      e.stopPropagation();
+      window.open((event as any).external_registration_url, '_blank', 'noopener,noreferrer');
+      return;
+    }
+    onSelect(event.id, event.name);
+  };
+
   return (
     <article
-      onClick={() => onSelect(event.id, event.name)}
+      onClick={handleClick}
       className="glass-card group flex flex-col h-full overflow-hidden cursor-pointer rounded-[26px] sm:rounded-3xl shadow-md hover:shadow-2xl transition-[transform,box-shadow] duration-200 border border-white/80 dark:border-white/[0.08] hover:border-primary/50 dark:hover:border-white/20 relative sm:hover:scale-[1.01] sm:active:scale-[0.99] max-w-[390px] sm:max-w-none mx-auto w-full"
     >
       {/* Event Cover Image — no ambientBackdrop to prevent GPU layer explosion on cards */}
@@ -46,14 +60,21 @@ export const EventCardComponent = ({
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none z-10" />
 
-        {event.is_trending && (
+        {((event as any).is_sponsored || (event as any).pricing_type === 'SPONSORED' || (event as any).badge_text === 'SPONSORED') ? (
+          <div className="absolute top-2.5 left-2.5 sm:top-3.5 sm:left-3.5 z-20">
+            <span className="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-amber-600 to-amber-500 text-white rounded-full font-heading text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider shadow-lg border border-white/25">
+              <span className="w-1.5 h-1.5 rounded-full bg-white" />
+              {(event as any).badge_text || 'SPONSORED'}
+            </span>
+          </div>
+        ) : event.is_trending ? (
           <div className="absolute top-2.5 left-2.5 sm:top-3.5 sm:left-3.5 z-20">
             <span className="flex items-center gap-1.5 px-2.5 py-1 bg-gradient-to-r from-orange-600 via-amber-500 to-orange-500 dark:from-white/20 dark:via-white/10 dark:to-white/20 text-white rounded-full font-heading text-[9.5px] sm:text-[10px] font-black uppercase tracking-wider shadow-lg border border-white/25">
               <span className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               🔥 Trending
             </span>
           </div>
-        )}
+        ) : null}
 
         {/* Category Pill on Image (Bottom-Left) */}
         {categoryName && (
@@ -202,7 +223,9 @@ export const EventGridComponent = ({
   onResetFilters,
   onSelectEvent,
   title = "Event Hub",
-  searchQuery = ""
+  searchQuery = "",
+  adsManifest,
+  isSearchingOrFiltering = false,
 }: {
   events: EventFeedItem[];
   loading: boolean;
@@ -210,7 +233,13 @@ export const EventGridComponent = ({
   onSelectEvent: (id: string, name?: string) => void;
   title?: string;
   searchQuery?: string;
+  adsManifest?: MasterAdsPlacementManifest | null;
+  isSearchingOrFiltering?: boolean;
 }) => {
+  const feedItems = React.useMemo(() => {
+    return interleaveGridAds(events || [], adsManifest, isSearchingOrFiltering);
+  }, [events, adsManifest, isSearchingOrFiltering]);
+
   if (loading) {
     return (
       <section className="w-full">
@@ -297,14 +326,27 @@ export const EventGridComponent = ({
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4.5 sm:gap-6 lg:gap-8">
-        {events.map((event, index) => (
-          <EventCard
-            key={event.id}
-            event={event}
-            onSelect={onSelectEvent}
-            idx={index}
-          />
-        ))}
+        {feedItems.map((item, index) => {
+          if (item.is_ad && item.ad) {
+            return (
+              <AdGridCard
+                key={`grid-ad-${item.ad.id}-${index}`}
+                ad={item.ad}
+              />
+            );
+          }
+          if (item.event) {
+            return (
+              <EventCard
+                key={item.event.id}
+                event={item.event}
+                onSelect={onSelectEvent}
+                idx={index}
+              />
+            );
+          }
+          return null;
+        })}
       </div>
     </section>
   );

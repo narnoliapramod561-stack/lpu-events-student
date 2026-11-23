@@ -6,15 +6,21 @@ import {
   EventFeedItem,
   HappeningTodayConfig,
   resolveDefaultEventImage,
-  formatEventTime
+  formatEventTime,
+  MasterAdsPlacementManifest,
+  AdEntity,
+  interleaveReelAds,
+  trackAdClick,
+  trackAdImpression
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
 
 export interface HappeningTodaySlideItem {
-  type: "event";
+  type: "event" | "ad";
   id: string;
   eventId?: string | null;
+  adEntity?: AdEntity;
   title: string;
   description?: string;
   image: string;
@@ -32,12 +38,68 @@ export interface HappeningTodaySlideItem {
 export interface HappeningTodaySliderProps {
   events: EventFeedItem[];
   config?: HappeningTodayConfig | null;
+  adsManifest?: MasterAdsPlacementManifest | null;
   onSelectEvent: (id: string, name?: string) => void;
 }
+
+const HappeningTodaySlideCard: React.FC<{
+  slide: HappeningTodaySlideItem;
+  onClick: () => void;
+  children: React.ReactNode;
+}> = ({ slide, onClick, children }) => {
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = cardRef.current;
+    if (!el || typeof IntersectionObserver === "undefined" || slide.type !== "ad" || !slide.adEntity) return;
+
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry && entry.isIntersecting) {
+          timer = setTimeout(() => {
+            if (slide.adEntity) {
+              trackAdImpression({
+                ad_id: slide.adEntity.id,
+                format: slide.adEntity.format,
+                placement: "HAPPENING_TODAY",
+                sponsor_name: slide.adEntity.sponsor_name,
+                creative_url: slide.image,
+                redirect_url: slide.ctaUrl || undefined,
+              });
+            }
+          }, 1000);
+        } else if (timer) {
+          clearTimeout(timer);
+          timer = null;
+        }
+      },
+      { threshold: 0.5 }
+    );
+
+    observer.observe(el);
+    return () => {
+      observer.disconnect();
+      if (timer) clearTimeout(timer);
+    };
+  }, [slide]);
+
+  return (
+    <div
+      ref={cardRef}
+      onClick={onClick}
+      className="group relative shrink-0 w-[82vw] min-[390px]:w-[84vw] sm:w-[calc((100%-18px)/2)] md:w-[calc((100%-36px)/3)] rounded-[24px] overflow-hidden cursor-pointer snap-start glass-event-card flex flex-col sm:active:scale-[0.98]"
+    >
+      {children}
+    </div>
+  );
+};
 
 export const HappeningTodaySliderComponent = ({
   events,
   config,
+  adsManifest,
   onSelectEvent,
 }: HappeningTodaySliderProps) => {
   const dragControls = useDragControls();
@@ -147,8 +209,38 @@ export const HappeningTodaySliderComponent = ({
       };
     });
 
-    return eventSlides;
-  }, [events]);
+    if (!adsManifest || !adsManifest.happening_today?.is_enabled) {
+      return eventSlides;
+    }
+
+    const interleaved = interleaveReelAds(events, adsManifest);
+    const result: HappeningTodaySlideItem[] = [];
+
+    for (const item of interleaved) {
+      if (item.is_ad && item.ad) {
+        result.push({
+          type: "ad" as const,
+          id: `ad-${item.ad.id}`,
+          adEntity: item.ad,
+          title: item.ad.name,
+          description: item.ad.sponsor_name ? `Presented by ${item.ad.sponsor_name}` : undefined,
+          image: item.ad.image_url,
+          badge: item.ad.badge_text || "SPONSORED",
+          category: item.ad.sponsor_name || "Sponsored",
+          date: "Promotion",
+          time: "Featured",
+          venue: item.ad.sponsor_name || "Official Partner",
+          ctaText: item.ad.cta_text || "Know More",
+          ctaUrl: item.ad.redirect_url,
+        });
+      } else if (item.event) {
+        const slide = eventSlides.find((s) => s.id === item.event!.id);
+        if (slide) result.push(slide);
+      }
+    }
+
+    return result;
+  }, [events, adsManifest]);
 
   // Track scroll position for chevron buttons
   const checkScroll = useCallback(() => {
@@ -342,16 +434,25 @@ export const HappeningTodaySliderComponent = ({
         >
           {slides.map((slide, idx) => {
             const handleCardClick = () => {
-              if (slide.eventId) {
+              if (slide.type === "ad" && slide.adEntity && slide.ctaUrl) {
+                trackAdClick({
+                  ad_id: slide.adEntity.id,
+                  format: slide.adEntity.format,
+                  placement: "HAPPENING_TODAY",
+                  sponsor_name: slide.adEntity.sponsor_name,
+                  redirect_url: slide.ctaUrl,
+                });
+                window.open(slide.ctaUrl, "_blank", "noopener,noreferrer");
+              } else if (slide.eventId) {
                 onSelectEvent(slide.eventId, slide.title);
               }
             };
 
             return (
-              <div
+              <HappeningTodaySlideCard
                 key={slide.id}
+                slide={slide}
                 onClick={handleCardClick}
-                className="group relative shrink-0 w-[82vw] min-[390px]:w-[84vw] sm:w-[calc((100%-18px)/2)] md:w-[calc((100%-36px)/3)] rounded-[24px] overflow-hidden cursor-pointer snap-start glass-event-card flex flex-col sm:active:scale-[0.98]"
               >
                 {/* Uniform Crisp Banner Stage (Zero Zoom, Full Visibility) */}
                 <div className="relative w-full aspect-[16/9] overflow-hidden shrink-0 bg-black/5 dark:bg-white/5">
@@ -423,7 +524,7 @@ export const HappeningTodaySliderComponent = ({
                     </div>
                   )}
                 </div>
-              </div>
+              </HappeningTodaySlideCard>
             );
           })}
 

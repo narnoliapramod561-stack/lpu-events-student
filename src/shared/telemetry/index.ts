@@ -4,4 +4,5 @@
 export * from './types';
 export * from './posthog';
 export * from './scrub';
+export * from './adTelemetry';
 

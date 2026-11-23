@@ -182,7 +182,10 @@ export class ProSearchEngine {
             const event = this.catalog[idx];
 
             // Real-time Clock Guard: Past events strictly excluded
-            if (event.end_epoch && event.end_epoch < now) {
+            const isFinished = event.end_epoch
+              ? event.end_epoch < now
+              : (event.start_epoch ? event.start_epoch < now : false);
+            if (isFinished) {
               continue;
             }
 

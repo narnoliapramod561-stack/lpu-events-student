@@ -27,7 +27,8 @@ export type ImageContext =
   | 'thumbnail'
   | 'sponsor-logo'
   | 'memory'
-  | 'admin-preview';
+  | 'admin-preview'
+  | 'advertisement';
 
 export type ImageFitMode = 'cover' | 'contain' | 'inside';
 
@@ -425,6 +426,28 @@ export const IMAGE_CONTEXT_CONFIGS: Record<ImageContext, ImageContextConfig> = {
     variants: [
       { name: 'desktop', width: 600, height: 338, quality: 80 }
     ],
+    enhancement: {
+      enabled: false,
+      sharpenAmount: 0.0,
+      contrastClip: 0.0,
+      vibranceBoost: 1.0,
+      denoiseArtifacts: false,
+      preserveOriginalColorProfile: true
+    }
+  },
+
+  advertisement: {
+    context: 'advertisement',
+    label: 'Promotional Ad Creative',
+    description: 'High-visibility advertisement creative across Hero, Grid, Strip, and Reel slots',
+    maxWidth: 2560,
+    maxHeight: 2560,
+    aspectRatio: 16 / 9,
+    aspectRatioLabel: 'Flexible Creative Ratio',
+    fitMode: 'inside',
+    outputFormat: 'image/webp',
+    quality: 90,
+    variants: [],
     enhancement: {
       enabled: false,
       sharpenAmount: 0.0,

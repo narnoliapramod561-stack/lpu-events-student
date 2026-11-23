@@ -209,6 +209,50 @@ export function isEventStartingToday(
 }
 
 /**
+ * Determines whether an event has concluded/finished relative to reference time (now).
+ * An event is finished if its end timestamp (or start timestamp if end is not provided)
+ * has passed. For date-only strings (YYYY-MM-DD), the event is considered to conclude
+ * at the very end of that local calendar date (23:59:59.999).
+ */
+export function isEventFinished(
+  event?: { start_at?: string | Date | number | null; end_at?: string | Date | number | null } | null,
+  now: Date = new Date()
+): boolean {
+  if (!event || !event.start_at) return false;
+
+  const nowMs = now.getTime();
+
+  if (event.end_at) {
+    if (typeof event.end_at === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(event.end_at.trim())) {
+      const parts = event.end_at.trim().split('-');
+      const endOfDay = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 23, 59, 59, 999);
+      return endOfDay.getTime() < nowMs;
+    }
+    const end = typeof event.end_at === 'string' || typeof event.end_at === 'number'
+      ? new Date(event.end_at)
+      : event.end_at;
+    if (!isNaN(end.getTime())) {
+      return end.getTime() < nowMs;
+    }
+  }
+
+  if (typeof event.start_at === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(event.start_at.trim())) {
+    const parts = event.start_at.trim().split('-');
+    const endOfDay = new Date(parseInt(parts[0], 10), parseInt(parts[1], 10) - 1, parseInt(parts[2], 10), 23, 59, 59, 999);
+    return endOfDay.getTime() < nowMs;
+  }
+
+  const start = typeof event.start_at === 'string' || typeof event.start_at === 'number'
+    ? new Date(event.start_at)
+    : event.start_at;
+  if (!isNaN(start.getTime())) {
+    return start.getTime() < nowMs;
+  }
+
+  return false;
+}
+
+/**
  * Industry-standard schedule matcher matching filters like 'today', 'tomorrow', 'this_week', 'weekend', 'upcoming', or custom target date.
  */
 export function matchesScheduleFilter(
@@ -220,26 +264,25 @@ export function matchesScheduleFilter(
   if (!event || !event.start_at) return false;
 
   if (customTargetDate) {
-    return isEventOnDate(event.start_at, event.end_at, customTargetDate);
+    return isEventOnDate(event.start_at, event.end_at, customTargetDate) && !isEventFinished(event, now);
   }
 
   switch (filterType.toLowerCase()) {
     case 'all':
-      return true;
+      return !isEventFinished(event, now);
     case 'today':
-      return isEventToday(event.start_at, event.end_at, now);
+      return isEventToday(event.start_at, event.end_at, now) && !isEventFinished(event, now);
     case 'tomorrow':
       return isEventTomorrow(event.start_at, event.end_at, now);
     case 'this_week':
-      return isEventThisWeek(event.start_at, event.end_at, now);
+      return isEventThisWeek(event.start_at, event.end_at, now) && !isEventFinished(event, now);
     case 'weekend':
-      return isEventThisWeekend(event.start_at, event.end_at, now);
+      return isEventThisWeekend(event.start_at, event.end_at, now) && !isEventFinished(event, now);
     case 'upcoming': {
-      const end = event.end_at ? new Date(event.end_at) : new Date(event.start_at);
-      return !isNaN(end.getTime()) && end.getTime() >= now.getTime();
+      return !isEventFinished(event, now);
     }
     default:
-      return true;
+      return !isEventFinished(event, now);
   }
 }
 

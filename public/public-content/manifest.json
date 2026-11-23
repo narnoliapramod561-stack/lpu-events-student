@@ -1,19 +1,28 @@
 {
   "schema_version": "1.0.0",
   "revision": "rev_local_fixture",
-  "generation": 1,
-  "published_at": "2026-10-20T12:00:00.000Z",
+  "generation": 8,
+  "published_at": "2026-11-19T13:53:23.606Z",
   "resources": {
     "homepage": "revisions/rev_local_fixture/homepage.json",
     "catalogue": "revisions/rev_local_fixture/events-catalogue.json",
     "categories": "revisions/rev_local_fixture/categories.json",
-    "event_details_dir": "revisions/rev_local_fixture/event-details"
+    "event_details_dir": "revisions/rev_local_fixture/event-details",
+    "ads": "revisions/rev_local_fixture/ads-manifest.json"
   },
   "meta": {
-    "active_event_count": 3,
+    "active_event_count": 19,
     "past_event_count": 0,
-    "category_count": 2,
-    "carousel_count": 1,
-    "ad_count": 0
+    "category_count": 13,
+    "carousel_count": 4,
+    "ad_count": 1,
+    "db_resource_versions": {
+      "events": 1212,
+      "categories": 408,
+      "featured": 76,
+      "carousel": 98,
+      "settings": 57,
+      "ads": 19
+    }
   }
 }

@@ -16,12 +16,21 @@ import {
   EventDetailSnapshotPayload,
   CompactCatalogueEvent,
   validateSnapshotManifest,
-  SNAPSHOT_PATHS
+  SNAPSHOT_PATHS,
+  catalogueEventToFeedItem
 } from './snapshot';
+import type { MasterAdsPlacementManifest } from './ads/adTypes';
 import { persistentCache } from './persistentCache';
 import { registerMediaAssets } from './images/url';
 import { captureOrBufferException } from './telemetry/posthog';
 import type { CategoryFeedItem, Event, EventFeedItem } from './types';
+
+export interface VersionHandshakeResult {
+  isFresh: boolean;
+  activeRevision: string | null;
+  generation: number | null;
+  status: 'UP_TO_DATE' | 'UPDATED' | 'OFFLINE';
+}
 
 export interface SnapshotClientOptions {
   publicContentBaseUrl?: string; // e.g. "https://images.lpuevents.live/public-content"
@@ -65,7 +74,7 @@ export class SnapshotClient {
     try {
       const metaEnv = (import.meta as any)?.env?.VITE_PUBLIC_CONTENT_URL;
       if (metaEnv) return metaEnv;
-    } catch {}
+    } catch { }
 
     // In local development or testing on localhost, route to local relative path
     if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
@@ -147,7 +156,7 @@ export class SnapshotClient {
       }
 
       // Fetch from public-content/manifest.json
-      const manifestUrl = this.buildUrl(SNAPSHOT_PATHS.MANIFEST);
+      const manifestUrl = this.buildUrl(SNAPSHOT_PATHS.MANIFEST) + (forceFresh ? `?t=${Date.now()}` : '');
       try {
         const res = await this._fetch(manifestUrl, {
           headers: { Accept: 'application/json' },
@@ -184,22 +193,104 @@ export class SnapshotClient {
   }
 
   /**
+   * Performs an ultra-lightweight version handshake against Cloudflare Edge.
+   * Compares the client's current active_revision against the edge pointer.
+   * Returns UP_TO_DATE immediately (304 / match) with 0 payload transfer,
+   * or UPDATED if a newer revision generation is detected.
+   */
+  public async executeVersionHandshake(currentRevision?: string | null): Promise<VersionHandshakeResult> {
+    const knownRevision =
+      currentRevision ||
+      this._manifestCache?.data?.revision ||
+      this._manifestCache?.data?.active_revision ||
+      persistentCache.get<SnapshotManifest>('snapshot:manifest')?.revision ||
+      persistentCache.get<SnapshotManifest>('snapshot:manifest')?.active_revision ||
+      null;
+    const manifestUrl = this.buildUrl(SNAPSHOT_PATHS.MANIFEST) + `?t=${Date.now()}`;
+
+    try {
+      const headers: Record<string, string> = {
+        Accept: 'application/json',
+        'Cache-Control': 'no-cache',
+      };
+      if (knownRevision) {
+        headers['If-None-Match'] = `"${knownRevision}"`;
+      }
+
+      const res = await this._fetch(manifestUrl, {
+        headers,
+        cache: 'no-cache',
+      });
+
+      if (res.status === 304) {
+        return {
+          isFresh: true,
+          activeRevision: knownRevision,
+          generation: (this._manifestCache?.data as any)?.generation ?? null,
+          status: 'UP_TO_DATE',
+        };
+      }
+
+      if (res.ok) {
+        const json = await res.json();
+        const validation = validateSnapshotManifest(json);
+        if (validation.valid) {
+          const activeRev = json.revision || json.active_revision || null;
+          const isMatch = Boolean(knownRevision && activeRev && activeRev === knownRevision);
+          this._manifestCache = { data: json, expiresAt: Date.now() + this._manifestTtlMs };
+          persistentCache.set('snapshot:manifest', json, this._manifestTtlMs);
+
+          if (isMatch) {
+            return {
+              isFresh: true,
+              activeRevision: activeRev,
+              generation: json.generation ?? null,
+              status: 'UP_TO_DATE',
+            };
+          }
+
+          // Revision updated: invalidate memory caches
+          this._payloadCache.clear();
+          this._catalogueCache = null;
+          return {
+            isFresh: false,
+            activeRevision: activeRev,
+            generation: json.generation ?? null,
+            status: 'UPDATED',
+          };
+        }
+      }
+    } catch (err) {
+      captureOrBufferException(err, { source: 'SnapshotClient:executeVersionHandshake' });
+    }
+
+    return {
+      isFresh: true,
+      activeRevision: knownRevision,
+      generation: null,
+      status: 'OFFLINE',
+    };
+  }
+
+  /**
    * Fetch an immutable revision payload with deduplication and long-term caching.
    */
-  public async fetchPayload<T>(relativeResourcePath: string): Promise<T | null> {
+  public async fetchPayload<T>(relativeResourcePath: string, forceFresh = false): Promise<T | null> {
     const cleanPath = relativeResourcePath.replace(/^\/+/, '');
     const cacheKey = `snapshot:payload:${cleanPath}`;
     const now = Date.now();
 
-    const inMem = this._payloadCache.get(cacheKey);
-    if (inMem && inMem.expiresAt > now) {
-      return inMem.data as T;
-    }
+    if (!forceFresh) {
+      const inMem = this._payloadCache.get(cacheKey);
+      if (inMem && inMem.expiresAt > now) {
+        return inMem.data as T;
+      }
 
-    const stored = persistentCache.get<T>(cacheKey);
-    if (stored !== null && stored !== undefined) {
-      this._payloadCache.set(cacheKey, { data: stored, expiresAt: now + this._payloadTtlMs });
-      return stored;
+      const stored = persistentCache.get<T>(cacheKey);
+      if (stored !== null && stored !== undefined) {
+        this._payloadCache.set(cacheKey, { data: stored, expiresAt: now + this._payloadTtlMs });
+        return stored;
+      }
     }
 
     return this._executeSingleFlight(cacheKey, async () => {
@@ -207,6 +298,7 @@ export class SnapshotClient {
       try {
         const res = await this._fetch(targetUrl, {
           headers: { Accept: 'application/json' },
+          cache: forceFresh ? 'no-cache' : 'default',
         });
 
         if (res.ok) {
@@ -235,13 +327,13 @@ export class SnapshotClient {
   /**
    * Fetch the homepage bundle from snapshot, or return null if snapshot is unavailable.
    */
-  public async getHomepageSnapshot(): Promise<HomepageSnapshotPayload | null> {
-    const manifest = await this.getManifest();
+  public async getHomepageSnapshot(forceFresh = false): Promise<HomepageSnapshotPayload | null> {
+    const manifest = await this.getManifest(forceFresh);
     if (!manifest || !manifest.resources.homepage) {
       return null;
     }
 
-    const payload = await this.fetchPayload<HomepageSnapshotPayload>(manifest.resources.homepage);
+    const payload = await this.fetchPayload<HomepageSnapshotPayload>(manifest.resources.homepage, forceFresh);
     if (payload && payload.events) {
       // Staleness Invariant: if snapshot contains events but ALL events ended in the past, reject stale snapshot to allow fallback
       const now = Date.now();
@@ -270,33 +362,33 @@ export class SnapshotClient {
       if (snap && Array.isArray(snap.events)) {
         return snap;
       }
-    } catch {}
+    } catch { }
     return await fallbackFn();
   }
 
   /**
    * Fetch categories from snapshot.
    */
-  public async getCategoriesSnapshot(): Promise<CategoryFeedItem[] | null> {
-    const manifest = await this.getManifest();
+  public async getCategoriesSnapshot(forceFresh = false): Promise<CategoryFeedItem[] | null> {
+    const manifest = await this.getManifest(forceFresh);
     if (!manifest || !manifest.resources.categories) return null;
 
-    const payload = await this.fetchPayload<CategoriesSnapshotPayload>(manifest.resources.categories);
+    const payload = await this.fetchPayload<CategoriesSnapshotPayload>(manifest.resources.categories, forceFresh);
     return payload?.categories || null;
   }
 
   /**
    * Fetch complete published events catalogue from snapshot.
    */
-  public async getEventsCatalogueSnapshot(): Promise<CompactCatalogueEvent[] | null> {
-    if (this._catalogueCache && this._catalogueCache.length > 0) {
+  public async getEventsCatalogueSnapshot(forceFresh = false): Promise<CompactCatalogueEvent[] | null> {
+    if (!forceFresh && this._catalogueCache && this._catalogueCache.length > 0) {
       return this._catalogueCache;
     }
 
-    const manifest = await this.getManifest();
+    const manifest = await this.getManifest(forceFresh);
     if (!manifest || !manifest.resources.catalogue) return null;
 
-    const payload = await this.fetchPayload<EventsCatalogueSnapshotPayload>(manifest.resources.catalogue);
+    const payload = await this.fetchPayload<EventsCatalogueSnapshotPayload>(manifest.resources.catalogue, forceFresh);
     if (payload?.events && Array.isArray(payload.events)) {
       const now = Date.now();
       const hasActiveOrUpcoming = payload.events.some((e: any) => !e.end_at || new Date(e.end_at).getTime() > now);
@@ -313,18 +405,95 @@ export class SnapshotClient {
   /**
    * Fetch single event detail snapshot.
    */
-  public async getEventDetailSnapshot(eventId: string): Promise<Event | null> {
+  public async getEventDetailSnapshot(eventId: string, forceFresh = false): Promise<Event | null> {
     if (!eventId) return null;
-    const manifest = await this.getManifest();
+    const manifest = await this.getManifest(forceFresh);
     if (!manifest) return null;
 
     const relativePath = `revisions/${manifest.revision}/event-details/${eventId}.json`;
-    const payload = await this.fetchPayload<EventDetailSnapshotPayload>(relativePath);
+    const payload = await this.fetchPayload<EventDetailSnapshotPayload>(relativePath, forceFresh);
     if (payload?.event) {
       registerMediaAssets([payload.event]);
       return payload.event;
     }
     return null;
+  }
+
+  /**
+   * Fetch master ads placement manifest and active creative entities.
+   * Caches in memory and persistent storage.
+   * Returns fallback disabled configuration if ads manifest is not yet published.
+   */
+  public async getAdsManifest(forceFresh = false): Promise<MasterAdsPlacementManifest> {
+    const fallbackManifest: MasterAdsPlacementManifest = {
+      version: '1.0.0',
+      generated_at: new Date().toISOString(),
+      hero_carousel: { is_enabled: false, frequency: 3, selected_ad_ids: [], slide_duration_ms: 6000 },
+      hero_strip: { is_enabled: false, selected_ad_id: null, auto_rotate: false },
+      happening_today: { is_enabled: false, fallback_frequency: 4, bindings: [] },
+      event_hub: { is_enabled: false, fallback_frequency: 6, suppress_on_search: true, bindings: [] },
+      ads: {},
+    };
+
+    // 1. Direct Edge route: query /api/public/ads-manifest directly from Cloudflare Worker edge.
+    // Cloudflare Worker serves this with 30s Edge TTL and immediate invalidation, avoiding R2 compilation lag.
+    if (typeof window !== 'undefined') {
+      try {
+        const liveRes = await this._fetch('/api/public/ads-manifest', {
+          headers: { Accept: 'application/json' },
+          cache: forceFresh ? 'no-cache' : 'default',
+        });
+        if (liveRes.ok) {
+          const liveData = await liveRes.json();
+          if (liveData && (liveData.hero_carousel || liveData.ads)) {
+            return liveData;
+          }
+        }
+      } catch {}
+    }
+
+    try {
+      const manifest = await this.getManifest(forceFresh);
+      const adsPath = manifest?.resources?.ads || (manifest?.revision ? `revisions/${manifest.revision}/ads-manifest.json` : null);
+      if (!adsPath) {
+        return fallbackManifest;
+      }
+
+      const payload = await this.fetchPayload<MasterAdsPlacementManifest>(adsPath);
+      if (payload && payload.ads && typeof payload.ads === 'object') {
+        if (
+          Object.keys(payload.ads).length === 0 &&
+          typeof window !== 'undefined' &&
+          (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') &&
+          this._publicContentBaseUrl !== '/public-content'
+        ) {
+          try {
+            const localRes = await fetch('/public-content/revisions/rev_local_fixture/ads-manifest.json');
+            if (localRes.ok) {
+              const localPayload = await localRes.json();
+              if (localPayload && localPayload.ads && Object.keys(localPayload.ads).length > 0) {
+                return localPayload;
+              }
+            }
+          } catch {}
+        }
+        return payload;
+      }
+    } catch (err) {
+      captureOrBufferException(err, { source: 'SnapshotClient:getAdsManifest' });
+    }
+
+    if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+      try {
+        const localRes = await fetch('/public-content/revisions/rev_local_fixture/ads-manifest.json');
+        if (localRes.ok) {
+          const localPayload = await localRes.json();
+          if (localPayload && localPayload.ads) return localPayload;
+        }
+      } catch {}
+    }
+
+    return fallbackManifest;
   }
 
   /**
@@ -403,29 +572,7 @@ export class SnapshotClient {
     }
 
     const compactMatches = await this.searchCatalogue(queryText, filters);
-    const feedItems: EventFeedItem[] = compactMatches.map((compact) => ({
-      id: compact.id,
-      name: compact.name,
-      description: compact.description || '',
-      start_at: compact.start_at,
-      end_at: compact.end_at,
-      venue_name: compact.venue_name || 'LPU Campus',
-      registration_mode: compact.registration_mode || 'NONE',
-      pricing_type: compact.pricing_type || 'FREE',
-      price_amount: 0,
-      external_registration_url: compact.external_registration_url || null,
-      registration_format: compact.registration_format || null,
-      banner_media_id: null,
-      media_assets: compact.poster_url ? { id: compact.id, object_key: compact.poster_url } : null,
-      status: 'PUBLISHED',
-      deleted_at: null,
-      organizations: compact.organization_name ? { name: compact.organization_name } : null,
-      category_id: compact.category_id || null,
-      subcategory_id: compact.subcategory_id || null,
-      categories: compact.category_name ? { name: compact.category_name } : null,
-      subcategories: compact.subcategory_name ? { name: compact.subcategory_name } : null,
-      is_trending: compact.is_trending,
-    }));
+    const feedItems: EventFeedItem[] = compactMatches.map(catalogueEventToFeedItem);
 
     return { results: feedItems, fromSnapshot: true };
   }

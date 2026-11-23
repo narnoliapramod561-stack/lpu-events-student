@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useMemo } from "react";
 import { ArrowLeft, Mail, MapPin, Send, CheckCircle2, Clock, Globe, HelpCircle, ShieldAlert, Loader2, AlertCircle, PauseCircle } from "lucide-react";
 import { LpuLogo } from "./LpuLogo";
-import { supabase } from "../supabase";
 
 interface ContactUsViewProps {
   onBack: () => void;
@@ -243,32 +242,26 @@ export const ContactUsView: React.FC<ContactUsViewProps> = ({ onBack }) => {
             submittedSuccessfully = true;
             returnedId = json.id || "";
           }
-        }
-      } catch {
-        // Fallback to Supabase direct RPC if edge API is not routed locally
-      }
-
-      // 5. Fallback: Call Supabase rate-limited RPC
-      if (!submittedSuccessfully) {
-        const { data, error } = await supabase.rpc("submit_student_inquiry", {
-          p_name: trimmedName,
-          p_email: trimmedEmail || null,
-          p_subject: subject,
-          p_message: trimmedMessage,
-          p_device_id: deviceId
-        });
-
-        if (error) throw error;
-
-        if (data && typeof data === "object") {
-          const resp = data as any;
-          if (resp.ok === false) {
-            if (resp.code === "DAILY_LIMIT") {
-              throw new Error("You have already submitted an inquiry today from this device. Please check back tomorrow.");
-            }
-            throw new Error(resp.error || "Inquiry could not be recorded. Please try again.");
+        } else {
+          const errJson = await edgeRes.json().catch(() => ({}));
+          if (errJson.code === "RATE_LIMIT_EXCEEDED" || errJson.code === "DAILY_LIMIT") {
+            throw new Error(errJson.error || "Anti-spam protection: Too many inquiries from this network. Please wait a few minutes.");
+          }
+          if (errJson.code === "MESSAGES_PAUSED") {
+            throw new Error(errJson.error || "Student inquiries are temporarily paused for scheduled maintenance.");
+          }
+          if (errJson.error) {
+            throw new Error(errJson.error);
           }
         }
+      } catch (err: any) {
+        if (err.message && (err.message.includes("Anti-spam") || err.message.includes("temporarily paused") || err.message.includes("Message must"))) {
+          throw err;
+        }
+      }
+
+      if (!submittedSuccessfully) {
+        throw new Error("Message dispatch service is temporarily unavailable. Please try again shortly or email contact@lpuevents.live directly.");
       }
 
       // Record successful cooldown timestamp

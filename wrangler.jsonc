@@ -20,7 +20,18 @@
     "crons": ["*/15 * * * *"]
   },
   "vars": {
-    "SUPABASE_URL": "https://nhjphyqiqhmxdhppljap.supabase.co",
-    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oanBoeXFpcWhteGRocHBsamFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMjE3ODAsImV4cCI6MjEwMjc5Nzc4MH0.MdESnKpZVkhVlNoXLTEaTpm0smosL3D2ikwIzzJf3HQ"
-  }
+    "SUPABASE_URL": "https://tbehdigakmuoqchaaawr.supabase.co",
+    "SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRiZWhkaWdha211b3FjaGFhYXdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ4MTkwMjQsImV4cCI6MjExMDM5NTAyNH0.fTy5FnzImr_EfODr43EVMiYJVQ6jYw9zqmNFBGIsvbw",
+    "POSTHOG_API_KEY": "phc_nfLoNMHojVuF8YEP6pttTyYYUFBLPmosBJuSyHnf8Ufe",
+    "POSTHOG_HOST": "https://us.i.posthog.com",
+    "SNAPSHOT_CRON_SECRET": "lpu_events_cron_sec_8921cf81b107e3240e"
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "lpu-events-student",
+      "database_id": "24db551c-90be-4b42-84b6-22be66e96286",
+      "migrations_dir": "d1/migrations"
+    }
+  ]
 }

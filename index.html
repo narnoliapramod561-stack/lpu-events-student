@@ -3,14 +3,24 @@
   <head>
     <meta charset="UTF-8" />
 
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-HXC7S26FSN"></script>
+    <!-- Google tag (gtag.js) - Deferred to prioritize First Visual Paint -->
     <script>
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-
       gtag('config', 'G-HXC7S26FSN');
+
+      function loadGtag() {
+        var s = document.createElement('script');
+        s.async = true;
+        s.src = 'https://www.googletagmanager.com/gtag/js?id=G-HXC7S26FSN';
+        document.head.appendChild(s);
+      }
+      if ('requestIdleCallback' in window) {
+        requestIdleCallback(loadGtag, { timeout: 3000 });
+      } else {
+        window.addEventListener('load', loadGtag);
+      }
     </script>
     <!-- Standard & Google Search Favicon Suite (48x48+ specification) -->
     <link rel="icon" type="image/x-icon" href="/favicon.ico?v=20260927" />
@@ -25,7 +35,7 @@
     <link rel="manifest" href="/site.webmanifest" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#f7f9fc" />
-    <link rel="preload" as="image" type="image/webp" href="/lpu-events-campus-glass-background.webp" fetchpriority="high" />
+    <link rel="preload" as="image" type="image/webp" href="/lpu-events-campus-glass-background.webp" fetchpriority="low" />
 
     <!-- Default Theme Initialization (Light Mode Default) -->
     <script>
@@ -70,10 +80,13 @@
     <!-- Critical Above-the-Fold Pre-paint Styles (Zero FOUC, Sub-300ms FCP & LCP) -->
     <style>
       html {
-        background-color: #0b0c10;
+        background-color: #f7f9fc;
         min-height: 100%;
         overscroll-behavior-y: none;
         -webkit-tap-highlight-color: transparent;
+      }
+      html.dark {
+        background-color: #0b0c10;
       }
       body {
         margin: 0;
@@ -305,8 +318,8 @@
     <link rel="dns-prefetch" href="https://images.lpuevents.live" />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="preconnect" href="https://nhjphyqiqhmxdhppljap.supabase.co" crossorigin />
-    <link rel="dns-prefetch" href="https://nhjphyqiqhmxdhppljap.supabase.co" />
+    <link rel="preconnect" href="https://tbehdigakmuoqchaaawr.supabase.co" crossorigin />
+    <link rel="dns-prefetch" href="https://tbehdigakmuoqchaaawr.supabase.co" />
     <link rel="preconnect" href="https://lpuevents.live" crossorigin />
     <link rel="dns-prefetch" href="https://lpuevents.live" />
 
@@ -357,11 +370,9 @@
                   var imgUrl = null;
                   if (firstSlide) {
                     var evt = firstSlide.events || firstSlide;
-                    var mediaId = evt.banner_media_id || (evt.media_assets && evt.media_assets.id);
-                    if (mediaId) {
-                      imgUrl = 'https://images.lpuevents.live/public-content/' + mediaId + '.webp';
-                    } else if (firstSlide.custom_image_url) {
-                      imgUrl = firstSlide.custom_image_url;
+                    var objKey = (evt.media_assets && evt.media_assets.object_key) || evt.poster_url || evt.banner_url || evt.image_url || firstSlide.custom_image_url;
+                    if (objKey) {
+                      imgUrl = /^https?:\/\//i.test(objKey) ? objKey : ('https://images.lpuevents.live/' + objKey.replace(/^\/+/, ''));
                     }
                   }
                   if (imgUrl) {
@@ -602,8 +613,8 @@
         }
 
         var startTime = Date.now();
-        var MIN_VISUAL_MS = 1680;      // Luxury hold (~1.68s) so user admires the crystallized emblem and specular gleam
-        var MAX_SAFETY_MS = 3800;      // Safety timeout before forcing handoff
+        var MIN_VISUAL_MS = 0;         // Zero visual lock - dismiss instantly when critical content is ready
+        var MAX_SAFETY_MS = 1000;      // Hard safety timeout before forcing handoff
         var isCriticalReady = false;
         var isHandoffStarted = false;
         var handoffAttempts = 0;

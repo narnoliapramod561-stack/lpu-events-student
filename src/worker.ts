@@ -52,6 +52,7 @@ export interface Env {
   DB?: D1Database;
   POSTHOG_API_KEY?: string;
   POSTHOG_HOST?: string;
+  SNAPSHOT_CRON_SECRET?: string;
 }
 
 export interface ExecutionContext {
@@ -61,8 +62,8 @@ export interface ExecutionContext {
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-const DEFAULT_SUPABASE_URL = 'https://nhjphyqiqhmxdhppljap.supabase.co';
-const DEFAULT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5oanBoeXFpcWhteGRocHBsamFwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODcyMjE3ODAsImV4cCI6MjEwMjc5Nzc4MH0.MdESnKpZVkhVlNoXLTEaTpm0smosL3D2ikwIzzJf3HQ';
+const DEFAULT_SUPABASE_URL = 'https://tbehdigakmuoqchaaawr.supabase.co';
+const DEFAULT_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRiZWhkaWdha211b3FjaGFhYXdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ4MTkwMjQsImV4cCI6MjExMDM5NTAyNH0.fTy5FnzImr_EfODr43EVMiYJVQ6jYw9zqmNFBGIsvbw';
 const STALE_CACHE_NAME = 'lpu-stale-v2';
 const MAX_RESPONSE_SIZE = 200 * 1024; // 200 KB
 const MIN_ORIGIN_REFRESH_MS = 60_000; // 1 minute origin refresh gate
@@ -139,6 +140,7 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Cross-Origin-Resource-Policy': 'same-origin',
   'X-Permitted-Cross-Domain-Policies': 'none',
   'Strict-Transport-Security': 'max-age=31536000; includeSubDomains; preload',
+  'Alt-Svc': 'h3=":443"; ma=86400',
   'Content-Security-Policy': "default-src 'self'; script-src 'self' 'unsafe-inline' https://static.cloudflareinsights.com https://*.posthog.com https://us-assets.i.posthog.com https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com data:; img-src 'self' data: blob: https://images.unsplash.com https://upload.wikimedia.org https://*.supabase.co https://*.lpuevents.live https://lpuevents.live https://images.lpuevents.live https://*.google-analytics.com https://*.googletagmanager.com; connect-src 'self' http://localhost:* ws://localhost:* https://*.supabase.co wss://*.supabase.co https://*.lpuevents.live wss://*.lpuevents.live https://images.lpuevents.live https://*.posthog.com https://us-assets.i.posthog.com https://*.cloudflareinsights.com https://*.google-analytics.com https://*.analytics.google.com https://*.googletagmanager.com; frame-src 'none'; frame-ancestors 'none'; base-uri 'self'; form-action 'self'; object-src 'none';",
 };
 
@@ -167,6 +169,7 @@ const CACHE_CONFIGS: Record<string, CacheConfig> = {
   eventDetail: { edgeTtl: 600, browserTtl: 0, swrTtl: 14400, staleTtl: 604800 },   // 10m Edge cache, 0s browser (revalidates via ETag/304)
   settings: { edgeTtl: 3600, browserTtl: 0, swrTtl: 86400, staleTtl: 604800 },   // 1h Edge cache, 0s browser (revalidates via ETag/304)
   carousel: { edgeTtl: 1800, browserTtl: 0, swrTtl: 43200, staleTtl: 604800 },   // 30m Edge cache, 0s browser (revalidates via ETag/304)
+  ads: { edgeTtl: 30, browserTtl: 0, swrTtl: 300, staleTtl: 86400 },              // 30s Edge cache, 0s browser (revalidates via ETag/304), purged immediately on mutation
 };
 
 
@@ -1329,6 +1332,7 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext, r
       trendingRes,
       settingsRes,
       eventsRes,
+      adsRes,
     ] = await Promise.all([
       fetchFromSupabaseCoalesced(
         `categories?select=${encodeURIComponent(PROJECTIONS.categories)}&is_active=eq.true&order=sort_order.asc&subcategories.order=sort_order.asc`,
@@ -1354,6 +1358,7 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext, r
         `events?select=${encodeURIComponent(PROJECTIONS.eventFeed)}&status=eq.PUBLISHED&end_at=gte.${nowIso}&order=start_at.asc&limit=100&offset=0`,
         'GET', undefined, env
       ),
+      fetchFromSupabase('rpc/get_ads_manifest_bundle', 'POST', {}, env).catch(() => ({ ok: false, data: null })),
     ]);
 
     if (!categoriesRes.ok || !eventsRes.ok) {
@@ -1414,6 +1419,7 @@ async function handleHomepage(origin: string, env: Env, ctx: ExecutionContext, r
         trending,
         settings: settingsRes.ok ? settingsRes.data : [],
         events: eventsRes.data,
+        ads_manifest: adsRes?.ok ? adsRes.data : null,
       },
     };
   }, ctx, request);
@@ -1462,6 +1468,10 @@ function getInvalidationUrls(origin: string, tags: string[]): string[] {
     }
     if (tag === 'settings') {
       urls.add(buildCacheKey(origin, '/api/public/settings', {}));
+      urls.add(buildCacheKey(origin, '/api/public/homepage', {}));
+    }
+    if (tag === 'ads') {
+      urls.add(buildCacheKey(origin, '/api/public/ads-manifest', {}));
       urls.add(buildCacheKey(origin, '/api/public/homepage', {}));
     }
 
@@ -2182,7 +2192,6 @@ Allow: /about
 Allow: /contact
 Allow: /privacy
 Allow: /terms
-Allow: /ads.txt
 Allow: /feed.xml
 Allow: /rss.xml
 Allow: /sitemap.xml
@@ -2571,17 +2580,21 @@ async function handleImageProxy(request: Request, env: Env, ctx: ExecutionContex
     const assetReq = new Request(new URL(parsedTarget.pathname, request.url).toString(), { method: 'GET' });
     const localRes = await env.ASSETS.fetch(assetReq);
     if (localRes.ok && localRes.status === 200) {
-      const contentType = localRes.headers.get('content-type') || 'image/webp';
-      return new Response(localRes.body, {
-        status: 200,
-        headers: {
-          'Content-Type': contentType,
-          'Cache-Control': 'public, max-age=31536000, immutable',
-          'Access-Control-Allow-Origin': '*',
-          'Timing-Allow-Origin': '*',
-          'X-Image-Proxy': 'edge-bundle-asset',
-        },
-      });
+      const contentType = localRes.headers.get('content-type') || '';
+      if (contentType.startsWith('image/')) {
+        return new Response(localRes.body, {
+          status: 200,
+          headers: {
+            'Content-Type': contentType,
+            'Cache-Control': 'public, max-age=31536000, immutable',
+            'Access-Control-Allow-Origin': '*',
+            'Timing-Allow-Origin': '*',
+            'X-Image-Proxy': 'edge-bundle-asset',
+            'X-Content-Type-Options': 'nosniff',
+            'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
+          },
+        });
+      }
     }
   } catch { }
 
@@ -2635,6 +2648,8 @@ async function handleImageProxy(request: Request, env: Env, ctx: ExecutionContex
         'Access-Control-Allow-Origin': '*',
         'Timing-Allow-Origin': '*',
         'X-Image-Proxy': 'edge-cached',
+        'X-Content-Type-Options': 'nosniff',
+        'Content-Security-Policy': "default-src 'none'; style-src 'unsafe-inline'",
       },
     });
 
@@ -2778,13 +2793,107 @@ async function handleDirectoryPageSeo(env: Env, origin: string): Promise<Respons
   });
 }
 
+// In-memory cache for root HTML and R2 snapshot data to guarantee sub-millisecond edge responses
+let cachedHomepageHtmlText: string | null = null;
+let cachedHomepageHtmlTimestamp = 0;
+const HOMEPAGE_HTML_CACHE_TTL = 300_000; // 5 minutes
+
+let cachedR2HomepageSnapshot: { heroImageUrl: string; events: any[] } | null = null;
+let cachedR2HomepageSnapshotTs = 0;
+const R2_SNAPSHOT_TTL = 180_000; // 3 minutes
+
+async function getFastEdgeHomepageData(): Promise<{ heroImageUrl: string; events: any[] }> {
+  if (cachedR2HomepageSnapshot && (Date.now() - cachedR2HomepageSnapshotTs < R2_SNAPSHOT_TTL)) {
+    return cachedR2HomepageSnapshot;
+  }
+
+  let heroImageUrl = '';
+  let events: any[] = [];
+
+  try {
+    const manifestController = new AbortController();
+    const manifestTimer = setTimeout(() => manifestController.abort(), 350);
+    const manifestRes = await fetch(`${R2_IMAGE_CDN}/public-content/manifest.json`, {
+      headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) LPU-Events-Edge' },
+      signal: manifestController.signal,
+    });
+    clearTimeout(manifestTimer);
+
+    if (manifestRes.ok) {
+      const manifest: any = await manifestRes.json();
+      const hpPath = manifest?.resources?.homepage;
+      if (hpPath) {
+        const hpController = new AbortController();
+        const hpTimer = setTimeout(() => hpController.abort(), 400);
+        const hpRes = await fetch(`${R2_IMAGE_CDN}/public-content/${hpPath}`, {
+          headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) LPU-Events-Edge' },
+          signal: hpController.signal,
+        });
+        clearTimeout(hpTimer);
+
+        if (hpRes.ok) {
+          const hpData: any = await hpRes.json();
+          if (Array.isArray(hpData.carousel) && hpData.carousel[0]) {
+            const first = hpData.carousel[0];
+            const evt = first.events || first;
+            const objKey = evt?.media_assets?.object_key || first?.media_assets?.object_key;
+            if (objKey) {
+              heroImageUrl = `${R2_IMAGE_CDN}/${objKey.replace(/^\/+/, '')}`;
+            }
+          }
+          if (Array.isArray(hpData.events)) {
+            events = hpData.events;
+          }
+        }
+      }
+    }
+  } catch {
+    // Fail-fast silently to defaults without blocking
+  }
+
+  const result = { heroImageUrl, events };
+  cachedR2HomepageSnapshot = result;
+  cachedR2HomepageSnapshotTs = Date.now();
+  return result;
+}
+
 /**
  * Handle homepage & category landing SEO: Inject WebSite/Org/ItemList schema and semantic pre-rendered HTML.
  */
-async function handleHomepageSeo(env: Env, origin: string, url?: URL, explicitCategoryKey?: string): Promise<Response> {
+async function handleHomepageSeo(env: Env, origin: string, url?: URL, explicitCategoryKey?: string, ctx?: ExecutionContext): Promise<Response> {
+  const cacheKeyUrl = url ? url.origin + url.pathname : `${origin}/`;
+  const cacheKey = new Request(cacheKeyUrl, { method: 'GET' });
+  const cache = (caches as any).default;
+  const isNoCache = url?.searchParams.has('nocache') || false;
+  const categoryKey = explicitCategoryKey || url?.searchParams.get('category')?.trim().toLowerCase();
+
+  // 1. Isolate memory cache (Sub-millisecond 0ms return for root homepage)
+  if (!isNoCache && !categoryKey && cachedHomepageHtmlText && (Date.now() - cachedHomepageHtmlTimestamp < HOMEPAGE_HTML_CACHE_TTL)) {
+    const headers = new Headers({
+      'Content-Type': 'text/html; charset=utf-8',
+      'Cache-Control': 'public, s-maxage=900, max-age=60, stale-while-revalidate=86400',
+      'X-SEO-Engine': 'edge-isolate-memory',
+      'CF-Cache-Status': 'HIT',
+      'X-Edge-Cache': 'HIT',
+      ...SECURITY_HEADERS,
+    });
+    return new Response(cachedHomepageHtmlText, { status: 200, headers });
+  }
+
+  if (!isNoCache) {
+    try {
+      const cached = await cache.match(cacheKey);
+      if (cached) {
+        const headers = new Headers(cached.headers);
+        headers.set('CF-Cache-Status', 'HIT');
+        headers.set('X-Edge-Cache', 'HIT');
+        return new Response(cached.body, { status: cached.status, headers });
+      }
+    } catch { }
+  }
+
   const indexHtml = await fetchIndexHtml(env, origin);
 
-  const categoryKey = explicitCategoryKey || url?.searchParams.get('category')?.trim().toLowerCase();
   let categoryTitle = '';
   let categoryDesc = '';
   let categoryCanonical = `${SITE_ORIGIN}/`;
@@ -2802,21 +2911,15 @@ async function handleHomepageSeo(env: Env, origin: string, url?: URL, explicitCa
     categoryDesc = 'The official student events and campus discovery hub for Lovely Professional University (LPU). Explore upcoming hackathons, cultural festivals, workshops, guest lectures, and student clubs.';
   }
 
-  // Dynamic edge discovery of top hero image to eliminate client render delay on Desktop & Mobile
+  // Zero-blocking fast path: consume precomputed R2 snapshot (zero Supabase origin roundtrips)
   let heroImageUrl = '';
+  let eventsData: any[] = [];
   try {
-    const carouselRes = await fetchFromSupabaseCoalesced(
-      `carousel_items?select=${encodeURIComponent(PROJECTIONS.carousel)}&is_active=eq.true&order=sort_order.asc&limit=1`,
-      'GET', undefined, env
-    );
-    if (carouselRes.ok && Array.isArray(carouselRes.data) && carouselRes.data[0]) {
-      const item = carouselRes.data[0];
-      if (item.item_type === 'EVENT' && item.events) {
-        heroImageUrl = getEventImageUrl(item.events);
-      } else if (item.item_type === 'MEDIA' && item.media_assets) {
-        heroImageUrl = getEventImageUrl(item);
-      }
-    }
+    const fastData = await getFastEdgeHomepageData();
+    heroImageUrl = fastData.heroImageUrl;
+    eventsData = categoryKey
+      ? fastData.events.filter(e => (e.categories?.key || '').toLowerCase() === categoryKey)
+      : fastData.events.slice(0, 16);
   } catch { }
 
   const heroDesktopUrl = heroImageUrl || '/defaults/hero_default_desktop.webp';
@@ -2874,20 +2977,6 @@ async function handleHomepageSeo(env: Env, origin: string, url?: URL, explicitCa
       'https://twitter.com/lpuuniversity',
     ],
   });
-
-  // 2. Fetch upcoming events for ItemList schema & semantic crawler pre-render
-  let eventsData: any[] = [];
-  try {
-    const nowIso = new Date().toISOString();
-    const catFilter = categoryKey ? `&categories.key=eq.${encodeURIComponent(categoryKey)}` : '';
-    const res = await fetchFromSupabaseCoalesced(
-      `events?select=id,name,description,start_at,end_at,venue_name,pricing_type,price_amount,category_id,organizations(name),categories(name,key)&status=eq.PUBLISHED&end_at=gte.${nowIso}${catFilter}&order=start_at.asc&limit=16`,
-      'GET', undefined, env
-    );
-    if (res.ok && Array.isArray(res.data)) {
-      eventsData = res.data as any[];
-    }
-  } catch { }
 
   // 3. Structured Data ItemList for Google Event Carousel Rich Results
   let itemListJsonLd = '';
@@ -3174,16 +3263,39 @@ async function handleHomepageSeo(env: Env, origin: string, url?: URL, explicitCa
     linkHeaders.push(`<${heroDesktopProxy}>; rel=preload; as=image; fetchpriority="high"`);
   }
 
-  return new Response(rewritten.body, {
-    status: 200,
-    headers: {
-      'Content-Type': 'text/html; charset=utf-8',
-      'Cache-Control': 'public, s-maxage=900, max-age=60, stale-while-revalidate=86400',
-      'X-SEO-Engine': 'edge-rewriter',
-      ...(linkHeaders.length > 0 ? { 'Link': linkHeaders.join(', ') } : {}),
-      ...SECURITY_HEADERS,
-    },
+  const bodyText = await rewritten.text();
+
+  if (!isNoCache && !categoryKey) {
+    cachedHomepageHtmlText = bodyText;
+    cachedHomepageHtmlTimestamp = Date.now();
+  }
+
+  const respHeaders = new Headers({
+    'Content-Type': 'text/html; charset=utf-8',
+    'Cache-Control': 'public, s-maxage=900, max-age=60, stale-while-revalidate=86400',
+    'X-SEO-Engine': 'edge-rewriter',
+    'CF-Cache-Status': 'MISS',
+    'X-Edge-Cache': 'MISS',
+    ...(linkHeaders.length > 0 ? { 'Link': linkHeaders.join(', ') } : {}),
+    ...SECURITY_HEADERS,
   });
+
+  const response = new Response(bodyText, {
+    status: 200,
+    headers: respHeaders,
+  });
+
+  if (!isNoCache) {
+    try {
+      if (ctx) {
+        ctx.waitUntil(cache.put(cacheKey, response.clone()));
+      } else {
+        await cache.put(cacheKey, response.clone());
+      }
+    } catch { }
+  }
+
+  return response;
 }
 
 /**
@@ -3497,7 +3609,7 @@ export default {
           const categoryMatch = url.pathname.match(/^\/category\/([^/?#]+)$/);
           if (categoryMatch && categoryMatch[1]) {
             const catKey = decodeURIComponent(categoryMatch[1]).toLowerCase();
-            return handleHomepageSeo(env, origin, url, catKey);
+            return handleHomepageSeo(env, origin, url, catKey, ctx);
           }
 
           // Legacy /?category= 301 Permanent Redirect to /category/:slug
@@ -3527,7 +3639,45 @@ export default {
 
           // Homepage & Category Landing: / — Inject WebSite & Organization schema + Category SEO
           if (url.pathname === '/') {
-            return handleHomepageSeo(env, origin, url);
+            return handleHomepageSeo(env, origin, url, undefined, ctx);
+          }
+
+          // ─── Public Content Snapshot Proxy (Delivers live R2 / Supabase snapshots in dev and edge) ──────
+          if (url.pathname.startsWith('/public-content/')) {
+            try {
+              // Always serve real-time ads manifest directly from Supabase RPC to reflect admin controls instantly
+              if (url.pathname.endsWith('/ads-manifest.json')) {
+                const adsRes = await fetchFromSupabase('rpc/get_ads_manifest_bundle', 'POST', {}, env).catch(() => ({ ok: false, data: null }));
+                if (adsRes.ok && adsRes.data) {
+                  return new Response(JSON.stringify(adsRes.data), {
+                    status: 200,
+                    headers: {
+                      'Content-Type': 'application/json; charset=utf-8',
+                      'Cache-Control': 'no-cache, no-store, must-revalidate',
+                      'Access-Control-Allow-Origin': '*',
+                    },
+                  });
+                }
+              }
+
+              const r2Url = `https://images.lpuevents.live${url.pathname}`;
+              const r2Res = await fetch(r2Url, {
+                headers: { 'Accept': 'application/json' },
+              });
+              if (r2Res.ok) {
+                const body = await r2Res.text();
+                return new Response(body, {
+                  status: 200,
+                  headers: {
+                    'Content-Type': 'application/json; charset=utf-8',
+                    'Cache-Control': 'no-cache, no-store, must-revalidate',
+                    'Access-Control-Allow-Origin': '*',
+                  },
+                });
+              }
+            } catch (err) {
+              console.warn('[Worker] Failed to proxy /public-content to live R2/origin:', err);
+            }
           }
 
           // All other non-API routes → SPA static assets (CSS, JS, images, fonts, etc.)
@@ -3538,6 +3688,7 @@ export default {
             const headers = new Headers(assetResp.headers);
             headers.set('Cache-Control', 'public, max-age=31536000, immutable');
             headers.set('X-Content-Cache', 'IMMUTABLE_HASHED');
+            headers.set('Alt-Svc', 'h3=":443"; ma=86400');
             return new Response(assetResp.body, { status: assetResp.status, headers });
           }
 
@@ -3546,6 +3697,7 @@ export default {
             const headers = new Headers(assetResp.headers);
             headers.set('Cache-Control', 'public, max-age=2592000, stale-while-revalidate=86400');
             headers.set('X-Content-Cache', 'STATIC_MEDIA');
+            headers.set('Alt-Svc', 'h3=":443"; ma=86400');
             return new Response(assetResp.body, { status: assetResp.status, headers });
           }
 
@@ -3555,6 +3707,7 @@ export default {
             headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
             headers.set('Service-Worker-Allowed', '/');
             headers.set('Content-Type', 'application/javascript; charset=utf-8');
+            headers.set('Alt-Svc', 'h3=":443"; ma=86400');
             return new Response(assetResp.body, { status: assetResp.status, headers });
           }
 
@@ -3562,6 +3715,7 @@ export default {
           if (url.pathname === '/' || url.pathname.endsWith('.html') || !url.pathname.includes('.')) {
             const headers = new Headers(assetResp.headers);
             headers.set('Cache-Control', 'public, max-age=0, must-revalidate');
+            headers.set('Alt-Svc', 'h3=":443"; ma=86400');
             return new Response(assetResp.body, { status: assetResp.status, headers });
           }
 
@@ -3808,7 +3962,7 @@ export default {
             edgeInquiriesBuffer.unshift(inquiryRecord);
             if (edgeInquiriesBuffer.length > 200) edgeInquiriesBuffer.pop();
 
-            // 100% Cloudflare D1 Native: Zero Supabase egress or database connections
+            // 100% Cloudflare D1 Native: Zero Supabase database hits, zero egress
             return jsonResponse({ ok: true, id: inquiryRecord.id }, 200);
           } catch {
             return jsonResponse({ ok: false, error: 'Malformed request' }, 400);
@@ -3939,8 +4093,10 @@ export default {
           return errorResponse('Method Not Allowed', 405);
         }
 
-        // 5. Only GET and HEAD allowed for remaining public endpoints (POST for invalidation, view tracking, and search RPC)
-        if (url.pathname.startsWith('/api/public/') && request.method !== 'GET' && request.method !== 'HEAD' && url.pathname !== '/api/public/view' && url.pathname !== '/api/public/search') {
+
+
+        // 5. Only GET and HEAD allowed for remaining public endpoints (POST for invalidation, view tracking, search RPC, and ad metrics)
+        if (url.pathname.startsWith('/api/public/') && request.method !== 'GET' && request.method !== 'HEAD' && url.pathname !== '/api/public/view' && url.pathname !== '/api/public/search' && url.pathname !== '/api/public/ad-metrics') {
           return errorResponse('Method Not Allowed', 405);
         }
 
@@ -3963,6 +4119,17 @@ export default {
         }
 
         // ─── Public API Routes ─────────────────────────────────────────────
+
+        if (url.pathname === '/api/public/ads-manifest') {
+          const cacheKeyUrl = buildCacheKey(origin, '/api/public/ads-manifest', {});
+          return handleCachedEndpoint(cacheKeyUrl, 'ads', async () => {
+            const adsRes = await fetchFromSupabase('rpc/get_ads_manifest_bundle', 'POST', {}, env).catch(() => ({ ok: false, data: null }));
+            if (!adsRes.ok || !adsRes.data) {
+              return { ok: false, status: 502, data: { message: 'Failed to fetch ads manifest' } };
+            }
+            return { ok: true, status: 200, data: adsRes.data };
+          }, ctx, request);
+        }
 
         if (url.pathname === '/api/public/image-proxy') {
           return handleImageProxy(request, env, ctx);
@@ -4035,6 +4202,58 @@ export default {
           }
         }
 
+        // 7b. Ad metrics tracking (impressions & clicks)
+        if (url.pathname === '/api/public/ad-metrics' && request.method === 'POST') {
+          try {
+            const body = await request.json() as { action?: string; ad_id?: string };
+            const action = body.action === 'click' ? 'click' : body.action === 'impression' ? 'impression' : null;
+            if (action && body.ad_id && UUID_REGEX.test(body.ad_id)) {
+              const clientIp = request.headers.get('cf-connecting-ip') || request.headers.get('x-forwarded-for') || 'anon';
+              const metricKey = `${clientIp}:${body.ad_id}:${action}`;
+              const now = Date.now();
+              const lastTrack = recentViews.get(metricKey);
+
+              // Debounce impressions by 60s, clicks by 2s per IP
+              const debounceWindow = action === 'impression' ? 60000 : 2000;
+              if (!lastTrack || (now - lastTrack) > debounceWindow) {
+                if (recentViews.size > 10000) {
+                  for (const [k, ts] of recentViews.entries()) {
+                    if (now - ts > 60000) {
+                      recentViews.delete(k);
+                    }
+                  }
+                }
+                recentViews.set(metricKey, now);
+
+                // Increment ad metrics in Supabase via background ctx
+                const supabaseUrl = env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
+                const anonKey = env.SUPABASE_ANON_KEY || DEFAULT_ANON_KEY;
+                if (supabaseUrl && anonKey) {
+                  const rpcPromise = fetch(`${supabaseUrl}/rest/v1/rpc/increment_ad_metrics`, {
+                    method: 'POST',
+                    headers: {
+                      apikey: anonKey,
+                      Authorization: `Bearer ${anonKey}`,
+                      'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                      p_ad_id: body.ad_id,
+                      p_metric: action,
+                    }),
+                  }).catch((err) => console.warn('[Worker:AdMetrics] RPC error:', err));
+
+                  if (ctx && typeof ctx.waitUntil === 'function') {
+                    ctx.waitUntil(rpcPromise);
+                  }
+                }
+              }
+            }
+            return jsonResponse({ ok: true });
+          } catch {
+            return errorResponse('Invalid request body', 400);
+          }
+        }
+
         return errorResponse('API endpoint not found', 404);
       })();
       return attachCorrelationId(response, correlationId);
@@ -4058,23 +4277,39 @@ export default {
     }
   },
 
-  async scheduled(_event: unknown, _env: Env, ctx: ExecutionContext): Promise<void> {
+  async scheduled(_event: unknown, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(
       (async () => {
         try {
           const res = await fetch('https://images.lpuevents.live/public-content/manifest.json', {
             headers: { Accept: 'application/json' },
           });
+          let isStale = false;
           if (res.ok) {
             const manifest = (await res.json()) as any;
             const publishedAt = manifest?.published_at ? new Date(manifest.published_at).getTime() : 0;
             const ageMs = Date.now() - publishedAt;
-            if (ageMs > 6 * 3600 * 1000) {
-              console.warn(`[ScheduledReconciler] Stale R2 snapshot detected (${Math.round(ageMs / 36e5)}h old).`);
+            if (ageMs > 15 * 60 * 1000) {
+              isStale = true;
+              console.warn(`[ScheduledReconciler] Snapshot needs refresh (${Math.round(ageMs / 60000)}m old).`);
             }
+          } else {
+            isStale = true;
+          }
+
+          if (isStale && env.SNAPSHOT_CRON_SECRET) {
+            const supabaseUrl = env.SUPABASE_URL || DEFAULT_SUPABASE_URL;
+            await fetch(`${supabaseUrl}/functions/v1/publish-snapshots`, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'x-cron-secret': env.SNAPSHOT_CRON_SECRET,
+              },
+              body: JSON.stringify({ trigger_source: 'SCHEDULED_RECONCILER' }),
+            });
           }
         } catch (err) {
-          console.error('[ScheduledReconciler] Health check error:', err);
+          console.error('[ScheduledReconciler] Health check/reconciliation error:', err);
         }
       })()
     );

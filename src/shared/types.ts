@@ -9,14 +9,15 @@ export type RegistrationMode = 'NONE' | 'EXTERNAL';
 export type EventPricingType = 'FREE' | 'PAID';
 export type MediaType = 'EVENT_BANNER' | 'SPONSOR_LOGO' | 'CAROUSEL_IMAGE' | 'MEMORY_IMAGE';
 export type MediaStatus = 'UPLOADING' | 'READY' | 'FAILED' | 'PENDING_DELETE' | 'DELETED';
-export type CarouselItemType = 'EVENT' | 'MEDIA';
+export type CarouselItemType = 'EVENT' | 'MEDIA' | 'ADVERTISEMENT';
 
 export type CanonicalResourceType =
   | 'events'
   | 'categories'
   | 'featured'
   | 'carousel'
-  | 'settings';
+  | 'settings'
+  | 'ads';
 
 export type ResourceVersionMap = Record<CanonicalResourceType, number>;
 
@@ -307,6 +308,7 @@ export interface CarouselItemFeedItem {
   custom_cta_text?: string | null;
   custom_cta_url?: string | null;
   badge_text?: string | null;
+  injected_ad?: import('./ads/adTypes').AdEntity | null;
   events?: {
     id: string;
     name: string;
@@ -421,5 +423,8 @@ export function parsePlatformMaintenanceConfig(raw: unknown): PlatformMaintenanc
   }
   return DEFAULT_PLATFORM_MAINTENANCE_CONFIG;
 }
+
+export * from './ads/adTypes';
+
 
 

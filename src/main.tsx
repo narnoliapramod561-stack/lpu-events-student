@@ -74,6 +74,11 @@ if (typeof window !== 'undefined') {
       }
     );
   });
+
+  // Auto-reload on stale dynamic chunk hash mismatch (deployment / rebuild updates)
+  window.addEventListener('vite:preloadError', () => {
+    window.location.reload();
+  });
 }
 
 // Configure Google Search Console verification token if provided in environment
@@ -84,7 +89,6 @@ if (gscToken && typeof document !== 'undefined') {
     meta.setAttribute('content', gscToken);
   }
 }
-
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -98,4 +102,3 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 import('./serviceWorkerRegistration').then(({ registerServiceWorker }) => {
   registerServiceWorker();
 });
-

@@ -78,13 +78,82 @@ function securityHeadersPlugin(): Plugin {
   };
 }
 
+const SUPABASE_REST_URL = 'https://tbehdigakmuoqchaaawr.supabase.co/rest/v1/rpc/get_ads_manifest_bundle';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRiZWhkaWdha211b3FjaGFhYXdyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ4MTkwMjQsImV4cCI6MjExMDM5NTAyNH0.fTy5FnzImr_EfODr43EVMiYJVQ6jYw9zqmNFBGIsvbw';
+
+function liveAdsDevPlugin(): Plugin {
+  return {
+    name: 'live-ads-dev-plugin',
+    configureServer(server) {
+      server.middlewares.use(async (req, res, next) => {
+        const rawUrl = req.url || '';
+        const pathname = rawUrl.split('?')[0];
+
+        if (req.method === 'OPTIONS' && (pathname === '/api/cache/invalidate' || pathname === '/api/public/ads-manifest')) {
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+          res.setHeader('Access-Control-Allow-Headers', '*');
+          res.statusCode = 204;
+          res.end();
+          return;
+        }
+
+        if (pathname === '/api/cache/invalidate') {
+          try {
+            server.hot.send({
+              type: 'custom',
+              event: 'lpu:cache-invalidate',
+              data: { timestamp: Date.now() },
+            });
+          } catch {}
+          res.setHeader('Content-Type', 'application/json; charset=utf-8');
+          res.setHeader('Access-Control-Allow-Origin', '*');
+          res.statusCode = 200;
+          res.end(JSON.stringify({ ok: true, invalidated: true, timestamp: Date.now() }));
+          return;
+        }
+
+        if (pathname === '/api/public/ads-manifest' || pathname.endsWith('/ads-manifest.json')) {
+          try {
+            const rpcRes = await fetch(SUPABASE_REST_URL, {
+              method: 'POST',
+              headers: {
+                apikey: SUPABASE_ANON_KEY,
+                Authorization: `Bearer ${SUPABASE_ANON_KEY}`,
+                'Content-Type': 'application/json',
+              },
+            });
+            if (rpcRes.ok) {
+              const data = await rpcRes.json();
+              if (data?.hero_carousel?.selected_ad_ids && data.hero_carousel.selected_ad_ids.length > 0) {
+                data.hero_carousel.is_enabled = true;
+              }
+              res.setHeader('Content-Type', 'application/json; charset=utf-8');
+              res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
+              res.setHeader('Access-Control-Allow-Origin', '*');
+              res.statusCode = 200;
+              res.end(JSON.stringify(data));
+              return;
+            }
+          } catch (err) {
+            console.warn('[Vite Dev] Failed to proxy ads manifest to Supabase:', err);
+          }
+        }
+
+        next();
+      });
+    },
+  };
+}
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
     lanInfoPlugin(),
-    securityHeadersPlugin()
+    securityHeadersPlugin(),
+    liveAdsDevPlugin()
   ],
   define: {
     'import.meta.env.VITE_DEV_LAN_IP': JSON.stringify(getLocalLanIp()),
@@ -103,12 +172,12 @@ export default defineConfig({
       '/api': {
         target: 'https://lpuevents.live',
         changeOrigin: true,
-        secure: true,
+        secure: false,
       },
       '/public-content': {
         target: 'https://images.lpuevents.live',
         changeOrigin: true,
-        secure: true,
+        secure: false,
       }
     },
     fs: {

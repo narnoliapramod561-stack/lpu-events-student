@@ -19,6 +19,7 @@ import {
 import { slugify, extractEventId } from './slug';
 import { persistentCache, HOMEPAGE_CACHE_KEY } from './persistentCache';
 import { registerMediaAssets } from './images/url';
+import { normalizeEventDetailPayload } from './eventCanonical';
 import { trackEvent, captureOrBufferException } from './telemetry/posthog';
 import { generateCorrelationId, validateCorrelationId } from './telemetry/correlation.ts';
 export { generateCorrelationId, validateCorrelationId };
@@ -62,19 +63,15 @@ export class LpuEventsClient {
         this.invalidateClientCache();
       });
 
-      // Realtime cross-origin cache invalidation channel: only connect for authenticated admin sessions to protect connection quotas
+      // Realtime cross-origin cache invalidation channel: connect for immediate sync
       try {
-        this.supabase.auth.getSession().then(({ data }) => {
-          if (!data?.session) return; // Anonymous student visitors rely purely on Cloudflare Edge Cache + SWR
-
-          this._syncChan = this.supabase.channel('public:events-sync');
-          this._syncChan
-            .on('broadcast', { event: 'cache-bust' }, (payload: any) => {
-              this.invalidateClientCache();
-              window.dispatchEvent(new CustomEvent('lpu:cache-invalidated', { detail: payload?.payload || payload }));
-            })
-            .subscribe();
-        }).catch(() => {});
+        this._syncChan = this.supabase.channel('public:events-sync');
+        this._syncChan
+          .on('broadcast', { event: 'cache-bust' }, (payload: any) => {
+            this.invalidateClientCache();
+            window.dispatchEvent(new CustomEvent('lpu:cache-invalidated', { detail: payload?.payload || payload }));
+          })
+          .subscribe();
       } catch {
         // Non-blocking
       }
@@ -212,7 +209,7 @@ export class LpuEventsClient {
 
         if (
           window.location.hostname === 'lpuevents.live' ||
-          (isLocalhostOrLan && (window.location.port === '3000' || window.location.port === '5173'))
+          (isLocalhostOrLan && window.location.port !== '3001')
         ) {
           baseOrigin = '';
         }
@@ -594,8 +591,9 @@ export class LpuEventsClient {
       if (targetUuid) {
         res = await this._fetchPublic<Event>(`events/${targetUuid}`);
         if (res.data) {
-          registerMediaAssets([res.data]);
-          return res;
+          const unwrapped = normalizeEventDetailPayload<Event>(res.data) || res.data;
+          registerMediaAssets([unwrapped]);
+          return { data: unwrapped, error: null };
         }
       } else {
         // Slug lookup: query search endpoint, and find exact match
@@ -605,8 +603,9 @@ export class LpuEventsClient {
           if (match && match.id) {
             res = await this._fetchPublic<Event>(`events/${match.id}`);
             if (res.data) {
-              registerMediaAssets([res.data]);
-              return res;
+              const unwrapped = normalizeEventDetailPayload<Event>(res.data) || res.data;
+              registerMediaAssets([unwrapped]);
+              return { data: unwrapped, error: null };
             }
           }
         }
@@ -729,25 +728,47 @@ export class LpuEventsClient {
           'Authorization': `Bearer ${session.access_token}`,
         };
 
-        await fetch(`${studentSiteUrl}/api/cache/invalidate`, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ tags }),
-        });
+        try {
+          await fetch(`${studentSiteUrl}/api/cache/invalidate`, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({ tags }),
+          });
+        } catch {
+          // Non-blocking if student site is unreachable or cross-origin
+        }
 
         // Trigger snapshot publication queue and edge function
         try {
           await this.supabase.rpc('enqueue_snapshot_publication', {
             p_trigger_source: 'MUTATION',
           });
-          const supabaseUrl = (this.supabase as any)?.supabaseUrl || 'https://nhjphyqiqhmxdhppljap.supabase.co';
+          const supabaseUrl = (this.supabase as any)?.supabaseUrl || 'https://tbehdigakmuoqchaaawr.supabase.co';
           fetch(`${supabaseUrl}/functions/v1/publish-snapshots`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
               'Authorization': `Bearer ${session.access_token}`,
             },
-            body: JSON.stringify({ trigger_source: 'MUTATION' }),
+            body: JSON.stringify({ trigger_source: 'MUTATION', is_urgent: true }),
+          }).catch(() => {});
+        } catch {
+          // Non-blocking
+        }
+
+        // Trigger snapshot publication queue and edge function
+        try {
+          await this.supabase.rpc('enqueue_snapshot_publication', {
+            p_trigger_source: 'MUTATION',
+          });
+          const supabaseUrl = (this.supabase as any)?.supabaseUrl || 'https://tbehdigakmuoqchaaawr.supabase.co';
+          fetch(`${supabaseUrl}/functions/v1/publish-snapshots`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${session.access_token}`,
+            },
+            body: JSON.stringify({ trigger_source: 'MUTATION', is_urgent: true }),
           }).catch(() => {});
         } catch {
           // Non-blocking
@@ -1004,7 +1025,8 @@ export class LpuEventsClient {
       events: 0,
       featured: 0,
       carousel: 0,
-      settings: 0
+      settings: 0,
+      ads: 0,
     };
     for (const r of rows as ResourceVersionItem[]) {
       if (r.resource in map) {

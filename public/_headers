@@ -23,30 +23,47 @@
 /defaults/*
   Cache-Control: public, max-age=2592000, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
 
 /*.webp
   Cache-Control: public, max-age=2592000, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
 
 /*.jpeg
   Cache-Control: public, max-age=2592000, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
 
 /*.jpg
   Cache-Control: public, max-age=2592000, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
 
 /*.png
   Cache-Control: public, max-age=2592000, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
 
 /*.svg
   Cache-Control: public, max-age=2592000, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
 
 /*.ico
   Cache-Control: public, max-age=2592000, stale-while-revalidate=86400
   Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
+
+/logo.png
+  Cache-Control: public, max-age=2592000, stale-while-revalidate=86400
+  Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
+
+/lpu-events-logo.png
+  Cache-Control: public, max-age=2592000, stale-while-revalidate=86400
+  Access-Control-Allow-Origin: *
+  Cross-Origin-Resource-Policy: cross-origin
 
 # HTML entry point: revalidate so updates are immediate
 /index.html

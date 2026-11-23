@@ -98,7 +98,7 @@ describe('Public Request Security & Cookie Regression Suite', () => {
   });
 
   const createMockEnv = () => ({
-    SUPABASE_URL: 'https://nhjphyqiqhmxdhppljap.supabase.co',
+    SUPABASE_URL: 'https://tbehdigakmuoqchaaawr.supabase.co',
     SUPABASE_ANON_KEY: 'test-anon-key-12345',
     ASSETS: {
       fetch: async () => new Response('Asset Not Found', { status: 404 }),
@@ -132,7 +132,7 @@ describe('Public Request Security & Cookie Regression Suite', () => {
   // ─── Test 3: Common session and Supabase-related cookies do not block ──────
   test('3. isPublicRequestSafe allows cookies containing session, supabase-auth, and sb- prefixes', () => {
     const testCookies = [
-      'sb-nhjphyqiqhmxdhppljap-auth-token=base64_jwt_session_value',
+      'sb-tbehdigakmuoqchaaawr-auth-token=base64_jwt_session_value',
       'supabase-auth-token=xyz789',
       'session=express_sess_abc123',
       'sb-access-token=token123; session_id=sess_456; posthog_ph_session=ph123',
@@ -156,7 +156,7 @@ describe('Public Request Security & Cookie Regression Suite', () => {
     const req = new Request('https://lpuevents.live/api/public/homepage', {
       headers: {
         'Accept': 'application/json',
-        'Cookie': 'sb-nhjphyqiqhmxdhppljap-auth-token=eyJhbGciOiJIUzI1NiJ9...; session=test_user_session',
+        'Cookie': 'sb-tbehdigakmuoqchaaawr-auth-token=eyJhbGciOiJIUzI1NiJ9...; session=test_user_session',
       },
     });
 
@@ -246,7 +246,7 @@ describe('Public Request Security & Cookie Regression Suite', () => {
 
   // ─── Test 7: No request cookies or user tokens are forwarded to Supabase ──
   test('7. No client cookies or user authorization headers leak into Supabase requests', async () => {
-    const sensitiveCookie = 'sb-nhjphyqiqhmxdhppljap-auth-token=SECRET_SESSION_JWT_TOKEN; superadmin=true';
+    const sensitiveCookie = 'sb-tbehdigakmuoqchaaawr-auth-token=SECRET_SESSION_JWT_TOKEN; superadmin=true';
     const req = new Request('https://lpuevents.live/api/public/events?limit=10', {
       headers: {
         'Accept': 'application/json',
@@ -289,7 +289,7 @@ describe('Public Request Security & Cookie Regression Suite', () => {
       '/api/public/carousel',
     ];
 
-    const testCookie = 'sb-nhjphyqiqhmxdhppljap-auth-token=valid_cookie; session=sess_123';
+    const testCookie = 'sb-tbehdigakmuoqchaaawr-auth-token=valid_cookie; session=sess_123';
 
     for (const ep of endpoints) {
       const req = new Request(`https://lpuevents.live${ep}`, {

@@ -26,7 +26,7 @@ This means performance testing on `localhost:3000`:
 
 | Operation | Production (`https://lpuevents.live`) | Localhost (`http://localhost:3000`) | Exact Code Source |
 |---|---|---|---|
-| **Homepage Bundle** | `fetch('/api/public/homepage')` $\to$ Cloudflare Edge Worker $\to$ Edge Cache $\to$ Supabase REST | **Direct Supabase JS Client** (8 parallel queries to `nhjphyqiqhmxdhppljap.supabase.co`) | `client.ts:380–397` |
+| **Homepage Bundle** | `fetch('/api/public/homepage')` $\to$ Cloudflare Edge Worker $\to$ Edge Cache $\to$ Supabase REST | **Direct Supabase JS Client** (8 parallel queries to `tbehdigakmuoqchaaawr.supabase.co`) | `client.ts:380–397` |
 | **Event Feed** | `fetch('/api/public/events?...')` $\to$ Cloudflare Edge Worker $\to$ Edge Cache $\to$ Supabase REST | **Direct Supabase JS Client** (range query directly to PostgreSQL) | `client.ts:584–594` |
 | **Search Request** | `fetch('/api/public/search?...')` $\to$ Cloudflare Worker $\to$ `rpc/search_events` | **Vite Proxy** (`/api` $\to$ `https://lpuevents.live`) OR client-side memory search | `vite.config.ts:114–119` & `App.tsx:892–898` |
 | **Event Details** | `fetch('/api/public/events/{id}')` $\to$ Cloudflare Worker $\to$ Edge Cache | **Vite Proxy** (`/api` $\to$ `https://lpuevents.live`) $\to$ Edge Worker | `client.ts:705–720` |
@@ -64,7 +64,7 @@ return this._fetchWithCache<HomepageBundleData>(cacheKey, 60_000, async () => {
 
 * **On Production:** `isLocalhost` is `false`. The client calls `_fetchPublic('homepage')`, which hits the Cloudflare Worker `/api/public/homepage`.
 * **On Localhost:** `isLocalhost` is `true`. The client **skips the Edge Worker entirely** and calls `_fetchHomepageBundleFromSupabase()`.
-* **What `_fetchHomepageBundleFromSupabase()` does:** It invokes `this.getSupabaseClient()`, dynamically loading the 212 KB `@supabase/supabase-js` library, then launches `Promise.all` with **7 independent HTTP requests** directly to `nhjphyqiqhmxdhppljap.supabase.co/rest/v1`:
+* **What `_fetchHomepageBundleFromSupabase()` does:** It invokes `this.getSupabaseClient()`, dynamically loading the 212 KB `@supabase/supabase-js` library, then launches `Promise.all` with **7 independent HTTP requests** directly to `tbehdigakmuoqchaaawr.supabase.co/rest/v1`:
   1. `categories`
   2. `subcategories`
   3. `carousel_items`

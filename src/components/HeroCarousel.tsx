@@ -5,7 +5,10 @@ import {
   EventFeedItem, 
   CarouselItemFeedItem, 
   resolveDefaultEventImage,
-  formatEventTime
+  formatEventTime,
+  AdEntity,
+  trackAdImpression,
+  trackAdClick
 } from "@lpu-events/shared";
 import { getEventImage, getResponsiveImageUrl } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
@@ -27,6 +30,7 @@ export interface HeroSlideModel {
   ctaUrl?: string | null;
   eventId?: string | null;
   duration: number;
+  injected_ad?: AdEntity | null;
 }
 
 const slideVariants: Variants = {
@@ -122,6 +126,7 @@ export const HeroCarouselComponent = ({
           const evt = matchedEvt ? { ...rawEvt, ...matchedEvt } : rawEvt;
 
           if (!evt && !item.custom_title) continue;
+          // Hero Carousel is strictly exempt: finished events remain visible until superadmin removes them from carousel
 
           const categoryName = evt?.categories?.name || "";
           const badgeText = item.badge_text?.trim() || categoryName || "Featured";
@@ -162,6 +167,28 @@ export const HeroCarouselComponent = ({
             ctaText: item.custom_cta_text?.trim() || "Learn More",
             ctaUrl: item.custom_cta_url,
             duration: item.display_duration_ms || 5000,
+          });
+        } else if (item.item_type === "ADVERTISEMENT") {
+          const ad = item.injected_ad;
+          const rawMedia: any = Array.isArray(item.media_assets) ? item.media_assets[0] : item.media_assets;
+          const slideImage = ad?.image_url || (rawMedia ? getEventImage(rawMedia, "hero", heroImageTargetWidth) : "/defaults/hero_default.webp");
+          baseSlides.push({
+            id: item.id || (ad ? `ad-${ad.id}` : `ad-slide-${Math.random()}`),
+            type: "media",
+            title: item.custom_title?.trim() || ad?.name || "Special Promotion",
+            description: item.custom_subtitle?.trim() || (ad?.sponsor_name ? `Presented by ${ad.sponsor_name}` : ""),
+            image: slideImage,
+            fallbackImage: "/defaults/hero_default.webp",
+            badge: item.badge_text?.trim() || ad?.badge_text?.trim() || "SPONSORED",
+            category: ad?.sponsor_name || "Partner",
+            date: "Featured",
+            time: "Promotion",
+            venue: "Official Partner",
+            organizer: ad?.sponsor_name || item.badge_text || "Sponsored",
+            ctaText: item.custom_cta_text?.trim() || ad?.cta_text?.trim() || "Know More",
+            ctaUrl: item.custom_cta_url || ad?.redirect_url,
+            duration: item.display_duration_ms || 6000,
+            injected_ad: ad,
           });
         }
       }
@@ -227,11 +254,34 @@ export const HeroCarouselComponent = ({
     return () => clearInterval(timer);
   }, [slides, currentIndex, isHovered, paginate]);
 
-  if (slides.length === 0) return null;
+  const currentSlide = slides[currentIndex] || slides[0] || null;
 
-  const currentSlide = slides[currentIndex] || slides[0];
+  useEffect(() => {
+    if (currentSlide?.injected_ad) {
+      trackAdImpression({
+        ad_id: currentSlide.injected_ad.id,
+        format: currentSlide.injected_ad.format,
+        placement: "HERO_CAROUSEL",
+        sponsor_name: currentSlide.injected_ad.sponsor_name,
+        creative_url: currentSlide.injected_ad.image_url,
+        redirect_url: currentSlide.injected_ad.redirect_url,
+      });
+    }
+  }, [currentSlide]);
+
+  if (slides.length === 0 || !currentSlide) return null;
 
   const handleAction = () => {
+    if (currentSlide.injected_ad) {
+      trackAdClick({
+        ad_id: currentSlide.injected_ad.id,
+        format: currentSlide.injected_ad.format,
+        placement: "HERO_CAROUSEL",
+        sponsor_name: currentSlide.injected_ad.sponsor_name,
+        redirect_url: currentSlide.injected_ad.redirect_url,
+      });
+    }
+
     if (currentSlide.ctaUrl) {
       const url = currentSlide.ctaUrl.trim();
       // Enforce strict scheme validation to prevent javascript:, data:, and // open redirects
@@ -288,7 +338,7 @@ export const HeroCarouselComponent = ({
                   onClick={handleAction}
                   className="sm:hidden relative w-full h-full flex-1 overflow-hidden cursor-pointer group"
                 >
-                  {/* Clean Mobile Slide Visual (Only Image, Zero Overlay Distractions) */}
+                  {/* Clean Mobile Slide Visual */}
                   {currentSlide.image ? (
                     <ProgressiveImage
                       src={getResponsiveImageUrl(currentSlide.image, 640)}
@@ -298,9 +348,9 @@ export const HeroCarouselComponent = ({
                       fetchPriority={currentIndex === 0 ? "high" : "auto"}
                       width={640}
                       height={360}
-                      ambientBackdrop={true}
+                      ambientBackdrop={!currentSlide.injected_ad}
                       containerClassName="absolute inset-0 w-full h-full flex items-center justify-center overflow-hidden"
-                      className="w-full h-full object-contain object-center relative z-10"
+                      className={`w-full h-full relative z-10 ${currentSlide.injected_ad ? "object-fill" : "object-contain object-center"}`}
                     />
                   ) : (
                     <div className="absolute inset-0 bg-gradient-to-br from-orange-950/80 via-slate-900 to-indigo-950 dark:from-black dark:via-zinc-950 dark:to-neutral-900 flex flex-col justify-center items-center px-4 text-center">
@@ -310,6 +360,34 @@ export const HeroCarouselComponent = ({
                       <h1 className="text-xl min-[390px]:text-2xl font-black text-white font-heading leading-tight tracking-tight max-w-xs drop-shadow-md">
                         {currentSlide.title}
                       </h1>
+                    </div>
+                  )}
+
+                  {/* Mobile Ad Overlay Card for Sponsored Slides */}
+                  {currentSlide.injected_ad && (
+                    <div className="absolute inset-0 z-20 pointer-events-none p-3.5">
+                      {/* Top Left: SPONSORED Badge */}
+                      <div className="absolute top-3.5 left-3.5 flex items-center">
+                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider bg-black/75 text-amber-400 border border-amber-500/40 backdrop-blur-md shadow-md">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                          {currentSlide.badge || "SPONSORED"}
+                        </span>
+                      </div>
+
+                      {/* Bottom Right: Know More CTA Button */}
+                      <div className="absolute bottom-3.5 right-3.5 pointer-events-auto">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleAction();
+                          }}
+                          className="px-4 py-2 rounded-xl bg-[#ff6b00] hover:bg-[#e05e00] text-white text-xs font-black shadow-lg flex items-center gap-1.5 transition-transform active:scale-95 cursor-pointer backdrop-blur-xs"
+                        >
+                          <span>{currentSlide.ctaText || "Know More"}</span>
+                          <ArrowRight className="w-3.5 h-3.5 stroke-[2.5]" />
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -454,6 +532,49 @@ export const HeroCarouselComponent = ({
                           />
                         </div>
                       </div>
+                    </div>
+                  </div>
+                ) : currentSlide.injected_ad ? (
+                  /* Sponsored Ad Showcase Layout (Desktop) - Clean Banner Frame */
+                  <div
+                    onClick={handleAction}
+                    className="hidden sm:flex relative w-full h-full flex-1 overflow-hidden cursor-pointer group items-center justify-center"
+                  >
+                    <ProgressiveImage
+                      src={getResponsiveImageUrl(currentSlide.image, 1600)}
+                      fallbackSrc={currentSlide.fallbackImage || "/defaults/hero_default.webp"}
+                      alt={currentSlide.title}
+                      loading={currentIndex === 0 ? "eager" : "lazy"}
+                      fetchPriority={currentIndex === 0 ? "high" : "auto"}
+                      width={1600}
+                      height={900}
+                      containerClassName="absolute inset-0 w-full h-full overflow-hidden"
+                      className="w-full h-full object-fill relative z-10"
+                    />
+
+                    {/* Top Left: SPONSORED Badge */}
+                    <div className="absolute top-5 sm:top-6 lg:top-7 left-5 sm:left-6 lg:left-8 z-20 pointer-events-none">
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-black/75 backdrop-blur-md text-amber-400 border border-amber-500/40 rounded-full font-heading text-xs font-black uppercase tracking-wider shadow-lg">
+                        <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                        {currentSlide.badge || "SPONSORED"}
+                      </span>
+                    </div>
+
+                    {/* Bottom Right: Know More CTA Button */}
+                    <div className="absolute bottom-5 sm:bottom-6 lg:bottom-7 right-5 sm:right-6 lg:right-8 z-20">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleAction();
+                        }}
+                        className="relative group/btn overflow-hidden flex items-center gap-2 px-5 sm:px-6 py-2.5 sm:py-3 rounded-2xl bg-[#ff6b00] hover:bg-[#e05e00] text-white font-black cursor-pointer font-heading text-sm md:text-base hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 shadow-xl"
+                      >
+                        <span className="relative z-10 text-white font-bold">{currentSlide.ctaText || "Know More"}</span>
+                        <span className="relative z-10 w-5 h-5 sm:w-6 sm:h-6 rounded-full bg-white/20 flex items-center justify-center text-white group-hover/btn:translate-x-0.5 transition-transform duration-200">
+                          <ArrowRight className="h-3.5 w-3.5 stroke-[2.5]" />
+                        </span>
+                      </button>
                     </div>
                   </div>
                 ) : (

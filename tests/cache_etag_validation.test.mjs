@@ -112,7 +112,7 @@ describe('Edge ETag & 304 Not Modified Invalidation Verification', () => {
   });
 
   const createMockEnv = () => ({
-    SUPABASE_URL: 'https://nhjphyqiqhmxdhppljap.supabase.co',
+    SUPABASE_URL: 'https://tbehdigakmuoqchaaawr.supabase.co',
     SUPABASE_ANON_KEY: 'test-anon-key-12345',
     CACHE_MUTATION_SECRET: 'test-secret-123',
     ASSETS: {

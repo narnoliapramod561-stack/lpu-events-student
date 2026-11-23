@@ -24,4 +24,7 @@ export * from './snapshot';
 export * from './snapshotClient';
 export * from './snapshotPublisher';
 export * from './clientSearch';
+export * from './searchEngine';
 export * from './operations';
+export * from './ads';
+export * from './eventCanonical';

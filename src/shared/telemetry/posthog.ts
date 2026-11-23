@@ -277,7 +277,7 @@ export function initPostHog(config: PostHogConfig): typeof posthogType | null {
         api_host: apiHost,
         autocapture: false,
         capture_pageview: false, // Explicit pageviews for SPAs
-        capture_pageleave: true,
+        capture_pageleave: false,
         disable_session_recording: true,
         respect_dnt: true,
         persistence: 'localStorage+cookie',
@@ -310,9 +310,16 @@ export function initPostHog(config: PostHogConfig): typeof posthogType | null {
 }
 
 /**
- * Track a custom analytics event with automatic 'app' property tag and sensitive data scrubbing.
+ * Track an application telemetry event.
+ * In Crash & Error Reporting mode, all non-exception events are suppressed
+ * to ensure 100% free tier safety with zero unnecessary event volume.
  */
 export function trackEvent(eventName: string, properties: Record<string, any> = {}): void {
+  // Pure Crash & Error Telemetry Mode: Suppress all non-exception events
+  if (eventName !== '$exception') {
+    return;
+  }
+
   if (typeof window === 'undefined' && !posthogClient) return;
 
   try {

@@ -331,6 +331,9 @@ export function getOptimizedImage(
           ? (meta.variants.hero_mobile || meta.variants.hero_desktop)
           : (meta.variants.hero_desktop || meta.variants.hero_mobile);
         if (heroVar?.object_key) {
+          if (heroVar.object_key.startsWith('http://') || heroVar.object_key.startsWith('https://') || heroVar.object_key.startsWith('data:') || heroVar.object_key.startsWith('blob:')) {
+            return heroVar.object_key;
+          }
           return `${getStorageBaseUrl(bucket)}/${heroVar.object_key.replace(/^\/+/, '')}`;
         }
       } else if (context === 'event-card') {
@@ -338,11 +341,17 @@ export function getOptimizedImage(
           ? (meta.variants.card_mobile || meta.variants.card_desktop)
           : (meta.variants.card_desktop || meta.variants.card_mobile);
         if (cardVar?.object_key) {
+          if (cardVar.object_key.startsWith('http://') || cardVar.object_key.startsWith('https://') || cardVar.object_key.startsWith('data:') || cardVar.object_key.startsWith('blob:')) {
+            return cardVar.object_key;
+          }
           return `${getStorageBaseUrl(bucket)}/${cardVar.object_key.replace(/^\/+/, '')}`;
         }
       } else if (context === 'event-banner' || context === 'admin-preview') {
         const detailsVar = meta.variants.details || meta.variants.hero_desktop || meta.variants.card_desktop;
         if (detailsVar?.object_key) {
+          if (detailsVar.object_key.startsWith('http://') || detailsVar.object_key.startsWith('https://') || detailsVar.object_key.startsWith('data:') || detailsVar.object_key.startsWith('blob:')) {
+            return detailsVar.object_key;
+          }
           return `${getStorageBaseUrl(bucket)}/${detailsVar.object_key.replace(/^\/+/, '')}`;
         }
       }
@@ -351,15 +360,26 @@ export function getOptimizedImage(
     // --- PHASE 2 PRECEDENCE RULE 1: Original object reference when present and valid ---
     if (meta.is_original_only || meta.original_object_key || mediaAsset.object_key.includes('/originals/')) {
       const origKey = meta.original_object_key || mediaAsset.object_key;
+      if (origKey.startsWith('http://') || origKey.startsWith('https://') || origKey.startsWith('data:') || origKey.startsWith('blob:')) {
+        return origKey;
+      }
       return `${getStorageBaseUrl(bucket)}/${origKey.replace(/^\/+/, '')}`;
     }
 
     // --- PHASE 2 PRECEDENCE RULE 2: Explicitly recorded source-image reference in current schema ---
     if (meta.source?.object_key) {
-      return `${getStorageBaseUrl(bucket)}/${meta.source.object_key.replace(/^\/+/, '')}`;
+      const srcKey = meta.source.object_key;
+      if (srcKey.startsWith('http://') || srcKey.startsWith('https://') || srcKey.startsWith('data:') || srcKey.startsWith('blob:')) {
+        return srcKey;
+      }
+      return `${getStorageBaseUrl(bucket)}/${srcKey.replace(/^\/+/, '')}`;
     }
     if (meta.master?.object_key) {
-      return `${getStorageBaseUrl(bucket)}/${meta.master.object_key.replace(/^\/+/, '')}`;
+      const mstKey = meta.master.object_key;
+      if (mstKey.startsWith('http://') || mstKey.startsWith('https://') || mstKey.startsWith('data:') || mstKey.startsWith('blob:')) {
+        return mstKey;
+      }
+      return `${getStorageBaseUrl(bucket)}/${mstKey.replace(/^\/+/, '')}`;
     }
 
     // --- PHASE 2 PRECEDENCE RULE 3: Legacy V2/V1 fallback logic for historical assets ---

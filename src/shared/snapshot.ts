@@ -19,6 +19,7 @@ export const SNAPSHOT_SCHEMA_VERSION = '1.0.0';
 export interface SnapshotManifest {
   schema_version: string;
   revision: string;
+  active_revision?: string;
   generation?: number;
   published_at: string;
   resources: SnapshotManifestResources;
@@ -31,6 +32,7 @@ export interface SnapshotManifestResources {
   categories: string;            // e.g. "revisions/{revision}/categories.json"
   event_details_dir: string;     // e.g. "revisions/{revision}/event-details"
   archive_catalogue?: string;    // e.g. "revisions/{revision}/archive-catalogue.json"
+  ads?: string;                  // e.g. "revisions/{revision}/ads-manifest.json"
 }
 
 export interface SnapshotManifestMeta {
@@ -58,6 +60,8 @@ export interface HomepageSnapshotPayload {
   trending: EventFeedItem[];
   settings: { key: string; value: any }[];
   events: EventFeedItem[];
+  advertisements?: any[];
+  ads_manifest?: any;
 }
 
 /**
@@ -102,7 +106,12 @@ export function catalogueEventToFeedItem(event: CompactCatalogueEvent): EventFee
     registration_format: event.registration_format || null,
     price_amount: 0,
     banner_media_id: null,
-    media_assets: event.poster_url ? { id: event.id, object_key: event.poster_url } : null,
+    media_assets: event.poster_url
+      ? {
+          id: event.id,
+          object_key: event.poster_url.replace(/^https?:\/\/[^\/]+\//, ''),
+        }
+      : null,
     status: event.status,
     deleted_at: null,
     organizations: event.organization_name ? { name: event.organization_name } : null,
@@ -170,6 +179,7 @@ export const SNAPSHOT_PATHS = {
   revisionCategories: (rev: string) => `public-content/revisions/${rev}/categories.json`,
   revisionEventDetail: (rev: string, id: string) => `public-content/revisions/${rev}/event-details/${id}.json`,
   revisionArchiveCatalogue: (rev: string) => `public-content/revisions/${rev}/archive-catalogue.json`,
+  revisionAds: (rev: string) => `public-content/revisions/${rev}/ads-manifest.json`,
 };
 
 /**

@@ -75,7 +75,7 @@ test.describe('Platform Production Synthetic Health', () => {
   });
 
   test('Supabase Edge Health endpoint returns healthy status and service status', async ({ request }) => {
-    const res = await request.get('https://nhjphyqiqhmxdhppljap.supabase.co/functions/v1/health');
+    const res = await request.get('https://tbehdigakmuoqchaaawr.supabase.co/functions/v1/health');
     expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.status).toBe('healthy');

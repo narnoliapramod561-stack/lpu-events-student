@@ -1696,8 +1696,12 @@
 html {
   -webkit-tap-highlight-color: transparent;
   overscroll-behavior-y: none;
-  background-color: #0b0c10;
+  background-color: #f7f9fc;
   min-height: 100%;
+}
+
+html.dark {
+  background-color: #0b0c10;
 }
 
 body {

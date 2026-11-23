@@ -287,6 +287,7 @@ export async function buildSnapshotRevisionPayloads(
       categories: `revisions/${revision}/categories.json`,
       event_details_dir: `revisions/${revision}/event-details`,
       archive_catalogue: `revisions/${revision}/archive-catalogue.json`,
+      ads: `revisions/${revision}/ads-manifest.json`,
     },
     meta: {
       active_event_count: compactEvents.length,

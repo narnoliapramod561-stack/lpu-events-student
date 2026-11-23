@@ -129,7 +129,7 @@ describe('Request Correlation Infrastructure Suite (Stage 6 / MON-001 / MON-008)
   });
 
   it('6. createRequestContext parses and sanitizes incoming correlation ID for Edge Functions', () => {
-    const req = new Request('https://nhjphyqiqhmxdhppljap.supabase.co/functions/v1/superadmin-operations', {
+    const req = new Request('https://tbehdigakmuoqchaaawr.supabase.co/functions/v1/superadmin-operations', {
       headers: { 'x-correlation-id': 'req_edge_trace_999' },
     });
 
@@ -138,7 +138,7 @@ describe('Request Correlation Infrastructure Suite (Stage 6 / MON-001 / MON-008)
     assert.ok(ctx.requestId.startsWith('ops_req_'));
 
     // Invalid correlation falls back to requestId
-    const badReq = new Request('https://nhjphyqiqhmxdhppljap.supabase.co/functions/v1/superadmin-operations', {
+    const badReq = new Request('https://tbehdigakmuoqchaaawr.supabase.co/functions/v1/superadmin-operations', {
       headers: { 'x-correlation-id': 'invalid header;drop table' },
     });
     const badCtx = createRequestContext(badReq);

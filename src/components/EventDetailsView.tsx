@@ -27,7 +27,9 @@ import {
   generateQrDataUrl,
   formatEventDateRange,
   formatEventTimeRange,
-  resolveDefaultEventImage
+  resolveDefaultEventImage,
+  resolveCanonicalEventTabs,
+  normalizeEventDetailPayload
 } from "@lpu-events/shared";
 import { getEventImage } from "../utils/images";
 import { ProgressiveImage } from "./ProgressiveImage";
@@ -88,10 +90,23 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
 
   // Synchronize internal event state when eventId or initialEvent changes
   useEffect(() => {
-    setEvent(initialEvent);
     if (!initialEvent) {
+      setEvent(null);
       setLoading(true);
+      setActiveTab("about");
+      return;
     }
+    setEvent((current: any) => {
+      // Preserve detailed record with loaded content sections if already resolved for this event
+      if (
+        current?.id === initialEvent.id &&
+        Array.isArray(current.event_content_sections) &&
+        current.event_content_sections.length > 0
+      ) {
+        return current;
+      }
+      return initialEvent;
+    });
     setActiveTab("about");
   }, [eventId, initialEvent]);
 
@@ -143,14 +158,15 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
         if (fetchErr) {
           if (!initialEvent) setError(fetchErr.message || "Failed to load event details");
         } else if (data) {
-          setEvent(data);
-          document.title = `${data.name} — LPU Events`;
+          const resolved = normalizeEventDetailPayload<any>(data) || data;
+          setEvent(resolved);
+          document.title = `${resolved.name} — LPU Events`;
           trackEvent('event_view', {
-            event_id: data.id,
-            event_name: data.name,
-            organization: (data as any).organizations?.name,
-            pricing_type: data.pricing_type,
-            category: (data as any).categories?.name
+            event_id: resolved.id,
+            event_name: resolved.name,
+            organization: (resolved as any).organizations?.name,
+            pricing_type: resolved.pricing_type,
+            category: (resolved as any).categories?.name
           });
         }
 
@@ -279,72 +295,8 @@ export const EventDetailsViewComponent: React.FC<EventDetailsViewProps> = ({
     }
   };
 
-  const sections = useMemo(() => {
-    return Array.isArray(event?.event_content_sections)
-      ? [...event.event_content_sections].sort((a: any, b: any) => (a.sort_order || 0) - (b.sort_order || 0))
-      : [];
-  }, [event?.event_content_sections]);
-
-  // Helper to identify if a section is an overview/about section
-  const isAboutOrOverviewSection = (sec: any) => {
-    if (!sec) return false;
-    const title = (sec.title || "").trim().toLowerCase();
-    const type = (sec.section_type || "").toUpperCase();
-    return (
-      title === "about the event" ||
-      title === "event overview" ||
-      title === "about" ||
-      title === "overview" ||
-      title === "about event" ||
-      type === "ABOUT"
-    );
-  };
-
-  // Helper to extract clean text from any content structure
-  const extractSectionText = (content: any): string => {
-    if (!content) return "";
-    if (typeof content === "string") return content.trim();
-    if (typeof content === "object") {
-      if (typeof content.text === "string") return content.text.trim();
-      if (typeof content.description === "string" && !content.items && !content.schedule) return content.description.trim();
-      if (typeof content.body === "string") return content.body.trim();
-      if (typeof content.markdown === "string") return content.markdown.trim();
-    }
-    return "";
-  };
-
-  // Generate unified, consistent tabs matching laptop and mobile seamlessly
-  const tabs = useMemo(() => {
-    const list: { id: string; label: string; content: any }[] = [];
-
-    // Find if there is an explicit overview / about section in content sections
-    const primaryAboutSection = sections.find(isAboutOrOverviewSection);
-
-    // Extract text from primaryAboutSection or fallback to event.description
-    const overviewText = extractSectionText(primaryAboutSection?.content);
-    const eventDescription = (event?.description || "").trim();
-    const finalAboutContent = overviewText || eventDescription;
-
-    // Tab 1 is ALWAYS the canonical About the Event section
-    list.push({
-      id: "about",
-      label: "About the Event",
-      content: finalAboutContent,
-    });
-
-    // Add all other distinct sections (Timeline, Guidelines, FAQ, Custom)
-    sections.forEach((sec, idx) => {
-      if (isAboutOrOverviewSection(sec)) return; // Exclude duplicate overview/about section
-
-      list.push({
-        id: sec.id || `section-${idx}`,
-        label: sec.title || `Section ${idx + 1}`,
-        content: sec.content,
-      });
-    });
-
-    return list;
-  }, [sections, event?.description]);
+  // Generate unified, canonical tabs matching laptop and mobile with 100% parity
+  const tabs = useMemo(() => resolveCanonicalEventTabs(event), [event]);
 
   useEffect(() => {
     if (tabs.length > 0 && !tabs.some((t) => t.id === activeTab)) {
